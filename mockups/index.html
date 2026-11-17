@@ -530,7 +530,8 @@ tbody tr:hover{background:var(--surface-2)}
   <a class="sb-link" href="#s36"><span class="ic">⚙</span> Tuỳ chỉnh thông báo</a>
   <a class="sb-link" href="#s37"><span class="ic">🤝</span> Ủy quyền</a>
   <a class="sb-link" href="#s28"><span class="ic">🔒</span> Quản lý thiết bị (HR)</a>
-  <a class="sb-link" href="#s38"><span class="ic">🌳</span> Cây phân tầng</a>
+  <a class="sb-link" href="#s40"><span class="ic">👤</span> Quản lý nhân viên</a>
+  <a class="sb-link" href="#s41"><span class="ic">🌲</span> Cây quản lý</a>
 </aside>
 
 <main class="content">
@@ -585,6 +586,7 @@ tbody tr:hover{background:var(--surface-2)}
       <tr><td><a class="id" href="#s30">C16</a></td><td>Loại nghỉ cấu hình được (3 tầng kế thừa, không sửa code)</td><td>HR</td><td><span class="badge d">P0</span></td><td>Sửa code + deploy</td><td class="num arrow">1 form</td><td><a href="#s30">S30, S32</a></td></tr>
       <tr><td><a class="id" href="#s21">C17</a></td><td>Gợi ý Key Result từ template (KR mẫu do HR khai báo)</td><td>NV</td><td><span class="badge d">P0</span></td><td>Nghĩ 30′ mục tiêu + đơn vị đo</td><td class="num arrow">Điền sẵn</td><td><a href="#s21">S21</a></td></tr>
       <tr><td><a class="id" href="#s25">C18</a></td><td>Tóm tắt báo cáo OKR (dựng từ số liệu đã tính)</td><td>HR</td><td><span class="badge d">P0</span></td><td>Tự đọc 4 widget</td><td class="num arrow">Có mô tả</td><td><a href="#s25">S25</a></td></tr>
+      <tr><td><a class="id" href="#s40">Core</a></td><td>Quản lý nhân viên + cây phân tầng quản lý (gán nhóm, đặt trưởng, đổi quản lý)</td><td>HR</td><td><span class="badge d">P0</span></td><td>Đi tìm ai duyệt cho ai</td><td class="num arrow">1 màn hình</td><td><a href="#s40">S40, S41</a></td></tr>
       <tr><td><a class="id" href="#s07">C-cố</a></td><td>Tự động điền đơn từ log chấm công thật</td><td>NV</td><td><span class="badge d">P0</span></td><td>5 field + tự tính phút</td><td class="num arrow">1 chạm</td><td><a href="#s07">S07</a></td></tr>
     </tbody>
   </table>
@@ -913,7 +915,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span>Tìm: nhân viên · đơn từ · bảng công · OKR · <b>quy định</b> · cấu hình</li>
-        <li><span class="tag p0">P0</span>Lọc theo phạm vi quyền (manager không thấy phòng ban khác)</li>
+        <li><span class="tag p0">P0</span>Lọc theo phạm vi quyền (manager không thấy nhóm khác)</li>
         <li><span class="tag p0">P0</span>Tiếng Việt không dấu: <code>phep</code> → "phép", <code>dieu</code> → "đi muộn"</li>
         <li><span class="tag p1">P1</span>Phím tắt ngữ cảnh: <code>/</code> mở, <code>g c</code> → Chấm công</li>
         <li>Hiển thị đường dẫn + loại kết quả để không nhầm</li>
@@ -2771,7 +2773,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p1">P1</span>View tuần / tháng, lọc theo phòng ban</li>
+        <li><span class="tag p1">P1</span>View tuần / tháng, lọc theo nhóm</li>
         <li><span class="tag p1">P1</span>Hiện đồng thời: WFH · nghỉ phép · đi muộn · công đủ</li>
         <li><span class="tag p1">P1</span><b>Cảnh báo xung đột</b>: ngày có quá nhiều người vắng</li>
         <li><span class="tag p1">P1</span>Đếm số người có mặt mỗi ngày</li>
@@ -2933,7 +2935,7 @@ tbody tr:hover{background:var(--surface-2)}
 
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;align-items:center">
             <span style="font-size:11.5px;color:var(--muted);font-weight:600">Bộ lọc:</span>
-            <span class="chip on">Phòng ban: Mobile ✕</span>
+            <span class="chip on">Nhóm: Mobile ✕</span>
             <span class="chip on">Tháng: 11/2026 ✕</span>
             <span class="chip on">Đi muộn &gt; 0 ✕</span>
             <span class="chip">+ Thêm bộ lọc</span>
@@ -3002,7 +3004,7 @@ tbody tr:hover{background:var(--surface-2)}
               </tbody>
             </table>
           </div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:9px">Hiển thị 6 trong 30 nhân viên · lọc đang áp dụng: Phòng ban Mobile + Đi muộn &gt; 0</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:9px">Hiển thị 6 trong 30 nhân viên · lọc đang áp dụng: Nhóm Mobile + Đi muộn &gt; 0</div>
         </div>
       </div>
     </div>
@@ -3100,7 +3102,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li><span class="tag p0">P0</span>16 quy định, nhóm theo nhóm nghiệp vụ</li>
         <li><span class="tag p0">P0</span>Hiện <b>giá trị hiện tại bằng ngôn ngữ tự nhiên</b>, không phải JSON</li>
-        <li><span class="tag p0">P0</span>Hiện <b>scope override</b> (VD "Phòng ban Mobile — 3 lần/tháng")</li>
+        <li><span class="tag p0">P0</span>Hiện <b>scope override</b> (VD "Nhóm Mobile — 3 lần/tháng")</li>
         <li><span class="tag p0">P0</span>Filter: đang áp dụng / sắp áp dụng / đã hết hiệu lực / tất cả</li>
         <li><span class="tag p0">P0</span>Mỗi rule có <b>phiên bản + lý do + người sửa</b></li>
       </ul>
@@ -3109,7 +3111,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Acceptance criteria</h4>
       <ul>
         <li>Thấy đủ 16 quy định với giá trị đúng theo "Quyết định của HR" ở Mục 7</li>
-        <li>Scope override hiển thị rõ là của phòng ban nào, không lẫn với global</li>
+        <li>Scope override hiển thị rõ là của nhóm nào, không lẫn với global</li>
         <li>Rule có phiên bản tương lai → badge "Sắp áp dụng từ …"</li>
         <li>Mỗi thay đổi đều có lý do bắt buộc và vào audit log</li>
       </ul>
@@ -3155,7 +3157,7 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
               <div class="override">
                 <span style="color:var(--accent)">↳</span>
-                <b style="font-size:12.5px">Phòng ban Mobile</b>
+                <b style="font-size:12.5px">Nhóm Mobile</b>
                 <span>3 lần/tháng · hiệu lực từ 01/11/2026</span>
                 <span class="badge i" style="margin-left:auto">Ghi đè</span>
               </div>
@@ -3195,7 +3197,7 @@ tbody tr:hover{background:var(--surface-2)}
               <div class="rh">
                 <div style="flex:1">
                   <div class="rn">Cần HR duyệt thêm</div>
-                  <div class="rv">Nghỉ từ 3 ngày trở lên · phòng ban: CA, Mobile · loại nghỉ: Thai sản</div>
+                  <div class="rv">Nghỉ từ 3 ngày trở lên · nhóm: CA, Mobile · loại nghỉ: Thai sản</div>
                   <div class="meta">Hiệu lực từ 01/10/2026 · phiên bản 1</div>
                 </div>
                 <div class="sc">
@@ -3278,7 +3280,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li><code>time</code> — TimeInput</li>
         <li><code>month_day</code> — hiển thị dạng DD/MM (01/04)</li>
         <li><code>select</code> — 1 lựa chọn</li>
-        <li><code>multi_select</code> — options động từ phòng ban / chức danh / loại nghỉ</li>
+        <li><code>multi_select</code> — options động từ nhóm / chức danh / loại nghỉ</li>
         <li><code>grade_thresholds</code> — editor A/B/C/D, validate giảm dần</li>
         <li><code>text</code> — TextArea</li>
       </ul>
@@ -3288,7 +3290,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li>Sửa 1 quy định → form đúng kiểu field theo catalog</li>
         <li>Field ẩn/hiện theo <code>visible_when</code> không reload trang</li>
-        <li>Chọn scope "Phòng ban Mobile" → chỉ Mobile bị ảnh hưởng</li>
+        <li>Chọn scope "Nhóm Mobile" → chỉ Mobile bị ảnh hưởng</li>
         <li>Ngày hiệu lực tương lai → rule mới vào tab "Sắp áp dụng", rule cũ vẫn chạy</li>
         <li>Không có lý do → không lưu được</li>
         <li>Server validate lại (không tin frontend)</li>
@@ -3315,7 +3317,7 @@ tbody tr:hover{background:var(--surface-2)}
               <div class="field">
                 <label>Áp dụng cho</label>
                 <div class="sel"><span>Toàn công ty</span><span class="cv">▾</span></div>
-                <div class="hint">Chọn "Phòng ban" để ghi đè riêng cho một phòng mà không ảnh hưởng công ty.</div>
+                <div class="hint">Chọn "Nhóm" để ghi đè riêng cho một phòng mà không ảnh hưởng công ty.</div>
               </div>
 
               <div class="field">
@@ -3535,7 +3537,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li><span class="tag p0">P0</span>Render từ <code>policy_template</code> + giá trị đang áp dụng</li>
         <li><span class="tag p0">P0</span>Hiện <b>phiên bản + ngày hiệu lực</b> cho mỗi quy định</li>
-        <li><span class="tag p0">P0</span>Điều chỉnh theo phạm vi: nhân viên thấy quy định áp dụng cho phòng ban mình</li>
+        <li><span class="tag p0">P0</span>Điều chỉnh theo phạm vi: nhân viên thấy quy định áp dụng cho nhóm mình</li>
         <li><span class="tag p0">P0</span>Mục lục + tìm kiếm + lọc theo nhóm</li>
         <li><span class="tag p0">P0</span>Ví dụ thực tế cho từng quy định</li>
         <li>Nguồn cho command palette (C3)</li>
@@ -3632,6 +3634,33 @@ tbody tr:hover{background:var(--surface-2)}
                 Trong ngày WFH đã duyệt, bạn được chấm công ngoài mạng công ty.</div>
             </div>
           </div>
+          <div class="card">
+            <div class="card-b">
+              <div class="row-b" style="margin-bottom:8px">
+                <h3 style="font-size:15px">OKR — chấm điểm & phân tầng</h3>
+                <div class="row"><span class="badge n">OKR</span>
+                  <span style="font-size:11.5px;color:var(--muted)">Hiệu lực 01/01/2026 · Phiên bản 1</span></div>
+              </div>
+              <div style="font-size:13.5px;line-height:1.7;color:var(--ink-2)">
+                OKR của bạn gồm <b>2 nhóm</b>: <b>Business</b> và <b>People</b>.
+                Mỗi nhóm được chấm <b>1–5</b>, và phần mềm <b>tự tính điểm trung bình</b> — không có điểm lẻ.
+                Bạn cần nộp tự đánh giá trước hạn, sau đó quản lý trực tiếp sẽ đánh giá.
+                Mục tiêu của bạn được liên kết lên mục tiêu cấp trên theo <b>cây nhóm</b> —
+                nếu chưa gắn thì mục tiêu của bạn sẽ không có mục tiêu cha.</div>
+              <div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--line-2);display:flex;gap:18px;flex-wrap:wrap">
+                <div><div style="font-size:11.5px;color:var(--muted)">Điểm Business</div>
+                  <div class="tnum" style="font-size:17px;font-weight:650">4</div></div>
+                <div><div style="font-size:11.5px;color:var(--muted)">Điểm People</div>
+                  <div class="tnum" style="font-size:17px;font-weight:650">3</div></div>
+                <div><div style="font-size:11.5px;color:var(--muted)">Điểm trung bình</div>
+                  <div class="tnum" style="font-size:17px;font-weight:650;color:var(--accent)">3.5</div></div>
+                <div><div style="font-size:11.5px;color:var(--muted)">Xếp loại</div>
+                  <div style="font-size:15px;font-weight:650;margin-top:2px">B — Đạt</div></div>
+                <div><div style="font-size:11.5px;color:var(--muted)">Tần suất check-in</div>
+                  <div style="font-size:15px;font-weight:650;margin-top:2px">Hàng tháng</div></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -3641,36 +3670,41 @@ tbody tr:hover{background:var(--surface-2)}
 <!-- ══════════════════════════════════════════════════════════
      S20 — OKR DASHBOARD
      ══════════════════════════════════════════════════════════ -->
+
 <section class="screen" id="s20">
   <div class="screen-head">
     <div class="n">20</div>
     <div>
       <div class="eyebrow">Bài toán 2 · Nhân viên · P0</div>
-      <h2>Dashboard OKR — tiến độ, hạn chót, việc cần làm</h2>
-      <p class="desc">Mục 4.1: hệ thống tự nhắc nhân viên trước hạn. Dashboard cho thấy rõ phase hiện tại, đếm ngược hạn chót, và các objective cần chú ý — không để nhân viên phải vào từng mục để tìm.</p>
+      <h2>Dashboard OKR — 2 nhóm Business &amp; People, thấy rõ việc cần làm</h2>
+      <p class="desc">Theo form đánh giá của HR: OKR của bạn gồm <b>2 nhóm</b> — <b>Business</b> (thành tựu công việc) và <b>People</b> (thành tựu con người). Mỗi nhóm chấm <b>1–5</b>, phần mềm <b>tự tính điểm trung bình</b>. Dashboard cho thấy phase hiện tại, đếm ngược hạn chót, và việc cần làm — không để nhân viên phải vào từng mục để tìm.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Phase hiện tại + đếm ngược hạn chót</li>
-        <li><span class="tag p0">P0</span>Tiến độ tổng + tiến độ từng objective</li>
-        <li><span class="tag p0">P0</span>Objective cần chú ý (chưa check-in, bị trả lại)</li>
-        <li><span class="tag p0">P0</span>Card mỗi objective: progress ring · số KR · trạng thái</li>
-        <li><span class="tag p0">P0</span>Nút "Check-in" nổi bật khi đến kỳ</li>
+        <li><span class="tag p0">P0</span>Phase hiện tại + đếm ngược hạn chót (timeline thật: Setup Q1 → Check-in Mar-Apr → Review Jun-Jul → Đánh giá Nov-Dec)</li>
+        <li><span class="tag p0">P0</span>**2 nhóm** Business &amp; People hiển thị cạnh nhau, mỗi nhóm 1 điểm 1–5</li>
+        <li><span class="tag p0">P0</span>**Điểm trung bình do phần mềm tự tính** — không có ô nhập tay</li>
+        <li><span class="tag p0">P0</span>Tiến độ từng nhóm + số đầu việc trong mỗi nhóm</li>
+        <li><span class="tag p0">P0</span>Việc cần chú ý: chưa tự đánh giá · bị trả lại · chưa gắn mục tiêu cha</li>
+        <li><span class="tag p0">P0</span>Nút &quot;Check-in&quot; nổi bật khi đến kỳ</li>
+        <li><span class="tag p0">P0</span>Hiện mục tiêu cha theo <b>cây nhóm</b> — nếu chưa gắn thì báo rõ</li>
+        <li><span class="tag p0">P0</span>Mỗi nhóm có nút &quot;Xem chi tiết&quot; → mở đúng nhóm đó</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Hiện đúng phase đang active của chu kỳ</li>
-        <li>Đếm ngược hạn chót chính xác</li>
-        <li>Objective bị trả lại nổi bật, có nút sửa &amp; gửi lại</li>
-        <li>Tiến độ khớp với trang chi tiết objective</li>
+        <li><span class="tag p0">P0</span>Đếm ngược hạn chót chính xác theo ngày, không phải tháng</li>
+        <li><span class="tag p0">P0</span>Điểm 1–5 chỉ hiện khi đã đánh giá — chưa đánh giá thì hiện &quot;Chưa đánh giá&quot;</li>
+        <li><span class="tag p0">P0</span>Mục tiêu chưa gắn objective cha → hiện cảnh báo, nút [Gắn mục tiêu cha]</li>
+        <li><span class="tag p0">P0</span>Tiến độ khớp với trang chi tiết nhóm</li>
       </ul>
     </div>
   </div>
+
   <div class="mock-label">Mockup — Nhân viên</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
@@ -3679,673 +3713,787 @@ tbody tr:hover{background:var(--surface-2)}
       <div class="appnav" data-nav="employee" data-active="myokr"></div>
       <div class="appmain">
         <div class="topbar">
-          <div class="crumb"><b>OKR 2026</b></div><div class="spacer"></div>
-          <button class="btn p sm">+ Tạo OKR</button>
-          <div class="avatar" style="margin-left:9px">MH</div>
+          <div>
+            <div style="font-size:16px;font-weight:660">OKR của tôi</div>
+            <div style="font-size:12px;color:var(--muted)">Chu kỳ 2026 · 2 nhóm đánh giá</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">⏳ Tự đánh giá còn 4 ngày</span>
         </div>
         <div class="body" style="max-width:1000px">
-          <div class="row-b" style="margin-bottom:14px">
-            <div><h2 style="font-size:18px">OKR của tôi · Chu kỳ 2026</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Chu kỳ cập nhật: hàng tháng · Đánh giá cuối năm tháng 12</div></div>
-            <div class="row"><span class="badge w">⏳ Check-in tháng 11 còn 2 ngày</span></div>
+
+          <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
+            <span class="chip on">⚙ Set up · Q1</span>
+            <span class="chip">⏱ Check-in · Mar–Apr</span>
+            <span class="chip">💬 Review · Jun–Jul</span>
+            <span class="chip">🏁 Đánh giá · Nov–Dec</span>
+            <span class="chip">📊 Tổng hợp</span>
           </div>
 
-          <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 18px;margin-bottom:14px">
-            <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
-              <div style="flex:1;text-align:center"><div style="font-size:12px;font-weight:650;color:var(--ok)">✓ Thiết lập</div>
-                <div style="font-size:10.5px;color:var(--muted);margin-top:2px">01/01 – 31/01</div></div>
-              <div style="width:26px;height:2px;background:var(--ok)"></div>
-              <div style="flex:1;text-align:center"><div style="font-size:12px;font-weight:650;color:var(--accent)">◉ Cập nhật định kỳ</div>
-                <div style="font-size:10.5px;color:var(--muted);margin-top:2px">Hàng tháng · đang chạy</div></div>
-              <div style="width:26px;height:2px;background:var(--line)"></div>
-              <div style="flex:1;text-align:center"><div style="font-size:12px;color:var(--muted)">Review giữa năm</div>
-                <div style="font-size:10.5px;color:var(--muted);margin-top:2px">01/06 – 31/07</div></div>
-              <div style="width:26px;height:2px;background:var(--line)"></div>
-              <div style="flex:1;text-align:center"><div style="font-size:12px;color:var(--muted)">Đánh giá cuối năm</div>
-                <div style="font-size:10.5px;color:var(--muted);margin-top:2px">01/12 – 31/12</div></div>
-              <div style="width:26px;height:2px;background:var(--line)"></div>
-              <div style="flex:1;text-align:center"><div style="font-size:12px;color:var(--muted)">Tổng hợp</div>
-                <div style="font-size:10.5px;color:var(--muted);margin-top:2px">01/01/2027</div></div>
-            </div>
+          <div class="alert w" style="margin-bottom:16px">
+            <span class="ic">⏳</span>
+            <div><b>Tự đánh giá cuối năm còn 4 ngày</b> (hạn 16/11/2026).
+            Bước 1 của quy trình 5 bước — sau đó quản lý trực tiếp sẽ đánh giá trong 5 ngày.</div>
+            <div class="spacer"></div>
+            <button class="btn p sm">Bắt đầu tự đánh giá</button>
           </div>
 
-          <div class="grid3" style="margin-bottom:14px">
-            <div class="kpi"><div class="k">Tiến độ tổng</div><div class="v tnum">68%</div><div class="d up">↑ 6% so với tháng 10</div></div>
-            <div class="kpi"><div class="k">Số objective</div><div class="v tnum">3</div><div class="d">9 Key Result</div></div>
-            <div class="kpi"><div class="k">KR chưa check-in</div><div class="v tnum" style="color:var(--warn)">2</div><div class="d dn">Cần cập nhật trước 14/11</div></div>
-          </div>
-
-          <div class="alert w" style="margin-bottom:13px">
-            <span class="ic">⚠</span>
-            <div><b>2 Key Result đến hạn cập nhật.</b> Chu kỳ check-in tháng 11 đóng lúc 23:59 ngày 14/11.
-              <button class="btn p sm" style="margin-left:7px">Check-in ngay</button></div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div class="grid2" style="gap:14px;margin-bottom:16px">
             <div class="card">
+              <div class="card-h">
+                <div><h3 style="font-size:14px">Business — thành tựu công việc</h3>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px">3 đầu việc · chấm 1 điểm</div></div>
+                <div class="spacer"></div>
+                <span class="badge n">BOX 2</span>
+              </div>
               <div class="card-b">
-                <div class="row" style="gap:12px;margin-bottom:11px">
-                  <div class="ring">72%</div>
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:620;line-height:1.35">Tăng trưởng doanh thu Q4</div>
-                    <div style="font-size:11.5px;color:var(--muted);margin-top:3px">3 KR · Cập nhật 08/11</div>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+                  <div class="tnum" style="font-size:30px;font-weight:700;color:var(--accent)">4</div>
+                  <div style="flex:1">
+                    <div style="display:flex;gap:4px;margin-bottom:3px">
+                      <span style="flex:1;height:6px;background:var(--accent);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--accent);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--accent);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--accent);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--muted)">4/5 — Vượt kỳ vọng · chưa đánh giá</div>
                   </div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:6px;font-size:11.5px">
-                  <div class="row-b"><span style="color:var(--muted)">KR1 · Doanh thu (triệu)</span><span class="tnum">100/120</span></div>
-                  <div class="bar"><i style="width:83%"></i></div>
-                  <div class="row-b"><span style="color:var(--muted)">KR2 · Khách hàng mới</span><span class="tnum">28/40</span></div>
-                  <div class="bar"><i style="width:70%"></i></div>
-                  <div class="row-b" style="color:var(--warn)"><span>KR3 · Tỷ lệ giữ chân</span><span class="tnum">— chưa check-in</span></div>
+                <div style="font-size:12.5px;line-height:1.7;color:var(--ink-2)">
+                  1. Giảm thời gian phản hồi ticket xuống dưới 8 phút<br>
+                  2. Tăng tỷ lệ giải quyết lần 1 lên 85%<br>
+                  3. Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
                 </div>
-                <div style="margin-top:11px;display:flex;gap:7px">
-                  <button class="btn s sm" style="flex:1">Check-in</button>
-                  <button class="btn g sm">Chi tiết</button>
+                <div style="margin-top:11px;display:flex;gap:8px;align-items:center">
+                  <button class="btn sm">Xem chi tiết</button>
+                  <span class="chip">📎 2 file đính kèm</span>
                 </div>
               </div>
             </div>
 
             <div class="card">
-              <div class="card-b">
-                <div class="row" style="gap:12px;margin-bottom:11px">
-                  <div class="ring" style="background:conic-gradient(var(--ok) 91%,var(--line-2) 0);color:var(--ok)">91%</div>
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:620;line-height:1.35">Nâng cao chất lượng hỗ trợ</div>
-                    <div style="font-size:11.5px;color:var(--muted);margin-top:3px">3 KR · Cập nhật 05/11</div>
-                  </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:6px;font-size:11.5px">
-                  <div class="row-b"><span style="color:var(--muted)">KR1 · Thời gian phản hồi</span><span class="tnum">12′/8′</span></div>
-                  <div class="bar"><i class="ok" style="width:100%"></i></div>
-                  <div class="row-b"><span style="color:var(--muted)">KR2 · CSAT</span><span class="tnum">4.6/4.8</span></div>
-                  <div class="bar"><i class="ok" style="width:90%"></i></div>
-                  <div class="row-b"><span style="color:var(--muted)">KR3 · Tỷ lệ giải quyết lần 1</span><span class="tnum">78/85%</span></div>
-                  <div class="bar"><i class="ok" style="width:92%"></i></div>
-                </div>
-                <div style="margin-top:11px;display:flex;gap:7px">
-                  <button class="btn s sm" style="flex:1">Check-in</button>
-                  <button class="btn g sm">Chi tiết</button>
-                </div>
+              <div class="card-h">
+                <div><h3 style="font-size:14px">People — thành tựu con người</h3>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px">2 đầu việc · chấm 1 điểm</div></div>
+                <div class="spacer"></div>
+                <span class="badge n">BOX 3</span>
               </div>
-            </div>
-
-            <div class="card" style="border-color:#f5c9c4">
               <div class="card-b">
-                <div class="row" style="gap:12px;margin-bottom:11px">
-                  <div class="ring" style="background:conic-gradient(var(--danger) 34%,var(--line-2) 0);color:var(--danger)">34%</div>
-                  <div style="flex:1;min-width:0">
-                    <div style="font-size:13px;font-weight:620;line-height:1.35">Tự động hoá quy trình bàn giao</div>
-                    <div style="font-size:11.5px;color:var(--muted);margin-top:3px">3 KR · Chưa check-in 2 tháng</div>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+                  <div class="tnum" style="font-size:30px;font-weight:700;color:var(--muted)">—</div>
+                  <div style="flex:1">
+                    <div style="display:flex;gap:4px;margin-bottom:3px">
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                      <span style="flex:1;height:6px;background:var(--line);border-radius:3px"></span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--muted)">Chưa tự đánh giá</div>
                   </div>
                 </div>
-                <div class="alert d" style="padding:8px 10px;font-size:11.5px">
-                  <span class="ic">⚠</span>
-                  <div>Tiến độ không đổi 3 kỳ liên tiếp</div>
+                <div style="font-size:12.5px;line-height:1.7;color:var(--ink-2)">
+                  1. Đào tạo 3 nhân sự mới đạt chuẩn sau 1 tháng<br>
+                  2. Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
                 </div>
-                <div style="margin-top:11px;display:flex;gap:7px">
-                  <button class="btn s sm" style="flex:1">Check-in</button>
-                  <button class="btn g sm">Chi tiết</button>
+                <div style="margin-top:11px;display:flex;gap:8px;align-items:center">
+                  <button class="btn sm">Xem chi tiết</button>
+                  <span class="chip">📎 1 file đính kèm</span>
                 </div>
               </div>
             </div>
           </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Điểm trung bình OKR</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Phần mềm tự tính — không có ô nhập tay</div></div>
+              <div class="spacer"></div>
+              <span class="chip">Chưa đánh giá đủ 2 nhóm</span>
+            </div>
+            <div class="card-b" style="display:flex;gap:26px;align-items:center;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11.5px;color:var(--muted)">Điểm Business</div>
+                <div class="tnum" style="font-size:24px;font-weight:700">4</div>
+              </div>
+              <div style="font-size:20px;color:var(--muted)">+</div>
+              <div>
+                <div style="font-size:11.5px;color:var(--muted)">Điểm People</div>
+                <div class="tnum" style="font-size:24px;font-weight:700;color:var(--muted)">—</div>
+              </div>
+              <div style="font-size:20px;color:var(--muted)">÷ 2 =</div>
+              <div>
+                <div style="font-size:11.5px;color:var(--muted)">Điểm trung bình</div>
+                <div class="tnum" style="font-size:24px;font-weight:700;color:var(--muted)">—</div>
+              </div>
+              <div class="spacer"></div>
+              <div style="font-size:12.5px;color:var(--muted);max-width:290px">
+                Chỉ khi đủ điểm cả 2 nhóm thì hệ thống mới tính điểm trung bình và xếp loại A/B/C/D.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Mục tiêu cấp trên — theo cây nhóm</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Mục tiêu của bạn nằm dưới nhóm nào</div></div>
+            </div>
+            <div class="card-b">
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:9px">
+                <span class="badge n">CÔNG TY</span>
+                <b>ACT — Công ty CP Công nghệ ACT</b>
+                <span style="color:var(--muted)">→</span>
+                <span class="badge n">NHÓM</span>
+                <b>CSKH</b>
+                <span style="color:var(--muted)">→</span>
+                <span class="badge n">NHÓM CON</span>
+                <b>Chăm sóc khách hàng</b>
+              </div>
+              <div class="alert w" style="margin:0">
+                <span class="ic">⚠</span>
+                <div><b>1 đầu việc chưa gắn mục tiêu cha</b> — mục tiêu đó sẽ không có mục tiêu cấp trên
+                và không ai thấy nó đang phục vụ mục tiêu chung nào.</div>
+                <div class="spacer"></div>
+                <button class="btn sm">Gắn mục tiêu cha</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
+
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
      S21 — WIZARD TẠO OKR (FORM ĐIỀN SẴN TỪ TEMPLATE)
      ══════════════════════════════════════════════════════════ -->
+
 <section class="screen" id="s21">
   <div class="screen-head">
     <div class="n">21</div>
     <div>
-      <div class="eyebrow">C17 · Nhân viên · P0 — form điền sẵn từ template</div>
-      <h2>Tạo OKR — wizard 3 bước, form điền sẵn Key Result mẫu</h2>
-      <p class="desc">Mục 4.3: nhân viên tạo OKR từ template và gửi. Mỗi template do HR khai báo sẵn <b>các Key Result mẫu</b> — đúng metric, đúng đơn vị đo, đúng trọng số. Nhân viên chọn template là form điền sẵn; chỉ cần đổi tên mục tiêu và chỉnh 2 con số.</p>
+      <div class="eyebrow">C17 · Nhân viên · P0</div>
+      <h2>Tạo OKR — 2 nhóm Business &amp; People, điền sẵn từ template</h2>
+      <p class="desc">Nhân viên chọn template → form <b>điền sẵn</b> cả 2 nhóm Business &amp; People, đúng nội dung mẫu do HR khai báo. Không có trọng số, không có phép tính — mỗi nhóm chấm 1 điểm 1–5. Đầu việc không hạn chế số chữ và có thể đính kèm file.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Wizard 3 bước: chọn template → mô tả mục tiêu → chỉnh KR + trọng số</li>
-        <li><span class="tag p0">P0</span>Tổng trọng số validate = 100, highlight ô sai</li>
-        <li><span class="tag p0">P0</span>Template có sẵn KR mẫu → form điền sẵn, đúng metric + đúng trọng số</li>
-        
-        <li><span class="tag p0">P0</span>Chỉ dùng metric có trong template · tổng trọng số luôn = 100</li>
-        <li><span class="tag p0">P0</span>Luôn phải bấm "Gửi duyệt" — form không tự gửi</li>
+        <li><span class="tag p0">P0</span>Chọn template → điền sẵn <b>cả 2 nhóm</b> (Business + People) theo mẫu HR khai báo</li>
+        <li><span class="tag p0">P0</span>Đầu việc (key achievements): <b>không hạn chế số chữ</b> · <b>đính kèm file</b></li>
+        <li><span class="tag p0">P0</span><b>Không có trọng số</b> — nhóm được chấm 1 điểm 1–5, không bình quân theo KR</li>
+        <li><span class="tag p0">P0</span>Box 4 — <b>Self proposal next year</b>: đề xuất năm tới + điểm cần cải thiện (tuỳ chọn)</li>
+        <li><span class="tag p0">P0</span>Template có sẵn danh mục objective chuẩn từ file HR (2 nhóm)</li>
+        <li><span class="tag p0">P0</span>Nhân viên sửa được mọi thứ trước khi gửi</li>
+        <li><span class="tag p0">P0</span>Gửi → tạo task cho quản lý trực tiếp duyệt</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Tổng trọng số ≠ 100 → không cho bước tiếp theo</li>
-        <li>Form điền đúng metric của template, tổng trọng số = 100</li>
-        <li>Nhân viên sửa được mọi trường trước khi gửi</li>
-        <li>Không có mô hình sinh nội dung nào cả — wizard hoàn chỉnh nhờ KR mẫu trong template</li>
-        <li>Gửi → tạo task duyệt cho quản lý</li>
+        <li><span class="tag p0">P0</span>Cảnh báo khi nhóm nào chưa có đầu việc — không cho gửi</li>
+        <li><span class="tag p0">P0</span>Thiếu đầu việc ở 1 trong 2 nhóm → nút Gửi bị disable</li>
+        <li><span class="tag p0">P0</span>File đính kèm phải thuộc đúng objective của nhóm đang thêm</li>
+        <li><span class="tag p0">P0</span>Nhân viên sửa được đủ nội dung mẫu trước khi gửi</li>
       </ul>
     </div>
   </div>
-  <div class="mock-label">Mockup — Bước 2, form đã điền sẵn từ template</div>
+
+  <div class="mock-label">Mockup — Wizard tạo OKR</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
-      <div class="url">act-hr.vn/okr/new · bước 2</div></div>
+      <div class="url">act-hr.vn/okr/new</div></div>
     <div class="app">
+      <div class="appnav" data-nav="employee" data-active="newokr"></div>
       <div class="appmain">
-        <div class="wizard">
-          <div class="wstep done"><div class="n">✓</div> Chọn template</div>
-          <div class="wstep on"><div class="n">2</div> Mô tả mục tiêu</div>
-          <div class="wstep"><div class="n">3</div> Key Result &amp; trọng số</div>
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Tạo OKR</div>
+            <div style="font-size:12px;color:var(--muted)">Chu kỳ 2026 · Bước 2 / 3</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip on">1 Chọn template</span>
+          <span class="chip on">2 Điền nội dung</span>
+          <span class="chip">3 Gửi duyệt</span>
         </div>
-        <div class="body" style="max-width:760px">
-          <div class="row-b" style="margin-bottom:14px">
-            <div><h2 style="font-size:18px">Mô tả mục tiêu</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Template: <b>CSKH &amp; Chăm sóc khách hàng — 2026</b></div></div>
-            <span class="badge a">Bước 2 / 3</span>
+        <div class="body" style="max-width:1000px">
+
+          <div class="alert i" style="margin-bottom:16px">
+            <span class="ic">◆</span>
+            <div><b>Đã điền sẵn từ template &quot;CSKH — 2026&quot;.</b>
+            HR khai báo sẵn nội dung mẫu của cả 2 nhóm — bạn chỉ cần sửa chữ và gắn file.
+            <b>Không có trọng số</b>: mỗi nhóm chấm 1 điểm 1–5, phần mềm tự tính điểm trung bình.</div>
           </div>
 
-          <div class="card" style="margin-bottom:13px">
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Box 2 — Business</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Thành tựu công việc</div></div>
+              <div class="spacer"></div>
+              <span class="badge n">BẮT BUỘC</span>
+            </div>
             <div class="card-b">
               <div class="field">
-                <label>Mô tả mục tiêu của bạn</label>
-                <div class="inp-wrap" style="align-items:flex-start">
-                  <textarea class="inp" rows="2">Tôi muốn cải thiện tốc độ xử lý ticket hỗ trợ</textarea>
-                </div>
-                <div style="display:flex;gap:9px;margin-top:9px;align-items:center">
-                  <button class="btn s sm">↺ Nạp lại mẫu</button>
-                  <span style="font-size:11.5px;color:var(--muted)">Sinh Objective + KR theo đúng đơn vị đo của template.
-                    Bạn sửa được mọi thứ trước khi gửi.</span>
-                </div>
+                <label>Mục tiêu Business</label>
+                <input class="inp" value="Nâng cao tốc độ xử lý ticket hỗ trợ">
               </div>
-            </div>
-          </div>
-
-          <div class="alert a" style="margin-bottom:13px">
-            <span class="ic">✦</span>
-            <div><b>Đã điền sẵn từ template — bạn có thể sửa toàn bộ.</b>
-              <div style="margin-top:4px;font-size:12px">Sinh từ mô tả của bạn, chỉ dùng metric có trong template, tổng trọng số = 100.</div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-bottom:13px">
-            <div class="card-b">
-              <label style="display:block;font-size:12px;font-weight:570;margin-bottom:6px">Objective</label>
-              <input class="inp" value="Nâng cao tốc độ xử lý ticket hỗ trợ khách hàng">
-              <div class="hint">Được sửa tự do</div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-h"><h3>Key Result</h3><div class="spacer"></div>
-              <span class="badge g" style="background:var(--ok-soft);color:var(--ok)">Tổng trọng số: 100 ✓</span></div>
-            <div class="card-b" style="padding:0">
-              <div style="padding:13px 16px;border-bottom:1px solid var(--line-2)">
-                <div class="row-b" style="margin-bottom:8px">
-                  <span style="font-size:12px;font-weight:620">KR 1</span>
-                  <div class="row" style="gap:7px">
-                    <div class="inp-wrap" style="width:88px"><input class="inp" value="60"><span class="unit">%</span></div>
-                    <span style="font-size:11.5px;color:var(--muted)">trọng số</span>
-                  </div>
-                </div>
+              <div style="font-size:12px;color:var(--muted);margin:11px 0 6px">
+                Đầu việc tự do — bạn thêm bao nhiêu cũng được, không hạn chế số chữ</div>
+              <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+                <span style="width:16px;color:var(--muted)">1.</span>
                 <input class="inp" value="Giảm thời gian phản hồi ticket xuống dưới 8 phút">
-                <div class="row" style="gap:9px;margin-top:9px">
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="12"><span class="unit">phút</span></div>
-                  <span style="font-size:12px;color:var(--muted)">→</span>
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="8"><span class="unit">phút</span></div>
-                  <span class="badge n">Đơn vị từ template</span>
+                <button class="btn g sm">📎</button>
+                <button class="btn g sm">✕</button>
+              </div>
+              <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+                <span style="width:16px;color:var(--muted)">2.</span>
+                <input class="inp" value="Tăng tỷ lệ giải quyết lần 1 lên 85%">
+                <button class="btn g sm">📎</button>
+                <button class="btn g sm">✕</button>
+              </div>
+              <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+                <span style="width:16px;color:var(--muted)">3.</span>
+                <input class="inp" value="Tỷ lệ giữ chân khách hàng đạt 4.8 điểm">
+                <button class="btn g sm">📎</button>
+                <button class="btn g sm">✕</button>
+              </div>
+              <button class="btn sm">+ Thêm đầu việc</button>
+              <div style="margin-top:10px;padding:9px;border-left:2px solid var(--accent-line);background:var(--surface-2)">
+                <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">
+                  <b>Gợi ý từ OKR của quản lý</b> — bấm để chép vào, hoặc bỏ qua và tự viết:</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <span style="font-size:12.5px;flex:1">Nâng cao chất lượng hỗ trợ kỹ thuật</span>
+                  <button class="btn sm">Chép</button>
                 </div>
               </div>
-              <div style="padding:13px 16px;border-bottom:1px solid var(--line-2)">
-                <div class="row-b" style="margin-bottom:8px">
-                  <span style="font-size:12px;font-weight:620">KR 2</span>
-                  <div class="row" style="gap:7px">
-                    <div class="inp-wrap" style="width:88px"><input class="inp" value="25"><span class="unit">%</span></div>
-                    <span style="font-size:11.5px;color:var(--muted)">trọng số</span>
-                  </div>
-                </div>
-                <input class="inp" value="Tăng tỷ lệ giải quyết ticket trong lần đầu lên 85%">
-                <div class="row" style="gap:9px;margin-top:9px">
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="78"><span class="unit">%</span></div>
-                  <span style="font-size:12px;color:var(--muted)">→</span>
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="85"><span class="unit">%</span></div>
-                </div>
-              </div>
-              <div style="padding:13px 16px">
-                <div class="row-b" style="margin-bottom:8px">
-                  <span style="font-size:12px;font-weight:620">KR 3</span>
-                  <div class="row" style="gap:7px">
-                    <div class="inp-wrap" style="width:88px"><input class="inp" value="15"><span class="unit">%</span></div>
-                    <span style="font-size:11.5px;color:var(--muted)">trọng số</span>
-                  </div>
-                </div>
-                <input class="inp" value="Nâng điểm hài lòng khách hàng (CSAT) lên 4.8">
-                <div class="row" style="gap:9px;margin-top:9px">
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="4.5"><span class="unit">điểm</span></div>
-                  <span style="font-size:12px;color:var(--muted)">→</span>
-                  <div class="inp-wrap" style="width:120px"><input class="inp" value="4.8"><span class="unit">điểm</span></div>
-                </div>
-              </div>
-            </div>
-            <div class="card-f">
-              <button class="btn g">← Quay lại</button>
-              <div class="spacer"></div>
-              <button class="btn s">+ Thêm Key Result</button>
-              <button class="btn p">Tiếp tục →</button>
+              <div style="margin-top:10px;font-size:11.5px;color:var(--muted)">📎 2 file đính kèm</div>
             </div>
           </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Box 3 — People</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Thành tựu con người</div></div>
+              <div class="spacer"></div>
+              <span class="badge n">BẮT BUỘC</span>
+            </div>
+            <div class="card-b">
+              <div class="field">
+                <label>Mục tiêu People</label>
+                <input class="inp" value="Xây dựng đội hỗ trợ chất lượng cao">
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin:11px 0 6px">
+                Đầu việc tự do — bạn thêm bao nhiêu cũng được</div>
+              <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+                <span style="width:16px;color:var(--muted)">1.</span>
+                <input class="inp" value="Xây dựng đội ngũ tự chủ — đào tạo 3 nhân sự mới đạt chuẩn sau 1 tháng">
+                <button class="btn g sm">📎</button>
+                <button class="btn g sm">✕</button>
+              </div>
+              <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+                <span style="width:16px;color:var(--muted)">2.</span>
+                <input class="inp" value="Tỷ lệ giữ chân khách hàng đạt 4.8 điểm">
+                <button class="btn g sm">📎</button>
+                <button class="btn g sm">✕</button>
+              </div>
+              <button class="btn sm">+ Thêm đầu việc</button>
+              <div style="margin-top:10px;font-size:11.5px;color:var(--muted)">📎 1 file đính kèm</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Box 4 — Self proposal next year</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Tự đề xuất OKR năm tới (không bắt buộc)</div></div>
+              <div class="spacer"></div>
+              <span class="chip">TÙY CHỌN</span>
+            </div>
+            <div class="card-b">
+              <div class="field">
+                <label>Đề xuất của bạn cho năm sau</label>
+                <input class="inp" value="Dẫn dắt nhóm chuyên sâu về tối ưu quy trình">
+              </div>
+              <div class="field">
+                <label>Điểm cần cải thiện</label>
+                <input class="inp" value="Kỹ năng phân tích dữ liệu">
+              </div>
+            </div>
+          </div>
+
+          <div class="row" style="gap:9px;justify-content:flex-end">
+            <button class="btn">← Quay lại</button>
+            <button class="btn">Lưu nháp</button>
+            <button class="btn p">Gửi duyệt →</button>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
+
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
      S22 — CHECK-IN
      ══════════════════════════════════════════════════════════ -->
+
 <section class="screen" id="s22">
   <div class="screen-head">
     <div class="n">22</div>
     <div>
       <div class="eyebrow">Bài toán 2 · Nhân viên · P0</div>
-      <h2>Check-in tiến độ — giá trị kỳ trước đã điền sẵn</h2>
-      <p class="desc">Mục 4.3: cập nhật tiến độ định kỳ theo từng Key Result. Form mở ra đã có sẵn giá trị kỳ trước — người dùng chỉ sửa con số, không phải gõ lại từ đầu. Đây là 90% giá trị của việc gợi ý check-in, tốn 0 token.</p>
+      <h2>Check-in tiến độ — mở form là có sẵn giá trị kỳ trước</h2>
+      <p class="desc">Cập nhật tiến độ định kỳ theo từng <b>đầu việc</b> trong 2 nhóm. Form mở ra đã có sẵn giá trị kỳ trước — người dùng chỉ sửa con số. Đây là phần lớn giá trị của việc gợi ý check-in, tốn 0 thao tác gõ lại.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Modal nhẹ: giá trị mới · tiến độ · mức độ tin cậy · ghi chú</li>
-        <li><span class="tag p0">P0</span><b>Prefill giá trị kỳ trước</b> + nhắc lịch sử thay đổi</li>
-        <li><span class="tag p0">P0</span>Tiến độ tự tính từ start → target</li>
-        <li><span class="tag p0">P0</span>Lưu lịch sử — không ghi đè giá trị cũ</li>
-        <li><span class="tag p1">P1</span>Cảnh báo rule: tiến độ đứng yên ≥3 kỳ · confidence cao nhưng progress = 0</li>
+        <li><span class="tag p0">P0</span>Check-in theo từng <b>đầu việc</b> trong 2 nhóm Business &amp; People</li>
+        <li><span class="tag p0">P0</span><b>Prefill</b>: giá trị kỳ trước đã điền sẵn — chỉ sửa con số</li>
+        <li><span class="tag p0">P0</span>Hiện mức độ tin cậy (cao / vừa / thấp) cho mỗi đầu việc</li>
+        <li><span class="tag p0">P0</span>Tiến độ tính tự động — không cần nhập %</li>
+        <li><span class="tag p0">P0</span>Lịch sử check-in: không ghi đè giá trị cũ</li>
+        <li><span class="tag p0">P0</span>Nhắc trước hạn: job quét hằng ngày, còn ≤ 3 ngày thì báo</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Mở form → giá trị kỳ trước hiện sẵn</li>
-        <li>Tiến độ tự tính đúng theo công thức (start → target)</li>
-        <li>Mỗi lần check-in tạo 1 dòng lịch sử, lịch sử cũ giữ nguyên</li>
-        <li>Check-in hết hạn → bị chặn, hiện lý do</li>
+        <li><span class="tag p0">P0</span>Giá trị kỳ trước được điền sẵn vào ô</li>
+        <li><span class="tag p0">P0</span>Sửa 1 giá trị → tiến độ nhóm tính lại ngay</li>
+        <li><span class="tag p0">P0</span>Lịch sử check-in hiện đủ, không mất dữ liệu cũ</li>
+        <li><span class="tag p0">P0</span>Đầu việc không có số liệu → để trống, không ép nhập 0</li>
       </ul>
     </div>
   </div>
-  <div class="mock-label">Mockup — Modal check-in</div>
+
+  <div class="mock-label">Mockup — Check-in</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
-      <div class="url">act-hr.vn/okr/check-in</div></div>
-    <div style="position:relative;min-height:420px;background:var(--canvas);padding:20px;display:grid;place-items:center">
-      <div style="position:absolute;inset:0;background:rgba(20,28,26,.42)"></div>
-      <div class="modal" style="position:relative;max-width:540px">
-        <div class="modal-h"><h3>Check-in tháng 11/2026</h3><div class="spacer"></div>
-          <button class="btn g sm">✕</button></div>
-        <div class="modal-b">
-          <div style="font-size:13px;font-weight:620;margin-bottom:4px">KR 1 · Giảm thời gian phản hồi ticket</div>
-          <div style="font-size:11.5px;color:var(--muted);margin-bottom:15px">
-            Nâng cao tốc độ xử lý ticket hỗ trợ khách hàng · Trọng số 60%</div>
-
-          <div class="field">
-            <label>Giá trị hiện tại</label>
-            <div class="inp-wrap"><input class="inp" value="10"><span class="unit">phút</span></div>
-            <div class="hint">Kỳ trước (tháng 10): <b>12 phút</b> · Mục tiêu: <b>8 phút</b> · Bắt đầu: 12 phút</div>
+      <div class="url">act-hr.vn/okr/checkin</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="employee" data-active="checkin"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Check-in tháng 11/2026</div>
+            <div style="font-size:12px;color:var(--muted)">Hạn 30/11/2026 · còn 14 ngày</div>
           </div>
-
-          <div style="padding:11px 13px;background:var(--surface-2);border-radius:9px;margin-bottom:13px">
-            <div class="row-b" style="font-size:12px;margin-bottom:7px">
-              <span>Tiến độ</span><b class="tnum" style="font-size:14px">50%</b>
-            </div>
-            <div class="bar" style="height:8px"><i style="width:50%"></i></div>
-            <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:5px">
-              <span>12 (bắt đầu)</span><span>10 (hiện tại)</span><span>8 (mục tiêu)</span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Mức độ tin cậy</label>
-            <div class="row" style="gap:7px">
-              <span class="chip">Thấp</span><span class="chip on">Trung bình</span><span class="chip">Cao</span>
-            </div>
-            <div class="hint">Bạn tự tin đến đâu về giá trị vừa nhập.</div>
-          </div>
-
-          <div class="field" style="margin-bottom:0">
-            <label>Ghi chú</label>
-            <textarea class="inp" rows="2" placeholder="Đã cải thiện quy trình phân loại ticket, thời gian chờ giảm rõ"></textarea>
-          </div>
-
-          <div class="alert w" style="margin-top:13px">
-            <span class="ic">ℹ</span>
-            <div>Tiến độ KR này không đổi trong <b>2 kỳ liên tiếp</b> (9 và 10). Nếu vẫn giữ nguyên 12 phút, hệ thống sẽ ghi nhận là không tiến triển — quản lý sẽ thấy cảnh báo.</div>
-          </div>
+          <div class="spacer"></div>
+          <span class="chip on">Điền sẵn từ kỳ trước</span>
         </div>
-        <div class="modal-f">
-          <button class="btn g">Hủy</button>
-          <button class="btn p">Lưu check-in</button>
+        <div class="body" style="max-width:1000px">
+
+          <div class="alert i" style="margin-bottom:16px">
+            <span class="ic">◆</span>
+            <div>Giá trị kỳ trước (10/2026) <b>đã điền sẵn</b>. Chỉ sửa con số thay đổi — không gõ lại từ đầu.</div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Business</h3></div>
+              <div class="spacer"></div>
+              <span class="badge n">BOX 2</span>
+            </div>
+            <div class="card-b" style="padding:0">
+              <table>
+                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th><th>Tiến độ</th><th style="width:150px">Mức độ tin cậy</th></tr></thead>
+                <tbody>
+                  <tr><td>Giảm thời gian phản hồi ticket</td><td class="tnum">9.2 phút</td>
+                    <td><div class="inp-wrap"><input class="inp" value="8.4" style="padding:5px 8px;font-size:12.5px"><span class="unit">phút</span></div></td>
+                    <td class="tnum" style="color:var(--ok);font-weight:600">76%</td>
+                    <td><span class="chip on">Cao</span></td></tr>
+                  <tr><td>Tỷ lệ giải quyết lần 1</td><td class="tnum">79%</td>
+                    <td><div class="inp-wrap"><input class="inp" value="85" style="padding:5px 8px;font-size:12.5px"><span class="unit">%</span></div></td>
+                    <td class="tnum" style="color:var(--ok);font-weight:600">100%</td>
+                    <td><span class="chip on">Cao</span></td></tr>
+                  <tr><td>Tỷ lệ giữ chân khách hàng</td><td class="tnum">4.3 điểm</td>
+                    <td><div class="inp-wrap"><input class="inp" value="4.5" style="padding:5px 8px;font-size:12.5px"><span class="unit">điểm</span></div></td>
+                    <td class="tnum" style="color:var(--warn);font-weight:600">54%</td>
+                    <td><span class="chip">Vừa</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">People</h3></div>
+              <div class="spacer"></div>
+              <span class="badge n">BOX 3</span>
+            </div>
+            <div class="card-b" style="padding:0">
+              <table>
+                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th><th>Tiến độ</th><th style="width:150px">Mức độ tin cậy</th></tr></thead>
+                <tbody>
+                  <tr><td>Đào tạo 3 nhân sự mới đạt chuẩn</td><td class="tnum">1 / 3</td>
+                    <td><div class="inp-wrap"><input class="inp" value="2" style="padding:5px 8px;font-size:12.5px"><span class="unit">/ 3</span></div></td>
+                    <td class="tnum" style="color:var(--ok);font-weight:600">67%</td>
+                    <td><span class="chip on">Cao</span></td></tr>
+                  <tr><td>Tỷ lệ giữ chân khách hàng</td><td class="tnum">4.3 điểm</td>
+                    <td><div class="inp-wrap"><input class="inp" value="4.4" style="padding:5px 8px;font-size:12.5px"><span class="unit">điểm</span></div></td>
+                    <td class="tnum" style="color:var(--warn);font-weight:600">48%</td>
+                    <td><span class="chip">Thấp</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="row" style="gap:9px;justify-content:flex-end">
+            <button class="btn">← Quay lại</button>
+            <button class="btn">Lưu nháp</button>
+            <button class="btn p">Gửi check-in</button>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
+
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
      S23 — ĐÁNH GIÁ CUỐI NĂM
      ══════════════════════════════════════════════════════════ -->
+
 <section class="screen" id="s23">
   <div class="screen-head">
     <div class="n">23</div>
     <div>
       <div class="eyebrow">Bài toán 2 · Quản lý · P0</div>
-      <h2>Đánh giá cuối năm — 2 nhóm Business/People, thang 1–5</h2>
-      <p class="desc">Đánh giá cuối năm theo đúng form HR (<code>doc/OKR_doc.md</code>): <b>2 nhóm Business + People</b>, mỗi nhóm <b>chấm 1 điểm trên thang 1–5</b>, <b>phần mềm tự tính điểm trung bình</b>, không có điểm lẻ. Quản lý chọn một trong ba — <b>Duyệt điểm / Trả lại chấm lại / Sửa điểm (bắt buộc ghi lý do)</b>.</p>
+      <h2>Đánh giá cuối năm — form 4 box, chấm 1–5 mỗi nhóm</h2>
+      <p class="desc">Bước 2 của quy trình 5 bước. Quản lý mở đúng form HR: <b>Box 1</b> thông tin cá nhân (tự điền) · <b>Box 2</b> Business · <b>Box 3</b> People · <b>Box 4</b> self proposal. Mỗi nhóm chấm <b>1–5</b>, phần mềm <b>tự tính điểm trung bình</b> — không có điểm lẻ.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>3 nhánh hành động rõ ràng, phân tách bằng nút</li>
-        <li><span class="tag p0">P0</span><b>Sửa điểm bắt buộc có lý do</b> — API từ chối nếu thiếu</li>
-        <li><span class="tag p0">P0</span>Hiển thị <b>điểm tự chấm vs điểm quản lý</b> cạnh nhau + lý do nếu lệch</li>
-        <li><span class="tag p0">P0</span>Form 4 box đúng như HR: Box 1 thông tin cá nhân (tự điền) · Box 2 Business · Box 3 People · Box 4 self proposal năm sau</li>
-        <li><span class="tag p0">P0</span>Điểm chấm <b>1–5 mỗi nhóm</b>, không có điểm lẻ; <b>điểm trung bình do phần mềm tự tính</b></li>
-        <li><span class="tag p0">P0</span>Key achievements có <b>đính kèm file</b> (không hạn chế số chữ)</li>
-        <li><span class="tag p0">P0</span>Điểm đề xuất theo công thức từ tiến độ KR (C9)</li>
-        <li><span class="tag p0">P0</span>HR chốt &amp; khóa sau đó; sau hạn chót OKR tự khóa</li>
+        <li><span class="tag p0">P0</span>Form đúng 4 box như HR: Box 1 thông tin cá nhân (tự điền) · Box 2 Business · Box 3 People · Box 4 self proposal</li>
+        <li><span class="tag p0">P0</span>Điểm 1–5 mỗi nhóm · <b>không có điểm lẻ</b> · không nhận 0</li>
+        <li><span class="tag p0">P0</span><b>Điểm trung bình do phần mềm tự tính</b> — không có ô nhập tay</li>
+        <li><span class="tag p0">P0</span>Hiển thị đối chiếu: điểm tự chấm vs điểm quản lý, cạnh nhau</li>
+        <li><span class="tag p0">P0</span>Sửa điểm → <b>bắt buộc lý do</b></li>
+        <li><span class="tag p0">P0</span>3 nhánh hành động: Duyệt điểm / Trả lại chấm lại / Sửa điểm</li>
+        <li><span class="tag p0">P0</span>Xem file đính kèm của người tự đánh giá</li>
+        <li><span class="tag p0">P0</span>Nhập điểm lẻ (2.5) hoặc điểm 0 → ô bị chặn</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Trả lại → Objective về trạng thái "returned", NV sửa &amp; tự chấm lại</li>
-        <li>Sửa điểm mà bỏ trống lý do → nút bị disable</li>
-        <li>Cả 2 loại điểm đều được lưu và hiển thị đối chiếu</li>
-        <li>Điểm đề xuất hiện kèm công thức để manager kiểm tra được</li>
-          <li>Nhập điểm lẻ (2.5) hoặc điểm 0 → ô bị chặn, chỉ nhận 1–5</li>
-          <li>Điểm trung bình hiện đúng =(Business + People) ÷ 2, không có ô nhập tay</li>
-          <li>Điểm quản lý lệch điểm tự chấm → bắt buộc có lý do</li>
-          <li>Thiếu 1 trong 2 nhóm Business/People → không cho gửi</li>
-        <li>Sau khi quản lý duyệt → HR chốt → khóa; chỉ HR mở lại được</li>
+        <li><span class="tag p0">P0</span>Điểm TB hiện đúng =(Business + People) ÷ 2, không có ô nhập tay</li>
+        <li><span class="tag p0">P0</span>Điểm quản lý lệch điểm tự chấm → bắt buộc có lý do</li>
+        <li><span class="tag p0">P0</span>Thiếu 1 trong 2 nhóm → không cho gửi</li>
+        <li><span class="tag p0">P0</span>Trả lại → objective về &quot;returned&quot;, NV sửa &amp; tự chấm lại</li>
       </ul>
     </div>
   </div>
+
   <div class="mock-label">Mockup — Quản lý đánh giá cuối năm</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
       <div class="url">act-hr.vn/okr/review/final</div></div>
     <div class="app">
+      <div class="appnav" data-nav="manager" data-active="review"></div>
       <div class="appmain">
         <div class="topbar">
-          <div class="crumb">OKR / <b>Đánh giá cuối năm 2026</b></div><div class="spacer"></div>
-          <div class="avatar">NV</div>
+          <div>
+            <div style="font-size:16px;font-weight:660">Đánh giá cuối năm 2026</div>
+            <div style="font-size:12px;color:var(--muted)">Bước 2 / 5 · hạn 25/11/2026</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">7 đơn chờ đánh giá</span>
         </div>
-        <div class="body" style="max-width:900px">
-          <div class="row-b" style="margin-bottom:13px">
-            <div><h2 style="font-size:18px">Đánh giá cuối năm 2026</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Nhóm Mobile · 8 objective chờ đánh giá · Hạn chót 31/12/2026</div></div>
-            <span class="badge w">8 chờ đánh giá</span>
+        <div class="body" style="max-width:1000px">
+
+          <div class="row-b" style="margin-bottom:12px">
+            <div><h2 style="font-size:17px">Minh Hà — 151ACT · Chuyên viên CSKH</h2>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
+                Box 1 — Nhân sự: Phòng ban Chăm sóc khách hàng · QL Nguyễn Văn A ·
+                Thâm niên 01/03/2021 (2 năm 9 tháng) · Nhóm Mobile</div>
+            </div>
+            <div class="spacer"></div>
+            <span class="chip on">Đã tự đánh giá</span>
           </div>
 
-          <div class="card" style="margin-bottom:13px">
+          <div class="card" style="margin-bottom:12px">
             <div class="card-h">
-              <div>
-                <h3 style="font-size:14px">Minh Hà — 151ACT · Chuyên viên CSKH</h3>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Box 1 — Nhân sự: Phòng ban Chăm sóc khách hàng · QL Nguyễn Văn A ·
-                  Thâm niên 01/03/2021 (2 năm 9 tháng) · Nhóm Mobile</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge n">BOX 2</span>
+                <b style="font-size:14px">Business — Key achievements</b>
               </div>
+              <div class="spacer"></div>
+              <span class="chip">📎 2 file</span>
+              <span style="font-size:11.5px;color:var(--muted)">Tự chấm:</span>
+              <b style="font-size:14px">4</b>
             </div>
-            <div class="card-b" style="padding:0">
-
-              <div style="padding:13px 16px;border-bottom:1px solid var(--line-2)">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
-                  <span class="badge n">BOX 2</span>
-                  <b style="font-size:13px">Business — Key achievements</b>
-                  <span class="chip">Đính kèm: 2 file</span>
-                  <div class="spacer"></div>
-                  <span style="font-size:11.5px;color:var(--muted)">Điểm tự chấm</span>
-                  <b style="font-size:14px">4</b>
-                </div>
-                <div style="font-size:12.5px;color:var(--ink-2);line-height:1.6">
-                  1. Giảm thời gian phản hồi ticket xuống dưới 8 phút<br>
-                  2. Tăng tỷ lệ giải quyết lần 1 lên 85%<br>
-                  3. Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
-                </div>
-                <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
-                  <span style="font-size:11.5px;color:var(--muted)">Điểm quản lý:</span>
-                  <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
-                  <span class="chip on">4</span><span class="chip">5</span>
-                  <span style="font-size:11.5px;color:var(--muted);margin-left:4px">Vượt kỳ vọng</span>
-                </div>
-              </div>
-
-              <div style="padding:13px 16px;border-bottom:1px solid var(--line-2);background:var(--warn-soft)">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
-                  <span class="badge w">BOX 3</span>
-                  <b style="font-size:13px">People — Key achievements</b>
-                  <span class="chip">Đính kèm: 1 file</span>
-                  <div class="spacer"></div>
-                  <span style="font-size:11.5px;color:var(--muted)">Điểm tự chấm</span>
-                  <b style="font-size:14px">3</b>
-                </div>
-                <div style="font-size:12.5px;color:var(--ink-2);line-height:1.6">
-                  1. Đào tạo 3 nhân sự mới đạt chuẩn sau 1 tháng<br>
-                  2. Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
-                </div>
-                <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
-                  <span style="font-size:11.5px;color:var(--muted)">Điểm quản lý:</span>
-                  <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
-                  <span class="chip">4</span><span class="chip">5</span>
-                  <span style="font-size:11.5px;color:var(--muted);margin-left:4px">Đạt kỳ vọng</span>
-                  <span class="badge w" style="margin-left:8px">Lệch tự chấm −1</span>
-                </div>
-              </div>
-
-              <div style="padding:13px 16px">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-                  <span class="badge g">BOX 4</span>
-                  <b style="font-size:13px">Self proposal next year</b>
-                </div>
-                <div style="font-size:12.5px;color:var(--ink-2)">
-                  Đề xuất: dẫn dắt nhóm chuyên sâu về tối ưu quy trình ·
-                  <b>Điểm cần cải thiện:</b> kỹ năng phân tích dữ liệu
-                </div>
-              </div>
-
-              <div style="padding:12px 16px;background:var(--accent-soft);display:flex;align-items:center;gap:12px">
-                <div>
-                  <div style="font-size:11.5px;color:var(--muted)">Điểm trung bình OKR</div>
-                  <div style="font-size:11.5px;color:var(--muted)">(4 + 3) ÷ 2 — <b>phần mềm tự tính</b></div>
-                </div>
-                <div class="tnum" style="font-size:26px;font-weight:700;color:var(--accent)">3.5</div>
-                <div style="font-size:13px;font-weight:600">Xếp loại B — Đạt</div>
-                <div class="spacer"></div>
-                <span style="font-size:11.5px;color:var(--muted)">Thang 1–5 · không có điểm lẻ</span>
-              </div>
-            </div>
-            <div class="card-f">
-              <span style="font-size:11.5px;color:var(--muted);flex:1">
-                Điểm quản lý khác điểm tự chấm → bắt buộc nhập lý do. Đề xuất (C9) tính từ tiến độ KR.</span>
-              <button class="btn s">Trả lại chấm lại</button>
-              <button class="btn s">Sửa điểm</button>
-              <button class="btn p">Duyệt điểm</button>
-            </div>
-          </div>
-
-          <div class="card" style="border-color:#f0d9b0">
             <div class="card-b">
-              <div class="row-b" style="margin-bottom:9px">
-                <h3 style="font-size:14px">Bấm "Sửa điểm" → bắt buộc ghi lý do</h3>
-                <span class="badge w">Bắt buộc</span>
+              <div style="font-size:12.5px;line-height:1.7;color:var(--ink-2)">
+                · Giảm thời gian phản hồi ticket xuống dưới 8 phút<br>
+                · Tăng tỷ lệ giải quyết lần 1 lên 85%<br>
+                · Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
               </div>
-              <div class="field" style="margin-bottom:0">
-                <label>Lý do sửa điểm <span style="color:var(--danger)">*</span></label>
-                <textarea class="inp" rows="2" placeholder="Ví dụ: KR3 tiến độ thực tế 45% nhưng nhân viên tự chấm 0.65, cần đối chiếu số liệu CRM"></textarea>
-                <div class="hint">Lý do này hiển thị cạnh điểm, và HR xem được khi xuất báo cáo. Không có lý do → không lưu được.</div>
+              <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
+                <span style="font-size:11.5px;color:var(--muted)">Điểm quản lý:</span>
+                <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
+                <span class="chip on">4</span><span class="chip">5</span>
+                <span style="font-size:11.5px;color:var(--muted);margin-left:4px">Vượt kỳ vọng</span>
               </div>
             </div>
           </div>
+
+          <div class="card" style="margin-bottom:12px;background:var(--warn-soft)">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge w">BOX 3</span>
+                <b style="font-size:14px">People — Key achievements</b>
+              </div>
+              <div class="spacer"></div>
+              <span class="chip">📎 1 file</span>
+              <span style="font-size:11.5px;color:var(--muted)">Tự chấm:</span>
+              <b style="font-size:14px">3</b>
+            </div>
+            <div class="card-b">
+              <div style="font-size:12.5px;line-height:1.7;color:var(--ink-2)">
+                · Xây dựng đội ngũ tự chủ — đào tạo 3 nhân sự mới đạt chuẩn sau 1 tháng<br>
+                · Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
+              </div>
+              <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
+                <span style="font-size:11.5px;color:var(--muted)">Điểm quản lý:</span>
+                <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
+                <span class="chip">4</span><span class="chip">5</span>
+                <span style="font-size:11.5px;color:var(--muted);margin-left:4px">Đạt kỳ vọng</span>
+                <span class="badge w" style="margin-left:8px">Lệch tự chấm −1</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge g">BOX 4</span>
+                <b style="font-size:14px">Self proposal next year</b>
+              </div>
+            </div>
+            <div class="card-b">
+              <div style="font-size:12.5px;color:var(--ink-2)">
+                Đề xuất: dẫn dắt nhóm chuyên sâu về tối ưu quy trình ·
+                <b>Điểm cần cải thiện:</b> kỹ năng phân tích dữ liệu
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Điểm trung bình OKR</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">(4 + 3) ÷ 2 — <b>phần mềm tự tính</b></div></div>
+              <div class="spacer"></div>
+              <span class="chip">Thang 1–5 · không có điểm lẻ</span>
+            </div>
+            <div class="card-b" style="display:flex;gap:22px;align-items:center">
+              <div><div style="font-size:11.5px;color:var(--muted)">Điểm Business</div>
+                <div class="tnum" style="font-size:22px;font-weight:700">4</div></div>
+              <div style="font-size:18px;color:var(--muted)">+</div>
+              <div><div style="font-size:11.5px;color:var(--muted)">Điểm People</div>
+                <div class="tnum" style="font-size:22px;font-weight:700">3</div></div>
+              <div style="font-size:18px;color:var(--muted)">÷ 2 =</div>
+              <div><div style="font-size:11.5px;color:var(--muted)">Điểm trung bình</div>
+                <div class="tnum" style="font-size:22px;font-weight:700;color:var(--accent)">3.5</div></div>
+              <div class="spacer"></div>
+              <div><div style="font-size:11.5px;color:var(--muted)">Xếp loại</div>
+                <div style="font-size:15px;font-weight:650;margin-top:3px">B — Đạt</div></div>
+            </div>
+          </div>
+
+          <div class="row" style="gap:9px;justify-content:flex-end">
+            <button class="btn">Trả lại chấm lại</button>
+            <button class="btn">Sửa điểm</button>
+            <button class="btn p">Duyệt điểm</button>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
+
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
      S24 — REVIEW OKR CẢ NHÓM (C9)
      ══════════════════════════════════════════════════════════ -->
+
 <section class="screen" id="s24">
   <div class="screen-head">
     <div class="n">24</div>
     <div>
       <div class="eyebrow">C9 · Quản lý · P1</div>
-      <h2>Review OKR cả nhóm — 1 bảng thay vì 10 lần mở từng objective</h2>
-      <p class="desc">Manager review 10 OKR: mở từng cái, đọc từng KR, tự tính điểm — lâu và không nhất quán. Bảng này gom hết lại, kèm <b>điểm đề xuất tính bằng công thức từ tiến độ KR</b> (minh bạch, manager kiểm tra được) và các cảnh báo rule.</p>
+      <h2>Review OKR cả nhóm — 1 bảng thay vì mở từng objective</h2>
+      <p class="desc">Manager có 10 nhân viên cần đánh giá. Mở từng cái thì lâu và không nhất quán. Bảng này gom hết lại: <b>2 nhóm</b> của mỗi người, điểm tự chấm, điểm đề xuất theo công thức, và các cảnh báo rule — để chấm nhanh và giống nhau giữa các người.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p1">P1</span>1 bảng tất cả objective của nhóm</li>
-        <li><span class="tag p1">P1</span>Cột <b>đề xuất</b> = công thức từ tiến độ KR</li>
-        <li><span class="tag p1">P1</span><b>Cảnh báo rule</b>: tiến độ đứng yên ≥3 kỳ · confidence cao + progress 0 · lệch &gt;0.2</li>
-        <li><span class="tag p1">P1</span>Chấm hàng loạt các mục đã chọn</li>
-        <li><span class="tag p1">P1</span>Click để drill-down vào chi tiết objective</li>
-      </ul>
-    </div>
-    <div>
-      <h4>Công thức điểm đề xuất</h4>
-      <div style="font-size:12px;background:var(--surface-2);padding:10px 12px;border-radius:8px;font-family:ui-monospace,Menlo,monospace;line-height:1.6">
-        điểm = Σ (tiến_độ × (0.8 + 0.2 × tin_cậy) × trọng_số / 100)</div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Công thức minh bạch — manager thấy được vì sao ra điểm đó.</div>
-    </div>
-  </div>
-  <div class="mock-label">Mockup — Quản lý</div>
-  <div class="browser">
-    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
-      <div class="url">act-hr.vn/okr/team/review?cycle=2026</div></div>
-    <div class="app">
-      <div class="appnav" data-nav="manager" data-active="review"></div>
-      <div class="appmain">
-        <div class="topbar">
-          <div class="crumb">OKR / <b>Review nhóm</b> · Chu kỳ 2026</div><div class="spacer"></div>
-          <div class="avatar">NV</div>
-        </div>
-        <div class="body" style="max-width:1080px">
-          <div class="row-b" style="margin-bottom:13px">
-            <div><h2 style="font-size:18px">Review cuối năm 2026</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Nhóm Mobile · 10 objective từ 8 người · 6 chờ đánh giá</div></div>
-            <div class="row">
-              <span class="chip on">Tất cả <b style="margin-left:3px">10</b></span>
-              <span class="chip">Chờ tôi đánh giá <b style="margin-left:3px">6</b></span>
-              <span class="chip">Có cảnh báo <b style="margin-left:3px">3</b></span>
-            </div>
-          </div>
-
-          <div class="alert i" style="margin-bottom:12px">
-            <span class="ic">ℹ</span>
-            <div>Cột <b>Đề xuất</b> tính từ tiến độ KR theo công thức
-              <code>tiến_độ × (0.8 + 0.2 × tin_cậy) × trọng_số</code> — <b>công thức minh bạch</b>.
-              Bạn vẫn nhập điểm thật; cột này chỉ để đối chiếu nhanh.</div>
-          </div>
-
-          <div class="tbl-wrap">
-            <table>
-              <thead><tr>
-                <th style="width:26px"><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></th>
-                <th style="width:120px">Nhân viên</th><th>Objective</th><th style="width:78px">Tiến độ</th>
-                <th style="width:80px">Tự chấm</th><th style="width:84px">Đề xuất</th><th>Cảnh báo</th>
-              </tr></thead>
-              <tbody>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Minh Hà</b></td><td>Nâng cao tốc độ xử lý ticket hỗ trợ</td>
-                  <td class="tnum">91%</td><td class="tnum">0.85</td><td class="tnum">0.85</td><td>—</td></tr>
-                <tr style="background:var(--warn-soft)"><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Bình Nguyễn</b></td><td>Đổi mô hình chăm sóc khách hàng</td>
-                  <td class="tnum">60%</td><td class="tnum">0.60</td><td class="tnum">0.60</td>
-                  <td><span class="badge w">⚠ KR2 tiến độ 0</span></td></tr>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Lan Phạm</b></td><td>Tối ưu vận hành đội hỗ trợ</td>
-                  <td class="tnum">92%</td><td class="tnum">0.92</td>
-                  <td class="tnum" style="color:var(--danger);font-weight:650">0.85</td>
-                  <td><span class="badge d">Tự chấm cao hơn đề xuất 0.07</span></td></tr>
-                <tr style="background:var(--danger-soft)"><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Điệp Hà</b></td><td>Xây dựng kênh tự phục vụ</td>
-                  <td class="tnum">34%</td><td class="tnum">0.45</td><td class="tnum">0.34</td>
-                  <td><span class="badge d">⚠ Không check-in 3 kỳ</span></td></tr>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Quốc Tuấn</b></td><td>Tăng độ hài lòng khách hàng</td>
-                  <td class="tnum">78%</td><td class="tnum">0.78</td><td class="tnum">0.78</td><td>—</td></tr>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Trần Hà</b></td><td>Giảm thời gian xử lý ticket trụ sự cố</td>
-                  <td class="tnum">86%</td><td class="tnum">0.86</td><td class="tnum">0.86</td><td>—</td></tr>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Phạm Quỳnh</b></td><td>Đào tạo đội ngũ chuyên môn</td>
-                  <td class="tnum">71%</td><td class="tnum">0.71</td><td class="tnum">0.71</td><td>—</td></tr>
-                <tr><td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
-                  <td><b>Vũ Đức</b></td><td>Chuẩn hoá quy trình bàn giao</td>
-                  <td class="tnum">64%</td><td class="tnum">0.64</td><td class="tnum">0.64</td><td>—</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div style="display:flex;gap:11px;align-items:center;margin-top:12px;padding:12px 15px;
-            background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)">
-            <span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span>
-            <b style="font-size:13px">Đã chọn 2 objective</b>
-            <span style="font-size:12.5px;color:var(--muted)">Điểm sẽ lấy theo đề xuất · có thể sửa từng KR sau</span>
-            <div class="spacer"></div>
-            <button class="btn s sm">Xem chi tiết</button>
-            <button class="btn p sm">Chấm 2 objective đã chọn</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════
-     S25 — BÁO CÁO OKR (HR)
-     ══════════════════════════════════════════════════════════ -->
-<section class="screen" id="s25">
-  <div class="screen-head">
-    <div class="n">25</div>
-    <div>
-      <div class="eyebrow">Bài toán 2 · HR · P0</div>
-      <h2>Báo cáo OKR — 4 widget, xuất Excel</h2>
-      <p class="desc">Bước 5 quy trình đánh giá (`doc/OKR_doc.md`): Nhân sự nhận bảng tổng hợp OKR công ty gồm **9 trường** — có đủ thông tin, export Excel. Phần tóm tắt được dựng từ số liệu đã tính theo template câu chữ có sẵn — không có nguy cơ bịa số liệu.</p>
-    </div>
-  </div>
-  <div class="spec">
-    <div>
-      <h4>Tính năng</h4>
-      <ul>
-        <li><span class="tag p0">P0</span>4 widget: tiến độ nộp theo PB · danh sách chưa nộp · phân bố điểm · xếp loại</li>
-        <li><span class="tag p0">P0</span><b>Bảng tổng hợp OKR công ty — 9 trường</b> (tên · code · vị trí · thời gian công tác · PB · tên QL · điểm CV · điểm CN · điểm TB + note), cột <b>thời gian công tác tự tính</b> từ ngày vào làm</li>
-        <li><span class="tag p0">P0</span>Export Excel</li>
-        <li><span class="tag p0">P0</span>HR chốt &amp; khóa chu kỳ</li>
-        <li><span class="tag p1">P1</span>Danh sách OKR rủi ro (rule) kèm lý do</li>
-        <li><span class="tag p0">P0</span><b>Tóm tắt báo cáo</b> — dựng từ số liệu đã tính theo template câu chữ, kèm link tới widget nguồn</li>
-        <li>Cây phân tầng Công ty → PB → Cá nhân</li>
+        <li><span class="tag p0">P0</span>1 bảng tất cả objective của nhóm, gộp theo <b>từng người</b></li>
+        <li><span class="tag p0">P0</span>2 nhóm Business &amp; People mỗi người, điểm tự chấm + điểm đề xuất</li>
+        <li><span class="tag p0">P0</span>Cột <b>điểm đề xuất</b> tính bằng công thức minh bạch (C9) — manager kiểm tra được</li>
+        <li><span class="tag p0">P0</span>Cảnh báo rule: tiến độ đứng yên ≥3 kỳ · confidence cao nhưng progress = 0 · lệch >0.2</li>
+        <li><span class="tag p0">P0</span><b>Chấm hàng loạt</b> các objective đã chọn trong bảng</li>
+        <li><span class="tag p0">P0</span>Sắp xếp theo rủi ro — cái nào cần xem trước thì lên trên</li>
+        <li><span class="tag p0">P0</span>Lọc theo: chưa đánh giá · có cảnh báo · nhóm cụ thể</li>
+        <li><span class="tag p0">P0</span>Click 1 dòng → mở form đánh giá đầy đủ</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>4 widget có số liệu khớp với dữ liệu thô</li>
-        <li>Danh sách chưa nộp → click vào được danh sách nhân viên cụ thể</li>
-        <li>Chốt &amp; khóa → chu kỳ chuyển trạng thái, OKR bị khóa</li>
-        <li>Export Excel có đủ 4 bảng báo cáo</li>
-        <li>Tóm tắt luôn có link tới widget nguồn để HR kiểm chứng</li>
+        <li><span class="tag p0">P0</span>Điểm đề xuất hiện kèm công thức để manager kiểm tra được</li>
+        <li><span class="tag p0">P0</span>Chấm hàng loạt: 1 điểm cho nhiều người cùng lúc</li>
+        <li><span class="tag p0">P0</span>Điểm đề xuất ánh xạ sang thang 1–5, khớp thang chấm thật</li>
+        <li><span class="tag p0">P0</span>Objective có cảnh báo → tô đậm, không bị bỏ sót</li>
       </ul>
     </div>
   </div>
+
+  <div class="mock-label">Mockup — Review cả nhóm</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/okr/review/team</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="manager" data-active="review"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Review OKR — nhóm CSKH</div>
+            <div style="font-size:12px;color:var(--muted)">10 nhân viên · 2 nhóm mỗi người</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">3 chưa đánh giá</span>
+          <button class="btn p sm">Chấm hàng loạt</button>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="row" style="gap:7px;margin-bottom:13px">
+            <span class="chip on">Tất cả</span>
+            <span class="chip">Chưa đánh giá (3)</span>
+            <span class="chip w">Có cảnh báo (2)</span>
+            <div class="spacer"></div>
+            <span class="chip">Sắp xếp: rủi ro cao nhất</span>
+          </div>
+
+          <div class="tbl-wrap" style="margin-bottom:14px">
+            <table>
+              <thead><tr><th style="width:26px"></th><th>Nhân viên</th><th>Nhóm</th><th>Business (tự chấm → đề xuất)</th><th>People (tự chấm → đề xuất)</th><th>Điểm TB</th><th>Cảnh báo</th></tr></thead>
+              <tbody>
+                <tr style="background:var(--danger-soft)">
+                  <td><input type="checkbox" checked></td>
+                  <td><b>Minh Hà</b><div style="font-size:11px;color:var(--muted)">151ACT</div></td>
+                  <td><span class="chip">CSKH</span></td>
+                  <td class="tnum">4 → <b style="color:var(--ok)">4</b></td>
+                  <td class="tnum">3 → <b style="color:var(--ok)">3</b></td>
+                  <td class="tnum" style="font-weight:650">3.5</td>
+                  <td><span class="badge d">Tự chấm cao hơn tiến độ 0.3</span></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox" checked></td>
+                  <td><b>Bình Nguyễn</b><div style="font-size:11px;color:var(--muted)">284ACT</div></td>
+                  <td><span class="chip">Mobile</span></td>
+                  <td class="tnum">5 → <b style="color:var(--ok)">4</b></td>
+                  <td class="tnum">4 → <b style="color:var(--ok)">4</b></td>
+                  <td class="tnum" style="font-weight:650">4.0</td>
+                  <td>—</td>
+                </tr>
+                <tr style="background:var(--warn-soft)">
+                  <td><input type="checkbox"></td>
+                  <td><b>Lan Phạm</b><div style="font-size:11px;color:var(--muted)">311ACT</div></td>
+                  <td><span class="chip">CSKH</span></td>
+                  <td class="tnum">4 → <b style="color:var(--ok)">3</b></td>
+                  <td class="tnum">2 → <b style="color:var(--warn)">2</b></td>
+                  <td class="tnum" style="font-weight:650">2.5</td>
+                  <td><span class="badge w">Tiến độ đứng yên 3 kỳ</span></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td>
+                  <td><b>Điệp Hà</b><div style="font-size:11px;color:var(--muted)">302ACT</div></td>
+                  <td><span class="chip">Nhân sự</span></td>
+                  <td class="tnum" style="color:var(--muted)">Chưa chấm</td>
+                  <td class="tnum" style="color:var(--muted)">Chưa chấm</td>
+                  <td class="tnum" style="color:var(--muted)">—</td>
+                  <td><span class="badge w">Chưa tự đánh giá</span></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td>
+                  <td><b>Phạm Quỳnh</b><div style="font-size:11px;color:var(--muted)">296ACT</div></td>
+                  <td><span class="chip">CSKH</span></td>
+                  <td class="tnum">3 → <b style="color:var(--ok)">3</b></td>
+                  <td class="tnum">3 → <b style="color:var(--ok)">3</b></td>
+                  <td class="tnum" style="font-weight:650">3.0</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert i" style="margin-bottom:0">
+            <span class="ic">◆</span>
+            <div><b>Điểm đề xuất = công thức từ tiến độ đầu việc</b>, điều chỉnh nhẹ theo mức độ tin cậy.
+            Công thức minh bạch, manager kiểm tra được — nhưng <b>điểm quyết định vẫn là điểm bạn chấm</b>.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     S25 — BÁO CÁO OKR (HR)
+     ══════════════════════════════════════════════════════════ -->
+
+<section class="screen" id="s25">
+  <div class="screen-head">
+    <div class="n">25</div>
+    <div>
+      <div class="eyebrow">Bài toán 2 · HR · P0</div>
+      <h2>Báo cáo OKR — bảng tổng hợp 9 trường + xuất Excel</h2>
+      <p class="desc">Bước 5 quy trình đánh giá (`doc/OKR_doc.md`): Nhân sự nhận bảng tổng hợp OKR công ty gồm <b>9 trường</b> — có đủ thông tin, export Excel. Cột <b>thời gian công tác</b> hệ thống tự tính từ ngày vào làm, nên người mới vào giữa năm không bị đánh giá oan.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span><b>Bảng tổng hợp OKR công ty — 9 trường</b>: tên · code · vị trí · <b>thời gian công tác (tự tính)</b> · phòng ban · tên QL · điểm công việc · điểm con người · điểm TB (+ note)</li>
+        <li><span class="tag p0">P0</span>4 widget: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · xếp loại</li>
+        <li><span class="tag p0">P0</span>Export Excel đúng 9 trường theo mẫu HR</li>
+        <li><span class="tag p0">P0</span>HR chốt &amp; khóa chu kỳ sau khi Giám đốc đánh giá xong</li>
+        <li><span class="tag p0">P0</span>Tóm tắt báo cáo — dựng từ số liệu đã tính theo template câu chữ, kèm link tới widget nguồn</li>
+        <li><span class="tag p0">P0</span>Danh sách OKR rủi ro (rule) kèm lý do</li>
+        <li><span class="tag p0">P0</span>Cột thời gian công tác tự tính từ ngày vào làm tới 31/12</li>
+        <li><span class="tag p0">P0</span>Bảng tổng hợp có đủ 9 trường, đúng thứ tự trong mẫu HR</li>
+        <li><span class="tag p0">P0</span>Thời gian công tác của NV mới vào giữa năm tính đúng phần thực tế</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Tóm tắt luôn có link tới widget nguồn để HR kiểm chứng</li>
+        <li><span class="tag p0">P0</span>Chốt &amp; khóa → chu kỳ chuyển trạng thái, OKR bị khóa</li>
+        <li><span class="tag p0">P0</span>4 widget có số liệu khớp với dữ liệu thô</li>
+        <li><span class="tag p0">P0</span>Danh sách chưa nộp → click vào được danh sách nhân viên cụ thể</li>
+      </ul>
+    </div>
+  </div>
+
   <div class="mock-label">Mockup — HR</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
@@ -4354,170 +4502,136 @@ tbody tr:hover{background:var(--surface-2)}
       <div class="appnav" data-nav="hr" data-active="okrrep"></div>
       <div class="appmain">
         <div class="topbar">
-          <div class="crumb">OKR / <b>Báo cáo</b> · Chu kỳ 2026</div><div class="spacer"></div>
-          <div class="avatar">HR</div>
+          <div>
+            <div style="font-size:16px;font-weight:660">Báo cáo tổng hợp OKR 2026</div>
+            <div style="font-size:12px;color:var(--muted)">69 nhân viên · 2 nhóm đánh giá mỗi người</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip on">Tự động từ số liệu</span>
+          <button class="btn">🌳 Cây phân tầng</button>
+          <button class="btn p">🔒 Chốt &amp; khóa chu kỳ</button>
         </div>
-        <div class="body" style="max-width:1060px">
-          <div class="row-b" style="margin-bottom:13px">
-            <div><h2 style="font-size:18px">Báo cáo tổng hợp OKR 2026</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">30 nhân viên · 87 objective · 261 Key Result</div></div>
-            <div class="row">
-              <button class="btn s sm">📥 Xuất Excel</button>
-              <button class="btn s sm">🌳 Cây phân tầng</button>
-              <button class="btn p sm">🔒 Chốt &amp; khóa chu kỳ</button>
+        <div class="body" style="max-width:1000px">
+
+          <div class="grid2" style="gap:13px;margin-bottom:14px">
+            <div class="card"><div class="card-b" style="text-align:center;padding:15px">
+              <div style="font-size:11.5px;color:var(--muted)">Đã đánh giá</div>
+              <div class="tnum" style="font-size:25px;font-weight:700;color:var(--ok)">54 / 69</div>
+              <div style="font-size:11.5px;color:var(--muted)">78%</div>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center;padding:15px">
+              <div style="font-size:11.5px;color:var(--muted)">Điểm TB toàn công ty</div>
+              <div class="tnum" style="font-size:25px;font-weight:700">3.4</div>
+              <div style="font-size:11.5px;color:var(--muted)">Xếp loại B — Đạt</div>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center;padding:15px">
+              <div style="font-size:11.5px;color:var(--muted)">Chưa nộp</div>
+              <div class="tnum" style="font-size:25px;font-weight:700;color:var(--warn)">15</div>
+              <div style="font-size:11.5px;color:var(--muted)">4 nhóm</div>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center;padding:15px">
+              <div style="font-size:11.5px;color:var(--muted)">Điểm thấp nhất</div>
+              <div class="tnum" style="font-size:25px;font-weight:700;color:var(--warn)">2.5</div>
+              <div style="font-size:11.5px;color:var(--muted)">Nhóm Kế toán</div>
+            </div></div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div>
+                <h3>Bảng tổng hợp OKR công ty</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  9 trường theo Bước 5 quy trình đánh giá — cột &quot;Thời gian công tác&quot; do hệ thống tự tính</div>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn sm">📥 Xuất Excel</button>
+            </div>
+            <div class="card-b" style="padding:0">
+              <div class="tbl-wrap">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr style="background:var(--surface-2)">
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Họ và Tên</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Code NV</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Vị trí</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Thời gian công tác</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Nhóm</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Tên quản lý</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm CV</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm CN</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm TB</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Note</th>
+                </tr></thead>
+                <tbody>
+                  <tr style="border-top:1px solid var(--line-2)">
+                    <td style="padding:8px 10px">NGUYỄN THANH TÙNG</td><td style="padding:8px 10px;color:var(--muted)">05ACT</td>
+                    <td style="padding:8px 10px">Senior SW Development Manager</td>
+                    <td style="padding:8px 10px;color:var(--muted)">01/03/2021 → 31/12/2026</td>
+                    <td style="padding:8px 10px">Sirius</td><td style="padding:8px 10px">Trần Văn A</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">5</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">4</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">4.5</td>
+                    <td style="padding:8px 10px;color:var(--muted)">—</td>
+                  </tr>
+                  <tr style="border-top:1px solid var(--line-2)">
+                    <td style="padding:8px 10px">MINH HÀ</td><td style="padding:8px 10px;color:var(--muted)">151ACT</td>
+                    <td style="padding:8px 10px">Chuyên viên CSKH</td>
+                    <td style="padding:8px 10px;color:var(--muted)">01/03/2021 → 31/12/2026</td>
+                    <td style="padding:8px 10px">CSKH</td><td style="padding:8px 10px">Nguyễn Văn A</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">4</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">3.5</td>
+                    <td style="padding:8px 10px;color:var(--muted)">—</td>
+                  </tr>
+                  <tr style="border-top:1px solid var(--line-2);background:var(--surface-2)">
+                    <td style="padding:8px 10px">BÙI THỊ LAN</td><td style="padding:8px 10px;color:var(--muted)">284ACT</td>
+                    <td style="padding:8px 10px">Kỹ thuật viên</td>
+                    <td style="padding:8px 10px;color:var(--muted)">15/09/2026 → 31/12/2026</td>
+                    <td style="padding:8px 10px">Mobile</td><td style="padding:8px 10px">Lê Thị Hà</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">3.0</td>
+                    <td style="padding:8px 10px;color:var(--muted)">NV mới vào giữa năm</td>
+                  </tr>
+                  <tr style="border-top:1px solid var(--line-2)">
+                    <td style="padding:8px 10px">TRẦN NAM TRUNG</td><td style="padding:8px 10px;color:var(--muted)">73ACT</td>
+                    <td style="padding:8px 10px">Kế toán</td>
+                    <td style="padding:8px 10px;color:var(--muted)">03/05/2023 → 31/12/2026</td>
+                    <td style="padding:8px 10px">Kế toán</td><td style="padding:8px 10px">Vũ Thị Chúc Quỳnh</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">2</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
+                    <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--warn)">2.5</td>
+                    <td style="padding:8px 10px;color:var(--muted)">—</td>
+                  </tr>
+                </tbody>
+              </table>
+              </div>
+            </div>
+            <div class="card-f">
+              <span style="font-size:11.5px;color:var(--muted)">
+                Điểm CV = Business · Điểm CN = People · Điểm TB do phần mềm tự tính (thang 1–5).</span>
             </div>
           </div>
 
-          <div class="card" style="margin-bottom:13px">
-            <div class="card-h"><h3>✦ Tóm tắt</h3><div class="spacer"></div>
-              <span class="badge n">Tự động từ số liệu</span></div>
-            <div class="card-b">
-              <div style="font-size:13.5px;line-height:1.75;color:var(--ink-2)">
-                <b style="color:var(--ink)">87% nhân viên đã nộp OKR</b> (26/30). Điểm trung bình toàn công ty
-                <b style="color:var(--ink)">0.78</b> (xếp loại <b>B — Đạt</b>).
-                Phòng ban có điểm thấp nhất là <b>Chăm sóc khách hàng (0.61)</b>;
-                <b>Mobile (0.83)</b> và <b>CA (0.80)</b> cao hơn.
-                Có <b>14 objective đang có rủi ro tiến độ</b>, tập trung ở các KR phụ thuộc bên thứ ba
-                (tích hợp vendor chưa xong). <b>Đề xuất:</b> review riêng 2 phòng ban dưới đây trong kỳ check-in tới.</div>
-              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-2)">
-                <span style="font-size:11.5px;color:var(--muted)">Nguồn:</span>
-                <a href="#" style="font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:4px">Tiến độ nộp</a>
-                <a href="#" style="font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:4px">Phân bố điểm</a>
-                <a href="#" style="font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:4px">OKR rủi ro</a>
-              </div>
+          <div class="grid2" style="gap:13px;margin-top:14px">
+            <div class="alert w" style="margin:0">
+              <span class="ic">⚠</span>
+              <div><b>4 người chưa chọn mục tiêu công ty (20%)</b> — phần này chưa có nội dung nên
+              không tính được. Nhắc họ copy xuống từ danh sách mục tiêu công ty đã công bố.</div>
+              <div class="spacer"></div>
+              <button class="btn sm">Gửi nhắc cả 4</button>
+            </div>
+            <div class="alert i" style="margin:0">
+              <span class="ic">◆</span>
+              <div><b>Phần tóm tắt được dựng từ số liệu đã tính</b> theo template câu chữ có sẵn —
+              không có nguy cơ bịa số liệu, và luôn kèm link tới widget nguồn để HR kiểm chứng.</div>
             </div>
           </div>
 
-          <div class="grid2" style="margin-bottom:13px">
-            <div class="card">
-              <div class="card-h"><h3>Tiến độ nộp theo phòng ban</h3></div>
-              <div class="card-b">
-                <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px">
-                  <div>
-                    <div class="row-b" style="margin-bottom:4px"><span>Mobile</span><span class="tnum">10/10 · 100%</span></div>
-                    <div class="bar"><i style="width:100%"></i></div></div>
-                  <div>
-                    <div class="row-b" style="margin-bottom:4px"><span>CA</span><span class="tnum">9/10 · 90%</span></div>
-                    <div class="bar"><i style="width:90%"></i></div></div>
-                  <div>
-                    <div class="row-b" style="margin-bottom:4px"><span>Chăm sóc khách hàng</span><span class="tnum">7/10 · 70%</span></div>
-                    <div class="bar"><i class="w" style="width:70%"></i></div></div>
-                </div>
-              </div>
-              <div class="card-f"><span style="font-size:11.5px;color:var(--muted);flex:1">4 người chưa nộp — click để xem danh sách</span>
-                <button class="btn g sm">Xem</button></div>
-            </div>
-
-            <div class="card">
-              <div class="card-h"><h3>Phân bố điểm &amp; xếp loại</h3></div>
-              <div class="card-b">
-                <div style="display:flex;flex-direction:column;gap:9px;font-size:12.5px">
-                  <div class="row-b"><span><span class="badge g">A</span> Vượt xuất (≥0.9)</span><span class="tnum">4 người · 13%</span></div>
-                  <div class="bar"><i style="width:13%"></i></div>
-                  <div class="row-b"><span><span class="badge a">B</span> Đạt (0.7–0.89)</span><span class="tnum">15 người · 50%</span></div>
-                  <div class="bar"><i style="width:50%"></i></div>
-                  <div class="row-b"><span><span class="badge w">C</span> Đạt một phần (0.5–0.69)</span><span class="tnum">8 người · 27%</span></div>
-                  <div class="bar"><i class="w" style="width:27%"></i></div>
-                  <div class="row-b"><span><span class="badge d">D</span> Không đạt (&lt;0.5)</span><span class="tnum">3 người · 10%</span></div>
-                  <div class="bar"><i class="d" style="width:10%"></i></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="card">
-              <div class="card-h"><h3>Chưa nộp OKR</h3><div class="spacer"></div><span class="badge d">4</span></div>
-              <div class="card-b" style="padding:0">
-                <table><tbody>
-                  <tr><td>Phạm Quỳnh</td><td>CSKH</td><td><span class="badge d">Chưa nộp</span></td></tr>
-                  <tr><td>Vũ Đức</td><td>CSKH</td><td><span class="badge d">Chưa nộp</span></td></tr>
-                  <tr><td>Hoàng Long</td><td>CA</td><td><span class="badge w">Nháp</span></td></tr>
-                  <tr><td>Ngọc Anh</td><td>CA</td><td><span class="badge w">Nháp</span></td></tr>
-                </tbody></table>
-              </div>
-            </div>
-            <div class="card" style="border-color:#f0d9b0">
-              <div class="card-h"><h3>OKR có rủi ro</h3><div class="spacer"></div><span class="badge w">14</span></div>
-              <div class="card-b" style="padding:0">
-                <table><tbody>
-                  <tr><td>Điệp Hà</td><td>Xây dựng kênh tự phục vụ</td><td><span class="badge d">Không check-in 3 kỳ</span></td></tr>
-                  <tr><td>Bình Nguyễn</td><td>Đổi mô hình CSKH</td><td><span class="badge w">KR2 tiến độ 0</span></td></tr>
-                  <tr><td>Thanh Sơn</td><td>Tích hợp hệ thống vendor</td><td><span class="badge w">Lệch kỳ vọng 0.24</span></td></tr>
-                </tbody></table>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px">
-    <div class="card-h">
-      <div>
-        <h3>Bảng tổng hợp OKR công ty</h3>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-          9 trường theo Bước 5 quy trình đánh giá — cột &quot;Thời gian công tác&quot; do hệ thống tự tính</div>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn s">📥 Xuất Excel</button>
-    </div>
-    <div class="card-b" style="padding:0">
-      <div class="tbl-wrap">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:var(--surface-2)">
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Họ và Tên</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Code NV</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Vị trí</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Thời gian công tác</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Phòng ban</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Tên quản lý</th>
-          <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm CV</th>
-          <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm CN</th>
-          <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Điểm TB</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Note</th>
-        </tr></thead>
-        <tbody>
-          <tr style="border-top:1px solid var(--line-2)">
-            <td style="padding:8px 10px">NGUYỄN THANH TÙNG</td><td style="padding:8px 10px;color:var(--muted)">05ACT</td>
-            <td style="padding:8px 10px">Senior SW Development Manager</td>
-            <td style="padding:8px 10px;color:var(--muted)">01/03/2021 → 31/12/2026</td>
-            <td style="padding:8px 10px">Sirius</td><td style="padding:8px 10px">Trần Văn A</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">5</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">4</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">4.5</td>
-            <td style="padding:8px 10px;color:var(--muted)">—</td>
-          </tr>
-          <tr style="border-top:1px solid var(--line-2)">
-            <td style="padding:8px 10px">MINH HÀ</td><td style="padding:8px 10px;color:var(--muted)">151ACT</td>
-            <td style="padding:8px 10px">Chuyên viên CSKH</td>
-            <td style="padding:8px 10px;color:var(--muted)">01/03/2021 → 31/12/2026</td>
-            <td style="padding:8px 10px">Chăm sóc khách hàng</td><td style="padding:8px 10px">Nguyễn Văn A</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">4</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">3.5</td>
-            <td style="padding:8px 10px;color:var(--muted)">—</td>
-          </tr>
-          <tr style="border-top:1px solid var(--line-2;background:var(--surface-2)">
-            <td style="padding:8px 10px">BÙI THỊ LAN</td><td style="padding:8px 10px;color:var(--muted)">284ACT</td>
-            <td style="padding:8px 10px">Kỹ thuật viên</td>
-            <td style="padding:8px 10px;color:var(--muted)">15/09/2026 → 31/12/2026</td>
-            <td style="padding:8px 10px">Mobile</td><td style="padding:8px 10px">Lê Thị Hà</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:650">3</td>
-            <td class="tnum" style="text-align:right;padding:8px 10px;font-weight:700;color:var(--accent)">3.0</td>
-            <td style="padding:8px 10px;color:var(--muted)">NV mới vào giữa năm</td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
-    <div class="card-f">
-      <span style="font-size:11.5px;color:var(--muted)">
-        Điểm CV = Business · Điểm CN = People · Điểm TB do phần mềm tự tính (thang 1–5).</span>
-    </div>
-  </div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -4537,7 +4651,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span>Ca cố định (giờ vào/ra/nghỉ trưa) hoặc linh hoạt (theo ngày trong tuần)</li>
-        <li><span class="tag p0">P0</span>Gán ca theo nhóm / phòng ban / chức danh</li>
+        <li><span class="tag p0">P0</span>Gán ca theo nhóm / nhóm / chức danh</li>
         <li><span class="tag p0">P0</span>Lịch nghỉ lễ theo năm — import nhanh lịch Việt Nam</li>
         <li><span class="tag p0">P0</span>Đánh dấu ngày làm việc trong ngày lễ (làm bù)</li>
         <li><span class="tag p0">P0</span>Văn phòng: geofence bán kính + dải IP mạng nội bộ</li>
@@ -4566,7 +4680,7 @@ tbody tr:hover{background:var(--surface-2)}
         </div>
         <div class="body" style="max-width:1000px">
           <div style="display:flex;gap:7px;margin-bottom:13px">
-            <span class="chip on">Ca làm việc</span><span class="chip">Nhóm ca</span>
+            <span class="chip on">Ca làm việc</span><span class="chip">Bộ gán ca</span>
             <span class="chip">Lịch nghỉ lễ</span><span class="chip">Văn phòng</span>
           </div>
 
@@ -4619,6 +4733,73 @@ tbody tr:hover{background:var(--surface-2)}
                   <td><span class="badge n">Không</span></td><td><button class="btn g sm">✎</button></td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- ── Panel: Bộ gán ca (nhóm + chức danh → ca) ── -->
+          <div class="row-b" style="margin-bottom:11px">
+            <div><h2 style="font-size:17px">Bộ gán ca</h2>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
+                Nhóm nào + chức danh nào thì đi ca đó. Gán theo <b>nhóm</b> —
+                không cần đổi từng người.</div></div>
+            <button class="btn p sm">+ Thêm bộ gán</button>
+          </div>
+
+          <div class="tbl-wrap" style="margin-bottom:16px">
+            <table>
+              <thead><tr><th>Nhóm</th><th>Chức danh</th><th>Ca</th><th>Hiệu lực từ</th><th>Ưu tiên</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><b>Toàn công ty</b></td><td>Tất cả</td><td>Hành chính</td><td class="tnum">01/01/2026</td>
+                  <td><span class="badge n">Mặc định</span></td><td><button class="btn g sm">✎</button></td></tr>
+                <tr><td><b>CSKH</b></td><td>Chuyên viên CSKH</td><td>Ca sáng</td><td class="tnum">01/01/2026</td>
+                  <td><span class="badge n">Cố định</span></td><td><button class="btn g sm">✎</button></td></tr>
+                <tr style="background:var(--warn-soft)"><td><b>Kiểm thử phần mềm</b></td><td>QA Engineer</td>
+                  <td>Ca linh hoạt</td><td class="tnum">01/11/2026</td>
+                  <td><span class="badge w">Ca ngoại lệ — cần duyệt</span></td><td><button class="btn g sm">✎</button></td></tr>
+                <tr><td><b>Mobile</b></td><td>Lead Software Engineer</td><td>Ca ngoại lệ 7h30–16h30</td><td class="tnum">01/11/2026</td>
+                  <td><span class="badge n">Cố định</span></td><td><button class="btn g sm">✎</button></td></tr>
+                <tr><td><b>Nhân sự</b></td><td>Tất cả</td><td>Ca hành chính 08:00–17:00</td><td class="tnum">01/01/2026</td>
+                  <td><span class="badge n">Cố định</span></td><td><button class="btn g sm">✎</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert i" style="margin-bottom:16px">
+            <span class="ic">◆</span>
+            <div><b>Ca ngoại lệ theo nhóm.</b> Rule chấm công của công ty cho phép 1 số nhóm
+            dùng ca riêng (7h30–16h30 · 7h00–16:00 · 10h00–19:00) — khai ở đây, không sửa code.
+            Ca ngoại lệ cần <b>HR duyệt</b> trước khi áp dụng cho nhóm.</div>
+          </div>
+
+          <!-- ── Panel: Văn phòng (geofence + IP) ── -->
+          <div class="row-b" style="margin-bottom:11px">
+            <div><h2 style="font-size:17px">Văn phòng</h2>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
+                Bán kính GPS + dải IP nội bộ — 2 lớp kiểm tra chấm công</div></div>
+            <button class="btn p sm">+ Thêm văn phòng</button>
+          </div>
+
+          <div class="tbl-wrap" style="margin-bottom:16px">
+            <table>
+              <thead><tr><th>Văn phòng</th><th>Địa chỉ</th><th>Bán kính GPS</th><th>Dải IP nội bộ</th><th>Trạng thái</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><b>Văn phòng Hà Nội</b></td><td>123 Trung Kính, Hà Nội</td><td class="tnum">150 m</td>
+                  <td class="tnum">10.0.1.0/24</td><td><span class="badge n">Đang dùng</span></td>
+                  <td><button class="btn g sm">✎</button></td></tr>
+                <tr><td><b>Văn phòng Hồ Chí Minh</b></td><td>45 Nguyễn Huệ, TP.HCM</td><td class="tnum">150 m</td>
+                  <td class="tnum">10.0.2.0/24</td><td><span class="badge n">Đang dùng</span></td>
+                  <td><button class="btn g sm">✎</button></td></tr>
+                <tr style="background:var(--warn-soft)"><td><b>Văn phòng tạm</b></td><td>Đà Nẵng — họp khách hàng</td>
+                  <td class="tnum">200 m</td><td class="tnum">—</td>
+                  <td><span class="badge w">Thiếu dải IP — sẽ chặn nhầm</span></td>
+                  <td><button class="btn g sm">✎</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert w" style="margin-bottom:0">
+            <span class="ic">⚠</span>
+            <div><b>Bán kính 150 m</b> — GPS trong tòa nhà lệch 20–50 m nên bán kính nhỏ sẽ chặn nhầm.
+            Nhân viên đi công tác ngoài văn phòng phải đăng ký WFH trước.</div>
           </div>
         </div>
       </div>
@@ -6700,159 +6881,6 @@ tbody tr:hover{background:var(--surface-2)}
 
 </section>
 
-<section class="screen" id="s38">
-  <div class="screen-head">
-    <div class="n">38</div>
-    <div>
-      <div class="eyebrow">Bài toán 2 · HR · P0</div>
-      <h2>Cây phân tầng OKR — công ty → phòng ban → cá nhân</h2>
-      <p class="desc">Khi objective của phòng ban không còn gắn với mục tiêu công ty, mọi người làm việc theo hướng riêng. Cây phân tầng cho thấy <b>mục tiêu trụy lạc</b> — objective không có objective cha nào — để HR sửa trước khi kỳ đánh giá chốt.</p>
-    </div>
-  </div>
-  <div class="spec">
-    <div>
-      <h4>Tính năng</h4>
-      <ul>
-        <li><span class="tag p0">P0</span>3 tầng: <b>Công ty → Phòng ban → Cá nhân</b>, click để drill xuống</li>
-        <li><span class="tag p0">P0</span>Hiển thị tiến độ + điểm đề xuất của từng node</li>
-        <li><span class="tag p0">P0</span>Tô đậm objective <b>trụy lạc</b> — không có objective cha ở tầng trên</li>
-        <li><span class="tag p0">P0</span>Lọc theo phòng ban · theo trạng thái · chỉ xem objective trụy lạc</li>
-        <li><span class="tag p0">P0</span>Bật/tắt phân tầng theo chu kỳ OKR (HR đã cấu hình ở Quản lý chu kỳ)</li>
-        <li><span class="tag p0">P0</span>Export danh sách objective trụy lạc để gửi email nhắc</li>
-        <li><span class="tag p0">P0</span>Hiện objective đang bị gán sai cha</li>
-      </ul>
-    </div>
-    <div>
-      <h4>Acceptance criteria</h4>
-      <ul>
-        <li><span class="tag p0">P0</span>Objective cá nhân không có cha phòng ban nào được coi là trụy lạc</li>
-        <li><span class="tag p0">P0</span>Bấm 1 lần vào node → xem danh sách objective con + tiến độ</li>
-        <li><span class="tag p0">P0</span>Highlight đường dẫn từ objective con lên objective gốc</li>
-        <li><span class="tag p0">P0</span>Có nút &quot;Gửi nhắc&quot; gộp cho cả nhóm objective trụy lạc</li>
-        <li><span class="tag p0">P0</span>Không hiện objective đã bị từ chối hoặc đã hủy</li>
-        <li><span class="tag p0">P0</span>Trạng thái phân tầng hiển thị rõ: đang bật / đang tắt</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="mock-label">Mockup — Cây phân tầng OKR</div>
-  <div class="browser">
-    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      <div class="url">act-hr.vn/okr/alignment</div></div>
-    <div style="display:flex;min-height:460px;background:var(--canvas)">
-      <div class="appnav" data-nav="hr" data-active="align"></div>
-      <div class="appmain">
-        <div class="topbar">
-          <div>
-            <div style="font-size:16px;font-weight:660">Cây phân tầng OKR</div>
-            <div style="font-size:12px;color:var(--muted)">Chu kỳ 2026 · Công ty → Phòng ban → Cá nhân</div>
-          </div>
-          <div class="spacer"></div>
-          <span class="chip on">Phân tầng đang bật</span>
-          <button class="btn">Xuất Excel</button>
-        </div>
-        <div class="content" style="padding:18px">
-
-          <div class="alert w" style="margin-bottom:16px">
-            <span class="ic">⚠</span>
-            <div><b>4 objective đang trụy lạc</b> — không gắn objective cha nào ở tầng trên.
-            Gửi nhắc chủ phòng ban hoặc tự gán tại đây.</div>
-            <div class="spacer"></div>
-            <button class="btn sm">Gửi nhắc cả 4</button>
-          </div>
-
-          <div class="row" style="gap:7px;margin-bottom:14px">
-            <span class="chip on">Tất cả</span>
-            <span class="chip">Mobile</span>
-            <span class="chip">CSKH</span>
-            <span class="chip">Chăm sóc khách hàng</span>
-            <span class="chip">Phân tích dữ liệu</span>
-            <div class="spacer"></div>
-            <span class="chip x">⚠ Chỉ objective trụy lạc</span>
-          </div>
-
-          <div class="card">
-            <div class="card-b" style="padding:18px">
-
-              <div style="border-left:3px solid var(--accent);padding-left:14px;margin-bottom:16px">
-                <div style="display:flex;align-items:center;gap:9px">
-                  <span class="badge n">CÔNG TY</span>
-                  <span style="font-size:14px;font-weight:650">Tăng trưởng doanh thu 2026</span>
-                  <span class="chip">72%</span>
-                </div>
-                <div style="font-size:12px;color:var(--muted);margin-top:3px">4 KR · 12 objective con</div>
-              </div>
-
-              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-left:26px;padding-left:14px;border-left:2px solid var(--accent-line)">
-                <div style="border-left:3px solid var(--accent-line);padding-left:14px">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span class="badge n">MOBILE</span>
-                    <span style="font-size:13.5px;font-weight:620">Nâng cấp trải nghiệm ứng dụng</span>
-                  </div>
-                  <div style="font-size:11.5px;color:var(--muted);margin:3px 0 8px">3 KR · 5 objective cá nhân · 68%</div>
-                  <div style="border-left:2px solid var(--line);padding-left:11px;margin-bottom:7px">
-                    <div style="font-size:12.5px">Giảm thời gian phản hồi ticket</div>
-                    <div style="font-size:11.5px;color:var(--muted)">Nguyễn Văn A · 3 KR · 82%</div>
-                  </div>
-                  <div style="border-left:2px solid var(--line);padding-left:11px;margin-bottom:7px">
-                    <div style="font-size:12.5px">Tăng tỷ lệ giữ chân khách hàng</div>
-                    <div style="font-size:11.5px;color:var(--muted)">Trần Thị B · 2 KR · 74%</div>
-                  </div>
-                  <div style="border-left:2px solid var(--danger);padding-left:11px">
-                    <div style="font-size:12.5px;color:var(--danger);font-weight:570">Tăng người dùng thanh toán</div>
-                    <div style="font-size:11.5px;color:var(--danger)">⚠ Trụy lạc — chưa gắn objective cha</div>
-                  </div>
-                </div>
-
-                <div style="border-left:3px solid var(--accent-line);padding-left:14px">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span class="badge n">CSKH</span>
-                    <span style="font-size:13.5px;font-weight:620">Nâng cao chất lượng hỗ trợ</span>
-                  </div>
-                  <div style="font-size:11.5px;color:var(--muted);margin:3px 0 8px">3 KR · 4 objective cá nhân · 70%</div>
-                  <div style="border-left:2px solid var(--line);padding-left:11px;margin-bottom:7px">
-                    <div style="font-size:12.5px">Giảm thời gian chờ đầu cuộc gọi</div>
-                    <div style="font-size:11.5px;color:var(--muted)">Lê Văn C · 2 KR · 71%</div>
-                  </div>
-                  <div style="border-left:2px solid var(--danger);padding-left:11px;margin-bottom:7px">
-                    <div style="font-size:12.5px;color:var(--danger);font-weight:570">Tự động hoá phân loại ticket</div>
-                    <div style="font-size:11.5px;color:var(--danger)">⚠ Trụy lạc — chưa gắn objective cha</div>
-                  </div>
-                  <div style="border-left:2px solid var(--line);padding-left:11px">
-                    <div style="font-size:12.5px">Đào tạo đội ngũ mới</div>
-                    <div style="font-size:11.5px;color:var(--muted)">Phạm Thị G · 2 KR · 66%</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:14px;margin:18px 0 0 26px;padding-left:14px;border-left:2px dashed var(--danger)">
-                <div style="border-left:3px solid var(--danger);padding-left:14px;flex:1">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span class="badge d">CHĂM SÓC KHÁCH HÀNG</span>
-                    <span style="font-size:13.5px;font-weight:620">Chăm sóc khách hàng chủ động</span>
-                  </div>
-                  <div style="font-size:11.5px;color:var(--muted);margin:3px 0 8px">3 KR · 3 objective cá nhân · 61%</div>
-                  <div style="border-left:2px solid var(--danger);padding-left:11px;margin-bottom:7px">
-                    <div style="font-size:12.5px;color:var(--danger);font-weight:570">Tăng CSAT lên 4.8</div>
-                    <div style="font-size:11.5px;color:var(--danger)">⚠ Trụy lạc — chưa gắn objective cha</div>
-                  </div>
-                  <div style="border-left:2px solid var(--line);padding-left:11px">
-                    <div style="font-size:12.5px">Giảm tỷ lệ bỏ khách</div>
-                    <div style="font-size:11.5px;color:var(--muted)">Hoàng Văn H · 2 KR · 58%</div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
-
-</section>
-
 <section class="screen" id="s39">
   <div class="screen-head">
     <div class="n">39</div>
@@ -6866,7 +6894,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span><b>C10</b> — Đặt lịch báo cáo: cron + danh sách người nhận + tham số (tháng, phòng ban, định dạng)</li>
+        <li><span class="tag p0">P0</span><b>C10</b> — Đặt lịch báo cáo: cron + danh sách người nhận + tham số (tháng, nhóm, định dạng)</li>
         <li><span class="tag p0">P0</span>Báo cáo tự sinh rồi gửi kèm file Excel — không ai phải bấm gửi</li>
         <li><span class="tag p0">P0</span>Hiện lần chạy gần nhất và lần chạy kế tiếp</li>
         <li><span class="tag p0">P0</span><b>C11</b> — Import Excel: map cột → preview → validate → import, có báo cáo dòng lỗi</li>
@@ -7024,6 +7052,1155 @@ tbody tr:hover{background:var(--surface-2)}
 
 </section>
 
+
+<section class="screen" id="s40">
+  <div class="screen-head">
+    <div class="n">40</div>
+    <div>
+      <div class="eyebrow">Nền tảng dùng chung · HR · P0</div>
+      <h2>Quản lý nhân viên — ai ở nhóm nào, ai duyệt cho ai</h2>
+      <p class="desc">Mọi luồng duyệt đều bắt đầu từ **một câu hỏi: ai duyệt cho ai**. Trước đây hệ thống chỉ có `manager_id` — một người, một quản lý. Nhưng công ty có **17 nhóm thật** (Galaxy · Mobile · Titan · CSKH…), <b>không có nhóm hay nhóm gốc</b> — chỉ có nhóm, và nhóm nằm trong nhóm. Nhóm là đơn vị phối hợp: cùng nhóm thì duyệt hộ nhau, cùng nhóm thì cần thấy đơn của nhau.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Danh sách nhân viên: lọc theo nhóm · nhóm · vai trò · trạng thái · từ khóa</li>
+        <li><span class="tag p0">P0</span>**Gán / đổi nhóm** cho nhân viên — 1 người có thể ở **nhiều nhóm**</li>
+        <li><span class="tag p0">P0</span>**Đổi quản lý trực tiếp** — bắt buộc có lý do (ghi vào nhật ký thay đổi)</li>
+        <li><span class="tag p0">P0</span>**Tạo / sửa / xoá nhóm** — cấu hình linh hoạt, không fix cứng tổ chức công ty</li>
+        <li><span class="tag p0">P0</span>Đặt **trưởng nhóm** (leader) → người duyệt hộ cho thành viên nhóm</li>
+        <li><span class="tag p0">P0</span>**1 manager quản lý nhiều nhóm** — không giới hạn số nhóm</li>
+        <li><span class="tag p0">P0</span>Hiện cảnh báo: <b>nhân viên chưa có quản lý</b> · trưởng nhóm đã nghỉ việc (nhóm chưa có trưởng <b>không cảnh báo</b> — vẫn chạy bình thường)</li>
+        <li><span class="tag p0">P0</span>Xem **ai duyệt cho ai** ngay trên dòng (chuỗi cấp trên)</li>
+        <li><span class="tag p0">P0</span>Đổi nhóm / đổi quản lý → **đơn đang chờ không bị giao nhầm** (snapshot người duyệt)</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Cột &quot;Thời gian công tác&quot; tự tính — dùng cho bảng tổng hợp OKR</li>
+        <li><span class="tag p0">P0</span>Tìm nhanh: gõ tên / mã NV → ra trong 1 giây</li>
+        <li><span class="tag p0">P0</span>Nhân viên **không có nhóm** → hiện cảnh báo đỏ, lọc nhanh được bằng 1 click</li>
+        <li><span class="tag p0">P0</span>Đổi quản lý → đơn chờ giao cho **người quản lý mới**</li>
+        <li><span class="tag p0">P0</span>Mọi thay đổi quản lý / nhóm → có trong **nhật ký thay đổi**</li>
+        <li><span class="tag p0">P0</span>1 người thuộc 3 nhóm → hiện đủ 3 nhóm, không mất quyền duyệt nào</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Quản lý nhân viên</div>
+  <div class="browser">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <div class="url">act-hr.vn/hr/people</div></div>
+    <div style="display:flex;min-height:470px;background:var(--canvas)">
+      <div class="appnav" data-nav="hr" data-active="people"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Quản lý nhân viên</div>
+            <div style="font-size:12px;color:var(--muted)">68 nhân viên · 17 nhóm · cấu hình linh hoạt</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">⚠ 3 người chưa có nhóm</span>
+          
+          <button class="btn">＋ Nhóm mới</button>
+          <button class="btn p">＋ Thêm nhân viên</button>
+        </div>
+        <div class="content" style="padding:18px">
+
+          <div class="row" style="gap:7px;margin-bottom:13px">
+            <span class="chip on">Tất cả</span>
+            <span class="chip">Chưa có nhóm</span>
+            <span class="chip">Galaxy</span>
+            <span class="chip">Mobile</span>
+            <span class="chip">CSKH</span>
+            <span class="chip">Hỗ trợ kỹ thuật</span>
+            <div class="spacer"></div>
+            <div class="inp-wrap" style="width:210px">
+              <input class="inp" placeholder="Tìm tên hoặc mã NV…">
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-b" style="padding:0">
+              <div class="tbl-wrap">
+              <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="background:var(--surface-2);border-bottom:1px solid var(--line)">
+                  <th style="text-align:left;padding:9px 14px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Họ và Tên</th>
+                  <th style="text-align:left;padding:9px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Mã NV</th>
+                  <th style="text-align:left;padding:9px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Chức vụ</th>
+                  <th style="text-align:left;padding:9px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Nhóm</th>
+                  <th style="text-align:left;padding:9px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Quản lý trực tiếp</th>
+                  <th style="text-align:left;padding:9px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Thời gian công tác</th>
+                  <th style="width:1%"></th>
+                </tr></thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--line-2)">
+                    <td style="padding:10px 14px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="avatar" style="width:26px;height:26px;background:var(--accent-soft);color:var(--accent)">MH</div>
+                        <b style="font-size:12.5px">MINH HÀ</b>
+                      </div>
+                    </td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">151ACT</td>
+                    <td style="padding:10px;font-size:12px">Chuyên viên CSKH</td>
+                    <td style="padding:10px">
+                      <span class="chip">CSKH</span>
+                    </td>
+                    <td style="padding:10px;font-size:12px">Nguyễn Văn A</td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">01/03/2021 → 31/12/2026</td>
+                    <td style="padding:10px"><button class="btn sm">Sửa</button></td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--line-2)">
+                    <td style="padding:10px 14px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="avatar" style="width:26px;height:26px;background:var(--info-soft);color:var(--info)">BN</div>
+                        <b style="font-size:12.5px">BÙI THỊ LAN</b>
+                      </div>
+                    </td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">284ACT</td>
+                    <td style="padding:10px;font-size:12px">Kỹ thuật viên</td>
+                    <td style="padding:10px">
+                      <span class="chip">Mobile</span>
+                      <span class="chip">Epsilon</span>
+                    </td>
+                    <td style="padding:10px;font-size:12px">Lê Thị Hà</td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">15/09/2026 → 31/12/2026</td>
+                    <td style="padding:10px"><button class="btn sm">Sửa</button></td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--line-2);background:var(--danger-soft)">
+                    <td style="padding:10px 14px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="avatar" style="width:26px;height:26px;background:var(--warn-soft);color:var(--warn)">TQ</div>
+                        <b style="font-size:12.5px">TRẦN QUỲNH ANH</b>
+                      </div>
+                    </td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">327ACT</td>
+                    <td style="padding:10px;font-size:12px">Software Engineer</td>
+                    <td style="padding:10px">
+                      <span class="badge d">Chưa có nhóm</span>
+                    </td>
+                    <td style="padding:10px;font-size:12px">Trần Văn C</td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">10/01/2024 → 31/12/2026</td>
+                    <td style="padding:10px"><button class="btn sm">Gán nhóm</button></td>
+                  </tr>
+                  <tr>
+                    <td style="padding:10px 14px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="avatar" style="width:26px;height:26px;background:var(--accent-soft);color:var(--accent)">TT</div>
+                        <b style="font-size:12.5px">TRẦN THÙY VÂN</b>
+                      </div>
+                    </td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">326ACT</td>
+                    <td style="padding:10px;font-size:12px">Technical Support</td>
+                    <td style="padding:10px">
+                      <span class="chip">Hỗ trợ kỹ thuật</span>
+                    </td>
+                    <td style="padding:10px">
+                      <span style="font-size:12px">Trần Văn C</span>
+                      <div style="font-size:11px;color:var(--muted);margin-top:2px">Trưởng nhóm</div>
+                    </td>
+                    <td style="padding:10px;color:var(--muted);font-size:12px">01/06/2022 → 31/12/2026</td>
+                    <td style="padding:10px"><button class="btn sm">Sửa</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              </div>
+            </div>
+            <div class="card-f">
+              <span style="font-size:11.5px;color:var(--muted);flex:1">
+                Đổi quản lý / nhóm có hiệu lực ngay với đơn mới. Đơn đang chờ giữ người duyệt đã giao (snapshot).</span>
+              <button class="btn sm">Nhật ký thay đổi</button>
+            </div>
+          </div>
+
+          <div class="grid2" style="gap:16px;align-items:start;margin-top:16px">
+            <div class="card">
+              <div class="card-h"><h3>Cấu hình nhóm</h3><div class="spacer"></div>
+                <span class="chip">17 nhóm</span></div>
+              <div class="card-b" style="padding:0">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead><tr style="background:var(--surface-2)">
+                    <th style="text-align:left;padding:8px 14px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Nhóm</th>
+                    <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Trưởng nhóm</th>
+                    <th style="text-align:right;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Thành viên</th>
+                    <th style="text-align:left;padding:8px 10px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Quản lý</th>
+                    <th style="text-align:left;padding:8px 14px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650">Luồng duyệt</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Kiểm thử phần mềm</td>
+                      <td style="padding:9px 10px;font-size:12px">Đoàn Thị Như Mai</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">15</td>
+                      <td style="padding:9px 10px;font-size:12px">—</td>
+                      <td style="padding:9px 14px"><span class="chip">Quản lý trực tiếp</span></td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Galaxy</td>
+                      <td style="padding:9px 10px;font-size:12px">Phạm Xuân Hiếu</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">6</td>
+                      <td style="padding:9px 10px;font-size:12px">Phạm Xuân Hiếu</td>
+                      <td style="padding:9px 14px"><span class="chip w">Trưởng nhóm → HR</span></td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Mobile</td>
+                      <td style="padding:9px 10px;font-size:12px">Nguyễn Quang Tùng</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">4</td>
+                      <td style="padding:9px 10px;font-size:12px">—</td>
+                      <td style="padding:9px 14px"><span class="chip">Quản lý trực tiếp</span></td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Kế toán</td>
+                      <td style="padding:9px 10px;font-size:12px;color:var(--muted)">Chưa có</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">2</td>
+                      <td style="padding:9px 10px;font-size:12px;color:var(--muted)">—</td>
+                      <td style="padding:9px 14px"><span class="chip">Quản lý trực tiếp</span></td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Hades</td>
+                      <td style="padding:9px 10px;font-size:12px">Phạm Xuân Hiếu</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">4</td>
+                      <td style="padding:9px 10px;font-size:12px">Phạm Xuân Hiếu</td>
+                      <td style="padding:9px 14px"><span class="chip w">Trưởng nhóm → HR</span></td>
+                    </tr>
+                    <tr style="border-top:1px solid var(--line-2)">
+                      <td style="padding:9px 14px;font-weight:570">Sirius</td>
+                      <td style="padding:9px 10px;font-size:12px">Nguyễn Thanh Tùng</td>
+                      <td class="tnum" style="text-align:right;padding:9px 10px">4</td>
+                      <td style="padding:9px 10px;font-size:12px">Nguyễn Thanh Tùng</td>
+                      <td style="padding:9px 14px"><span class="chip w">Trưởng nhóm → HR</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card-f">
+                <span style="font-size:11.5px;color:var(--muted)">
+                  Luồng duyệt gắn với nhóm — đổi trưởng nhóm là đổi người duyệt, không cần sửa code.</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Quyền xem — cấu hình theo từng bước duyệt</h3></div>
+              <div class="card-b">
+                <div class="alert i" style="margin-bottom:12px">
+                  <span class="ic">◆</span>
+                  <div><b>Quyền xem ≠ quyền duyệt.</b> Người được xem <b>không</b> nhận task,
+                  <b>không</b> bị tính SLA, <b>không</b> bấm được Duyệt/Từ chối.</div>
+                </div>
+
+                <div style="border:1px solid var(--line);border-radius:var(--r);padding:12px">
+                  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-bottom:9px">
+                    Bước 1 — Duyệt đơn của nhóm Mobile</div>
+                  <div class="row" style="gap:16px;padding:7px 0;border-bottom:1px solid var(--line-2)">
+                    <span style="font-size:12px;width:112px;color:var(--muted)">Người duyệt</span>
+                    <span class="chip on">Trần Văn H · Trưởng nhóm</span>
+                  </div>
+                  <div class="row" style="gap:16px;padding:7px 0;border-bottom:1px solid var(--line-2)">
+                    <span style="font-size:12px;width:112px;color:var(--muted)">Được xem</span>
+                    <span class="chip">Thành viên nhóm Mobile</span>
+                    <span class="chip">HR</span>
+                  </div>
+                  <div class="row" style="gap:16px;padding:7px 0;border-bottom:1px solid var(--line-2)">
+                    <span style="font-size:12px;width:112px;color:var(--muted)">Thấy lý do</span>
+                    <span class="chip on">Có</span>
+                  </div>
+                  <div class="row" style="gap:16px;padding:7px 0">
+                    <span style="font-size:12px;width:112px;color:var(--muted)">Thấy file</span>
+                    <span class="chip">Không</span>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.6">
+                  Mặc định: chỉ người gửi + người duyệt thấy. Bật &quot;thành viên nhóm&quot; để
+                  đồng nghiệp cùng nhóm thấy đơn — để biết mà phối hợp.
+                  Đơn nghỉ ốm có giấy khám vẫn <b>không</b> cho xem file.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="screen" id="s41">
+  <div class="screen-head">
+    <div class="n">41</div>
+    <div>
+      <div class="eyebrow">Nền tảng dùng chung · HR · P0</div>
+      <h2>Cây phân tầng quản lý — nhóm lồng nhau, số tầng tự do</h2>
+      <p class="desc">Khi 1 đơn bị kẹt, câu hỏi luôn là <b>&quot;ai duyệt cho người này?&quot;</b> — và đôi khi câu trả lời là <b>&quot;không ai&quot;</b>. Cây này hiển thị toàn bộ chuỗi quản lý theo <b>nhóm lồng nhau</b> — không có số tầng cố định, công ty chỉ cần 2 tầng (Công ty → Nhóm) cũng được. Tô đậm chỗ bị gãy và cho phép sửa ngay tại chỗ.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Cây theo <b>nhóm lồng nhau</b> — số tầng tự do, không fix cứng (2 tầng cũng được)</li>
+        <li><span class="tag p0">P0</span>Mỗi node hiện số người + số đơn đang chờ trong nhánh đó</li>
+        <li><span class="tag p0">P0</span>**Tô đậm người không có quản lý** (orphaned) — đơn của họ sẽ kẹt vĩnh viễn</li>
+        <li><span class="tag p0">P0</span>Tô đậm <b>nhân viên chưa có quản lý</b> — đơn của họ sẽ không ai duyệt</li>
+        <li><span class="tag p0">P0</span>Click 1 node → xem danh sách người bên dưới, lọc theo đơn đang chờ</li>
+        <li><span class="tag p0">P0</span>Đếm **đơn đang chờ quá hạn** theo từng nhánh → biết chỗ nào nghẽn</li>
+        <li><span class="tag p0">P0</span>Sửa trực tiếp tại cây: gán quản lý / gán nhóm / đặt trưởng nhóm</li>
+        <li><span class="tag p0">P0</span>Bật/tắt hiển thị: nhánh không có đơn · nhánh không có người</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Tìm 1 người → highlight toàn bộ chuỗi cấp trên của họ</li>
+        <li><span class="tag p0">P0</span>Nhân viên không có quản lý → **hiện rõ** + nút [Gán quản lý] ngay tại node</li>
+        <li><span class="tag p0">P0</span>Số đơn chờ tính theo **nhánh đang mở**, không tính toàn cây</li>
+        <li><span class="tag p0">P0</span>Click &quot;Xem đơn&quot; ở node → mở danh sách đơn đang chờ của nhánh đó</li>
+        <li><span class="tag p0">P0</span>Sửa từ cây → có audit log giống hệt sửa từ màn hình Quản lý nhân viên</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Cây phân tầng quản lý</div>
+  <div class="browser">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <div class="url">act-hr.vn/hr/management-tree</div></div>
+    <div style="display:flex;min-height:480px;background:var(--canvas)">
+      <div class="appnav" data-nav="hr" data-active="mtree"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Cây phân tầng quản lý</div>
+            <div style="font-size:12px;color:var(--muted)">69 nhân viên · 16 nhóm · 3 điểm gãy cần sửa</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">⚠ 3 điểm gãy</span>
+          <button class="btn">Ẩn nhánh rỗng</button>
+        </div>
+        <div class="content" style="padding:18px">
+
+          <div class="alert w" style="margin-bottom:14px">
+            <span class="ic">⚠</span>
+            <div><b>3 điểm cần sửa</b> — 3 nhân viên chưa có quản lý. Những đơn của các nhân viên này <b>sẽ không ai duyệt được</b>. Những đơn của các nhân viên này <b>sẽ không ai duyệt được</b>.</div>
+            <div class="spacer"></div>
+            <button class="btn sm">Sửa tất cả</button>
+          </div>
+
+          <div class="card">
+            <div class="card-b" style="padding:16px">
+
+              <div style="border-left:3px solid var(--accent);padding-left:13px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span class="badge n">CÔNG TY</span>
+                  <b style="font-size:13.5px">ACT — Công ty CP Công nghệ ACT</b>
+                  <span class="chip">68 người · 14 đơn chờ</span>
+                </div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px">
+                  Nhóm gốc — không có tầng cố định bên trên. Nhóm con có thể sâu thêm tuỳ ý.</div>
+              </div>
+
+              <div style="margin-left:24px;padding-left:13px;border-left:2px solid var(--accent-line)">
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM CHA</span>
+                    <b style="font-size:13px">Hades</b>
+                    <span class="chip">4 người · 3 đơn</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:7px">
+                    Trưởng nhóm: <b>Phạm Xuân Hiếu</b> · cấp cao hơn: chưa có — HR thêm được</div>
+                  <div style="border-left:2px solid var(--line);padding-left:11px">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+                      <span class="badge n">NHÓM CON</span>
+                      <b style="font-size:12.5px">Hades</b>
+                      <span class="chip">4 người</span>
+                    </div>
+                    <div style="border-left:2px solid var(--line);padding-left:10px;margin-top:6px">
+                      <div style="display:flex;align-items:center;gap:7px;font-size:12px">
+                        <span class="avatar" style="width:20px;height:20px;font-size:9px;background:var(--accent-soft);color:var(--accent)">TQ</span>
+                        TRẦN QUANG HUY
+                        <span style="color:var(--muted);font-size:11px">· QL: Phạm Xuân Hiếu</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="border-left:2px solid var(--line);padding-left:11px;margin-top:9px">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+                      <span class="badge n">NHÓM CON</span>
+                      <b style="font-size:12.5px">Galaxy</b>
+                      <span class="chip">6 người · 2 đơn</span>
+                    </div>
+                    <div style="border-left:2px solid var(--line);padding-left:10px;margin-top:6px">
+                      <div style="display:flex;align-items:center;gap:7px;font-size:12px">
+                        <span class="avatar" style="width:20px;height:20px;font-size:9px;background:var(--warn-soft);color:var(--warn)">BN</span>
+                        BÙI THỊ LAN
+                        <span style="color:var(--muted);font-size:11px">· QL: Phạm Xuân Hiếu</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="border-left:2px dashed var(--danger);padding-left:11px;margin-top:9px">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+                      <span class="badge n">NHÓM CON</span>
+                      <b style="font-size:12.5px">Titan</b>
+                      <span class="chip">3 người</span>
+                    </div>
+                    <div style="border-left:2px solid var(--danger);padding-left:10px;margin-top:6px">
+                      <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--danger);font-weight:570">
+                        <span class="avatar" style="width:20px;height:20px;font-size:9px;background:var(--danger-soft);color:var(--danger)">TV</span>
+                        TRẦN XUÂN TRUNG
+                        <span style="font-size:11px">· chưa có quản lý</span>
+                      </div>
+                      <button class="btn sm" style="margin-top:5px">Gán quản lý</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM CHA</span>
+                    <b style="font-size:13px">Minion</b>
+                    <span class="chip">4 người · 2 đơn</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:7px">
+                    Trưởng nhóm: <b>Nguyễn Quang Vinh</b> · dẫn 4 nhóm con</div>
+                  <div style="border-left:2px solid var(--line);padding-left:11px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
+                    <div style="font-size:12px">Hỗ trợ kỹ thuật <span style="color:var(--muted)">· 5 ng</span></div>
+                    <div style="font-size:12px">Devops <span style="color:var(--muted)">· 2 ng</span></div>
+                    <div style="font-size:12px">Minion <span style="color:var(--muted)">· 4 ng</span></div>
+                    <div style="font-size:12px">Zeus <span style="color:var(--muted)">· 3 ng</span></div>
+                  </div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM CHA</span>
+                    <b style="font-size:13px">Sirius</b>
+                    <span class="chip">4 người</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:7px">
+                    Trưởng nhóm: <b>Nguyễn Thanh Tùng</b> · dẫn 4 nhóm con</div>
+                  <div style="border-left:2px solid var(--line);padding-left:11px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
+                    <div style="font-size:12px">Avenger <span style="color:var(--muted)">· 4 ng</span></div>
+                    <div style="font-size:12px">Optimus <span style="color:var(--muted)">· 2 ng</span></div>
+                    <div style="font-size:12px">Sirius <span style="color:var(--muted)">· 4 ng</span></div>
+                    <div style="font-size:12px">Web <span style="color:var(--muted)">· 3 ng</span></div>
+                  </div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM</span>
+                    <b style="font-size:13px">Kiểm thử phần mềm</b>
+                    <span class="chip">15 người · 3 đơn</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted)">Trưởng nhóm: <b>Đoàn Thị Như Mai</b> · nhóm gốc</div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM</span>
+                    <b style="font-size:13px">Mobile</b>
+                    <span class="chip">4 người · 4 đơn</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted)">Trưởng nhóm: <b>Nguyễn Quang Tùng</b> · nhóm gốc</div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM</span>
+                    <b style="font-size:13px">Nhân sự</b>
+                    <span class="chip">4 người</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted)">Trưởng nhóm: <b>Nguyễn Thị Phương</b> · nhóm gốc</div>
+                </div>
+
+                <div style="border-left:3px solid var(--accent-line);padding-left:13px;margin-top:16px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+                    <span class="badge n">NHÓM</span>
+                    <b style="font-size:13px">Kế toán</b>
+                    <span class="chip">2 người</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--muted)">Chưa có trưởng nhóm — <b>không sao</b>:
+                    đơn chuyển lên quản lý trực tiếp</div>
+                </div>
+
+              </div>
+
+            </div>
+            <div class="card-f">
+              <span style="font-size:11.5px;color:var(--muted);flex:1">
+                Số đơn chờ tính theo nhánh đang mở. Click node để xem danh sách người bên dưới.</span>
+              <button class="btn sm">Xem 14 đơn đang chờ</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+<section class="screen" id="s42">
+  <div class="screen-head">
+    <div class="n">42</div>
+    <div>
+      <div class="eyebrow">Bài toán 2 · Quản lý · P0</div>
+      <h2>Duyệt OKR đầu năm — 2 nhóm, duyệt hoặc trả lại</h2>
+      <p class="desc">Phase **Setup (Q1)**: nhân viên tự set OKR rồi gửi lên quản lý. Quản lý duyệt hoặc trả lại kèm góp ý — đóng bước, và nhân viên nhận được thông báo đã duyệt.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Danh sách objective 2 nhóm của cấp dưới, chờ duyệt</li>
+        <li><span class="tag p0">P0</span>2 nhóm Business &amp; People hiển thị cạnh nhau kèm đầu việc + file đính kèm</li>
+        <li><span class="tag p0">P0</span>2 hành động: <b>Duyệt</b> hoặc <b>Trả lại</b> (bắt buộc góp ý)</li>
+        <li><span class="tag p0">P0</span>Bộ lọc: chờ duyệt · đã duyệt · bị trả lại · theo nhóm</li>
+        <li><span class="tag p0">P0</span>Hiện ngày nhân viên gửi và thời hạn phase</li>
+        <li><span class="tag p0">P0</span>Duyệt xong → thông báo cho nhân viên, đóng bước</li>
+        <li><span class="tag p0">P0</span>Trả lại → NV sửa &amp; gửi lại, có lý do bắt buộc</li>
+        <li><span class="tag p0">P0</span>Chỉ hiện objective thuộc phạm vi quản lý</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Đếm số chờ duyệt · số quá hạn</li>
+        <li><span class="tag p0">P0</span>Thiếu 1 trong 2 nhóm → không cho duyệt</li>
+        <li><span class="tag p0">P0</span>Trả lại mà bỏ trống góp ý → nút bị disable</li>
+        <li><span class="tag p0">P0</span>Duyệt xong NV nhận thông báo ngay</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Duyệt OKR đầu năm</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/okr/approve</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="manager" data-active="approve"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Duyệt OKR đầu năm</div>
+            <div style="font-size:12px;color:var(--muted)">Phase Setup · Q1 · hạn 31/03/2026</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip w">4 chờ duyệt</span>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="row" style="gap:7px;margin-bottom:13px">
+            <span class="chip on">Chờ duyệt (4)</span>
+            <span class="chip">Đã duyệt (23)</span>
+            <span class="chip">Bị trả lại (2)</span>
+            <div class="spacer"></div>
+            <span class="chip">Nhóm: tất cả</span>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="avatar" style="width:26px;height:26px;background:var(--accent-soft);color:var(--accent);font-size:10px">MH</span>
+                <div><b style="font-size:13.5px">Minh Hà</b>
+                  <div style="font-size:11.5px;color:var(--muted)">151ACT · Chuyên viên CSKH · gửi 12/01/2026</div></div>
+              </div>
+              <div class="spacer"></div>
+              <span class="chip on">2 nhóm</span>
+            </div>
+            <div class="card-b">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+                <div style="border-left:3px solid var(--accent);padding-left:11px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+                    <span class="badge n">BUSINESS</span>
+                    <span style="font-size:11.5px;color:var(--muted)">3 đầu việc</span>
+                  </div>
+                  <div style="font-size:12.5px;line-height:1.65;color:var(--ink-2)">
+                    Nâng cao tốc độ xử lý ticket hỗ trợ<br>
+                    <span style="color:var(--muted)">Giảm thời gian phản hồi · Tăng tỷ lệ giải quyết lần 1 · Tỷ lệ giữ chân</span>
+                  </div>
+                </div>
+                <div style="border-left:3px solid var(--accent);padding-left:11px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+                    <span class="badge n">PEOPLE</span>
+                    <span style="font-size:11.5px;color:var(--muted)">2 đầu việc</span>
+                  </div>
+                  <div style="font-size:12.5px;line-height:1.65;color:var(--ink-2)">
+                    Xây dựng đội hỗ trợ chất lượng cao<br>
+                    <span style="color:var(--muted)">Đào tạo 3 nhân sự mới · Tỷ lệ giữ chân khách hàng</span>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:11px;display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--line-2)">
+                <span class="chip">📎 3 file</span>
+                <span style="font-size:11.5px;color:var(--muted)">Mục tiêu cha: CSKH → Chăm sóc khách hàng</span>
+                <div class="spacer"></div>
+                <button class="btn s">Trả lại</button>
+                <button class="btn p">Duyệt</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="avatar" style="width:26px;height:26px;background:var(--info-soft);color:var(--info);font-size:10px">BN</span>
+                <div><b style="font-size:13.5px">Bình Nguyễn</b>
+                  <div style="font-size:11.5px;color:var(--muted)">284ACT · Kỹ thuật viên · gửi 10/01/2026</div></div>
+              </div>
+              <div class="spacer"></div>
+              <span class="chip on">2 nhóm</span>
+            </div>
+            <div class="card-b">
+              <div style="font-size:12.5px;color:var(--ink-2)">
+                <b>Business:</b> Nâng cao chất lượng hỗ trợ kỹ thuật ·
+                <b>People:</b> Phát triển đội ngũ kỹ thuật
+              </div>
+              <div style="margin-top:11px;display:flex;gap:8px;align-items:center;padding-top:10px;border-top:1px solid var(--line-2)">
+                <span class="chip">📎 1 file</span>
+                <div class="spacer"></div>
+                <button class="btn s">Trả lại</button>
+                <button class="btn p">Duyệt</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="screen" id="s43">
+  <div class="screen-head">
+    <div class="n">43</div>
+    <div>
+      <div class="eyebrow">Bài toán 2 · Quản lý · P0</div>
+      <h2>Review giữa năm — nhận xét và điều chỉnh mục tiêu</h2>
+      <p class="desc">Phase **Review (Jun–Jul)**: quản lý xem tiến độ check-in, viết nhận xét và <b>điều chỉnh mục tiêu</b> nếu cần. Mọi thay đổi đều có audit trail — ai sửa gì, lúc nào.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Xem tiến độ check-in của từng người theo 2 nhóm</li>
+        <li><span class="tag p0">P0</span>Viết nhận xét riêng cho từng người (coaching)</li>
+        <li><span class="tag p0">P0</span><b>Điều chỉnh mục tiêu</b> — sửa đầu việc, thêm/bớt, có audit trail</li>
+        <li><span class="tag p0">P0</span>Hiện chênh lệch giữa điểm tự chấm dự kiến và tiến độ thực tế</li>
+        <li><span class="tag p0">P0</span>Gợi ý rule: tiến độ đứng yên, confidence cao nhưng progress = 0</li>
+        <li><span class="tag p0">P0</span>Điều chỉnh có thể kéo dài hạn mục tiêu sang kỳ sau (có lý do)</li>
+        <li><span class="tag p0">P0</span>Mọi sửa đổi ghi vào nhật ký thay đổi</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Nhận xét bắt buộc khi điều chỉnh mục tiêu</li>
+        <li><span class="tag p0">P0</span>Sau khi review → sang phase Đánh giá cuối năm</li>
+        <li><span class="tag p0">P0</span>Hiển thị lịch sử check-in để thấy xu hướng</li>
+        <li><span class="tag p0">P0</span>Điều chỉnh mục tiêu → có dấu vết ai sửa, lúc nào, sửa gì</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Review giữa năm</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/okr/midyear</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="manager" data-active="review"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Review giữa năm 2026</div>
+            <div style="font-size:12px;color:var(--muted)">Phase Review · Jun–Jul · hạn 31/07/2026</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip">7 / 10 đã review</span>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="alert i" style="margin-bottom:14px">
+            <span class="ic">◆</span>
+            <div>Đây là khoảnh khắc <b>coaching</b> — không phải chấm điểm. Điểm 1–5 chỉ chấm ở Bước 5 (tháng 11–12).</div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="avatar" style="width:26px;height:26px;background:var(--accent-soft);color:var(--accent);font-size:10px">MH</span>
+                <div><b style="font-size:13.5px">Minh Hà</b>
+                  <div style="font-size:11.5px;color:var(--muted)">151ACT · Nhóm CSKH</div></div>
+              </div>
+              <div class="spacer"></div>
+              <span class="chip w">⚠ Tiến độ đứng yên 3 kỳ</span>
+            </div>
+            <div class="card-b">
+              <div class="grid2" style="gap:13px;margin-bottom:13px">
+                <div style="border-left:3px solid var(--accent);padding-left:11px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                    <span class="badge n">BUSINESS</span>
+                    <span style="font-size:11.5px;color:var(--muted)">Tiến độ 76%</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+                    1. Giảm thời gian phản hồi ticket <span style="color:var(--muted)">· 9.2 → 8.4 phút</span><br>
+                    2. Tỷ lệ giải quyết lần 1 <span style="color:var(--muted)">· 79% → 85%</span><br>
+                    3. Tỷ lệ giữ chân khách hàng <span style="color:var(--muted)">· 4.3 → 4.5 điểm</span>
+                  </div>
+                </div>
+                <div style="border-left:3px solid var(--accent);padding-left:11px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                    <span class="badge n">PEOPLE</span>
+                    <span style="font-size:11.5px;color:var(--muted)">Tiến độ 67%</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+                    1. Đào tạo 3 nhân sự mới đạt chuẩn <span style="color:var(--muted)">· 1 → 2 / 3</span><br>
+                    2. Tỷ lệ giữ chân khách hàng <span style="color:var(--muted)">· 4.3 → 4.4 điểm</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Nhận xét của bạn (coaching)</label>
+                <textarea class="inp" rows="2" style="width:100%">Đầu việc 3 (giữ chân khách hàng) đi chậm 3 kỳ liên tiếp — em cần focus vào đây thay vì spread mỏng. Q3 mình sẽ giao em hỗ trợ phần phân tích dữ liệu để tự bóc tách nguyên nhân.</textarea>
+              </div>
+
+              <div class="alert w" style="margin:0">
+                <span class="ic">✎</span>
+                <div><b>Điều chỉnh mục tiêu</b> — thay đổi này được ghi vào nhật ký thay đổi (ai, lúc nào, sửa gì).</div>
+                <div class="spacer"></div>
+                <button class="btn sm">Điều chỉnh mục tiêu</button>
+                <button class="btn p sm">Lưu nhận xét</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="screen" id="s44">
+  <div class="screen-head">
+    <div class="n">44</div>
+    <div>
+      <div class="eyebrow">Bài toàn 2 · HR · P0</div>
+      <h2>Quản lý chu kỳ OKR — timeline 5 phase, thang điểm, xếp loại</h2>
+      <p class="desc">HR cấu hình chu kỳ: 5 phase với mốc tháng thật, thang điểm **1–5**, ngưỡng xếp loại A/B/C/D, tần suất check-in và bật/tắt phân tầng. Hạn chót là **ngày cụ thể**, không phải tháng.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Timeline 5 phase với mốc tháng mặc định theo Guidance PDF</li>
+        <li><span class="tag p0">P0</span>Đặt <b>hạn chót cụ thể theo ngày</b> cho từng phase</li>
+        <li><span class="tag p0">P0</span>Thang điểm <b>1–5</b> + ngưỡng xếp loại A/B/C/D</li>
+        <li><span class="tag p0">P0</span>Tần suất check-in: hàng tuần · hàng tháng · hàng quý</li>
+        <li><span class="tag p0">P0</span>Bật/tắt <b>phân tầng</b> theo cây nhóm</li>
+        <li><span class="tag p0">P0</span>Nhắc trước hạn: còn ≤ 3 ngày thì job bắn notification + email</li>
+        <li><span class="tag p0">P0</span>Khóa tự động sau due_at — chỉ HR mở lại được (kèm lý do → audit)</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Hiện chu kỳ đang active</li>
+        <li><span class="tag p0">P0</span>Đổi hạn chót → có audit log</li>
+        <li><span class="tag p0">P0</span>Mở lại phase đã khóa → bắt buộc lý do</li>
+        <li><span class="tag p0">P0</span>Thang điểm đổi → nhóm cũ giữ nguyên điểm đã chấm</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Quản lý chu kỳ</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/hr/okr/cycles</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="hr" data-active="rules"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Quản lý chu kỳ OKR</div>
+            <div style="font-size:12px;color:var(--muted)">2 chu kỳ · 2026 đang chạy</div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn p sm">＋ Chu kỳ mới</button>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h">
+              <div><h3>Chu kỳ 2026</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Đang chạy · theo Guidance &amp; Timeline 2026</div></div>
+              <div class="spacer"></div>
+              <span class="badge n">ACTIVE</span>
+            </div>
+            <div class="card-b">
+              <div class="row" style="gap:8px;margin-bottom:14px;flex-wrap:wrap">
+                <div style="flex:1;min-width:150px;border-left:3px solid var(--accent);padding-left:10px">
+                  <div style="font-size:11px;color:var(--muted);letter-spacing:.05em">1 · SETUP</div>
+                  <div style="font-size:13px;font-weight:600;margin:3px 0">Thiết lập OKR</div>
+                  <div style="font-size:11.5px;color:var(--muted)">01/01 → 31/03/2026</div>
+                </div>
+                <div style="flex:1;min-width:150px;border-left:3px solid var(--accent);padding-left:10px">
+                  <div style="font-size:11px;color:var(--muted);letter-spacing:.05em">2 · CHECK-IN</div>
+                  <div style="font-size:13px;font-weight:600;margin:3px 0">Cập nhật định kỳ</div>
+                  <div style="font-size:11.5px;color:var(--muted)">01/03 → 30/04/2026</div>
+                </div>
+                <div style="flex:1;min-width:150px;border-left:3px solid var(--line);padding-left:10px">
+                  <div style="font-size:11px;color:var(--muted);letter-spacing:.05em">3 · REVIEW</div>
+                  <div style="font-size:13px;font-weight:600;margin:3px 0">Review giữa năm</div>
+                  <div style="font-size:11.5px;color:var(--muted)">01/06 → 31/07/2026</div>
+                </div>
+                <div style="flex:1;min-width:150px;border-left:3px solid var(--line);padding-left:10px">
+                  <div style="font-size:11px;color:var(--muted);letter-spacing:.05em">4 · FINAL</div>
+                  <div style="font-size:13px;font-weight:600;margin:3px 0">Đánh giá cuối năm</div>
+                  <div style="font-size:11.5px;color:var(--muted)">01/11 → 31/12/2026</div>
+                </div>
+                <div style="flex:1;min-width:150px;border-left:3px solid var(--line);padding-left:10px">
+                  <div style="font-size:11px;color:var(--muted);letter-spacing:.05em">5 · SUMMARY</div>
+                  <div style="font-size:13px;font-weight:600;margin:3px 0">Tổng hợp</div>
+                  <div style="font-size:11.5px;color:var(--muted)">01/01 → 31/01/2027</div>
+                </div>
+              </div>
+
+              <div class="grid2" style="gap:13px">
+                <div class="field">
+                  <label>Thang điểm</label>
+                  <div style="display:flex;gap:7px">
+                    <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
+                    <span class="chip on">4</span><span class="chip on">5</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Ngưỡng xếp loại</label>
+                  <div style="display:flex;gap:7px;align-items:center">
+                    <span class="chip">A ≥ 4.5</span><span class="chip">B ≥ 3.5</span><span class="chip">C ≥ 2.5</span><span class="chip">D &lt; 2.5</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Tần suất check-in</label>
+                  <div style="display:flex;gap:7px">
+                    <span class="chip">Hàng tuần</span><span class="chip on">Hàng tháng</span><span class="chip">Hàng quý</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Phân tầng theo cây nhóm</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <div class="switch on"></div>
+                    <span style="font-size:12px;color:var(--muted)">Bật — mục tiêu phải gắn được nhóm cha</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert i" style="margin-bottom:0">
+            <span class="ic">◆</span>
+            <div><b>Hạn chót là ngày cụ thể</b> — job nhắc chạy hằng ngày, còn ≤ 3 ngày thì bắn notification + email.
+            Sau hạn chót phase tự khóa; chỉ HR mở lại được và phải ghi lý do.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="screen" id="s45">
+  <div class="screen-head">
+    <div class="n">45</div>
+    <div>
+      <div class="eyebrow">Bài toán 2 · HR · P0</div>
+      <h2>Quản lý template OKR — khai báo sẵn 2 nhóm cho nhân viên</h2>
+      <p class="desc">HR khai báo trước **nội dung mẫu** cho cả 2 nhóm Business &amp; People, kèm danh mục objective chuẩn. Nhân viên chọn template là form <b>điền sẵn</b> — không phải nghĩ từ đầu, và không có trọng số phải cân.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>CRUD template: tên · phạm vi (phòng ban / chức danh / nhóm) · nội dung mẫu 2 nhóm</li>
+        <li><span class="tag p0">P0</span><b>Đầu việc mẫu</b> cho Business và People — không hạn chế số chữ</li>
+        <li><span class="tag p0">P0</span>File đính kèm mẫu (mẫu form gốc của công ty)</li>
+        <li><span class="tag p0">P0</span>Preview: xem trước form nhân viên sẽ thấy</li>
+        <li><span class="tag p0">P0</span>Seed sẵn danh mục objective chuẩn từ file HR (2 nhóm)</li>
+        <li><span class="tag p0">P0</span>Gán template theo phạm vi: nhóm · chức danh · toàn công ty</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Template bắt buộc → nhân viên không tạo được OKR nếu thiếu template</li>
+        <li><span class="tag p0">P0</span>Nhân viên thấy đúng template theo phạm vi của mình</li>
+        <li><span class="tag p0">P0</span>Preview hiển thị đúng những gì nhân viên sẽ nhận</li>
+        <li><span class="tag p0">P0</span>Template mới có hiệu lực ngay với nhân viên chưa tạo OKR</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Quản lý template</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/hr/okr/templates</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="hr" data-active="rules"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Quản lý template OKR</div>
+            <div style="font-size:12px;color:var(--muted)">5 template · khai báo sẵn nội dung 2 nhóm</div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn">👁 Preview</button>
+          <button class="btn p sm">＋ Template mới</button>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="tbl-wrap" style="margin-bottom:14px">
+            <table>
+              <thead><tr><th>Template</th><th>Phạm vi</th><th>Business</th><th>People</th><th>Bắt buộc</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><b>CSKH &amp; Chăm sóc khách hàng</b><div style="font-size:11px;color:var(--muted)">📎 1 file mẫu</div></td>
+                  <td><span class="chip">Nhóm CSKH</span></td>
+                  <td class="tnum">3 đầu việc</td>
+                  <td class="tnum">2 đầu việc</td>
+                  <td><div class="switch on"></div></td>
+                  <td><button class="btn sm">✎</button></td>
+                </tr>
+                <tr>
+                  <td><b>Mobile</b><div style="font-size:11px;color:var(--muted)">📎 1 file mẫu</div></td>
+                  <td><span class="chip">Nhóm Mobile</span></td>
+                  <td class="tnum">3 đầu việc</td>
+                  <td class="tnum">2 đầu việc</td>
+                  <td><div class="switch on"></div></td>
+                  <td><button class="btn sm">✎</button></td>
+                </tr>
+                <tr>
+                  <td><b>Kỹ thuật &amp; Hạ tầng</b><div style="font-size:11px;color:var(--muted)">📎 1 file mẫu</div></td>
+                  <td><span class="chip">Chức danh: Engineer</span></td>
+                  <td class="tnum">4 đầu việc</td>
+                  <td class="tnum">2 đầu việc</td>
+                  <td><div class="switch on"></div></td>
+                  <td><button class="btn sm">✎</button></td>
+                </tr>
+                <tr style="background:var(--warn-soft)">
+                  <td><b>Quản lý</b><div style="font-size:11px;color:var(--muted)">chưa có nội dung mẫu</div></td>
+                  <td><span class="chip">Chức danh: Manager</span></td>
+                  <td class="tnum" style="color:var(--muted)">0</td>
+                  <td class="tnum" style="color:var(--muted)">0</td>
+                  <td><div class="switch"></div></td>
+                  <td><button class="btn sm">✎</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid2" style="gap:14px;align-items:start">
+            <div class="card">
+              <div class="card-h">
+                <div><h3>Nội dung mẫu — CSKH &amp; Chăm sóc khách hàng</h3>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Nhân viên sẽ thấy đúng những gì này</div></div>
+              </div>
+              <div class="card-b">
+                <div style="border-left:3px solid var(--accent);padding-left:11px;margin-bottom:12px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                    <span class="badge n">BUSINESS</span>
+                    <span style="font-size:11.5px;color:var(--muted)">3 đầu việc mẫu</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--ink-2);line-height:1.65">
+                    Giảm thời gian phản hồi ticket xuống dưới 8 phút<br>
+                    Tăng tỷ lệ giải quyết lần 1 lên 85%<br>
+                    Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
+                  </div>
+                </div>
+                <div style="border-left:3px solid var(--accent);padding-left:11px">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                    <span class="badge n">PEOPLE</span>
+                    <span style="font-size:11.5px;color:var(--muted)">2 đầu việc mẫu</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--ink-2);line-height:1.65">
+                    Đào tạo 3 nhân sự mới đạt chuẩn sau 1 tháng<br>
+                    Tỷ lệ giữ chân khách hàng đạt 4.8 điểm
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h">
+                <div><h3>Danh mục objective chuẩn</h3>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Seed từ file form HR của công ty</div></div>
+                <div class="spacer"></div>
+                <span class="chip">2 nhóm</span>
+              </div>
+              <div class="card-b" style="padding:0">
+                <table>
+                  <thead><tr><th>Nhóm</th><th>Objective chuẩn</th></tr></thead>
+                  <tbody>
+                    <tr><td><span class="badge n">BUSINESS</span></td><td>Build a high performance culture</td></tr>
+                    <tr><td><span class="badge n">BUSINESS</span></td><td>Build High Trust Leader / Team</td></tr>
+                    <tr><td><span class="badge n">PEOPLE</span></td><td>4) Team Leadership</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card-f">
+                <span style="font-size:11.5px;color:var(--muted)">Nhân viên có thể chọn từ danh mục này — không bắt buộc.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="screen" id="s46">
+  <div class="screen-head">
+    <div class="n">46</div>
+    <div>
+      <div class="eyebrow">Bài toán 2 · Quản lý · P1</div>
+      <h2>Team OKR board — nhìn 1 lần biết ai đang kẹt ở đâu</h2>
+      <p class="desc">Bảng Kanban theo trạng thái, gom theo <b>2 nhóm</b> và theo người. Dành cho quản lý muốn thấy toàn bộ nhóm trong 1 màn hình mà không phải mở từng người.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h4>Tính năng</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Kanban theo trạng thái: Chưa set · Chờ duyệt · Đã duyệt · Đang chạy · Đã chấm</li>
+        <li><span class="tag p0">P0</span>Mỗi thẻ: tên người + 2 nhóm + điểm hiện tại + cảnh báo</li>
+        <li><span class="tag p0">P0</span>Lọc theo nhóm · theo người · theo trạng thái</li>
+        <li><span class="tag p0">P0</span>Kéo thả để đổi trạng thái (nếu nghiệp vụ cho phép)</li>
+        <li><span class="tag p0">P0</span>Click thẻ → mở chi tiết nhóm</li>
+        <li><span class="tag p0">P0</span>Hiện số người ở mỗi cột</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Acceptance criteria</h4>
+      <ul>
+        <li><span class="tag p0">P0</span>Cảnh báo rule hiện trên thẻ</li>
+        <li><span class="tag p0">P0</span>Kéo thả sang cột trạng thái → cập nhật luôn</li>
+        <li><span class="tag p0">P0</span>Thẻ có cảnh báo → nổi bật, không bị chìm</li>
+        <li><span class="tag p0">P0</span>Đếm số người theo cột luôn khớp với danh sách</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mock-label">Mockup — Team OKR board</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/okr/board</div></div>
+    <div class="app">
+      <div class="appnav" data-nav="manager" data-active="review"></div>
+      <div class="appmain">
+        <div class="topbar">
+          <div>
+            <div style="font-size:16px;font-weight:660">Team OKR board</div>
+            <div style="font-size:12px;color:var(--muted)">Nhóm CSKH · chu kỳ 2026</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip">10 người</span>
+        </div>
+        <div class="body" style="max-width:1000px">
+
+          <div class="row" style="gap:7px;margin-bottom:13px">
+            <span class="chip on">Tất cả</span>
+            <span class="chip">CSKH</span>
+            <span class="chip">Mobile</span>
+            <span class="chip">Nhân sự</span>
+            <div class="spacer"></div>
+            <span class="chip w">⚠ 2 cảnh báo</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:11px">
+
+            <div>
+              <div class="row" style="justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:650">CHƯA SET</span>
+                <span class="chip">2</span>
+              </div>
+              <div class="card" style="margin-bottom:8px;padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Điệp Hà</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Chưa tạo OKR</div>
+                <span class="badge w">Nhắc nhở</span>
+              </div>
+              <div class="card" style="padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Vũ Đức</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Chưa tạo OKR</div>
+                <span class="badge w">Nhắc nhở</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="row" style="justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:650">CHỜ DUYỆT</span>
+                <span class="chip">1</span>
+              </div>
+              <div class="card" style="padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Lan Phạm</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Business 4 · People 2</div>
+                <span class="badge n">Gửi 08/01</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="row" style="justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:650">ĐANG CHẠY</span>
+                <span class="chip">5</span>
+              </div>
+              <div class="card" style="margin-bottom:8px;padding:11px;background:var(--danger-soft)">
+                <div style="font-size:12.5px;font-weight:600">Minh Hà</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Business 76% · People 67%</div>
+                <span class="badge d">Tiến độ đứng yên 3 kỳ</span>
+              </div>
+              <div class="card" style="margin-bottom:8px;padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Bình Nguyễn</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Business 88% · People 80%</div>
+              </div>
+              <div class="card" style="padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Phạm Quỳnh</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">Business 64% · People 71%</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="row" style="justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:650">ĐÃ CHẤM</span>
+                <span class="chip">2</span>
+              </div>
+              <div class="card" style="margin-bottom:8px;padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Hoàng Thị Thoa</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">TB 4.0 · xếp loại B</div>
+              </div>
+              <div class="card" style="padding:11px">
+                <div style="font-size:12.5px;font-weight:600">Lê Thị Tuyết</div>
+                <div style="font-size:11.5px;color:var(--muted);margin:3px 0">TB 3.5 · xếp loại B</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
 </main>
 </div>
 
@@ -7087,7 +8264,8 @@ const NAV = (() => {
       { id: 'shift',  icon: '🕐', label: 'Ca & lịch nghỉ lễ', to: 's26' },
       { id: 'audit',  icon: '📋', label: 'Nhật ký thay đổi',  to: 's35' },
       { id: 'hrdev',  icon: '🔒', label: 'Quản lý thiết bị',   to: 's28' },
-      { id: 'align',  icon: '🌳', label: 'Cây phân tầng',      to: 's38' },
+      { id: 'people', icon: '👤', label: 'Quản lý nhân viên',  to: 's40' },
+      { id: 'mtree',  icon: '🌲', label: 'Cây quản lý',       to: 's41' },
     ]},
   ];
 
