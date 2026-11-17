@@ -3092,7 +3092,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">16</div>
     <div>
       <div class="eyebrow">C13 · HR · P0</div>
-      <h2>Cấu hình quy định — 16 luật, sửa bằng form</h2>
+      <h2>Cấu hình quy định — 19 luật, sửa bằng form</h2>
       <p class="desc">Mục 6.2: <i>"Các giới hạn được HR cấu hình trên hệ thống, không cố định trong phần mềm, và có ngày hiệu lực để thay đổi khi quy định thay đổi."</i> Đây là màn hình biến câu đó thành hiện thực — và cũng là khoảnh khắc demo mạnh nhất: đổi quota ngay trên sân khấu.</p>
     </div>
   </div>
@@ -5470,7 +5470,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">30</div>
     <div>
       <div class="eyebrow">Bài toán 1 · Nhân viên · P0</div>
-      <h2>Xin nghỉ phép — 5 loại nghỉ, hạn gửi &amp; giấy tờ đều cấu hình được</h2>
+      <h2>Xin nghỉ phép — 8 loại nghỉ, hạn gửi &amp; giấy tờ đều cấu hình được</h2>
       <p class="desc">Mục 6.4: mỗi loại nghỉ có cấu hình riêng — hưởng lương, đơn vị (ngày/nửa ngày), giấy tờ. Form này **tự hiện** các quy tước đang áp dụng cho từng loại: hạn gửi đơn, ngày cần giấy tờ, giới hạn ngày liên tiếp — lấy từ rule trong DB, không hard-code.<br><br><b>Mỗi loại nghỉ là 1 bộ tham số độc lập</b>, ghi đè lên mặc định chung — nên "nghỉ tang gia được báo gấp" không ảnh hưởng "nghỉ phép năm báo trước 1 ngày". Xem S32.</p>
     </div>
   </div>
@@ -5478,7 +5478,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>5 loại nghỉ: phép năm · ốm · thai sản · hiếu hỉ · không lương</li>
+        <li><span class="tag p0">P0</span><b>8 loại nghỉ</b> khớp cột bảng công: lễ · phép · ốm · bù · riêng hưởng lương · thai sản · vợ sinh · không lương</li>
         <li><span class="tag p0">P0</span>Mỗi loại hiện rõ: **hưởng lương** (công ty / BHXH) · đơn vị ngày–nửa ngày · cần giấy tờ</li>
         <li><span class="tag p0">P0</span>Chọn ngày → tự tính **số ngày làm việc** (trừ cuối tuần + lễ)</li>
         <li><span class="tag p0">P0</span>Kiểm tra số dư phép **ngay khi chọn** — chặn nếu thiếu</li>
@@ -5820,7 +5820,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">C13 · HR · P0</div>
       <h2>Quản lý loại nghỉ — thêm &amp; tùy chỉnh linh hoạt</h2>
-      <p class="desc">Tài liệu liệt kê 5 loại nghỉ, nhưng loại nghỉ là thứ hay thay đổi. Hệ thống <b>seed sẵn 5 loại chuẩn</b> (mỗi loại đều chỉnh được) và cho HR <b>thêm loại mới mà không cần sửa code</b>. Mọi tham số theo schema có kiểm soát — không phải JSON tự do.</p>
+      <p class="desc">File Excel của công ty có <b>8 loại nghỉ</b> (khớp 1–1 với cột tổng hợp của bảng chấm công export). Hệ thống <b>seed sẵn 8 loại chuẩn</b> (mỗi loại đều chỉnh được) và cho HR <b>thêm loại mới mà không cần sửa code</b>. Mọi tham số theo schema có kiểm soát — không phải JSON tự do.</p>
     </div>
   </div>
   <div class="spec">
@@ -5836,7 +5836,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Thấy đủ 5 loại chuẩn với tham số hiện tại</li>
+        <li>Thấy đủ 8 loại chuẩn với tham số hiện tại</li>
         <li>Thêm loại mới → chọn nhóm tham số → lưu, xuất hiện ngay trong form xin nghỉ của nhân viên</li>
         <li>Copy từ loại có sẵn → tự động điền tham số</li>
         <li>Sửa 1 tham số của loại → chỉ loại đó đổi, loại khác giữ nguyên</li>
@@ -5860,7 +5860,7 @@ tbody tr:hover{background:var(--surface-2)}
         <div class="body" style="max-width:1000px">
           <div class="row-b" style="margin-bottom:13px">
             <div><h2 style="font-size:18px">Loại nghỉ</h2>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">5 loại chuẩn · 1 loại HR đã thêm · mọi loại đều tùy chỉnh được</div></div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px">8 loại chuẩn · 1 loại HR đã thêm · mọi loại đều tùy chỉnh được</div></div>
             <div class="row">
               <span class="chip">Mặc định chung (tầng 1)</span>
               <button class="btn p sm">+ Thêm loại nghỉ</button>
