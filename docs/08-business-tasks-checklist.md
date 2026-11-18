@@ -114,7 +114,7 @@
 ## B. Chấm công — nhân viên
 
 ### B1 · Chấm công trên điện thoại 🔴 · S05m
-> Chi tiết đầy đủ: **`docs/09-mobile-punch.md`**. Đây là thao tác lặp lại nhiều nhất — và là thao tác người dùng ghét nhất nếu làm chậm.
+> Chi tiết đầy đủ: **`docs/07-business-mobile-punch.md`**. Đây là thao tác lặp lại nhiều nhất — và là thao tác người dùng ghét nhất nếu làm chậm.
 **Nghiệm thu:**
 - [ ] Mở app → màn hình chấm công hiện ngay, không qua menu
 - [ ] Bấm 1 lần → kết quả trong **< 4 giây**, có phản hồi rung
@@ -292,7 +292,7 @@
 **Phụ thuộc:** E1
 
 ### E3 · Cấu hình quy định 🔴 · S16
-> Chi tiết: **`docs/08-rule-builder.md`**. 19 luật — **mọi luật đều có mặt trong đây**, không có luật nào chỉ nằm trong tài liệu.
+> Chi tiết: **`docs/06-business-rule-builder.md`**. 19 luật — **mọi luật đều có mặt trong đây**, không có luật nào chỉ nằm trong tài liệu.
 **Nghiệm thu:**
 - [ ] Thấy đủ **19 quy định** với giá trị đúng theo "Quyết định của HR" ở Mục 7
 - [ ] Mọi thay đổi có **ngày hiệu lực** và **lịch sử phiên bản**

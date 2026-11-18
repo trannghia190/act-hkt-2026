@@ -117,12 +117,12 @@ Mọi quy định về đơn từ được đưa vào các tham số của Rule 
 ## 6. Danh Mục Tài Liệu Kỹ Thuật Chi Tiết Trong Thư Mục `docs/`
 
 Để hỗ trợ phát triển theo từng chuyên đề, tài liệu được phân tách rõ ràng:
-* [01-auth-user-management.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/01-auth-user-management.md): Nghiệp vụ Quản lý người dùng, Xác thực nội bộ, Email kích hoạt & Đăng ký khuôn mặt.
-* [02-attendance-checkin.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/02-attendance-checkin.md): Nghiệp vụ Chấm công 1 chạm, Liveness detection, WiFi & Geofence, Server timestamp.
-* [03-requests-approval-workflow.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/03-requests-approval-workflow.md): Nghiệp vụ 4 loại đơn từ, Quota engine, Ma trận duyệt động (Default/CA/Mobile) & Auto-escalation.
-* [04-leave-balance-accrual.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/04-leave-balance-accrual.md): Quy tắc tính số dư phép, luật phép tồn, ứng phép và sổ phép audit log.
-* [05-timesheet-payroll-export.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/05-timesheet-payroll-export.md): Lưới bảng công 45 cột chuẩn Excel, sửa tại chỗ, quy trình chốt khóa & xuất báo cáo lương.
-* [06-okr-performance-appraisal.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/06-okr-performance-appraisal.md): Quản trị OKR, Form 4 Box, thang điểm 1-5, quy trình đánh giá 5 bước & Calibration board.
-* [07-rule-engine-configuration.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/07-rule-engine-configuration.md): Kiến trúc Rule Engine, 19 tham số cấu hình, Versioning, Rollback & Dry-run sandbox.
-* [08-notifications-todo-inbox.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/08-notifications-todo-inbox.md): Todo Inbox tập trung, 3 kênh thông báo, 17 sự kiện nghiệp vụ x 3 actor, Command Palette Ctrl+K.
-* [09-api-spec-and-db-schema.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/09-api-spec-and-db-schema.md): Đặc tả API Endpoint RESTful chi tiết và Cấu trúc cơ sở dữ liệu vật lý toàn hệ thống.
+* [12-tech-auth-user-management.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/12-tech-auth-user-management.md): Nghiệp vụ Quản lý người dùng, Xác thực nội bộ, Email kích hoạt & Đăng ký khuôn mặt.
+* [13-tech-attendance-checkin.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/13-tech-attendance-checkin.md): Nghiệp vụ Chấm công 1 chạm, Liveness detection, WiFi & Geofence, Server timestamp.
+* [14-tech-requests-approval-workflow.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/14-tech-requests-approval-workflow.md): Nghiệp vụ 4 loại đơn từ, Quota engine, Ma trận duyệt động (Default/CA/Mobile) & Auto-escalation.
+* [15-tech-leave-balance-accrual.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/15-tech-leave-balance-accrual.md): Quy tắc tính số dư phép, luật phép tồn, ứng phép và sổ phép audit log.
+* [16-tech-timesheet-payroll-export.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/16-tech-timesheet-payroll-export.md): Lưới bảng công 45 cột chuẩn Excel, sửa tại chỗ, quy trình chốt khóa & xuất báo cáo lương.
+* [17-tech-okr-performance-appraisal.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/17-tech-okr-performance-appraisal.md): Quản trị OKR, Form 4 Box, thang điểm 1-5, quy trình đánh giá 5 bước & Calibration board.
+* [18-tech-rule-engine-configuration.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/18-tech-rule-engine-configuration.md): Kiến trúc Rule Engine, 19 tham số cấu hình, Versioning, Rollback & Dry-run sandbox.
+* [19-tech-notifications-todo-inbox.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/19-tech-notifications-todo-inbox.md): Todo Inbox tập trung, 3 kênh thông báo, 17 sự kiện nghiệp vụ x 3 actor, Command Palette Ctrl+K.
+* [20-tech-api-spec-and-db-schema.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/20-tech-api-spec-and-db-schema.md): Đặc tả API Endpoint RESTful chi tiết và Cấu trúc cơ sở dữ liệu vật lý toàn hệ thống.

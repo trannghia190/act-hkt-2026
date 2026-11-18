@@ -25,7 +25,7 @@
 | **@@C6@@** | **Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức** | P1 |
 | **C1/C2** | **Todo inbox + nhắc việc** (check-in đến hạn, chưa tạo OKR) | P0 — dùng chung |
 
-> **Toàn bộ bài toán 2 làm bằng rule.** Điểm đề xuất cho review OKR là **công thức tính từ tiến độ KR** (minh bạch, manager kiểm tra được). Xem `docs/04-convenience-features.md` §5.
+> **Toàn bộ bài toán 2 làm bằng rule.** Điểm đề xuất cho review OKR là **công thức tính từ tiến độ KR** (minh bạch, manager kiểm tra được). Xem `docs/04-business-convenience-features.md` §5.
 
 ## 2. Quyết định đã chốt (từ `doc/OKR_doc.md` + Guidance PDF)
 
@@ -664,7 +664,7 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 ## 8. Tính năng tiện lợi
 
-> Chi tiết: `docs/04-convenience-features.md` §2.
+> Chi tiết: `docs/04-business-convenience-features.md` §2.
 
 ### @@C6@@. Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức ⭐ P1
 
