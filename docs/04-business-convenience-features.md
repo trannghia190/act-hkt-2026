@@ -104,13 +104,13 @@
 
 **C2** = cơ chế nhắc (3 kênh, chống spam). **C12** = ma trận 17 sự kiện × 3 vai trò — ai nhận việc nào.
 
-**Vấn đề:** Todo inbox chỉ hữu ích khi người dùng mở app. Nhắc việc phải tới đúng lúc — **và đúng người cần làm**.
+**Vấn đề:** Todo inbox chỉ hữu ích khi người dùng mở web. Nhắc việc phải tới đúng lúc — **và đúng người cần làm**.
 
 #### Ba kênh, đúng vai trò
 
 | Kênh | Khi nào | Ai nhận |
 |---|---|---|
-| **Push trong ứng dụng** | Ngay khi có việc mới phát sinh | Người liên quan |
+| **Thông báo đẩy trên trình duyệt** (Web Push) | Ngay khi có việc mới phát sinh | Người liên quan |
 | **Email digest** | 1 lần/ngày lúc 08:00, gom mọi việc chưa xong | Tất cả |
 | **Badge đếm số** trên menu | Luôn hiện | Tất cả |
 
@@ -222,11 +222,11 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 | Kênh | Cách gửi | Ghi chú |
 |---|---|---|
-| Push trong ứng dụng | Thông báo tới thiết bị đã đăng ký | Thiết bị đã cài ứng dụng → nhận push ngay khi có việc |
+| Thông báo đẩy trình duyệt (Web Push) | Trình duyệt đã bật quyền thông báo | Không cần app riêng; bật/tắt trong web |
 | Email | Gửi qua hàng đợi, không chặn màn hình | 1 digest lúc 08:00 + email cá nhân |
 | Badge | Đếm số việc đang chờ | Không cần push, luôn hiện trên menu |
 
-**Fallback khi chưa cài ứng dụng lên điện thoại:** mọi thông báo vẫn tới qua email digest 08:00 + badge số trên menu. Không mất thông tin nào.
+**Fallback khi chưa bật thông báo đẩy:** mọi thông báo vẫn tới qua email digest 08:00 + badge số trên menu. Không mất thông tin nào.
 
 **Tiết kiệm:** 4 việc phải tự nhớ → 0 việc phải nhớ. Đây là thứ nhân viên **cảm nhận đầu tiên**.
 ---
@@ -280,9 +280,9 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 ### C4. Sửa thẳng trong bảng công — không cần export → sửa Excel → import ⭐ P0
 
-**Vấn đề:** HR tìm 1 sai lệch trong bảng công. Cách duy nhất hiện nay: export Excel → sửa tay → import lại → đối chiếu. Cực kỳ dễ sai và mất dấu vết ai sửa.
+**Vấn đề:** HR phát hiện 1 ô sai trong bảng công. Cách duy nhất hiện nay: export Excel → sửa tay → import lại → đối chiếu. Cực kỳ dễ sai và mất dấu vết ai sửa.
 
-**Giải pháp:** Click vào ô → gõ → lưu. **Có audit log, có nút hoàn tác, có lý do bắt buộc khi sửa cột nhạy cảm.**
+**Giải pháp:** Click vào **ô ngày** cần sửa → gõ ký hiệu mới → lưu. **Sửa đúng giá trị công của ô đó — không phải chọn trường.** Có lý do bắt buộc, có audit log, và **ô đã sửa hiện màu đỏ** để nhìn là thấy.
 
 **Sửa ô bảng công (`TimesheetEdit`)** — mỗi lần sửa ô bảng công đều được ghi lại:
 
@@ -291,14 +291,14 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 | `id` | Định danh lần sửa | Khóa chính |
 | `timesheet_id` | Bảng công bị sửa | Bắt buộc |
 | `user_id` | Người thực hiện sửa | Bắt buộc |
-| `field` | Cột bảng công bị sửa | `actual_hours` \| `late_minutes` \| `paid_leave_days` \| … |
-| `old_value` | Giá trị trước khi sửa | Ghi lại để hoàn tác & đối chiếu |
-| `new_value` | Giá trị sau khi sửa | Ghi lại để hoàn tác & đối chiếu |
-| `reason` | Lý do sửa | **BẮT BUỘC** nếu sửa cột nhạy cảm |
+| `work_date` | Ngày của ô bị sửa | Bắt buộc — 1 ô = 1 người × 1 ngày |
+| `old_value` | Ký hiệu trước khi sửa (vd `0.50`) | Ghi lại để hoàn tác & đối chiếu |
+| `new_value` | Ký hiệu sau khi sửa (vd `1.00`) | Ghi lại để hoàn tác & đối chiếu |
+| `reason` | Lý do sửa | **BẮT BUỘC** với mọi lần sửa ô |
 | `source` | Nguồn thay đổi | `manual` \| `bulk` \| `import` |
 | `created_at` | Thời điểm sửa | Ghi tự động |
 
-**Nhóm cột nhạy cảm** (bắt buộc lý do khi sửa): `actual_hours`, `late_minutes`, `early_minutes`, `paid_leave_days`, `bhxh_leave_days`, `violations`.
+**Ô đã sửa hiện màu đỏ** trên lưới bảng công — HR nhìn là biết ô nào đã bị điều chỉnh, kèm tooltip người sửa + lý do.
 
 **UI:**
 
@@ -311,15 +311,12 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 │ Bình Nguyễn  22      22       0       0     0      0      0  │
 │ ...                                                             │
 │                                                              │
-│ ⚠ 2 sai lệch được phát hiện tự động:                        │
-│   • Minh Hà — thiếu 1 check-out ngày 05/11  [Xem] [Sửa]     │
-│   • Bình Nguyễn — về sớm 45' không có đơn  [Xem] [Tạo đơn]  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Sửa hàng loạt (bulk edit):** tick nhiều dòng → chọn cột + giá trị → áp dụng 1 lần → nhập lý do chung → 1 audit log cho cả lô (kèm chi tiết từng dòng).
+**Sửa hàng loạt (bulk edit):** tick nhiều dòng → chọn ô ngày + ký hiệu → áp dụng 1 lần → nhập lý do chung → 1 audit log cho cả lô (kèm chi tiết từng dòng).
 
-**Tiết kiệm:** HR sửa 1 sai lệch: 15 phút export/sửa/import → **20 giây**. Đây là tính năng HR đánh giá cao nhất.
+**Tiết kiệm:** HR sửa 1 ô sai: 15 phút export/sửa/import → **20 giây**. Đây là tính năng HR đánh giá cao nhất.
 
 ---
 
@@ -365,19 +362,19 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 **Giải pháp:**
 
-1. **Bulk approve**: tick nhiều đơn → duyệt 1 lần. Nếu có đơn cần HR duyệt thêm → tách riêng, chỉ duyệt 1 bước.
+1. **Bulk approve**: tick nhiều đơn → duyệt 1 lần. Đơn đi muộn / bổ sung / WFH của CA, Mobile có thêm bước HR → tách riêng, chỉ duyệt bước 1. **Đơn nghỉ phép luôn duyệt 1 lần là xong.**
 2. **Chip lý do**: lý do từ chối phổ biến là 1 chạm — "Vượt quota tháng này", "Cần bổ sung giấy tờ", "Trùng ngày đã xin phép", "Thời gian nghỉ không hợp lý".
 3. **Điều kiện quyết định hiện sẵn**: mỗi đơn hiển thị kết quả check rule dưới dạng chip xanh/đỏ:
    - ✅ Trong quota (1/2 lượt tháng 11)
    - ✅ Trong giờ hạn nộp (2/3 ngày làm việc)
    - ❌ Trùng ngày đã nghỉ phép 05/11
-   - ⚠ Nghỉ 5 ngày → cần HR duyệt thêm
+   - ✓ Nghỉ 5 ngày — chỉ quản lý duyệt
 
 4. **Sắp xếp theo rủi ro**: đơn nào có vấn đề rule nằm trên cùng.
 
 **Tiết kiệm:** 12 đơn/tuần: 25 phút → **3 phút**.
 
-### @@C6@@. Review OKR dạng bảng so sánh cả nhóm — P1
+### C8. Review OKR dạng bảng so sánh cả nhóm — P1
 
 **Vấn đề:** Manager review 10 OKR của cấp dưới → mở từng objective, đọc từng KR, tự tính điểm. Rất lâu và dễ không nhất quán giữa các người.
 
@@ -409,10 +406,9 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 | Bước | Cách tính | Vì sao |
 |---|---|---|
 | 1. Tiến độ mỗi KR | Tỉ lệ hoàn thành của KR so với giá trị mục tiêu | Lấy từ số liệu đã có, không cần nhân viên tự chấm |
-| 2. Điều chỉnh theo độ tin cậy | Tiến độ × (0.8 + 0.2 × mức độ tin cậy) | Tin cậy thấp → **giảm nhẹ**, nhưng **không** bị chấm 0 |
-| 3. Trọng số theo KR | Điểm đã điều chỉnh × trọng số KR ÷ 100 | KR nặng hơn thì kéo điểm mục tiêu nhiều hơn |
-| 4. Cộng lại | Tổng điểm các KR | Tổng trọng số mỗi mục tiêu = 100 nên tổng nằm trong khoảng 0–1 |
-| 5. Ánh xạ sang thang 1–5 | Tổng × 4, làm tròn xuống, cộng thêm 1 | 0 → điểm 1 · 1 → điểm 5 |
+| 2. Trọng số theo KR | Tiến độ × trọng số KR ÷ 100 | KR nặng hơn thì kéo điểm mục tiêu nhiều hơn |
+| 3. Cộng lại | Tổng điểm các KR | Tổng trọng số mỗi mục tiêu = 100 nên tổng nằm trong khoảng 0–1 |
+| 4. Ánh xạ sang thang 1–5 | Tổng × 4, làm tròn xuống, cộng thêm 1 | 0 → điểm 1 · 1 → điểm 5 |
 
 > **Công thức minh bạch, manager thấy được lý do** — điểm đề xuất là **phép tính**, không phải suy luận.
 
@@ -448,7 +444,7 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 Đi muộn / về sớm
 ─────────────────────────────────────────
 Bạn được tạo đơn đi muộn/về sớm 2 lần mỗi tháng, mỗi lần
-tối đa 60 phút. Đơn phải gửi trước 08:00.
+tối đa 60 phút. Đơn phải nộp trong vòng 3 ngày kể từ ngày đi muộn/về sớm.
 
 Hiệu lực từ 01/10/2026 · Phiên bản 2
 ```
@@ -474,7 +470,7 @@ Hiệu lực từ 01/10/2026 · Phiên bản 2
 │ ĐƠN TỪ                                          Áp dụng cho            │
 │ ┌─────────────────────────────────────────────────────────────────────┐ │
 │ │ Đi muộn / về sớm                              Toàn công ty           │ │
-│ │ 2 lần/tháng · tối đa 60 phút · gửi trước 08:00                    │ │
+│ │ 2 lần/tháng · tối đa 60 phút · nộp trong 3 ngày                   │ │
 │ │ Hiệu lực từ 01/10/2026 · phiên bản 2              [ Cấu hình ]      │ │
 │ ├─────────────────────────────────────────────────────────────────────┤ │
 │ │ Bổ sung chấm công                            Toàn công ty           │ │
@@ -530,7 +526,7 @@ Mỗi widget báo cáo đi kèm **mô tả sẵn theo template**, dựng từ s�
 ```
 📊 Báo cáo OKR 2026
 • 26/30 nhân viên đã nộp OKR (87%)
-• Điểm trung bình toàn công ty: 0.78 — xếp loại B (Đạt)
+• Điểm trung bình toàn công ty: 3.4
 • Phòng ban thấp nhất: Chăm sóc khách hàng (0.61)
 • Còn 14 objective chưa check-in đủ kỳ → xem danh sách
 ```
@@ -550,17 +546,19 @@ và luôn kèm link tới từng widget nguồn để HR kiểm chứng.
 **Vấn đề:** nhân viên chấm công **2 lần/ngày** trên điện thoại — đây là thao tác lặp lại nhiều nhất
 trong toàn hệ thống, và là thao tác người dùng **ghét nhất** nếu làm chậm.
 
-**Yêu cầu cốt lõi:** màn hình chỉ có **2 thông tin** (giờ + trạng thái xác thực) và **1 nút**.
+**Yêu cầu cốt lõi:** màn hình chỉ có **camera khuôn mặt + 2 thông tin** (giờ + trạng thái xác thực) và **1 nút**.
 Không form, không chọn ca, không nút "Xác nhận" thêm.
 
 | Điểm | Yêu cầu |
 |---|---|
 | Nút | Tròn Ø **112px**, ở giữa màn hình (vùng chạm tự nhiên khi cầm 1 tay) |
-| Xác thực | **4 bước chạy song song** (thiết bị · mạng nội bộ · GPS · ca) — **hiện từng bước ngay khi bắt đầu** |
+| Camera khuôn mặt | **Camera trước hiển thị ngay**, khung oval hướng dẫn; khớp hồ sơ ≥ 85% + liveness → hiện "✓ Khớp 98%" |
+| Xác thực | **5 bước chạy song song** (thiết bị · mạng nội bộ · GPS · ca · **khuôn mặt**) — **hiện từng bước ngay khi bắt đầu** |
+| Chưa đăng ký khuôn mặt | Không chấm được — hiện nút [Đăng ký khuôn mặt] (3 góc + liveness, trong mạng công ty) |
 | Phản hồi rung | Rung ngay khi bấm · thành công 2 nhịp ngắn · lỗi 2 nhịp dài |
 | Chấm công khi offline | Lưu lại trên máy, đồng bộ lại khi có mạng, đánh dấu `synced_offline`; **chặn** nếu offline quá 24h |
-| GPS | Bán kính ≥ **150m**; độ chính xác GPS > 100m → vẫn cho chấm công, đánh dấu `low_gps_accuracy` |
-| Cài đặt trên điện thoại | Chạy như ứng dụng độc lập (có biểu tượng riêng, mở thẳng màn hình chấm công, không hiện thanh địa chỉ) |
+| GPS | Bán kính ≥ **150m**; độ chính xác GPS > 100m → **chặn**, hướng dẫn thử lại |
+| Trên điện thoại | **Web responsive** — mở bằng trình duyệt, cùng URL với desktop; **không cần cài app riêng** |
 
 **Tiết kiệm:** ~4 chạm + tìm menu → **1 chạm, < 4 giây**.
 
@@ -622,7 +620,7 @@ Loại nghỉ khác nhau chỉ khác **tham số**, không khác cấu trúc.
 |---|---|---|
 | **NL → đơn từ** | **Tự động điền từ log chấm công thật** (C-cố) | Hệ thống **đã biết** bạn check-in lúc 8:47 → đơn muộn 27 phút, ngày hôm qua. Chính xác hơn 100%, miễn phí, tức thì. |
 | **Copilot duyệt đơn** | **Chip điều kiện quyết định** (C7) | Rule check quota/hạn nộp/trùng ngày/thiếu giấy tờ → hiện chip ✅/❌ cạnh đơn. Rõ ràng, miễn phí, không bao giờ sai. |
-| **Gợi ý điểm OKR** | **Điểm đề xuất theo công thức** (@@C6@@) | Điểm suy ra từ tiến độ là **phép tính**, không phải suy luận. Công thức minh bạch, manager kiểm tra được. |
+| **Gợi ý điểm OKR** | **Điểm đề xuất theo công thức** (C8) | Điểm suy ra từ tiến độ là **phép tính**, không phải suy luận. Công thức minh bạch, manager kiểm tra được. |
 | **Check-in assist** | **Điền sẵn giá trị lần trước** | Nhân viên thấy đúng giá trị kỳ trước → sửa con số. 90% giá trị, tốn 0 chi phí suy luận. |
 | **Phát hiện bất thường chấm công** | **Quy tắc kiểm tra trực tiếp** | Đếm theo mẫu hành vi (check-in đúng giờ 30 ngày liên tiếp, cùng IP khác thiết bị) → nhanh, miễn phí, giải thích được. |
 | **Chatbot tra quy định** | **Command palette + trang quy định** (C3, C6) | Tìm bằng từ khóa trong nội dung đã lập chỉ mục → nhanh, chính xác, có ngày hiệu lực. |
@@ -649,12 +647,12 @@ giải thích được** — đúng những gì cần cho dữ liệu đi thẳn
 - [ ] **C6**: Dry-run — hộp thoại "Xem trước ảnh hưởng" (tích hợp trong C10)
 - [ ] **C6**: trang quy định tra cứu, **sinh từ cùng catalog với C10**, có ví dụ & ngày hiệu lực
 - [ ] **C7**: duyệt hàng loạt + chip lý do + chip điều kiện quyết định + sắp xếp theo rủi ro
-- [ ] **@@C6@@**: bảng so sánh review nhóm + điểm đề xuất theo công thức + cảnh báo rule
+- [ ] **C8**: bảng so sánh review nhóm + điểm đề xuất theo công thức + cảnh báo rule
 - [ ] **C10**: báo cáo tự động theo lịch — đặt lịch, người nhận, tham số lọc
 - [ ] **C11**: import Excel (map cột → preview → validate → báo cáo lỗi)
 - [ ] **C9**: onboarding tour + CTA cho mọi empty state
 - [ ] **C10**: catalog 19 quy định + lịch sử phiên bản + rollback + xem trước ảnh hưởng + form cấu hình dùng chung (xem `docs/06-business-rule-builder.md`)
-- [ ] **C11**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, 4 bước xác thực song song (xem `docs/07-business-mobile-punch.md`)
+- [ ] **C11**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, **5 bước xác thực song song (gồm khuôn mặt)**, camera hiển thị trực tiếp (xem `docs/07-business-mobile-punch.md`)
 - [ ] **C12**: ma trận 17 sự kiện × 3 vai trò + leo thang (3 ngày → QL, 2× SLA → HR) + gom thông báo cho quản lý
 - [ ] **C13**: catalog tham số loại nghỉ + 3 tầng kế thừa + ảnh chụp `applied_parameters` (xem `docs/02` §2.3)
 - [ ] **C14**: gợi ý kế thừa — form Tạo OKR hiện OKR đã duyệt của quản lý trực tiếp (cùng nhóm), bấm 1 chạm để chép; NV sửa tùy ý
