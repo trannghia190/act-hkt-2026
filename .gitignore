@@ -1,0 +1,37 @@
+# Local scratch scripts and temporary files
+scratch/
+
+# Office / Excel temporary lock files
+~$*
+*.tmp
+
+# Python cache & temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor & IDE artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs & dependencies
+**/node_modules/
+**/dist/
+**/target/
+**/.venv/
+venv/
+*.log
+.env
+.env.local
