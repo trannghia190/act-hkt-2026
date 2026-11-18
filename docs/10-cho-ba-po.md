@@ -61,9 +61,20 @@ Mở app  →  thấy ngay nút lớn VÀO/RA + trạng thái hôm nay
 **Điểm cần giữ khi làm UI:**
 - Màn hình này **chỉ có 2 thông tin** (giờ + trạng thái) và **1 nút**. Không form, không chọn ca.
 - Mỗi bước kiểm tra **hiện ngay khi bắt đầu**, không đợi xong — để người dùng không tưởng treo.
-- Nếu GPS lệch (trong tòa nhà lệch 20–50m) → **cho chấm, chỉ ghi cờ** cho HR xem sau. Không chặn.
-- Mất mạng → vẫn chấm được, đồng bộ lại sau. Nhưng **quá 24h thì không tin** (không ai chấm hộ người khác 3 ngày sau).
 - Nút phải **vừa tay** (112px) — nhân viên đi bộ, cầm túi, một tay.
+
+**4 lớp kiểm tra — không đạt lớp nào là CHẶN, không phải cảnh báo:**
+
+| Lớp | Quy tắc | Không đạt → |
+|---|---|---|
+| Thiết bị | Phải là máy đã đăng ký. **Hạn mức 1 máy, không ngoại lệ** | Chặn + nút [Đăng ký thiết bị] (chờ HR duyệt) |
+| Mạng nội bộ | Phải trong Wi-Fi/IP công ty | **Chặn** + gợi ý nối Wi-Fi công ty |
+| GPS | Phải trong **bán kính 150m** (cấu hình được 50–5000m) | **Chặn** + khoảng cách thật + bản đồ + [Đăng ký WFH] / [Thử lại] |
+| GPS tin cậy | Sai số ≤ 100m (cấu hình được) | **Chặn** + "Đứng gần cửa sổ rồi thử lại" |
+
+- **Ngoại lệ duy nhất:** ngày **WFH đã duyệt** → được chấm ngoài mạng và ngoài bán kính.
+- **Mất mạng → vẫn chấm được offline.** Đồng bộ lại khi có mạng. **Hạn offline mặc định 24 giờ** (cấu hình 1–72 giờ); quá hạn → entry bị từ chối, phải tạo đơn bổ sung công.
+- **Đơn từ KHÔNG cần GPS, KHÔNG cần mạng công ty.** Chỉ chấm công mới cần — vì đơn được duyệt bởi con người, còn chấm công là tự động ghi nhận.
 
 ### 3.2. Nhân viên gửi đơn
 
@@ -108,9 +119,15 @@ Bảng công tháng: 26 cột ngày + 19 cột tổng hợp
 Mỗi ô ngày dùng KÝ HIỆU GỐC của công ty: R (WFH) · AL (phép) · S (ốm) · 1.00 · 0.50 · R/0.50 …
 19 cột tổng hợp tự tính theo đúng công thức trong file gốc
 HR sửa ô sai → click vào ô, sửa tại chỗ, có audit log, cột tổng hợp tự tính lại
-Nhân viên xem bảng công của mình → có 2 ngày để khiếu nại
-HR chốt & khóa → sau đó đơn duyệt muộn sẽ áp vào kỳ lương kế tiếp, không sửa kỳ đã chốt
+Nhân viên xem bảng công của mình → **chọn tháng** (mặc định = tháng hiện tại)
+HR **công bố bảng công giữa kỳ** (ngày 11) → mở cửa sổ khiếu nại 2 ngày (đến 13/11)
+HR chốt & khóa → **kỳ đã khóa là bản cuối cùng**: đơn nhắm kỳ đó bị chặn từ lúc tạo, đơn đang chờ tự hủy. Không có điều chỉnh sau khóa.
 ```
+
+> **Vì sao công bố giữa kỳ chứ không đợi cuối tháng:** nếu đợi 01/12 mới công bố thì lỗi chấm công
+> ngày 05/11 phải chờ gần một tháng mới biết. Công bố ngày 11 → lỗi đầu tháng được khiếu nại
+> ngay, HR xử lý trong 2 ngày. Cả 3 mốc (`publish_day`, `dispute_window_days`, `lock_delay_days`)
+> đều cấu hình được trong rule `payroll_period`.
 
 **Vì sao quan trọng:** bảng xuất ra **giống hệt** file HR đang dùng hàng tháng → HR không phải map tay.
 
@@ -141,6 +158,19 @@ Phép tồn:      trước 01/04 mang toàn bộ sang năm sau
                trước 01/07 chỉ giữ 5 ngày
                từ 01/07 tồn = 0
 ```
+
+**Ngày vào làm ảnh hưởng tới lần cộng phép đầu tiên:**
+
+| Ngày vào làm | Tháng vào | Kỳ cộng đầu tiên |
+|---|---|---|
+| 01/11/2026 (≤ 15) | được cộng 1 ngày | 15/11/2026 |
+| **20/11/2026 (> 15)** | **không cộng** | **15/12/2026** |
+
+> Quy tắc là **hoãn 1 kỳ cộng**, không phải mất đi 1 ngày phép.
+> Tham số `leave_accrual.join_cutoff_day` (mặc định 15) — HR đổi được.
+
+**Trang số dư phép** hiển thị card cho từng nguồn cộng (phép năm · phép tồn · **phép thâm niên** ·
+**phép ốm** · phép chức vụ) kèm **note ngắn cách cộng phép** — để nhân viên tự hiểu, không phải hỏi HR.
 
 ---
 
@@ -185,6 +215,8 @@ Phép tồn:      trước 01/04 mang toàn bộ sang năm sau
 | **Individual Objectives — 80%** | Nhân viên | Tự khai hoàn toàn |
 
 **Kế thừa mang tính tham khảo:** objective business của **quản lý** hiện trong form Tạo OKR dưới dạng **gợi ý có sẵn** — bấm 1 chạm để chép vào, hoặc bỏ qua và tự viết. Nhân viên **được thêm, bớt, sửa** tùy ý.
+
+**Điểm TB chỉ tính phần cá nhân 80%** — gồm Business + People. Phần 20% mục tiêu công ty **không** tham gia điểm trung bình (PO chốt 17/11/2026).
 
 > **Không có "cây phân tầng OKR".** Lý do: Company objective là *copy* chứ không phải liên kết đa tầng → không có cây để vẽ.
 > Cấp trên của một nhân viên là **quản lý trực tiếp** — lấy từ cấu trúc nhóm, không cần màn hình riêng.
@@ -255,7 +287,7 @@ họ và tên · mã NV · vị trí · **thời gian công tác** (tự tính t
 | **C14** | **Chấm công tối ưu điện thoại** — 1 chạm < 4s, haptic, offline | NV | S05m | P0 |
 | **C15** | **Nhắc việc theo từng actor** — 17 sự kiện × 3 vai trò, đúng người, chống spam | Tất cả | S04m | P0 |
 | **C16** | **Loại nghỉ cấu hình được** — thêm/sửa loại mà không sửa code (3 tầng kế thừa) | HR | S30, S32 | P0 |
-| **C17** | **Gợi ý Key Result từ template** — form điền sẵn nội dung mẫu HR khai báo | NV | S21 | P0 |
+| **C17** | **Gợi ý kế thừa từ OKR quản lý** — bấm 1 chạm chép mục tiêu đã duyệt của quản lý | NV | S21 | P0 |
 | **C18** | **Tóm tắt báo cáo OKR** — dựng từ số liệu đã tính, kèm link tới nguồn | HR | S25 | P0 |
 
 > **Ngoài 18 mục này** còn "C-cố" — tự động điền đơn đi muộn từ log chấm công thật (S07).
@@ -288,11 +320,11 @@ HR đổi tất cả bằng form, có ngày hiệu lực + rollback:
 | 6 | 8 loại nghỉ cấu hình được + số dư tự tính + luật phép tồn | S30, S32, S34 |
 | 7 | Trình cấu hình quy định (form + versioning + rollback + dry-run) | S16–S18 |
 | 8 | Todo inbox + nhắc việc theo actor + command palette | S02, S03, S04, S04m |
-| 9 | OKR: 2 nhóm, thang 1–5, form 4 box, quy trình 5 bước, bảng tổng hợp 9 trường | S20–S25, S42–S46 |
+| 9 | OKR: 2 nhóm, thang 1–5, form 4 box, quy trình 5 bước, bảng tổng hợp 9 trường + cột Trạng thái | S20–S25, S42–S44 |
 | 10 | Quản lý nhân viên + cây quản lý (thấy ai duyệt cho ai) | S40, S41 |
 
 ### P1 — Nên có
-C8 duyệt hàng loạt (đã có UI, cần nối API) · C9 bảng so sánh review OKR · Team OKR board (S46)
+C8 duyệt hàng loạt (đã có UI, cần nối API) · C9 bảng so sánh review OKR
 
 ### P2 — Có thì tốt, không có cũng nộp
 C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
@@ -302,25 +334,29 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 
 ---
 
-## 7. Câu hỏi cần PO chốt
+## 7. Quyết định PO — đã chốt toàn bộ
 
-> **Đây là phần quan trọng nhất của tài liệu này.** Mỗi câu đều đang **chờ trả lời** —
-> đã có mặc định để demo không bị kẹt, nhưng cần xác nhận trước khi build tiếp.
+> **Cập nhật 17/11/2026: tất cả câu hỏi đã có đáp án.** Không còn điểm nào chờ quyết định.
 
-| # | Câu hỏi | Mặc định hiện tại | Ảnh hưởng nếu đổi |
+| # | Vấn đề | Quyết định | Ghi chú triển khai |
 |---|---|---|---|
-| 1 | **Phần 20% mục tiêu công ty** khi NV copy xuống — có được tính vào điểm TB không, hay chỉ tham khảo tới khi HR duyệt? | Chỉ tham khảo, **không tính** vào điểm TB | Nếu tính → cần thêm trường + luồng duyệt 20% |
-| 2 | **4 nhóm Business cố định** — đã bỏ theo quyết định "mọi thứ tự do". Nếu HR muốn so sánh giữa các bộ phận thì cần cố định lại. Còn giữ hay không? | Tự do | Ảnh hưởng lớn tới form đánh giá + bảng tổng hợp |
-| 3 | **3 mục tiêu People** — có bắt buộc phải đủ 3 mục tiêu không, hay tùy? | Tự do, không bắt buộc | Validate form + cách tính điểm TB khi thiếu nhóm |
-| 4 | **Xếp loại A/B/C/D** — ngưỡng mặc định 4.5 / 3.5 / 2.5 đúng chưa? Có dùng xếp loại trong bảng lương không? | 4.5 / 3.5 / 2.5 | Chỉ hiển thị, không ảnh hưởng engine |
-| 5 | **Chấm công ngoài mạng công ty** — chặn hay chỉ cảnh báo? (hiện: cảnh báo) | Cảnh báo, vẫn ghi công | Rủi ro gian lận |
-| 6 | **GPS lệch** (trong tòa nhà lệch 20–50m) — cho chấm + ghi cờ, hay chặn? Bán kính hiện 150m | Cho chấm + ghi cờ `low_gps_accuracy` | Chặn → nhân viên chấm công hụt |
-| 7 | **Chấm công offline** — cho phép bao lâu? (hiện: 24h) | 24 giờ | Rủi ro chấm hộ |
-| 8 | **Đăng ký thiết bị thứ 2** — 1 máy mặc định, xin thêm máy phải HR duyệt. Có ngoại lệ nào không? | Không có ngoại lệ, HR duyệt | Ảnh hưởng quy trình đổi máy |
-| 9 | **Bảng công bị khóa** — đơn duyệt sau khi chốt thì áp vào kỳ lương kế tiếp. Có cần hiện "điều chỉnh" riêng không? | Có, ghi vào kỳ hiện tại | Báo cáo lương |
-| 10 | **Thông báo** — cho tắt từng loại chưa, hay bắt buộc nhận việc quá hạn? | Tắt được trừ việc quá hạn | Trải nghiệm & tuân thủ |
+| 1 | **Chấm công ngoài mạng công ty** | **CHẶN** | Ngoại lệ duy nhất: ngày WFH đã duyệt. Không có "chấm rồi HR xác minh sau". |
+| 2 | **GPS ngoài bán kính cho phép** | **CHẶN** | Bán kính mặc định **150m** (cấu hình 50–5000m). Sai số GPS > 100m cũng chặn. |
+| 3 | **Chấm công offline** | **Cho phép, cấu hình được** — mặc định **24 giờ** | Hạn chỉnh 1–72 giờ. Quá hạn → entry bị từ chối khi đồng bộ. |
+| 4 | **Đăng ký thiết bị thứ 2** | **Không ngoại lệ** | Hạn mức 1 máy. Máy thứ 2 phải gửi yêu cầu → HR duyệt. |
+| 5 | **Đơn từ có cần GPS/mạng công ty không** | **KHÔNG** | Chỉ chấm công mới cần. Đơn gửi từ đâu cũng được — người duyệt quyết định. |
+| 6 | **OKR: nhóm Business/People cố định** | **Bỏ** — nhân viên tự khai hoàn toàn | Cấu trúc cấp trên chỉ mang tính **tham khảo** (gợi ý để chép, không bắt buộc). |
+| 7 | **Cây phân tầng OKR** | **Không làm màn hình riêng** | Người dùng chỉ cần biết *ai duyệt mình* — đã có ở hộp thư duyệt + "Cần làm". |
+| 8 | **Phần 20% mục tiêu công ty** | **KHÔNG tính vào điểm TB** | Điểm TB chỉ = (Business + People) ÷ 2 của phần cá nhân 80%. |
+| 9 | **Xếp loại A/B/C/D có dùng cho lương?** | **Không** — hệ thống không quản lý lương | Xếp loại chỉ để hiển thị/báo cáo; HR đổi ngưỡng tùy ý, không ảnh hưởng dữ liệu lương. |
+| 10 | **Bảng công đã khóa** | **Không có điều chỉnh sau khóa** | Kỳ đã chốt là bản cuối cùng: đơn nhắm kỳ đó **chặn khi tạo**, đơn đang chờ **tự hủy**. Bỏ model điều chỉnh. |
+| 11 | **Thông báo** | **Tắt/bật được TẤT CẢ loại** | Kể cả nhắc việc quá hạn và nhắc hạn duyệt. Tắt không làm mất việc — vẫn nằm trong "Cần làm". |
+| 12 | **Quản lý template OKR** | **Bỏ** | 2 nhóm Business/People đã cố định, nhân viên tự nhập từng đầu việc — không có gì để làm template. Gợi ý duy nhất: chép từ OKR của quản lý (C17). |
+| 13 | **Bảng công của tôi — có chọn tháng không?** | **CÓ, mặc định = tháng hiện tại** | Dropdown + nút ‹ ›; URL `?month=YYYY-MM`. Kỳ đã chốt → chỉ đọc, không khiếu nại được. |
+| 14 | **Khi nào mở cửa sổ khiếu nại?** | **Sau khi HR công bố — ngày 11 hàng tháng** | Cửa sổ 2 ngày (đến 13/11). Công bố giữa kỳ để lỗi đầu tháng được khiếu nại ngay, không chờ 01/12. HR chốt & khóa sau 3 ngày kết thúc kỳ (03/12). Cả 3 mốc cấu hình được trong rule `payroll_period`. |
 
----
+> **Ba quyết định #1–#3 là thay đổi hành vi so với bản trước** (từ "cảnh báo" → "chặn").
+> Đã cập nhật `docs/09-mobile-punch.md`, `docs/08-rule-builder.md`, `docs/02` và mockup S05/S05m.
 
 ## 8. Tiêu chí nghiệm thu
 
@@ -329,12 +365,16 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 **Nhân viên**
 - [ ] Mở app → thấy nút lớn VÀO/RA ngay, không phải đi qua menu
 - [ ] Bấm 1 chạm → có kết quả trong 4 giây, thấy từng bước kiểm tra lần lượt
-- [ ] Ngoài mạng công ty → có giải thích rõ, không phải lỗi chung chung
+- [ ] **Ngoài mạng công ty → bị chặn**, có gợi ý nối Wi-Fi công ty (không phải lỗi chung chung)
+- [ ] **Ngoài bán kính GPS → bị chặn**, hiện khoảng cách thật + 2 lối ra (WFH / Thử lại)
+- [ ] Ngày WFH đã duyệt → chấm được ngoài mạng và ngoài bán kính
+- [ ] Đơn từ gửi được từ bất kỳ đâu — không cần GPS, không cần mạng công ty
 - [ ] Đơn đi muộn vượt quota → bị chặn ngay lúc tạo, kèm số đã dùng
 - [ ] Bấm "Lưu nháp" → đơn không trừ quota, không hiện cho quản lý
 - [ ] Hạn 3 ngày tính đúng theo **giờ cần bổ sung**
 - [ ] Thấy số phép còn lại ngay trên trang "Cần làm"
 - [ ] Xem bảng công của mình → thấy bộ lọc "Cần duyệt" riêng cho mình
+- [ ] **Bảng công của tôi có chọn tháng, mặc định = tháng hiện tại**; chọn kỳ đã chốt thì chỉ xem được, không khiếu nại được
 - [ ] OKR: chấm 1–5 mỗi nhóm, điểm TB tự tính, không có ô nhập tay
 
 **Quản lý**
@@ -353,13 +393,16 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 - [ ] Sửa 1 ô bảng công → có audit log ghi field, giá trị cũ/mới, lý do, ai, lúc nào
 - [ ] Thêm loại nghỉ mới không cần sửa code
 - [ ] Bảng tổng hợp OKR có đủ 9 trường, cột thời gian công tác tự tính
+- [ ] Bảng tổng hợp có **cột Trạng thái** — đủ theo dõi ai chấm/chưa chấm/chờ QL, **không cần màn hình kanban riêng**
 - [ ] Đổi trưởng nhóm → đơn mới tự giao cho người mới
 
 ### Chất lượng chung
 - [ ] Mọi thao tác sửa dữ liệu công / điểm đều có audit log
 - [ ] Không màn hình nào trống trơn — luôn có CTA
 - [ ] Chạy được trên điện thoại (375px) và desktop
-- [ ] Nhân viên không tự cấu hình được bất cứ gì
+- [ ] Nhân viên không tự cấu hình được bất cứ gì (trừ tuỳ chỉnh thông báo của chính mình)
+- [ ] Tắt/bật được **mọi loại** thông báo — tắt không làm mất việc khỏi trang "Cần làm"
+- [ ] Kỳ công đã khóa không bao giờ bị sửa — đơn nhắm kỳ đó bị chặn từ lúc tạo
 
 ---
 
@@ -369,6 +412,6 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 |---|---|
 | Quy định gốc của công ty (nguồn sự thật) | `doc/Rule chấm công.xlsx` · `doc/OKR_doc.md` · `doc/2026 OKR _ Guidance.pdf` |
 | Quy trình OKR & form đánh giá | `doc/OKR_doc.md` |
-| Mockup để review (48 màn hình) | `mockups/index.html` |
+| Mockup để review (46 màn hình) | `mockups/index.html` |
 | Bản đồ tính năng tổng thể | `PLAN.md` |
 | Chi tiết cho dev | `docs/01`–`docs/09` |
