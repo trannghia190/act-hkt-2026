@@ -1,5 +1,6 @@
 # Local scratch scripts and temporary files
 scratch/
+scripts/
 
 # Office / Excel temporary lock files
 ~$*
