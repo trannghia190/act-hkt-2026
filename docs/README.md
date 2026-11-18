@@ -29,7 +29,7 @@ Danh mục toàn bộ 22 tài liệu kỹ thuật và đặc tả nghiệp vụ 
 | **07** | [07-business-mobile-punch.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/07-business-mobile-punch.md) | Đặc tả trải nghiệm chấm công 1 chạm di động (S05m): Tối ưu camera mobile, nhận diện khuôn mặt ngoại tuyến, xử lý cache offline 24h và đồng bộ khi có mạng. |
 | **08** | [08-business-tasks-checklist.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/08-business-tasks-checklist.md) | Danh mục bảng kiểm tra nhiệm vụ chi tiết (Checklist P0/P1/P2) phân theo từng giai đoạn phát triển và tiêu chí nghiệm thu acceptance criteria. |
 | **09** | [09-business-ba-po-guidelines.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/09-business-ba-po-guidelines.md) | Hướng dẫn chuyên sâu dành cho Business Analyst & Product Owner: Nguyên tắc giải quyết xung đột nghiệp vụ, tiêu chuẩn xử lý ngoại lệ và quy định báo cáo. |
-| **10** | [10-business-10-business-feature-comments.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/10-business-10-business-feature-comments.md) | Tổng hợp các ý kiến đóng góp, phản hồi người dùng và ghi chú mở rộng nghiệp vụ cho các chu kỳ cập nhật tiếp theo. |
+| **10** | [10-business-feature-comments.md](file:///Users/sang/Projects/App/act-hkt-2026/docs/10-business-feature-comments.md) | Tổng hợp các ý kiến đóng góp, phản hồi người dùng và ghi chú mở rộng nghiệp vụ cho các chu kỳ cập nhật tiếp theo. |
 
 ---
 
