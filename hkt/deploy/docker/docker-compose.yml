@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # Database PostgreSQL với extension pgvector hỗ trợ tìm kiếm vector khuôn mặt
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pulse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pulse_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pulse_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Rate-limiter (chống brute-force login)
+  redis:
+    image: redis:7-alpine
+    container_name: pulse-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Keycloak IAM Server (Xác thực OAuth2 / OIDC tập trung)
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: pulse-keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/pulse_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres123
+      KC_DB_SCHEMA: public
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8180:8080" # Web Admin Console: http://localhost:8180
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Backend 1: Core Service (Java Spring Boot 3 - ACT PULSE)
+  core-service:
+    build:
+      context: ../../backend/core-service
+      dockerfile: Dockerfile
+    container_name: pulse-core-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pulse_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      AI_FACE_SERVICE_URL: http://ai-face-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Backend 2: AI Face Recognition & OCR Service (Python FastAPI)
+  ai-face-service:
+    build:
+      context: ../../backend/ai-face-service
+      dockerfile: Dockerfile
+    container_name: pulse-ai-face-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/pulse_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend: React + TypeScript + TailwindCSS (Nginx container)
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: pulse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - core-service
+
+volumes:
+  postgres_data:
+  redis_data:
