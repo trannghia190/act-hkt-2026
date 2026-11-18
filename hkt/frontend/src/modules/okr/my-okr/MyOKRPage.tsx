@@ -475,13 +475,41 @@ export const MyOKRPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Modal: Thêm Mục Tiêu */}
+      {/* Modal: Thêm Mục Tiêu (Hỗ trợ Tính năng C17: Kế thừa từ Quản lý) */}
       <Modal
         isOpen={isAddObjOpen}
         onClose={() => setIsAddObjOpen(false)}
         title={`Thêm Mục Tiêu (Objective) - Quý ${selectedQuarter}/2026`}
       >
         <form onSubmit={handleAddObjective} className="space-y-4 text-xs">
+          {/* C17: Quick inheritance from manager OKR */}
+          <div className="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-lg space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-emerald-400">⚡ Gợi ý kế thừa từ OKR Quản lý (Tính năng C17)</span>
+              <span className="text-[10px] text-ink-muted">Lead: Phạm Minh Tuấn</span>
+            </div>
+            <p className="text-[11px] text-ink-muted">
+              Căn chỉnh mục tiêu cá nhân ăn khớp trực tiếp vào mục tiêu của đội ngũ kỹ thuật.
+            </p>
+            <div className="flex flex-col gap-1 pt-1">
+              {[
+                'Đảm bảo kiến trúc Microservice và hệ thống bảo mật Keycloak chuẩn',
+                'Tối ưu hóa P99 latency < 80ms và hoàn thiện 45 cột Timesheet',
+                'Nâng cao năng lực đội ngũ kỹ thuật & Tech Lead readiness'
+              ].map((mgrObj, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setNewObjTitle(mgrObj)}
+                  className="text-left p-1.5 rounded bg-surface hover:bg-emerald-500/10 border border-line text-ink transition-colors flex items-center justify-between text-[11px] cursor-pointer"
+                >
+                  <span className="truncate">{mgrObj}</span>
+                  <span className="text-[10px] text-emerald-400 font-bold shrink-0 ml-1">Kế thừa</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-ink-muted mb-1">Tiêu Đề Mục Tiêu (Inspiring &amp; Action-oriented)</label>
             <input

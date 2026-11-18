@@ -67,15 +67,21 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 interface SidebarProps {
-  currentModule: 'attendance' | 'okr' | 'shared';
-  onModuleChange: (moduleId: 'attendance' | 'okr' | 'shared') => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
 }
 
+export const getModuleFromPath = (pathname: string): 'attendance' | 'okr' | 'shared' => {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
+    return 'shared';
+  }
+  if (pathname.startsWith('/okr')) {
+    return 'okr';
+  }
+  return 'attendance';
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentModule,
-  onModuleChange,
   isOpenMobile = false,
   onCloseMobile,
 }) => {
@@ -83,33 +89,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Auto-sync module tab with active route to avoid desynchronization
-  useEffect(() => {
-    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/auth')) {
-      onModuleChange('shared');
-    } else if (location.pathname.startsWith('/okr')) {
-      onModuleChange('okr');
-    } else if (location.pathname.startsWith('/attendance') || location.pathname === '/todo') {
-      onModuleChange('attendance');
-    }
-  }, [location.pathname, onModuleChange]);
+  // Synchronously compute active module from current route (eliminates lag, flash & double-render)
+  const activeModuleId = getModuleFromPath(location.pathname);
+  const activeNav = SIDEBAR_CONFIG.find((m) => m.moduleId === activeModuleId) || SIDEBAR_CONFIG[0];
 
-  const activeNav = SIDEBAR_CONFIG.find((m) => m.moduleId === currentModule) || SIDEBAR_CONFIG[0];
-
-  // Seamless module tab switch with direct navigation to module landing page
+  // Seamless module tab switch with direct navigation
   const handleTabChange = (moduleId: 'attendance' | 'okr' | 'shared') => {
-    onModuleChange(moduleId);
+    if (moduleId === activeModuleId) return;
+
     if (moduleId === 'attendance') {
-      if (!location.pathname.startsWith('/attendance') && location.pathname !== '/todo') {
-        navigate('/attendance/checkin');
-      }
+      navigate('/todo');
     } else if (moduleId === 'okr') {
-      if (!location.pathname.startsWith('/okr')) {
-        navigate('/okr/dashboard');
-      }
+      navigate('/okr/dashboard');
     } else if (moduleId === 'shared') {
-      if (!location.pathname.startsWith('/admin') && !location.pathname.startsWith('/auth')) {
+      if (user?.role === 'ADMIN' || user?.role === 'HR_ADMIN') {
         navigate('/admin/employees');
+      } else {
+        navigate('/admin/org-tree');
       }
     }
   };
@@ -151,8 +147,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             type="button"
             onClick={() => handleTabChange('attendance')}
             className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
-              currentModule === 'attendance'
-                ? 'bg-accent text-white shadow-xs'
+              activeModuleId === 'attendance'
+                ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
                 : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
             }`}
           >
@@ -162,8 +158,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             type="button"
             onClick={() => handleTabChange('okr')}
             className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
-              currentModule === 'okr'
-                ? 'bg-accent text-white shadow-xs'
+              activeModuleId === 'okr'
+                ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
                 : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
             }`}
           >
@@ -173,8 +169,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             type="button"
             onClick={() => handleTabChange('shared')}
             className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
-              currentModule === 'shared'
-                ? 'bg-accent text-white shadow-xs'
+              activeModuleId === 'shared'
+                ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
                 : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
             }`}
           >

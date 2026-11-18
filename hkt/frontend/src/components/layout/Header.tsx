@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types/auth.types';
 import { Button } from '../common/Button';
-import { Menu, Search, Mail, Camera, LogOut } from 'lucide-react';
+import { Menu, Search, Camera, LogOut } from 'lucide-react';
+import { NotificationDropdown } from './NotificationDropdown';
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -70,6 +71,9 @@ export const Header: React.FC<HeaderProps> = ({
           <span>📧</span>
           <span>Gmail</span>
         </Button>
+
+        {/* Global Multi-channel Notification Center (S04) */}
+        <NotificationDropdown />
 
         {/* Face Enrollment Quick Button (S01-B) */}
         <button

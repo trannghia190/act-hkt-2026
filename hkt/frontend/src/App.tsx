@@ -11,7 +11,6 @@ import { LoginPage } from './modules/auth/LoginPage';
 import { AppRoutes } from './routes/AppRoutes';
 
 function MainLayout() {
-  const [currentModule, setCurrentModule] = useState<'attendance' | 'okr' | 'shared'>('attendance');
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isGmailModalOpen, setIsGmailModalOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -39,8 +38,6 @@ function MainLayout() {
     <div className="flex min-h-screen bg-canvas text-ink font-sans">
       {/* 1. Dynamic Modular Sidebar (Responsive with Mobile Slide-over Drawer) */}
       <Sidebar
-        currentModule={currentModule}
-        onModuleChange={setCurrentModule}
         isOpenMobile={isMobileDrawerOpen}
         onCloseMobile={() => setIsMobileDrawerOpen(false)}
       />

@@ -26,9 +26,20 @@ interface TimesheetRow {
 export const TimesheetPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState('11/2026');
   const [filterDept, setFilterDept] = useState('ALL');
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'LATE' | 'OT' | 'DEFICIT'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingCell, setEditingCell] = useState<{ row: TimesheetRow; field: string; val: any } | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
   const [isLocked, setIsLocked] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
 
   const [rows, setRows] = useState<TimesheetRow[]>([
     {
@@ -130,7 +141,55 @@ export const TimesheetPage: React.FC = () => {
     );
     setEditingCell(null);
     setOverrideReason('');
+    showToast(`Đã cập nhật thủ công ô công cho ${editingCell.row.fullName}`);
   };
+
+  const handleBulkApply = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountNum = parseFloat(bulkAdjustment.amount);
+    if (isNaN(amountNum) || selectedIds.length === 0) return;
+
+    setRows(prev =>
+      prev.map(r => {
+        if (!selectedIds.includes(r.id)) return r;
+        const currentVal = (r as any)[bulkAdjustment.field] || 0;
+        const newVal = Math.max(0, currentVal + amountNum);
+        return {
+          ...r,
+          [bulkAdjustment.field]: newVal,
+          totalPayrollDays: parseFloat((r.totalPayrollDays + amountNum).toFixed(1))
+        };
+      })
+    );
+    setIsBulkEditOpen(false);
+    showToast(`Đã sửa hàng loạt thành công cho ${selectedIds.length} nhân sự (Tính năng C4)!`);
+    setSelectedIds([]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === displayedRows.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(displayedRows.map(r => r.id));
+    }
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]));
+  };
+
+  // C5: Filter rows with strong filters & view preservation
+  const displayedRows = rows.filter(r => {
+    if (filterDept !== 'ALL' && r.department !== filterDept) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!r.code.toLowerCase().includes(q) && !r.fullName.toLowerCase().includes(q)) return false;
+    }
+    if (quickFilter === 'LATE' && r.lateCount === 0) return false;
+    if (quickFilter === 'OT' && (r.otWeekdayHours + r.otWeekendHours === 0)) return false;
+    if (quickFilter === 'DEFICIT' && r.actualWorkDays >= r.standardDays) return false;
+    return true;
+  });
 
   const handleLockPayroll = () => {
     setIsLocked(true);
@@ -195,7 +254,31 @@ export const TimesheetPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Toolbar */}
+      {/* Toast Alert */}
+      {toastMsg && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in">
+          ✓ {toastMsg}
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar (Feature C4) */}
+      {selectedIds.length > 0 && (
+        <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-300 shadow-lg animate-in slide-in-from-top duration-200">
+          <div className="flex items-center gap-2 font-bold">
+            <span>⚡ Đã chọn <strong>{selectedIds.length}</strong> nhân sự</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" onClick={() => setIsBulkEditOpen(true)}>
+              Sửa Hàng Loạt (C4)
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds([])}>
+              Bỏ chọn
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Toolbar (Feature C5) */}
       <Card>
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <div>
@@ -210,6 +293,7 @@ export const TimesheetPage: React.FC = () => {
               <option value="09/2026">Tháng 09 / 2026</option>
             </select>
           </div>
+
           <div>
             <label className="text-ink-muted mr-2">Phòng ban:</label>
             <select
@@ -223,8 +307,55 @@ export const TimesheetPage: React.FC = () => {
               <option value="Khối Kinh Doanh & Tiếp Thị">Khối Kinh Doanh & Tiếp Thị</option>
             </select>
           </div>
-          <div className="ml-auto text-[11px] text-ink-secondary">
-            💡 <em>Mẹo: Nhấp đúp vào ô bất kỳ để chỉnh sửa thủ công số ngày công</em>
+
+          <div className="flex-1 min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Tìm theo tên hoặc mã NV..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full p-1.5 border border-line rounded-lg bg-canvas text-xs"
+            />
+          </div>
+
+          {/* Quick Filter Chips (C5) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setQuickFilter('ALL')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                quickFilter === 'ALL' ? 'bg-accent text-white' : 'bg-canvas text-ink-muted hover:text-ink'
+              }`}
+            >
+              Tất cả ({rows.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickFilter('LATE')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                quickFilter === 'LATE' ? 'bg-amber-600 text-white' : 'bg-canvas text-amber-500 hover:text-amber-400'
+              }`}
+            >
+              ⚠️ Đi muộn
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickFilter('OT')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                quickFilter === 'OT' ? 'bg-sky-600 text-white' : 'bg-canvas text-sky-500 hover:text-sky-400'
+              }`}
+            >
+              ⚡ Có OT
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickFilter('DEFICIT')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                quickFilter === 'DEFICIT' ? 'bg-rose-600 text-white' : 'bg-canvas text-rose-500 hover:text-rose-400'
+              }`}
+            >
+              🔻 Thiếu công
+            </button>
           </div>
         </div>
       </Card>
@@ -235,8 +366,16 @@ export const TimesheetPage: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-3 px-3 sticky left-0 bg-canvas z-10 border-r border-line">Mã NV</th>
-                <th className="py-3 px-3 sticky left-[80px] bg-canvas z-10 border-r border-line">Họ Tên</th>
+                <th className="py-3 px-3 text-center sticky left-0 bg-canvas z-20 border-r border-line">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === displayedRows.length && displayedRows.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded cursor-pointer"
+                  />
+                </th>
+                <th className="py-3 px-3 sticky left-[36px] bg-canvas z-10 border-r border-line">Mã NV</th>
+                <th className="py-3 px-3 sticky left-[116px] bg-canvas z-10 border-r border-line">Họ Tên</th>
                 <th className="py-3 px-3">Phòng Ban / Nhóm</th>
                 <th className="py-3 px-3 text-center bg-gray-50 border-x border-line">Công Chuẩn</th>
                 <th className="py-3 px-3 text-center">Công Thực Tế</th>
@@ -253,12 +392,20 @@ export const TimesheetPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {rows.map(r => (
+              {displayedRows.map(r => (
                 <tr key={r.id} className="hover:bg-canvas/40 transition-colors">
-                  <td className="py-2.5 px-3 font-mono font-medium text-ink sticky left-0 bg-surface z-10 border-r border-line">
+                  <td className="py-2.5 px-3 text-center sticky left-0 bg-surface z-10 border-r border-line">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(r.id)}
+                      onChange={() => toggleSelectRow(r.id)}
+                      className="rounded cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-2.5 px-3 font-mono font-medium text-ink sticky left-[36px] bg-surface z-10 border-r border-line">
                     {r.code}
                   </td>
-                  <td className="py-2.5 px-3 font-medium text-ink sticky left-[80px] bg-surface z-10 border-r border-line">
+                  <td className="py-2.5 px-3 font-medium text-ink sticky left-[116px] bg-surface z-10 border-r border-line">
                     {r.fullName}
                   </td>
                   <td className="py-2.5 px-3 text-ink-secondary">
@@ -270,12 +417,14 @@ export const TimesheetPage: React.FC = () => {
                   <td
                     className="py-2.5 px-3 text-center font-medium cursor-pointer hover:bg-accent-soft"
                     onDoubleClick={() => setEditingCell({ row: r, field: 'actualWorkDays', val: r.actualWorkDays })}
+                    title="Nhấp đúp để chỉnh sửa ô này"
                   >
                     {r.actualWorkDays}
                   </td>
                   <td
                     className="py-2.5 px-3 text-center cursor-pointer hover:bg-accent-soft"
                     onDoubleClick={() => setEditingCell({ row: r, field: 'paidLeaveDays', val: r.paidLeaveDays })}
+                    title="Nhấp đúp để chỉnh sửa ô này"
                   >
                     {r.paidLeaveDays}
                   </td>
@@ -310,6 +459,61 @@ export const TimesheetPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Bulk Edit Modal (Feature C4) */}
+      <Modal
+        isOpen={isBulkEditOpen}
+        onClose={() => setIsBulkEditOpen(false)}
+        title={`Sửa Hàng Loạt Bảng Công Cho ${selectedIds.length} Nhân Sự (C4)`}
+      >
+        <form onSubmit={handleBulkApply} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-ink font-semibold mb-1">Chỉ tiêu công cần điều chỉnh</label>
+            <select
+              value={bulkAdjustment.field}
+              onChange={e => setBulkAdjustment({ ...bulkAdjustment, field: e.target.value })}
+              className="w-full p-2.5 border border-line rounded-lg bg-surface font-medium text-ink"
+            >
+              <option value="paidLeaveDays">Nghỉ Phép Hưởng Lương (Ngày)</option>
+              <option value="actualWorkDays">Công Đi Làm Thực Tế (Ngày)</option>
+              <option value="otWeekdayHours">Giờ Làm Thêm OT Ngày Thường (Giờ)</option>
+              <option value="penaltyLatePercent">Xóa Phạt Đi Muộn (Về 0%)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-ink font-semibold mb-1">Số lượng cộng thêm / điều chỉnh</label>
+            <input
+              type="number"
+              step="0.5"
+              value={bulkAdjustment.amount}
+              onChange={e => setBulkAdjustment({ ...bulkAdjustment, amount: e.target.value })}
+              className="w-full p-2.5 border border-line rounded-lg bg-surface font-bold text-ink"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-ink font-semibold mb-1">Lý do điều chỉnh (Audit Trail)</label>
+            <textarea
+              rows={3}
+              value={bulkAdjustment.reason}
+              onChange={e => setBulkAdjustment({ ...bulkAdjustment, reason: e.target.value })}
+              className="w-full p-2.5 border border-line rounded-lg bg-surface text-ink"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" type="button" onClick={() => setIsBulkEditOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" type="submit">
+              Xác Nhận Áp Dụng Hàng Loạt
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Edit Cell Modal */}
       {editingCell && (
