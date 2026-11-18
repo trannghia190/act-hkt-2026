@@ -616,7 +616,7 @@ chấm công (cho team)"* — quy định chính thức của công ty). `okr_ev
 
 **Lưu ý về tầng kế thừa của nghỉ phép:** `leave_type_defaults` (tầng 1) → tham số của loại nghỉ (tầng 2) →
 ghi đè của đơn (tầng 3). Ba rule `leave_*` ở trên đều cộng/trừ **số dư**; còn
-`leave_type_defaults` + `leave_request` điều khiển **điều kiện tạo đơn**. Xem `docs/02-bai-toan-1-cham-cong.md` §2.3.
+`leave_type_defaults` + `leave_request` điều khiển **điều kiện tạo đơn**. Xem `docs/02-business-attendance-time-tracking.md` §2.3.
 
 ## 4. UI — Trang cấu hình quy định
 

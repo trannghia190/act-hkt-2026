@@ -21,7 +21,7 @@
 | **C6** | **Trang quy định tra cứu** (quota, hạn nộp, luật phép tồn) | |
 | **C7** | **Duyệt hàng loạt + chip lý do + chip điều kiện quyết định** | |
 
-> **Toàn bộ bài toán 1 làm bằng rule** — tất định, truy vết được, giải thích được, không tốn phí. Xem `docs/04-convenience-features.md` §5.
+> **Toàn bộ bài toán 1 làm bằng rule** — tất định, truy vết được, giải thích được, không tốn phí. Xem `docs/04-business-convenience-features.md` §5.
 
 ## 2. Rule nghiệp vụ (lấy từ Mục 7 — quyết định của HR)
 
@@ -69,7 +69,7 @@
 > Nếu **tổng giờ làm ≥ 8h** và **cả check-in lẫn check-out đều nằm trong khung linh hoạt** → **tính đủ 1 ngày công**,
 > và **không phạt vì check-in muộn**. Nếu **tổng giờ làm < 8h** → tính theo **giờ thực tế** (không đủ 1 ngày công).
 > VD: thời gian làm việc 8 tiếng, khung check-in 8h–10h, khung check-out 17h–19h → check-in 09:30, check-out 18:00
-> → làm đủ 8h30 → **tính đủ 1 ngày công, không tính đi muộn**. Cấu hình chi tiết xem `docs/08-rule-builder.md` §3.1.8.
+> → làm đủ 8h30 → **tính đủ 1 ngày công, không tính đi muộn**. Cấu hình chi tiết xem `docs/06-business-rule-builder.md` §3.1.8.
 
 #### 2.1.1. Ba chi tiết dễ làm hỏng nghiệp vụ
 
@@ -104,7 +104,7 @@ HR ghi rõ: *"Đăng ký qua portal cần ghi rõ số phút (≤ 30) và ấn n
 
 > **Không hardcode tên người duyệt.** Luồng gắn với **nhóm**; ai là trưởng nhóm lấy từ
 > `Team.lead_id` — HR đổi trưởng nhóm là đổi người duyệt, không cần sửa code.
-> Cấu hình trong rule `approval_flow` (scope=team). Xem `docs/01-shared-core.md` §Tổ chức linh hoạt.
+> Cấu hình trong rule `approval_flow` (scope=team). Xem `docs/01-business-shared-core.md` §Tổ chức linh hoạt.
 
 → Trong rule catalog: `hr_approval` **scope=team** với `teams = ["CA", "Mobile"]` — có thêm **bước duyệt đầu theo trưởng nhóm** thay vì manager.
 → Tính năng **rút đơn** (`cancel` trong khi chờ duyệt) phải có cho mọi đơn, không chỉ sau khi đã gửi.
@@ -820,7 +820,7 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 
 ## 5. Tính năng tiện lợi
 
-> Chi tiết đầy đủ: `docs/04-convenience-features.md`. Ở đây chỉ mô tả phần thuộc bài toán 1.
+> Chi tiết đầy đủ: `docs/04-business-convenience-features.md`. Ở đây chỉ mô tả phần thuộc bài toán 1.
 
 ### C-cố. Tự động điền đơn đi muộn từ log chấm công thật ⭐
 

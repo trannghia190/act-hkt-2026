@@ -453,7 +453,7 @@ tối đa 60 phút. Đơn phải gửi trước 08:00.
 Hiệu lực từ 01/10/2026 · Phiên bản 2
 ```
 
-> **Điểm mạnh thiết kế:** khi HR đổi quota 2 → 3 lần/tháng qua C10, trang này **tự đổi theo**. Tài liệu **được sinh ra từ** phần mềm chứ không phải viết tay rồi lệch dần. Chi tiết: `docs/08-rule-builder.md`.
+> **Điểm mạnh thiết kế:** khi HR đổi quota 2 → 3 lần/tháng qua C10, trang này **tự đổi theo**. Tài liệu **được sinh ra từ** phần mềm chứ không phải viết tay rồi lệch dần. Chi tiết: `docs/06-business-rule-builder.md`.
 
 **Trang này cũng là nguồn cho command palette (C3).**
 
@@ -465,7 +465,7 @@ Hiệu lực từ 01/10/2026 · Phiên bản 2
 1. **Trang cấu hình** cho HR — một mẫu form dùng chung, điền theo các trường của catalog, có lịch sử phiên bản, ngày hiệu lực, hoàn tác, xem trước ảnh hưởng.
 2. **Trang tra cứu** cho nhân viên (C6) — sinh nội dung từ mẫu câu chữ trong catalog với giá trị đang áp dụng.
 
-**Chi tiết đầy đủ: `docs/08-rule-builder.md`.** Tóm tắt giao diện:
+**Chi tiết đầy đủ: `docs/06-business-rule-builder.md`.** Tóm tắt giao diện:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -564,7 +564,7 @@ Không form, không chọn ca, không nút "Xác nhận" thêm.
 
 **Tiết kiệm:** ~4 chạm + tìm menu → **1 chạm, < 4 giây**.
 
-> **Spec đầy đủ:** `docs/09-mobile-punch.md` · **Màn hình:** S05m
+> **Spec đầy đủ:** `docs/07-business-mobile-punch.md` · **Màn hình:** S05m
 
 ### C12. Nhắc việc theo từng actor — 17 sự kiện × 3 vai trò ⭐ P0
 
@@ -612,7 +612,7 @@ Loại nghỉ khác nhau chỉ khác **tham số**, không khác cấu trúc.
 
 **Tiết kiệm:** HR thêm loại nghỉ mới: phải nhờ IT sửa & triển khai → **1 form, hiệu lực ngay**.
 
-> **Spec đầy đủ:** `docs/02-bai-toan-1-cham-cong.md` §2.3 · **Màn hình:** S30, S32
+> **Spec đầy đủ:** `docs/02-business-attendance-time-tracking.md` §2.3 · **Màn hình:** S30, S32
 
 ---
 
@@ -653,8 +653,8 @@ giải thích được** — đúng những gì cần cho dữ liệu đi thẳn
 - [ ] **C10**: báo cáo tự động theo lịch — đặt lịch, người nhận, tham số lọc
 - [ ] **C11**: import Excel (map cột → preview → validate → báo cáo lỗi)
 - [ ] **C9**: onboarding tour + CTA cho mọi empty state
-- [ ] **C10**: catalog 19 quy định + lịch sử phiên bản + rollback + xem trước ảnh hưởng + form cấu hình dùng chung (xem `docs/08-rule-builder.md`)
-- [ ] **C11**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, 4 bước xác thực song song (xem `docs/09-mobile-punch.md`)
+- [ ] **C10**: catalog 19 quy định + lịch sử phiên bản + rollback + xem trước ảnh hưởng + form cấu hình dùng chung (xem `docs/06-business-rule-builder.md`)
+- [ ] **C11**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, 4 bước xác thực song song (xem `docs/07-business-mobile-punch.md`)
 - [ ] **C12**: ma trận 17 sự kiện × 3 vai trò + leo thang (3 ngày → QL, 2× SLA → HR) + gom thông báo cho quản lý
 - [ ] **C13**: catalog tham số loại nghỉ + 3 tầng kế thừa + ảnh chụp `applied_parameters` (xem `docs/02` §2.3)
 - [ ] **C14**: gợi ý kế thừa — form Tạo OKR hiện OKR đã duyệt của quản lý trực tiếp (cùng nhóm), bấm 1 chạm để chép; NV sửa tùy ý

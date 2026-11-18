@@ -383,7 +383,7 @@ C10 báo cáo tự động · C11 import Excel · C9 onboarding tour
 | 24 | **Bảng công có bao nhiêu cột?** | **53 cột** | Khớp đúng file export thật của công ty — có ký hiệu gốc, không tự diễn giải. |
 
 > **Ba quyết định #1–#3 là thay đổi hành vi so với bản trước** (từ "cảnh báo" → "chặn").
-> Đã cập nhật `docs/09-mobile-punch.md`, `docs/08-rule-builder.md`, `docs/02` và mockup S05/S05m.
+> Đã cập nhật `docs/07-business-mobile-punch.md`, `docs/06-business-rule-builder.md`, `docs/02` và mockup S05/S05m.
 >
 > **Quyết định #15–#24** là vòng chốt mới: **bỏ** ủy quyền (#15) · **bỏ** cờ hiệu bất thường (#16) ·
 > quy định chỉ áp dụng toàn công ty (#17) · bỏ dry-run, thay bằng confirm khi lưu (#18) ·

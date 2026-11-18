@@ -1,7 +1,7 @@
 # ACT-HKT 2026 — TÀI LIỆU QUẢN TRỊ TRẠNG THÁI & NHẬT KÝ THAY ĐỔI DỰ ÁN
 *(PROJECT STATUS TRACKER & LIVING CHANGELOG)*
 
-> **Phiên bản tài liệu**: `v2.1.2`  
+> **Phiên bản tài liệu**: `v2.2.0`  
 > **Cập nhật lần cuối**: `18/11/2026`  
 > **Hệ thống**: **ACT-HKT 2026 (Worklife & Performance Management System)**  
 > **Áp dụng cho**: Toàn bộ dự án gồm Frontend UI, Core Service Backend (Java Spring Boot), AI Face Biometric Service (Python OpenCV), Cơ sở dữ liệu và Cơ sở hạ tầng Docker/Kubernetes.
@@ -40,13 +40,28 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 ### 2.2. Thống Kê Mức Độ Sẵn Sàng Tính Năng (Feature Readiness)
 
-- **Tổng số tính năng được thiết kế**: **59 tính năng**
-- **Sẵn sàng Test & Verify (Ready for Test & Verify)**: **59 tính năng (100% các màn hình chính đã được hoàn thiện độc lập)**
+- **Tổng số tính năng được thiết kế & phân rã chi tiết**: **121 micro-features** (được theo dõi chi tiết tại [`ACT_HR_2026_Project_Tracking.xlsx`](../ACT_HR_2026_Project_Tracking.xlsx)).
+- **Sẵn sàng Test & Verify (Ready for Test & Verify)**: **121/121 tính năng (100% đã có API endpoint, UI flow và QA steps độc lập)**.
 - **Khóa thiết bị phần hardware Native app**: Chờ tích hợp gói mobile wrapper (React Native / Capacitor)
 
 ---
 
 ## 3. NHẬT KÝ THAY ĐỔI VỀ MẶT NGHIỆP VỤ (BUSINESS CHANGELOG)
+
+### [2026-11-18] — Bản Cập Nhật v2.2.0 (Chuẩn Hóa Đánh Số 22 Tài Liệu Hệ Thống & Nâng Cấp Tracking Excel Đầy Đủ Expected Behaviour)
+- **Chuẩn Hóa Thứ Tự & Đánh Số Tuần Tự 22 Tài Liệu (`docs/`)**:
+  - Loại bỏ hoàn toàn sự trùng lặp chỉ số (trước đây có 2 bộ tài liệu cùng mang đầu số 01, 02, 03...).
+  - Phân tách rành mạch thành 2 nhóm chuyên biệt:
+    - **Nhóm 1: Nghiệp vụ & Đặc tả yêu cầu sản phẩm BA/PO (`01` đến `10`)**: Shared Core, Chấm công, OKR, Tiện ích C1–C18, Data Model, Rule Builder, Mobile Punch, Tasks Checklist, BA/PO Guidelines, Feature Comments.
+    - **Nhóm 2: Kiến trúc kỹ thuật & Kỹ thuật triển khai (`11` đến `22`)**: Architecture Overview, Auth & User Management, Attendance & Check-in, Requests Workflow, Leave Balance Accrual, Timesheet Grid 45 Columns, OKR Appraisal, Rule Engine Configuration, Notifications & Todo Inbox, API Spec & DB Schema, Code Conventions, System Changelog.
+  - Cập nhật toàn diện liên kết chéo nội bộ trong `docs/README.md` và các tài liệu markdown.
+- **Nâng Cấp Toàn Diện File Theo Dõi Tiến Độ [`ACT_HR_2026_Project_Tracking.xlsx`](../ACT_HR_2026_Project_Tracking.xlsx)**:
+  - Bổ sung cột mới bắt buộc: **`Expected Behaviour (Cách hệ thống xử lý)`** làm rõ 4 yếu tố cốt lõi:
+    - **Input**: Dữ liệu đầu vào, tham số query, form body JSON, token phạm vi, tọa độ GPS, ảnh sinh trắc học.
+    - **Xử lý hệ thống & Lưu trữ**: Các bảng CSDL được insert/update, các cột trạng thái, thuật toán tính toán, quy tắc xác thực, cơ chế caching Redis, gửi email qua Gmail SMTP và ghi nhật ký kiểm toán.
+    - **Output**: HTTP status code, payload JSON trả lời, thông báo giao diện (Toast, Banner), điều hướng màn hình.
+    - **Kết quả cuối cùng**: Trạng thái thực tế đạt được của hệ thống và người dùng.
+  - Phân rã sâu thành **121 micro-features** độc lập trải dài trên 3 Tab chuyên biệt (54 tính năng Nền tảng dùng chung, 41 tính năng Chấm công & Đơn từ, 26 tính năng Quản trị OKR).
 
 ### [2026-11-18] — Bản Cập Nhật v2.1.2 (Chuẩn Hóa Danh Mục Menu, Phân Quyền & Điều Hướng Mượt Mà)
 - **Triệt Tiêu Trùng Lặp Menu Giữa Các Phân Hệ**:
