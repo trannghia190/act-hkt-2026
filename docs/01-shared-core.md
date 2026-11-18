@@ -96,13 +96,31 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 | 2 | Approver hiện tại | Người đang giữ task duyệt của đơn | — |
 | 3 | HR / Admin | `hr`, `admin` | Luôn được xem, bất kể cấu hình bước duyệt |
 | 4 | Viewer theo `viewer_scope` của bước duyệt hiện tại | Người khớp với phạm vi viewer của bước đang chạy | Xem bảng cấu hình bước duyệt bên dưới |
-| 5 | **Người được ủy quyền** (Delegation) | Người đang thay approver trong khoảng ủy quyền | Có quyền **như approver** — tức là xem đơn, duyệt, và chịu trách nhiệm SLA |
 
 > Các nguồn quyền được kiểm tra theo thứ tự, **thỏa điều kiện bất kỳ là được xem**.
 
 > **Lưu ý bảo mật:** `viewer_scope` mặc định **KHÔNG** cho xem file đính kèm
 > (`viewer_see_attachments=False`) — vì đơn nghỉ ốm có giấy khám là dữ liệu nhạy cảm.
 > Và `include_reason=False` nếu HR muốn giấu lý do từ chối khỏi nhóm.
+
+#### 3c. Quyền xem lịch nhóm
+
+> **Lịch nhóm** (lịch làm việc / WFH / nghỉ của các thành viên) là **màn hình riêng** — quyền xem
+> được quy định **riêng theo vai trò**, không dùng chung `visible_user_ids` (vốn là mặc định
+> "chỉ mình + cấp dưới trực tiếp"), vì người cần xem lịch đồng đội còn cả thành viên ngang hàng.
+
+| Vai trò | Xem được lịch của ai | Cơ chế |
+|---|---|---|
+| **HR** | **Toàn công ty** | Không giới hạn — trừ khi bị gán `UserScope(scope_type=team)`, khi đó chỉ thấy các nhóm được gán |
+| **Manager** | **Các thành viên mình quản lý trực tiếp** | Theo `User.manager_id` trỏ tới mình (+ chính mình) |
+| **Team lead** | **Các thành viên trong nhóm mình phụ trách** | Theo `Team.lead_id` — nhóm mà mình là trưởng |
+| **Member** | **Các thành viên trong team của mình** | Theo `TeamMember` — các nhóm mình là thành viên |
+
+> **Giới hạn rõ ràng:**
+> - Member **không** thấy lịch của các team khác — chỉ team của mình.
+> - Manager **không** thấy lịch của đồng nghiệp ngang hàng (cùng cấp, không phải cấp dưới trực tiếp).
+> - Xem lịch **không** đồng nghĩa với xem đơn cá nhân của người đó — đơn vẫn phải qua
+>   `can_view_subject` ở §3b.
 
 ### Thiết bị đăng ký (chống chấm công hộ — Mục 6.1)
 
@@ -126,20 +144,20 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 | `is_additional` | Máy thêm (ngoài hạn mức gốc) | Máy thêm được duyệt khi nhân viên đã đủ hạn mức thiết bị. Gỡ máy này → hạn mức tự động về lại mặc định |
 | `granted_until` | Hạn dùng tuỳ chọn cho máy thêm | Có thể để trống = dùng vô thời hạn |
 
-> Với `max_devices = 1` (mặc định) thì mỗi user có đúng 1 thiết bị
-> đang hoạt động. Thêm thiết bị mới → tạo yêu cầu chờ HR duyệt.
+> Với `max_devices = 2` (mặc định) thì mỗi user có tối đa **2 thiết bị** đang hoạt động.
+> Thêm thiết bị thứ 3 → tạo yêu cầu kèm lý do, chờ HR duyệt.
 
 > **Không có bảng "ngoại lệ" riêng.** Hạn mức thiết bị được suy ra từ chính danh sách thiết bị
 > đang hoạt động — nên không thể lệch với thực tế. Xem `device_allowance` bên dưới.
 
 - Nhân viên đăng ký thiết bị lần đầu (web tự sinh fingerprint: canvas + screen + user-agent hash).
-- Mỗi user tối đa **1 thiết bị đang hoạt động** (`max_devices`, cấu hình được trong C13).
+- Mỗi user tối đa **2 thiết bị đang hoạt động** (`max_devices`, cấu hình được trong C10).
 - Chấm công từ thiết bị chưa được duyệt → **từ chối** + ghi log.
 - **Thiết bị mới không tự đăng ký được** — luôn tạo yêu cầu chờ HR duyệt (xem §2.1).
 
 ### 2.1. Vòng đời thiết bị — đăng ký / duyệt / thay thế / thu hồi
 
-Vì `max_devices = 1`, **quy trình đổi máy là hành trình phổ biến**, không phải trường hợp hiếm.
+Vì `max_devices = 2`, **quy trình đổi máy là hành trình phổ biến**, không phải trường hợp hiếm.
 Thiết kế phải đảm bảo nhân viên **không bao giờ mất công** vì việc đổi máy.
 
 > **Luồng đăng ký thiết bị mới:**
@@ -147,34 +165,34 @@ Thiết kế phải đảm bảo nhân viên **không bao giờ mất công** v�
 > 1. Nhân viên bấm "Đăng ký thiết bị mới".
 > 2. Hệ thống tạo **yêu cầu thiết bị** ở trạng thái *"chờ duyệt"*.
 > 3. Đồng thời tạo **ApprovalTask cho HR** (approval engine dùng chung).
-> 4. **HR duyệt** → thiết bị chuyển sang *"đang hoạt động"*. Nếu nhân viên **đã đủ hạn mức thiết bị** (mặc định 1 máy) → máy này được đánh dấu là **"máy thêm"** và hạn mức **tăng thêm 1**.
+> 4. **HR duyệt** → thiết bị chuyển sang *"đang hoạt động"*. Nếu nhân viên **đã đủ hạn mức thiết bị** (mặc định 2 máy) → máy này được đánh dấu là **"máy thêm"** và hạn mức **tăng thêm 1**.
 > 5. **HR từ chối** → thiết bị chuyển sang *"đã thu hồi"* kèm lý do, nhân viên nhận thông báo.
 
 **Nhân viên tự gỡ thiết bị:**
 
 > Nhân viên bấm "Gỡ thiết bị" → thiết bị chuyển sang *"đã thu hồi"* (lý do: **nhân viên tự gỡ**).
-> Nếu đó là **máy thêm** → hạn mức **tự động về lại mặc định (1 máy)**.
+> Nếu đó là **máy thêm** → hạn mức **tự động về lại mặc định (2 máy)**.
 
 > Đây là cách đổi máy thông thường: **gỡ máy cũ + gửi yêu cầu thêm máy mới** →
-> HR duyệt → nhân viên lại có đúng 1 máy. Không cần khái niệm "ngoại lệ" ở bất kỳ đâu.
+> HR duyệt → nhân viên lại có đủ 2 máy. Không cần khái niệm "ngoại lệ" ở bất kỳ đâu.
 
 **Hạn mức thiết bị được tính động — không có bảng riêng:**
 
 | Khái niệm | Cách tính | Ý nghĩa |
 |---|---|---|
-| `device_allowance` | Hạn mức gốc (mặc định 1) + số máy thêm đang hoạt động | Số thiết bị nhân viên được dùng đồng thời |
-| Số máy thêm đang hoạt động | Đếm các thiết bị có `status = active` **và** `is_additional = true` của nhân viên đó | Tự động về 1 khi nhân viên gỡ máy thêm |
+| `device_allowance` | Hạn mức gốc (mặc định 2) + số máy thêm đang hoạt động | Số thiết bị nhân viên được dùng đồng thời |
+| Số máy thêm đang hoạt động | Đếm các thiết bị có `status = active` **và** `is_additional = true` của nhân viên đó | Tự động về 2 khi nhân viên gỡ máy thêm |
 
-**Rủi ro của việc dùng 2 máy — và tại sao vẫn an toàn:**
+**Rủi ro của việc dùng nhiều máy — và tại sao vẫn an toàn:**
 
-| | 1 máy (mặc định) | 2 máy (HR duyệt) |
+| | 2 máy (mặc định) | 3 máy (HR duyệt) |
 |---|---|---|
-| Rủi ro share account | Thấp — 2 người share thì chỉ 1 người được công 1 ngày | Cao hơn — 2 máy đều hợp lệ cho 1 account |
-| Cần bù lại bằng | — | `max_checkin_per_day = 1` **vẫn giữ** → 2 người share vẫn chỉ công được 1 người/ngày |
-| Nên dùng khi | Mặc định | Nhân viên thật sự cần 2 máy (điện thoại + iPad khi đi công tác) |
+| Rủi ro share account | Thấp — 2 người share thì chỉ 1 người được công 1 ngày | Cao hơn — 3 máy đều hợp lệ cho 1 account |
+| Cần bù lại bằng | — | `max_checkin_per_day = 1` **vẫn giữ** → nhiều người share vẫn chỉ công được 1 người/ngày |
+| Nên dùng khi | Mặc định | Nhân viên thật sự cần 3 máy (điện thoại + máy tính bản + iPad khi đi công tác) |
 
-> **Lưu ý quan trọng:** cho phép máy thứ 2 **không phá vỡ** lớp bảo vệ chính
-> (`max_checkin_per_day = 1`). Ngay cả khi nhân viên có 2 máy được duyệt, 2 người share
+> **Lưu ý quan trọng:** cho phép máy thứ 3 **không phá vỡ** lớp bảo vệ chính
+> (`max_checkin_per_day = 1`). Ngay cả khi nhân viên có 3 máy được duyệt, nhiều người share
 > tài khoản đó vẫn chỉ có 1 lượt công/ngày. Đây là **rủi ro có kiểm soát**, không phải lỗ hổng.
 
 **Ba trường hợp cần xử lý riêng:**
@@ -213,9 +231,9 @@ cho trường hợp thiết bị bị trộm và dùng lâu dài mà không ai n
 
 ### 2.2. Yêu cầu thêm thiết bị (một flow duy nhất)
 
-**Không có khái niệm "ngoại lệ" trong hệ thống.** Nhân viên muốn thêm máy thứ hai
-→ gửi **yêu cầu thêm thiết bị** → HR duyệt → dùng được 2 máy. Bỏ máy thứ hai →
-hạn mức **tự động về lại 1 máy**.
+**Không có khái niệm "ngoại lệ" trong hệ thống.** Nhân viên muốn thêm máy thứ ba
+→ gửi **yêu cầu thêm thiết bị** (kèm lý do) → HR duyệt → dùng được 3 máy. Bỏ máy thứ ba →
+hạn mức **tự động về lại 2 máy**.
 
 **Quy tắc khi gửi yêu cầu thêm thiết bị:**
 
@@ -241,27 +259,27 @@ hạn mức **tự động về lại 1 máy**.
 | Quy tắc | Nội dung |
 |---|---|
 | Thiết bị chuyển "đã thu hồi" | `status = revoked`, `revoked_at` = thời điểm gỡ, `revoke_reason` = "Nhân viên tự gỡ" |
-| Hạn mức tự về 1 máy | Không cần làm gì thêm — `device_allowance` tự đếm lại |
+| Hạn mức tự về 2 máy | Không cần làm gì thêm — `device_allowance` tự đếm lại |
 | Ghi audit log | Mọi thao tác gỡ đều được ghi nhật ký |
 
 **Quy trình đổi máy thông thường (không cần khái niệm ngoại lệ):**
 
-1. Nhân viên gỡ máy cũ → hạn mức về 1 máy, máy cũ `status = revoked`.
+1. Nhân viên gỡ máy cũ → hạn mức về 2 máy, máy cũ `status = revoked`.
 2. Nhân viên gửi yêu cầu thêm máy mới (kèm lý do).
 3. HR duyệt → máy mới `status = active`.
-4. Nhân viên lại có đúng 1 máy đang hoạt động.
+4. Nhân viên lại có đủ 2 máy đang hoạt động.
 
 **Yêu cầu khi HR duyệt:**
 - Bắt buộc có `reason` từ nhân viên (hiển thị trong audit log và trên màn hình quản lý).
 - HR **có thể đặt hạn** cho máy được duyệt (`granted_until`) — VD: chỉ cho công tác xa đến 31/12.
-- HR có thể **thu hồi** bất kỳ lúc nào → máy bị `revoked` ngay, hạn mức tự về 1.
+- HR có thể **thu hồi** bất kỳ lúc nào → máy bị `revoked` ngay, hạn mức tự về 2.
 - Mọi thao tác (duyệt/thu hồi/gỡ) đều ghi audit log.
 
 **Job bảo trì hạn mức:** hằng ngày → máy thêm đã quá `granted_until` → `revoked`
-(`revoke_reason = "Hết hạn được cấp"`) + thông báo nhân viên. Hạn mức tự về 1 máy.
+(`revoke_reason = "Hết hạn được cấp"`) + thông báo nhân viên. Hạn mức tự về 2 máy.
 
 > **Vì sao không có bảng riêng:** hạn mức suy ra từ chính danh sách thiết bị đang hoạt động
-> → không bao giờ lệch với thực tế. Nhân viên tự gỡ máy là hạn mức tự về 1 — không cần
+> → không bao giờ lệch với thực tế. Nhân viên tự gỡ máy là hạn mức tự về 2 — không cần
 > ai phải cập nhật gì thêm.
 
 ### Thuật ngữ — 3 khái niệm dễ nhầm, gọi khác nhau trong UI
@@ -481,24 +499,12 @@ Nguồn dữ liệu gốc: file quy định chấm công của công ty (`doc/Ru
 7. Phát sự kiện (event) → phân hệ tương ứng cập nhật bảng công / điểm OKR.
 8. Gửi **notification** cho nhân viên.
 
-**Ủy quyền (`Delegation`)** — khi quản lý vắng:
-
-| Trường | Ý nghĩa | Ràng buộc / giá trị |
-|---|---|---|
-| `id` | Định danh ủy quyền | Khóa chính |
-| `delegator_id` | Người ủy quyền | Người đang giữ quyền duyệt |
-| `delegate_id` | Người được ủy quyền | Tham chiếu `User` |
-| `starts_at` | Bắt đầu hiệu lực | Bắt buộc |
-| `ends_at` | Kết thúc hiệu lực | Bắt buộc |
-| `reason` | Lý do ủy quyền | Bắt buộc |
-| `is_active` | Đang hiệu lực | Có / không |
-
 **Thứ tự ưu tiên khi giao task duyệt:**
 
 | Ưu tiên | Nguồn người duyệt |
 |---|---|
-| 1 | **Đại diện đang hiệu lực** (`delegate` trong khoảng `starts_at`–`ends_at`) |
-| 2 | `manager_id` hiện tại của người gửi |
+| 1 | `manager_id` hiện tại của người gửi |
+| 2 | Trưởng nhóm (`Team.lead_id`) của nhóm người gửi — nếu có bước duyệt trưởng nhóm |
 | 3 | HR theo scope |
 
 **Nhắc quá hạn (Mục 3):** job hàng giờ quét task `pending` có `assigned_at + sla_hours < now` → gửi notification nhắc người duyệt + gửi HR nếu quá 2× SLA.
@@ -604,7 +610,7 @@ Nguồn dữ liệu gốc: file quy định chấm công của công ty (`doc/Ru
 
 Dùng chung cho:
 - Phân hệ CMS (thông báo / chính sách / biểu mẫu) — bài toán 3, không xây trong hackathon này nhưng schema đã sẵn sàng.
-- **Trang quy định tra cứu (C7)**: render trực tiếp từ `Document` + `RuleConfig` → nhân viên tự tra "quota đi muộn là bao nhiêu" mà không phải hỏi HR.
+- **Trang quy định tra cứu (C6)**: render trực tiếp từ `Document` + `RuleConfig` → nhân viên tự tra "quota đi muộn là bao nhiêu" mà không phải hỏi HR.
 - Nguồn cho command palette (C3).
 
 ### Action Center — Todo Inbox (C1)
@@ -675,7 +681,9 @@ Thông báo & nhắc việc **đẩy tới người dùng ngay (realtime)** — 
 - [ ] Đăng nhập được bằng Google (demo) và user/pass (fallback)
 - [ ] Menu hiển thị đúng theo 4 vai trò, URL không thuộc vai trò trả 403
 - [ ] Manager chỉ thấy dữ liệu cấp dưới trực tiếp; HR thấy toàn công ty; HR giới hạn theo chi nhánh không thấy chi nhánh khác
-- [ ] Approval flow 2 bước (manager → HR) chạy được với delegation
+- [ ] **Lịch nhóm**: HR xem toàn công ty · Manager xem cấp dưới trực tiếp (`manager_id`) · Team lead xem nhóm mình phụ trách (`Team.lead_id`) · Member xem team của mình (`TeamMember`) — **không** thấy team khác
+- [ ] **Thiết bị**: mặc định **2 thiết bị**; thiết bị thứ 3 phải gửi yêu cầu kèm lý do → HR duyệt
+- [ ] Approval flow 2 bước (manager → HR) chạy được
 - [ ] Task quá SLA sinh notification
 - [ ] Mọi thao tác duyệt/từ chối/sửa điểm đều có bản ghi audit log
 - [ ] Notification đẩy tức thời lên badge (không cần refresh)

@@ -17,9 +17,9 @@
 | **C-cố** | **Tự động điền đơn đi muộn từ log chấm công thật** | Điền sẵn ngày + số phút chính xác |
 | **C4** | **HR sửa thẳng ô sai trong bảng công + sửa hàng loạt** | |
 | **C5** | **Bộ lọc mạnh + lưu view** | |
-| **C6** | **Dry-run rule** — xem trước ảnh hưởng trước khi áp dụng | |
-| **C7** | **Trang quy định tra cứu** (quota, hạn nộp, luật phép tồn) | |
-| **C8** | **Duyệt hàng loạt + chip lý do + chip điều kiện quyết định** | |
+| **C6** | **Xác nhận khi lưu quy định** — hiện thay đổi gì · ngày hiệu lực · ai bị ảnh hưởng | |
+| **C6** | **Trang quy định tra cứu** (quota, hạn nộp, luật phép tồn) | |
+| **C7** | **Duyệt hàng loạt + chip lý do + chip điều kiện quyết định** | |
 
 > **Toàn bộ bài toán 1 làm bằng rule** — tất định, truy vết được, giải thích được, không tốn phí. Xem `docs/04-convenience-features.md` §5.
 
@@ -36,13 +36,14 @@
 | **Giờ check-out** | **17h00 → 18h30** | `RuleConfig` scope=shift |
 | **Giờ nghỉ trưa** | **12:00 → 13:00** (không tính vào giờ làm) | `RuleConfig` scope=shift |
 | **Giờ làm đủ** | **8 tiếng/ngày** · **4 tiếng/nửa ngày** | `RuleConfig` scope=shift |
+| **Ca linh hoạt** | Giờ check-in/ra có thể trong **khung linh hoạt** — miễn tổng giờ làm **đủ 8h** thì vẫn tính đủ 1 ngày công | `RuleConfig` scope=shift |
 | **Ca ngoại lệ** | 7h30–16h30 · 7h00–16h00 · 10h00–19h00 … (fix cho một số đối tượng) | Ca cố định theo nhóm |
 | **TH con < 1 tháng** | Đi làm **7 tiếng/ngày** | `RuleConfig` scope=position |
 | **Chấm công ngoài mạng công ty** | **CHẶN** (ngoại lệ duy nhất: ngày WFH đã duyệt) | `attendance_security` |
 | **Chấm công ngoài bán kính GPS** | **CHẶN** — bán kính mặc định **150m**, cấu hình được (50–5000m) | `attendance_security` |
 | **GPS không xác định / sai số > 100m** | **CHẶN** kèm hướng dẫn đứng gần cửa sổ | `attendance_security` |
 | **Chấm công offline** | **Cho phép**, cấu hình được — mặc định **24 giờ** | `attendance_security` |
-| **Thiết bị thứ 2** | **Không ngoại lệ** — hạn mức 1 máy, xin thêm phải HR duyệt | `attendance_security` + `share_account` |
+| **Thiết bị thứ 3** | **Mặc định 2 thiết bị** — máy thứ 3 phải xin HR duyệt kèm lý do | `attendance_security` + `share_account` |
 | **Đơn từ (đi muộn/nghỉ/WFH/bổ sung)** | **Không cần GPS, không cần mạng công ty** — chỉ chấm công mới cần | — |
 | Kỳ công | 01 → cuối tháng | HR Settings |
 | Đi muộn/về sớm — quota | 2 lần/tháng | `RuleConfig` scope=global |
@@ -60,9 +61,15 @@
 | **Đơn nghỉ phép — hạn đăng ký** | **Muộn nhất sau 03 ngày** kể từ ngày đăng ký | `RuleConfig` |
 | **Đơn nghỉ ốm — hạn đăng ký** | **Muộn nhất sau 03 ngày** + **bắt buộc đính kèm giấy khám** | `RuleConfig` |
 | **Đi muộn/về sớm — hạn đăng ký** | **Muộn nhất sau 03 ngày** kể từ ngày đăng ký | `RuleConfig` |
-| Áp dụng chung | Không phân biệt nhóm/chức vụ | Mặc định global, vẫn override được |
+| Áp dụng chung | Không phân biệt nhóm/chức vụ | Mặc định global — **chỉ toàn công ty**, không ghi đè theo nhóm/chức vụ |
 | Đơn cần HR duyệt thêm | **Nhóm CA + Mobile** | `RuleConfig` scope=team |
 | Xuất phiếu lương | Chỉ xuất bảng công chuẩn | Không tính lương |
+
+> **Ca làm việc linh hoạt (flexible window):** giờ check-in/ra có thể nằm trong **khung linh hoạt** do HR cấu hình.
+> Nếu **tổng giờ làm ≥ 8h** và **cả check-in lẫn check-out đều nằm trong khung linh hoạt** → **tính đủ 1 ngày công**,
+> và **không phạt vì check-in muộn**. Nếu **tổng giờ làm < 8h** → tính theo **giờ thực tế** (không đủ 1 ngày công).
+> VD: thời gian làm việc 8 tiếng, khung check-in 8h–10h, khung check-out 17h–19h → check-in 09:30, check-out 18:00
+> → làm đủ 8h30 → **tính đủ 1 ngày công, không tính đi muộn**. Cấu hình chi tiết xem `docs/08-rule-builder.md` §3.1.8.
 
 #### 2.1.1. Ba chi tiết dễ làm hỏng nghiệp vụ
 
@@ -113,28 +120,35 @@ Từ bảng NOTE trong `doc/Rule chấm công.xlsx` (row 76–97) — **đây l�
 | **S** | Nghỉ ốm | Đăng ký muộn nhất sau 03 ngày · **bắt buộc attach giấy khám** |
 | **RO** | Nghỉ bù | Ngày làm bù cho ngày lễ |
 | **CL** | Nghỉ việc riêng hưởng nguyên lương | |
-| **ML** | Nghỉ thai sản | **6 hoặc 7 tháng** tùy con đầu tiên hay con thứ 2 |
+| **ML** | Nghỉ thai sản | Nữ: **6 hoặc 7 tháng** tùy con đầu tiên hay con thứ 2 · **BHXH chi trả** · cần HR duyệt |
 | **PL** | Nghỉ việc riêng khi có vợ sinh | Nam: 5 · 7 · 10 · 14 ngày… theo chế độ |
 | **UP** | Nghỉ không lương | Case: nghỉ trong thời gian **thử việc** · **hết ngày phép** |
 
 > **Vì sao phải đủ 8 loại:** bảng chấm công export của công ty có **cột riêng cho từng loại**
 > (NL · AL · CL · S · BHXH · RO · UP · ML · PL). Nếu hệ thống thiếu 1 loại thì bảng export ra **lệch** với
 > bảng HR đang dùng → HR phải map tay, và tính năng "xuất bảng công chuẩn" mất ý nghĩa.
+>
+> **Lưu ý:** con số **8** là số **cột** trong bảng công, **không phải** số loại nghỉ trong hệ thống.
+> Ngoài 8 loại này còn có các loại nghỉ **không có cột riêng** (hiếu hỉ, tang gia, thai sản tách nam/nữ) —
+> xem §2.3.
 
-### 2.1.3. Bảng chấm công — cấu trúc thật (45 cột)
+### 2.1.3. Bảng chấm công — cấu trúc thật (53 cột)
 
 > **Nguồn:** `doc/Rule chấm công.xlsx` — sheet *"Mẫu bảng chấm công"*, tháng 10/2026, 68 nhân viên.
+> Đối chiếu thêm: `doc/Pine team_T10.2026_Timekeeping Report.xlsx` — **cùng cấu trúc 53 cột**.
 > Đây là **mẫu export thật** mà HR dùng hằng tháng → hệ thống phải xuất ra **đúng bảng này**.
 
 **Bố cục:**
 
 ```
 A  STT · B Mã NV · C Họ và Tên · D Chức vụ · E Nhóm/Team     ← 5 cột thông tin
-F … AJ  = 26 cột ngày (1 → 31 tháng)                          ← 1 ký hiệu / ô
-AK…BA = 19 cột tổng hợp                                      ← tính tự động
+F … AJ  = 31 cột ngày (1 → 31 tháng)                          ← 1 ký hiệu / ô
+AK…BA = 17 cột tổng hợp                                      ← tính tự động
+                                       ────────────────────────
+                                       TỔNG: 53 cột (A → BA)
 ```
 
-**19 cột tổng hợp (giữ nguyên đúng tên file HR):**
+**17 cột tổng hợp (giữ nguyên đúng tên file HR):**
 
 | Cột | Tên trong file | Ý nghĩa |
 |---|---|---|
@@ -156,11 +170,11 @@ AK…BA = 19 cột tổng hợp                                      ← tính t
 | AZ | Số ngày phép sử dụng, nghỉ bù, nghỉ đặc biệt | `=SUM(AN,AO,AP,AQ,AS)` |
 | BA | Số ngày nghỉ không hưởng lương | `=sum(AR,AT,AU,AV)` |
 
-> **Công thức trong file (giữ nguyên khi implement):**
-> `AZ = SUM(NL, AL, CL, S, RO)` → các ngày **có lương nhưng không đi làm**.
-> `BA = SUM(BHXH, UP, ML, PL)` → các ngày **không hưởng lương**.
-> `AY = AM` → tổng ngày công = số ngày làm việc thực tế.
-> Kiểm chứng trên dữ liệu thật: `AM + (NL+AL+CL+S+RO) = 22.0` = tổng ngày trong tháng ✔
+> **Công thức trong file (giữ nguyên khi implement) — đọc thẳng từ file Excel:**
+> Cột **AZ** `=SUM(AN,AO,AP,AQ,AS)` → NL + AL + CL + S + RO → các ngày **có lương nhưng không đi làm**.
+> Cột **BA** `=sum(AR,AT,AU,AV)` → BHXH + UP + ML + PL → các ngày **không hưởng lương**.
+> Cột **AY** `=AM` → tổng ngày công = số ngày làm việc thực tế.
+> Kiểm chứng trên dữ liệu thật (file Pine, dòng 7): `AM 21.0 + (NL 0 + AL 1 + CL 0 + S 0 + RO 0) = 22.0` = `AW/Tổng` ✔
 
 #### Bảng tra cứu ký hiệu ô ngày (bắt buộc có trong UI)
 
@@ -338,6 +352,13 @@ Tài liệu (Mục 6.4) mô tả loại nghỉ theo đặc tính (hưởng lươ
 công ty dùng **8 loại** khớp 1–1 với cột bảng công. Nhưng **loại nghỉ là thứ hay thay đổi** — HR có thể
 cần thêm loại mới (ví dụ "Nghỉ chăm con") mà không đợi sửa phần mềm.
 
+> **Phân biệt rõ 2 khái niệm rất dễ nhầm:**
+> - **8** = số **cột tổng hợp** trong bảng công (NL · AL · S · RO · CL · ML · PL · UP) — **cố định, không đổi**.
+> - **Số loại nghỉ trong hệ thống** = **không cố định** — có thể nhiều hơn 8 vì có các loại **không có cột riêng**
+>   (hiếu hỉ, tang gia, thai sản nam/nữ). Loại không có cột riêng thì **gộp vào cột tương ứng khi export**.
+> - **Số cột bảng công = 53** — không đổi dù thêm bao nhiêu loại nghỉ.
+
+
 **Nguyên tắc thiết kế:** *tạo sẵn một bộ loại nghỉ chuẩn, nhưng mọi loại đều chỉnh được bằng tham số, và HR
 có thể thêm loại mới mà không cần sửa code.*
 
@@ -409,7 +430,13 @@ một định nghĩa trong catalog, giống hệt `RuleField` của rule:
 | **Hiển thị** | `show_in_balance` | bool | true | Có hiện ở trang số dư phép không |
 | | `icon` | text | 🌴 | Icon trên card chọn loại nghỉ |
 
-#### 8 loại nghỉ chuẩn — seed sẵn, nhưng đều chỉnh được
+#### 8 loại nghỉ chuẩn có cột riêng — seed sẵn, nhưng đều chỉnh được
+
+> **Lưu ý quan trọng:** con số **8** ở đây là số **cột tổng hợp trong bảng công** (NL · AL · S · RO · CL · ML · PL · UP),
+> và cũng là số loại nghỉ **có cột riêng**. Bảng dưới đây vẫn giữ đúng **8 loại này**.
+> Ngoài ra còn có **các loại nghỉ bổ sung không có cột riêng** (hiếu hỉ, tang gia, và tách thai sản nam/nữ) —
+> xem bảng ngay dưới. Số loại nghỉ **cấu hình được** nhiều hơn 8 là **được phép**; điều không được phép là thêm
+> cột mới vào bảng công — bảng export phải khớp **đúng 53 cột**.
 
 | Mã | Loại | Mặc định quan trọng | Ghi chú |
 |---|---|---|---|
@@ -418,9 +445,25 @@ một định nghĩa trong catalog, giống hệt `RuleField` của rule:
 | **S** | Nghỉ ốm | công ty chi trả · **bắt buộc giấy khám** · không trừ phép năm | Cột `S` |
 | **RO** | Nghỉ bù | ngày làm bù cho ngày lễ · không trừ phép | Cột `RO` |
 | **CL** | Nghỉ riêng hưởng nguyên lương | hưởng lương · số ngày theo quy chế | Cột `CL` |
-| **ML** | Thai sản | **BHXH chi trả** · 6 hoặc 7 tháng · cần HR duyệt | Cột `ML` |
+| **ML** | Thai sản | **BHXH chi trả** · cần HR duyệt | Cột `ML` |
 | **PL** | Riêng khi có vợ sinh | nam: 5 · 7 · 10 · 14 ngày theo chế độ | Cột `PL` |
 | **UP** | Không lương | không hưởng lương · thử việc · hết phép năm | Cột `UP` |
+
+#### Loại nghỉ bổ sung — cấu hình được, nhưng KHÔNG có cột riêng trong bảng công
+
+Đây là **loại nghỉ dùng để ghi nhận đơn**, không phải loại nghỉ có cột tổng hợp riêng:
+
+| Loại | Mặc định quan trọng | Ghi chú |
+|---|---|---|
+| **Nghỉ hiếu hỉ** | báo trước 1 ngày · không cần giấy tờ · **không trừ phép năm** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `AL`) khi export |
+| **Nghỉ tang gia** | được báo gấp (0 ngày) · không cần giấy tờ · **cần 2 bước duyệt** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `CL`) khi export |
+| **Thai sản — nam** | **5 · 7 · 10 · 14 ngày** tùy chế độ · không hưởng lương · không trừ phép năm | Gộp vào cột `PL` |
+| **Thai sản — nữ** | **6 hoặc 7 tháng** · **BHXH chi trả** · **cần HR duyệt** | Gộp vào cột `ML` |
+
+> **Vì sao tách thai sản nam / nữ:** đây là **2 loại nghỉ riêng biệt** trong danh mục — quyền lợi, thời hạn và người chi trả khác nhau
+> (nam: 5 · 7 · 10 · 14 ngày theo chế độ; nữ: 6 hoặc 7 tháng, BHXH chi trả, cần HR duyệt).
+> Nhưng vì bảng công chỉ có **1 cột `ML`** và **1 cột `PL`**, nên khi export mỗi loại được **gộp vào cột tương ứng** —
+> **số cột bảng công không đổi**.
 
 #### HR thêm loại mới — không cần sửa code
 
@@ -548,7 +591,11 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 | `end_time` | Giờ ra ca | > `start_time` |
 | `break_start` | Bắt đầu giờ nghỉ trưa | Mặc định 12:00 |
 | `break_end` | Kết thúc giờ nghỉ trưa | Mặc định 13:00 — **không tính vào giờ làm** |
-| `is_flexible` | Ca linh hoạt (giờ vào/ra không cố định) | Có/Không |
+| `is_flexible` | Ca linh hoạt (giờ vào/ra không cố định) | Có/Không — mặc định Không |
+| `flexible_checkin_from` | Khung linh hoạt — giờ check-in từ | Mặc định 08:00 — chỉ hiện khi `is_flexible` = Có |
+| `flexible_checkin_to` | Khung linh hoạt — giờ check-in đến | Mặc định 10:00 — chỉ hiện khi `is_flexible` = Có |
+| `flexible_checkout_from` | Khung linh hoạt — giờ check-out từ | Mặc định 17:00 — chỉ hiện khi `is_flexible` = Có |
+| `flexible_checkout_to` | Khung linh hoạt — giờ check-out đến | Mặc định 19:00 — chỉ hiện khi `is_flexible` = Có |
 | `grace_minutes` | Số phút được phép trễ miễn phép | Số phút |
 | `work_days` | Các ngày trong tuần thuộc ca linh hoạt | Danh sách thứ Hai → Chủ Nhật |
 | `total_required_hours` | Số giờ làm bắt buộc mỗi ngày | Mặc định 8 (nửa ngày = 4) |
@@ -758,7 +805,7 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 | Màn hình | Nội dung |
 |---|---|
 | **Hộp thư duyệt duyệt** | Danh sách đơn chờ duyệt, filter theo loại/ngày, badge "quá hạn" |
-| **Chi tiết đơn** | Timeline (gửi → duyệt → kết quả), lịch sử, chip điều kiện quyết định (C8) |
+| **Chi tiết đơn** | Timeline (gửi → duyệt → kết quả), lịch sử, chip điều kiện quyết định (C7) |
 | **Lịch nhóm** | Lịch WFH + nghỉ phép của cả nhóm, cảnh báo "hôm nay 3/5 người nghỉ" |
 | **Bảng công nhóm** | Tổng hợp theo tháng, drill-down từng người |
 
@@ -816,7 +863,7 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 > Đây là lý do cần trường `is_manual_override` trên từng cột tổng hợp.
 
 HR cũng được cảnh báo **tự động** về sai lệch trước khi phải tự tìm:
-- Thiếu `check_out` trong 1 ngày → gợi ý sửa (ô trống trong 26 cột ngày)
+- Thiếu `check_out` trong 1 ngày → gợi ý sửa (ô trống trong 31 cột ngày)
 - Về sớm 45' không có đơn → gợi ý tạo đơn hoặc ghi nhận vi phạm
 - Ô ngày trống trong ngày làm việc đã qua → cảnh báo "chưa chấm công"
 
@@ -824,15 +871,15 @@ HR cũng được cảnh báo **tự động** về sai lệch trước khi ph�
 
 Lọc theo: phòng ban × tháng × trạng thái × chỉ số (đi muộn / WFH / phép / vi phạm) × từ khóa. Lưu view để tái dùng, chia sẻ bằng URL.
 
-### C6. Dry-run rule
+### C6. Xác nhận khi lưu quy định
 
-Đổi quota đi muộn 2 → 3 lần/tháng: hiển thị trước ảnh hưởng (12 đơn đang chờ sẽ hợp lệ, 3 bảng công đã khóa không bị đụng) rồi mới áp dụng.
+Đổi quota đi muộn 2 → 3 lần/tháng: bấm **"Lưu"** → hiện hộp thoại xác nhận gồm **thay đổi gì** (2 → 3 lần/tháng) · **ngày hiệu lực** (12/11/2026) · **ai bị ảnh hưởng** (toàn công ty — 45 nhân viên nhận thông báo). Bấm **"Áp dụng từ 12/11/2026"** để lưu, **"Hủy"** để quay lại. Muốn hoàn tác thì vào **"Lịch sử thay đổi"** và rollback.
 
-### C7. Trang quy định tra cứu
+### C6. Trang quy định tra cứu
 
 Render từ `RuleConfig` + `Document`: "Đi muộn / về sớm — 2 lần/tháng, tối đa 60 phút, phải gửi trước 08:00 hôm đó. Hiệu lực từ 01/11/2026 · Phiên bản 3". Kèm ví dụ thực tế.
 
-### C8. Duyệt hàng loạt + chip lý do + chip điều kiện
+### C7. Duyệt hàng loạt + chip lý do + chip điều kiện
 
 Mỗi đơn hiển thị kết quả check rule dạng chip ✅/❌ ngay trên danh sách:
 
@@ -850,10 +897,13 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Chấm công vào/ra thành công, hiển thị giờ + trạng thái ngay
 - [ ] Check-in ngoài khung 8h00–9h30 hoặc check-out ngoài 17h00–18h30 → gắn cờ đi muộn/về sớm, **không chặn** (chỉ đơn mới cần quota)
 - [ ] Nghỉ trưa 12:00–13:00 **không tính** vào giờ làm
+- [ ] Ca linh hoạt bật: check-in 09:30 · check-out 18:00 (tổng ≥ 8h, cả 2 mốc trong khung) → **tính đủ 1 ngày công, không tính đi muộn**
+- [ ] Ca linh hoạt bật: tổng giờ làm < 8h → **tính theo giờ thực tế**, không đủ 1 ngày công
 - [ ] Ca ngoại lệ (7h30–16h30 · 7h00–16h00 · 10h00–19h00) áp dụng đúng nhóm được gán
 - [ ] Thử việc có con nhỏ < 1 tháng → yêu cầu 7 tiếng/ngày
 - [ ] Chấm công ngoài mạng công ty (và không phải ngày WFH đã duyệt) → **CHẶN**, hiện gợi ý nối Wi-Fi công ty
 - [ ] Chấm công từ thiết bị chưa đăng ký → bị từ chối, hướng dẫn đăng ký
+- [ ] Đăng ký **máy thứ 3** (mặc định 2 thiết bị) → tạo yêu cầu chờ HR duyệt, bắt buộc có lý do
 - [ ] Ngoài geofence → **CHẶN** (không phải cảnh báo), hiện khoảng cách thật + bản đồ + 2 lối ra (WFH / Thử lại); bán kính cấu hình được, mặc định 150m
 - [ ] GPS sai số > 100m (cấu hình được) → **CHẶN** kèm hướng dẫn đứng gần cửa sổ
 - [ ] Mất mạng hoàn toàn → **chấm được offline**, hạn đồng bộ cấu hình được (mặc định 24h); quá hạn → entry bị từ chối, phải tạo đơn bổ sung công
@@ -889,12 +939,16 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Mốc 01/07: chỉ còn 5 ngày phép năm trước; từ 01/07 tồn = 0
 - [ ] Phép tồn bảo lưu thủ công không bị reset
 - [ ] Bảng công tách riêng: nghỉ có lương / không lương / BHXH
-- [ ] Seed đủ **8 loại nghỉ** (NL · AL · S · RO · CL · ML · PL · UP), mỗi loại 1 dòng cấu hình
+- [ ] Seed đủ **8 loại nghỉ có cột riêng** (NL · AL · S · RO · CL · ML · PL · UP), mỗi loại 1 dòng cấu hình
+- [ ] Có thêm loại nghỉ **không có cột riêng**: hiếu hỉ, tang gia, thai sản nam, thai sản nữ — mỗi loại 1 dòng cấu hình, không thêm cột mới vào bảng công
+- [ ] Nghỉ hiếu hỉ → báo trước 1 ngày · Nghỉ tang gia → báo gấp, 2 bước duyệt
+- [ ] Thai sản nam → 5 · 7 · 10 · 14 ngày theo chế độ · Thai sản nữ → 6 hoặc 7 tháng, BHXH chi trả, cần HR duyệt
+- [ ] Khi export bảng công, hiếu hỉ / tang gia / thai sản nam / thai sản nữ **gộp vào cột tương ứng** — bảng vẫn **đúng 53 cột**
 
 **Bảng công & export**
-- [ ] Bảng công có đủ 45 cột, ô ngày hiển thị **ký hiệu gốc** (R/AL/S/1.00/0.50/R÷0.50…)
+- [ ] Bảng công có đủ 53 cột, ô ngày hiển thị **ký hiệu gốc** (R/AL/S/1.00/0.50/R÷0.50…)
 - [ ] Hover ô ngày → hiện tooltip giải thích ký hiệu (bảng tra cứu 22 dòng)
-- [ ] 19 cột tổng hợp **tự tính** theo đúng công thức file gốc: `AY=AM`, `AZ=SUM(NL,AL,CL,S,RO)`, `BA=SUM(BH,UP,ML,PL)`
+- [ ] 17 cột tổng hợp **tự tính** theo đúng công thức file gốc: `AY=AM`, `AZ=SUM(AN,AO,AP,AQ,AS)`, `BA=sum(AR,AT,AU,AV)`
 - [ ] Export Excel ra **file giống hệt** mẫu `doc/Rule chấm công.xlsx` (tiêu đề merge 2 tầng, ký hiệu gốc)
 - [ ] Sửa ô ngày → cột tổng hợp tự tính lại; sửa thẳng cột tổng hợp → bắt buộc có lý do + ghi audit
 - [ ] Tạo đơn nhắm tới ngày thuộc kỳ đã khóa → **chặn khi tạo**, báo "Kỳ này đã chốt"
@@ -907,13 +961,13 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Vị trí cấm WFH → không tạo được đơn
 
 **Bảng công**
-- [ ] Bảng công có đủ **45 cột** (5 thông tin + 26 ngày + 14 tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`
+- [ ] Bảng công có đủ **53 cột** (5 thông tin + 31 ngày + 17 tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`
 - [ ] **Chọn tháng** trên bảng công của tôi: mặc định = tháng hiện tại; đổi tháng bằng dropdown hoặc nút ‹ ›; URL `?month=YYYY-MM`
 - [ ] Chọn kỳ đã chốt → xem được nhưng chỉ đọc (nút khiếu nại bị disable)
 - [ ] HR công bố bảng công **giữa kỳ** (ngày 11) → mở cửa sổ khiếu nại 2 ngày; trước đó xem số tạm tính nhưng không khiếu nại được
 - [ ] Nhân viên khiếu nại trong 2 ngày → được, sau 2 ngày → bị chặn
 - [ ] HR chốt → khóa; đơn mới tạo sau đó vào kỳ hiện tại, không sửa kỳ đã chốt
-- [ ] Export Excel đúng **45 cột + ký hiệu gốc** (R/AL/S/…), đúng kỳ 01 → cuối tháng — khớp file HR dùng
+- [ ] Export Excel đúng **53 cột + ký hiệu gốc** (R/AL/S/…), đúng kỳ 01 → cuối tháng — khớp file `Pine team_T10.2026_Timekeeping Report.xlsx`
 
 **Tiện lợi**
 - [ ] Nhân viên thấy đủ việc đang chờ trên 1 màn hình, mỗi việc có 1 nút hành động
@@ -921,7 +975,7 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Đơn đi muộn → form điền sẵn **ngày + số phút thật** từ log chấm công
 - [ ] HR sửa được 1 ô sai trong bảng công trực tiếp, có audit log + lý do bắt buộc cho cột nhạy cảm
 - [ ] HR lọc + lưu được view "Mobile · T11 · đi muộn > 0", mở lại bằng 1 click
-- [ ] Đổi quota → xem trước ảnh hưởng trước khi áp dụng
+- [ ] Đổi quota → bấm "Lưu" hiện hộp thoại xác nhận (thay đổi gì · ngày hiệu lực · ai bị ảnh hưởng), và rollback được từ "Lịch sử thay đổi"
 - [ ] Tìm quy định "đi muộn" bằng Ctrl+K ra ngay, có ngày hiệu lực
 - [ ] Manager duyệt nhiều đơn 1 lần, lý do từ chối bằng chip 1 chạm
 - [ ] Mỗi đơn hiển thị chip ✅/❌ kết quả check rule ngay trên danh sách

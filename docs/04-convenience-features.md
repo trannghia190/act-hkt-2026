@@ -1,33 +1,30 @@
 # 04 — Tính năng tiện lợi theo vai trò
 
-> **Đây là phần quyết định điểm số theo tiêu chí UX.** Toàn bộ nghiệp vụ làm bằng rule — không dùng AI. 18 tính năng dưới đây là phần lớn giá trị người dùng cảm nhận.
+> **Đây là phần quyết định điểm số theo tiêu chí UX.** Toàn bộ nghiệp vụ làm bằng rule — không dùng AI. 15 tính năng dưới đây là phần lớn giá trị người dùng cảm nhận.
 > **Metric đánh giá:** *tiết kiệm được bao nhiêu thao tác, bao nhiêu lần mỗi tháng?*
 
-### Danh mục 18 tính năng — nguồn sự thật cho mọi tài liệu khác
+### Danh mục 15 tính năng — nguồn sự thật cho mọi tài liệu khác
 
 | ID | Tính năng | Màn hình | Nằm ở mục |
 |---|---|---|---|
 | C1 | Todo inbox | S02 | §1 |
-| C2 | Nhắc việc tự động (3 kênh + chống spam) | S04 | §1 |
+| C2 | Nhắc việc tự động (3 kênh + chống spam) | S04, S04m | §1 |
 | C3 | Command palette Ctrl+K | S03 | §1 |
 | C4 | Sửa bảng công tại chỗ + sửa hàng loạt | S15 | §1 |
 | C5 | Bộ lọc mạnh + lưu view | S15 | §1 |
-| C6 | Dry-run — xem trước ảnh hưởng | S18 | §3 |
-| C7 | Trang quy định tra cứu | S19 | §3 |
-| C8 | Duyệt hàng loạt + chip lý do | S12, S14 | §2 |
-| C9 | Review OKR bảng so sánh nhóm | S24 | §2 |
-| C10 | Báo cáo tự động theo lịch | S39 | §3 |
-| C11 | Import Excel | S39 | §3 |
-| C12 | Onboarding tour + empty state có CTA | S36 | §3 |
-| C13 | Trình cấu hình quy định | S16, S17, S32 | §3 |
-| C14 | Chấm công tối ưu cho điện thoại | S05m | §4b |
-| C15 | Nhắc việc theo từng actor (17×3) | S04m | §4b (chi tiết ở §C2) |
-| C16 | Loại nghỉ cấu hình được | S30, S32 | §4b |
-| C17 | Gợi ý kế thừa từ OKR quản lý | S21 | §4.1 |
-| C18 | Tóm tắt báo cáo OKR | S25 | §4.2 |
+| C6 | Trang quy định tra cứu | S19 | §3 |
+| C7 | Duyệt hàng loạt + chip lý do | S12, S14 | §2 |
+| C8 | Review OKR bảng so sánh nhóm | S24 | §2 |
+| C9 | Onboarding tour + empty state có CTA | S36 | §3 |
+| C10 | Trình cấu hình quy định | S16, S17, S32 | §3 |
+| C11 | Chấm công tối ưu cho điện thoại | S05m | §4b |
+| C12 | Nhắc việc theo từng actor (17×3) | S04m | §4b (chi tiết ở §C2) |
+| C13 | Loại nghỉ cấu hình được | S30, S32 | §4b |
+| C14 | Gợi ý kế thừa từ OKR quản lý | S21 | §4.1 |
+| C15 | Tóm tắt báo cáo OKR | S25 | §4.2 |
 
 > **ID là hợp đồng.** Mọi tài liệu, mockup, tên hàm trong code đều dùng chung bảng này.
-> Ngoài 18 mục còn có **"C-cố"** (đơn từ điền sẵn tự động — `docs/02` §C-cố, màn hình S07), không thuộc hệ thống này.
+> Ngoài 15 mục còn có **"C-cố"** (đơn từ điền sẵn tự động — `docs/02` §C-cố, màn hình S07), không thuộc hệ thống này.
 
 ---
 
@@ -103,9 +100,9 @@
 
 ---
 
-### C2 + C15. Nhắc việc tự động — 3 kênh, đúng người ⭐ P0
+### C2 + C12. Nhắc việc tự động — 3 kênh, đúng người ⭐ P0
 
-**C2** = cơ chế nhắc (3 kênh, chống spam). **C15** = ma trận 17 sự kiện × 3 vai trò — ai nhận việc nào.
+**C2** = cơ chế nhắc (3 kênh, chống spam). **C12** = ma trận 17 sự kiện × 3 vai trò — ai nhận việc nào.
 
 **Vấn đề:** Todo inbox chỉ hữu ích khi người dùng mở app. Nhắc việc phải tới đúng lúc — **và đúng người cần làm**.
 
@@ -362,7 +359,7 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 ## 2. Quản lý — "Đừng để tôi phải hỏi từng người"
 
-### C8. Duyệt hàng loạt + chip lý do — P1
+### C7. Duyệt hàng loạt + chip lý do — P1
 
 **Vấn đề:** 12 đơn chờ duyệt → 12 lần mở form, đọc, gõ lý do, bấm duyệt.
 
@@ -380,7 +377,7 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 **Tiết kiệm:** 12 đơn/tuần: 25 phút → **3 phút**.
 
-### C9. Review OKR dạng bảng so sánh cả nhóm — P1
+### @@C6@@. Review OKR dạng bảng so sánh cả nhóm — P1
 
 **Vấn đề:** Manager review 10 OKR của cấp dưới → mở từng objective, đọc từng KR, tự tính điểm. Rất lâu và dễ không nhất quán giữa các người.
 
@@ -431,34 +428,11 @@ Hệ thống **quét lại các điều kiện nhắc việc mỗi giờ**:
 
 ## 3. HR — "Trích xuất nhanh, sửa nhanh, không phải làm lại"
 
-### C6. Dry-run rule — xem trước ảnh hưởng trước khi áp dụng — P0
-
-> **Đã tích hợp vào C13** (trình cấu hình quy định) — không phải tính năng riêng.
-
-**Vấn đề:** HR đổi quota đi muộn từ 2 lần/tháng → 3 lần/tháng. Không biết điều này ảnh hưởng bao nhiêu đơn đang chờ, bao nhiêu bảng công tháng trước.
-
-**Giải pháp:** Mọi thay đổi rule đều cho xem trước:
-
-```
-┐ Đổi quota đi muộn/về sớm: 2 → 3 lần/tháng          │
-│                                                      │
-│ Ảnh hưởng (tháng 11/2026):                          │
-│  • 12 đơn đang chờ duyệt sẽ hợp lệ (trước đây chặn)│
-│  • 3 nhân viên có 3 lượt đi muộn → sẽ được hoàn lại  │
-│    15 phút công (= 3.75 giờ lương ước tính)         │
-│  • 2 bảng công tháng 10/2026 đã khóa → KHÔNG đụng   │
-│                                                      │
-│ [Áp dụng từ 01/12/2026]  [Hủy]                     │
-└──────────────────────────────────────────────────────┘
-```
-
-**Đây là tính năng cực mạnh cho "độ phủ nghiệp vụ"** — nó cho thấy HR thực sự hiểu hệ thống, không phải chỉ sửa con số.
-
-### C7. Trang quy định tra cứu — P0
+### C6. Trang quy định tra cứu — P0
 
 **Vấn đề:** Quy định nằm rải rác trong file PDF/Word. Nhân viên hỏi HR, HR trả lời. Hoặc nhân viên đọc file 40 trang không tìm được đoạn cần.
 
-**Giải pháp:** Trang tra cứu **được sinh tự động từ cùng catalog với C13** — không ai phải viết lại nội dung.
+**Giải pháp:** Trang tra cứu **được sinh tự động từ cùng catalog với C10** — không ai phải viết lại nội dung.
 
 | Trường | Nội dung |
 |---|---|
@@ -479,17 +453,17 @@ tối đa 60 phút. Đơn phải gửi trước 08:00.
 Hiệu lực từ 01/10/2026 · Phiên bản 2
 ```
 
-> **Điểm mạnh thiết kế:** khi HR đổi quota 2 → 3 lần/tháng qua C13, trang này **tự đổi theo**. Tài liệu **được sinh ra từ** phần mềm chứ không phải viết tay rồi lệch dần. Chi tiết: `docs/08-rule-builder.md`.
+> **Điểm mạnh thiết kế:** khi HR đổi quota 2 → 3 lần/tháng qua C10, trang này **tự đổi theo**. Tài liệu **được sinh ra từ** phần mềm chứ không phải viết tay rồi lệch dần. Chi tiết: `docs/08-rule-builder.md`.
 
 **Trang này cũng là nguồn cho command palette (C3).**
 
-### C13. Trình cấu hình quy định — HR sửa quota bằng form ⭐ P0
+### C10. Trình cấu hình quy định — HR sửa quota bằng form ⭐ P0
 
 **Vấn đề:** Tài liệu yêu cầu *"các giới hạn được HR cấu hình trên hệ thống, không cố định trong phần mềm, và có ngày hiệu lực"*. Nếu không có màn hình cấu hình thì yêu cầu đó là giả — HR vẫn phải nhờ người khác sửa giúp.
 
 **Giải pháp:** Một **catalog quy định** (19 quy định) sinh ra **hai bề mặt** từ cùng một nguồn:
 1. **Trang cấu hình** cho HR — một mẫu form dùng chung, điền theo các trường của catalog, có lịch sử phiên bản, ngày hiệu lực, hoàn tác, xem trước ảnh hưởng.
-2. **Trang tra cứu** cho nhân viên (C7) — sinh nội dung từ mẫu câu chữ trong catalog với giá trị đang áp dụng.
+2. **Trang tra cứu** cho nhân viên (C6) — sinh nội dung từ mẫu câu chữ trong catalog với giá trị đang áp dụng.
 
 **Chi tiết đầy đủ: `docs/08-rule-builder.md`.** Tóm tắt giao diện:
 
@@ -515,29 +489,7 @@ Khi bấm **"Cấu hình"** → panel chọn scope (toàn công ty / phòng ban 
 
 **Tiết kiệm:** HR đổi quota: phải nhờ người khác sửa giúp → **30 giây trên màn hình, có xem trước ảnh hưởng**. Và đây là khoảnh khắc demo mạnh nhất: đổi quota **ngay trên sân khấu**, nhân viên bên cạnh thấy quy định mới ngay.
 
-### C10. Báo cáo tự động theo lịch — P2
-
-HR đặt lịch: *"Ngày 2 hàng tháng, gửi bảng công tháng trước cho tôi và sếp"*. Hệ thống tự tổng hợp + gửi email + đính kèm Excel. Không cần ai bấm gửi.
-
-**Lịch trình báo cáo (`ScheduledReport`)**:
-
-| Trường | Ý nghĩa | Ràng buộc / giá trị |
-|---|---|---|
-| `id` | Định danh lịch trình | Khóa chính |
-| `name` | Tên báo cáo | Bắt buộc |
-| `module` | Phân hệ lấy dữ liệu | `timesheet` \| `okr` |
-| `schedule_cron` | Lịch chạy định kỳ | Bắt buộc — ví dụ ngày 2 hàng tháng |
-| `recipients` | Danh sách người nhận | Bắt buộc |
-| `params` | Tham số lọc khi tạo báo cáo | Ví dụ tháng, phòng ban, định dạng |
-| `last_run_at` | Lần chạy gần nhất | Bỏ trống = chưa chạy lần nào |
-| `next_run_at` | Lần chạy kế tiếp | Ghi tự động |
-| `is_active` | Lịch trình còn bật | Có / không |
-
-### C11. Import Excel — P2
-
-HR có dữ liệu từ hệ thống cũ → map cột → preview → validate → import, có báo cáo dòng lỗi. Import vào bảng công **bắt buộc** tạo audit log + yêu cầu xác nhận.
-
-### C12. Onboarding tour + empty state có CTA — P2
+### C9. Onboarding tour + empty state có CTA — P2
 
 - Người dùng mới vào → tour 3 bước trên màn hình chính (bỏ qua được, không hiện lại).
 - **Mọi empty state phải có CTA** — không bao giờ để màn hình trống chết:
@@ -551,7 +503,7 @@ HR có dữ liệu từ hệ thống cũ → map cột → preview → validate 
 
 > Hệ thống **không có lớp AI**. Hai chỗ từng được đề xuất dùng AI nay đã thay bằng rule.
 
-### 4.1. Gợi ý kế thừa từ OKR của quản lý (C17)
+### 4.1. Gợi ý kế thừa từ OKR của quản lý (C14)
 
 **Ý tưởng:** nhân viên tự nhập OKR (2 nhóm **Business** & **People** cố định), nhưng **mục tiêu business
 thì thường từ trên đưa xuống**. Thay vì bắt nhân viên nghĩ lại từ đầu, form hiện **OKR đã được duyệt của
@@ -571,7 +523,7 @@ quản lý trực tiếp** để bấm 1 chạm chép vào.
 
 **Tiết kiệm:** thay vì nghĩ lại mục tiêu mà cấp trên đã có → **1 chạm chép**.
 
-### 4.2. Tóm tắt báo cáo OKR cho HR (C18)
+### 4.2. Tóm tắt báo cáo OKR cho HR (C15)
 
 Mỗi widget báo cáo đi kèm **mô tả sẵn theo template**, dựng từ số liệu đã tính:
 
@@ -591,9 +543,9 @@ và luôn kèm link tới từng widget nguồn để HR kiểm chứng.
 ## 4b. Ba tính năng P0 được định nghĩa ở tài liệu khác
 
 > Ba mục này **đã có màn hình và đã có spec ở tài liệu chuyên dụng**. `docs/04` là nơi tập trung
-> toàn bộ 18 tính năng nên ở đây chỉ liệt kê ngắn — **không lặp lại spec**, tránh 2 nơi 1 ý kiến.
+> toàn bộ 15 tính năng nên ở đây chỉ liệt kê ngắn — **không lặp lại spec**, tránh 2 nơi 1 ý kiến.
 
-### C14. Chấm công tối ưu cho điện thoại — 1 chạm, < 4 giây ⭐ P0
+### C11. Chấm công tối ưu cho điện thoại — 1 chạm, < 4 giây ⭐ P0
 
 **Vấn đề:** nhân viên chấm công **2 lần/ngày** trên điện thoại — đây là thao tác lặp lại nhiều nhất
 trong toàn hệ thống, và là thao tác người dùng **ghét nhất** nếu làm chậm.
@@ -614,7 +566,7 @@ Không form, không chọn ca, không nút "Xác nhận" thêm.
 
 > **Spec đầy đủ:** `docs/09-mobile-punch.md` · **Màn hình:** S05m
 
-### C15. Nhắc việc theo từng actor — 17 sự kiện × 3 vai trò ⭐ P0
+### C12. Nhắc việc theo từng actor — 17 sự kiện × 3 vai trò ⭐ P0
 
 **Vấn đề:** nếu mọi thông báo đều về cho tất cả, người dùng sẽ tắt thông báo — và hệ thống chết.
 
@@ -638,7 +590,7 @@ việc vẫn nằm trong trang "Cần làm" và vẫn tính vào badge.
 
 > **Spec đầy đủ:** §C2 phía trên · **Màn hình:** S04m
 
-### C16. Loại nghỉ cấu hình được — HR tự thêm được, không cần nhờ IT ⭐ P0
+### C13. Loại nghỉ cấu hình được — HR tự thêm được, không cần nhờ IT ⭐ P0
 
 **Vấn đề:** tài liệu yêu cầu *"các giới hạn được HR cấu hình trên hệ thống, không cố định trong phần mềm"*.
 Loại nghỉ khác nhau chỉ khác **tham số**, không khác cấu trúc.
@@ -669,11 +621,11 @@ Loại nghỉ khác nhau chỉ khác **tham số**, không khác cấu trúc.
 | Tính năng từng đề xuất | Thay bằng gì | Vì sao tốt hơn |
 |---|---|---|
 | **NL → đơn từ** | **Tự động điền từ log chấm công thật** (C-cố) | Hệ thống **đã biết** bạn check-in lúc 8:47 → đơn muộn 27 phút, ngày hôm qua. Chính xác hơn 100%, miễn phí, tức thì. |
-| **Copilot duyệt đơn** | **Chip điều kiện quyết định** (C8) | Rule check quota/hạn nộp/trùng ngày/thiếu giấy tờ → hiện chip ✅/❌ cạnh đơn. Rõ ràng, miễn phí, không bao giờ sai. |
-| **Gợi ý điểm OKR** | **Điểm đề xuất theo công thức** (C9) | Điểm suy ra từ tiến độ là **phép tính**, không phải suy luận. Công thức minh bạch, manager kiểm tra được. |
+| **Copilot duyệt đơn** | **Chip điều kiện quyết định** (C7) | Rule check quota/hạn nộp/trùng ngày/thiếu giấy tờ → hiện chip ✅/❌ cạnh đơn. Rõ ràng, miễn phí, không bao giờ sai. |
+| **Gợi ý điểm OKR** | **Điểm đề xuất theo công thức** (@@C6@@) | Điểm suy ra từ tiến độ là **phép tính**, không phải suy luận. Công thức minh bạch, manager kiểm tra được. |
 | **Check-in assist** | **Điền sẵn giá trị lần trước** | Nhân viên thấy đúng giá trị kỳ trước → sửa con số. 90% giá trị, tốn 0 chi phí suy luận. |
 | **Phát hiện bất thường chấm công** | **Quy tắc kiểm tra trực tiếp** | Đếm theo mẫu hành vi (check-in đúng giờ 30 ngày liên tiếp, cùng IP khác thiết bị) → nhanh, miễn phí, giải thích được. |
-| **Chatbot tra quy định** | **Command palette + trang quy định** (C3, C7) | Tìm bằng từ khóa trong nội dung đã lập chỉ mục → nhanh, chính xác, có ngày hiệu lực. |
+| **Chatbot tra quy định** | **Command palette + trang quy định** (C3, C6) | Tìm bằng từ khóa trong nội dung đã lập chỉ mục → nhanh, chính xác, có ngày hiệu lực. |
 | **Gợi ý soạn OKR** | **Gợi ý kế thừa từ OKR của quản lý** (§4.1) | Đọc đúng OKR đã duyệt của cấp trên → chính xác, miễn phí, tức thì. |
 | **Tóm tắt báo cáo** | **Template câu chữ từ số liệu đã tính** (§4.2) | Không có nguy cơ bịa số liệu; luôn dẫn link về nguồn. |
 
@@ -694,18 +646,18 @@ giải thích được** — đúng những gì cần cho dữ liệu đi thẳn
 - [ ] **C3**: Command Palette — chỉ mục tìm kiếm gộp mọi loại thực thể, cập nhật theo khi tạo/sửa, có phím tắt
 - [ ] **C4**: sửa tại chỗ trong bảng công + bắt buộc lý do cho cột nhạy cảm + sửa hàng loạt + nút hoàn tác
 - [ ] **C5**: bộ lọc chip đa chiều + `SavedView` + 6 view mặc định có sẵn + URL chia sẻ
-- [ ] **C6**: Dry-run — hộp thoại "Xem trước ảnh hưởng" (tích hợp trong C13)
-- [ ] **C7**: trang quy định tra cứu, **sinh từ cùng catalog với C13**, có ví dụ & ngày hiệu lực
-- [ ] **C8**: duyệt hàng loạt + chip lý do + chip điều kiện quyết định + sắp xếp theo rủi ro
-- [ ] **C9**: bảng so sánh review nhóm + điểm đề xuất theo công thức + cảnh báo rule
+- [ ] **C6**: Dry-run — hộp thoại "Xem trước ảnh hưởng" (tích hợp trong C10)
+- [ ] **C6**: trang quy định tra cứu, **sinh từ cùng catalog với C10**, có ví dụ & ngày hiệu lực
+- [ ] **C7**: duyệt hàng loạt + chip lý do + chip điều kiện quyết định + sắp xếp theo rủi ro
+- [ ] **@@C6@@**: bảng so sánh review nhóm + điểm đề xuất theo công thức + cảnh báo rule
 - [ ] **C10**: báo cáo tự động theo lịch — đặt lịch, người nhận, tham số lọc
 - [ ] **C11**: import Excel (map cột → preview → validate → báo cáo lỗi)
-- [ ] **C12**: onboarding tour + CTA cho mọi empty state
-- [ ] **C13**: catalog 19 quy định + lịch sử phiên bản + rollback + xem trước ảnh hưởng + form cấu hình dùng chung (xem `docs/08-rule-builder.md`)
-- [ ] **C14**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, 4 bước xác thực song song (xem `docs/09-mobile-punch.md`)
-- [ ] **C15**: ma trận 17 sự kiện × 3 vai trò + leo thang (3 ngày → QL, 2× SLA → HR) + gom thông báo cho quản lý
-- [ ] **C16**: catalog tham số loại nghỉ + 3 tầng kế thừa + ảnh chụp `applied_parameters` (xem `docs/02` §2.3)
-- [ ] **C17**: gợi ý kế thừa — form Tạo OKR hiện OKR đã duyệt của quản lý trực tiếp (cùng nhóm), bấm 1 chạm để chép; NV sửa tùy ý
-- [ ] **C18**: tóm tắt báo cáo dựng từ số liệu đã tính theo template câu chữ
+- [ ] **C9**: onboarding tour + CTA cho mọi empty state
+- [ ] **C10**: catalog 19 quy định + lịch sử phiên bản + rollback + xem trước ảnh hưởng + form cấu hình dùng chung (xem `docs/08-rule-builder.md`)
+- [ ] **C11**: chấm công tối ưu cho điện thoại — nút Ø 112px, phản hồi rung, chấm công khi offline, 4 bước xác thực song song (xem `docs/09-mobile-punch.md`)
+- [ ] **C12**: ma trận 17 sự kiện × 3 vai trò + leo thang (3 ngày → QL, 2× SLA → HR) + gom thông báo cho quản lý
+- [ ] **C13**: catalog tham số loại nghỉ + 3 tầng kế thừa + ảnh chụp `applied_parameters` (xem `docs/02` §2.3)
+- [ ] **C14**: gợi ý kế thừa — form Tạo OKR hiện OKR đã duyệt của quản lý trực tiếp (cùng nhóm), bấm 1 chạm để chép; NV sửa tùy ý
+- [ ] **C15**: tóm tắt báo cáo dựng từ số liệu đã tính theo template câu chữ
 
 **Đo lại:** trước khi nộp, đếm số thao tác thực tế cho từng dòng ở §1 của `PLAN.md` và ghi kết quả vào pitch.

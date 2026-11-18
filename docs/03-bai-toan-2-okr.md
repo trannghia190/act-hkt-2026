@@ -15,14 +15,14 @@
 | O2 | **2 nhóm cố định Business + People** — không có template | Nhân viên tự nhập |
 | O3 | Nhân viên tự nhập OKR → gửi | Wizard 2 bước |
 | O4 | Quản lý duyệt / trả lại kèm góp ý | |
-| O5 | Check-in tiến độ định kỳ theo từng KR | Hàng tháng (cấu hình được) |
-| O6 | Review giữa năm (nhận xét + điều chỉnh mục tiêu) | Audit trail |
-| O7 | **Tự đánh giá cuối năm** (Box 1–4 theo form HR) | 3–5 ngày để nộp |
+| O5 | Check-in tiến độ định kỳ theo từng KR | Hàng tháng (cấu hình được) · đính kèm evidence |
+| O6 | Review giữa năm (nhận xét + điều chỉnh mục tiêu) | Audit trail · **QL mở cho NV sửa** |
+| O7 | **Tự đánh giá cuối năm** (Box 1–4 theo form HR) | 3–5 ngày để nộp · đính kèm evidence |
 | O8 | Quản lý: Duyệt điểm / Trả lại / Sửa điểm (bắt buộc lý do) | 3 nhánh |
 | O9 | HR chốt & khóa + báo cáo + export Excel | Sau hạn chót tự khóa |
 | O10 | Trường hợp đặc biệt (chuyển phòng, nhân viên mới, nghỉ việc) | |
 | O11 | Phân tầng Công ty → Phòng ban → Cá nhân | Cây mục tiêu liên kết |
-| **C9** | **Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức** | P1 |
+| **@@C6@@** | **Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức** | P1 |
 | **C1/C2** | **Todo inbox + nhắc việc** (check-in đến hạn, chưa tạo OKR) | P0 — dùng chung |
 
 > **Toàn bộ bài toán 2 làm bằng rule.** Điểm đề xuất cho review OKR là **công thức tính từ tiến độ KR** (minh bạch, manager kiểm tra được). Xem `docs/04-convenience-features.md` §5.
@@ -37,7 +37,7 @@
 | 1 | **2 nhóm objective: Business + People** | `OKR_doc.md` Box 2–3 | Bản cũ chỉ có 1 nhóm objective + KR |
 | 2 | **Điểm chấm 1–5**, mỗi nhóm 1 điểm, **không có điểm lẻ** | `OKR_doc.md` Box 2–3 | Bản cũ: thang 0.0–1.0 |
 | 3 | **Phần mềm tự tính điểm trung bình** | `OKR_doc.md` | Bản cũ: điểm từ tiến độ KR × trọng số |
-| 4 | **Đính kèm file** cho cả 2 nhóm | `OKR_doc.md` Box 2–3 | Bản cũ không có |
+| 4 | **Đính kèm file** — **chỉ ở check-in & bản chấm** (evidence / chi tiết bổ sung), không phải lúc tạo OKR | `OKR_doc.md` Box 2–3 | Bản cũ không có; lúc đầu đặt ở mục tiêu — nay chuyển sang check-in/đánh giá |
 | 5 | **Box 4: Self proposal next year** | `OKR_doc.md` Box 4 | Bản cũ không có |
 | 6 | **Timeline: Setup Q1 → Check-in Mar–Apr → Review Jun–Jul → Assessment Nov–Dec** | Guidance PDF p.20 | Bản cũ: phase trừu tượng, không có tháng |
 | 7 | **Quy trình 5 bước** (tự đánh giá → QL đánh giá → HR tổng hợp → Giám đốc → bàn giao) | `OKR_doc.md` | Bản cũ: flow 3 nhánh duyệt điểm |
@@ -54,17 +54,22 @@
 └──────────────────────────────────────────────────────────────┘
 ┌─ BOX 2 ─ Business ──────────────────────────────────────────┐
 │ Đầu việc tự do · KHÔNG giới hạn số chữ · KHÔNG giới hạn số  │
-│ Có attached file · Chấm điểm 1–5 · KHÔNG có điểm lẻ       │
+│ Chấm điểm 1–5 · KHÔNG có điểm lẻ                           │
 └──────────────────────────────────────────────────────────────┘
 ┌─ BOX 3 ─ People ────────────────────────────────────────────┐
 │ Đầu việc tự do · KHÔNG giới hạn số chữ · KHÔNG giới hạn số  │
-│ Có attached file nếu cần · Chấm điểm 1–5 · KHÔNG có điểm lẻ   │
+│ Chấm điểm 1–5 · KHÔNG có điểm lẻ                           │
 └──────────────────────────────────────────────────────────────┘
 ┌─ BOX 4 ─ Self proposal next year ───────────────────────────┐
 │ Nhân viên tự đề xuất OKR năm tới + điểm cần cải thiện      │
+│ (card riêng trên "OKR của tôi", kèm trạng thái)            │
 └──────────────────────────────────────────────────────────────┘
         → Phần mềm TỰ TÍNH điểm trung bình (Business + People)
 ```
+
+> **Đính kèm file không nằm ở lúc tạo OKR.** Khi tạo, nhân viên chỉ viết chữ.
+> File đính kèm làm **evidence hoặc chi tiết bổ sung** thuộc về **check-in giữa kỳ / cuối kỳ**
+> và **bản chấm** (ảnh chụp kết quả, báo cáo, tài liệu).
 
 > **Điểm lẻ là gì và vì sao không có:** nếu một nhóm có nhiều đầu việc, HR chấm **1 điểm cho cả nhóm**
 > (đánh giá tổng thể thành tựu của nhóm đó) — không chấm từng đầu việc rồi bình quân.
@@ -258,6 +263,57 @@ Business (công ty)                  People (đội ngũ)
 > **Trong pitch nói rõ:** *"HR đã chốt form đánh giá 1–5 với 2 nhóm Business/People — tôi implement đúng
 > form đó. Còn nhịp check-in thì để cấu hình được vì mỗi năm có thể khác."*
 
+### 2.9 Vòng đời chỉnh sửa OKR — nộp là khoá, review là mở lại
+
+> **Nguyên tắc:** OKR **nộp lên là đóng** — không ai sửa được cho tới khi quản lý **mở** trong
+> đợt review. Đây là điều kiện để điểm chấm cuối năm có ý nghĩa: những gì được duyệt
+> là những gì thực sự đã nộp, không phải những gì sửa sau khi biết điểm.
+
+```
+draft ──nộp──▶ submitted ──QL duyệt──▶ locked
+                     │                      │
+                     │ (giữa kỳ)            │ (cuối kỳ)
+                     ▼                      ▼
+                reopened  ──nộp lại──▶ locked
+                     ▲
+                     │ QL bấm "Mở cho nhân viên sửa" (đang review)
+```
+
+| Trạng thái | Ai sửa được | Mở khi nào | Đóng lại khi nào |
+|---|---|---|---|
+| `draft` | Nhân viên (chủ sở hữu) | Nhân viên tạo OKR ở phase setup | Nhân viên bấm **Nộp** |
+| `submitted` | Không ai sửa — chờ duyệt | Nhân viên vừa nộp | Quản lý **duyệt** → `locked` |
+| `locked` | Không ai sửa | QL duyệt xong | Chờ đến đợt review để mở lại |
+| `reopened` | Nhân viên sửa/bổ sung + QL xem | QL bấm **"Mở cho nhân viên sửa"** khi đang review giữa kỳ hoặc cuối kỳ | Nhân viên **nộp lại** → `locked` |
+| `returned` | Nhân viên sửa theo góp ý | QL trả lại kèm góp ý | Nhân viên bấm **Nộp lại** |
+
+**Khoá theo từng phase:**
+
+| Phase | Khi nào khoá | Mở lại khi nào | Ai mở |
+|---|---|---|---|
+| **Setup** (nộp → khoá) | NV nộp → QL duyệt → `locked` | Không mở lại trong phase này | — |
+| **Midyear** (mở lại → sửa → nộp → khoá) | Khi vào đợt review giữa năm | QL bấm **"Mở cho nhân viên sửa"** trong đợt review | Quản lý |
+| **Final** (mở lại → sửa → nộp → khoá) | Khi vào đợt đánh giá cuối năm | QL bấm **"Mở cho nhân viên sửa"** trong đợt đánh giá | Quản lý |
+
+> **Trong đợt review giữa kỳ và cuối kỳ**, quản lý có thể mở cho nhân viên sửa **ngay cả khi
+> đang review** — để nhân viên bổ sung phần thực tế mới phát sinh rồi nộp lại. Mọi lần mở lại,
+> sửa, nộp lại đều ghi vào audit log (ai mở · mở lúc nào · ai sửa gì).
+
+**Xoá mục — không xoá hẳn, luôn lưu vết + bắt buộc lý do:**
+
+> Người dùng xoá một mục tiêu hoặc một đầu việc trong lúc được mở lại để sửa → hệ thống
+> **không xoá hẳn bản ghi**. Mục đó được đánh dấu `deleted_at` + `delete_reason` và hiển thị
+> **gạch ngang, ghi "đã xoá"** trong lịch sử để ai cũng thấy nó từng tồn tại và vì sao bị xoá.
+
+| Trường | Ý nghĩa | Ràng buộc / giá trị |
+|---|---|---|
+| `deleted_at` | Lúc bị xoá | Trống nếu chưa xoá — **không xoá hẳn bản ghi** |
+| `delete_reason` | Lý do xoá | **BẮT BUỘC** khi xoá — không có lý do thì không cho xoá |
+
+- **Điểm của objective chỉ tính từ các mục chưa bị xoá** — mục đã xoá không cộng vào điểm,
+  nhưng **vẫn hiện trong lịch sử** (gạch ngang + "đã xoá" + lý do).
+- Khôi phục lại được: bấm "Khôi phục" → xoá `deleted_at` và `delete_reason`, giữ nguyên vết cũ trong audit log.
+
 ## 3. Vòng đời OKR (Mục 4.1)
 
 ```
@@ -315,6 +371,9 @@ Nhóm được ghi ở trường `category: business|people` — mỗi objective
 | `title` / `description` | Tên & mô tả mục tiêu | Tự do |
 | `category` | Nhóm điểm — mỗi objective thuộc **đúng 1 nhóm** | `business` (Box 2) hoặc `people` (Box 3) |
 | `status` | Trạng thái mục tiêu | `draft` · `submitted` · `approved` · `returned` · `in_progress` · `scored` · `locked` |
+| `edit_state` | Trạng thái chỉnh sửa (quyền sửa) | `draft` (NV sửa được) · `submitted` (khoá — chờ duyệt) · `locked` (khoá) · `reopened` (QL mở cho NV sửa) · `returned` (NV sửa theo góp ý) — xem §2.9 |
+| `deleted_at` | Lúc bị xoá | Trống nếu chưa xoá — **xoá mềm**, không xoá hẳn bản ghi |
+| `delete_reason` | Lý do xoá | **BẮT BUỘC** khi xoá mục tiêu |
 | `parent_objective_id` | Mục tiêu cấp trên (nếu có liên kết) | Trống nếu không liên kết — phân tầng: cá nhân → phòng ban → công ty |
 | `level` | Cấp độ mục tiêu | `company` · `team` · `individual` |
 | `team_id` | Nhóm sở hữu (phân tầng theo cây nhóm lồng nhau) | — |
@@ -333,13 +392,17 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `objective_id` | Nhóm chứa đầu việc này | Bắt buộc |
 | `title` | Nội dung đầu việc | **Không hạn chế số chữ** (theo form HR) |
 | `description` | Mô tả chi tiết | Tự do |
-| `attachments` | File đính kèm | Có thể có, **không bắt buộc** |
 | `display_order` | Thứ tự hiển thị trong nhóm | Số nguyên |
 | `progress` | Tiến độ trong phase check-in | `%` hoàn thành; trống nếu chưa check-in |
+| `deleted_at` | Lúc bị xoá | Trống nếu chưa xoá — **xoá mềm**, không xoá hẳn bản ghi |
+| `delete_reason` | Lý do xoá | **BẮT BUỘC** khi xoá đầu việc |
 | `created_by` / `created_at` | Ai tạo · lúc tạo | — |
 
+> **Không có đính kèm file ở mục tiêu/đầu việc.** File đính kèm làm evidence hoặc chi tiết bổ sung
+> thuộc về **check-in** và **bản chấm** (xem §4.3) — lúc tạo OKR chỉ viết chữ, không tải file.
+
 **Chỉ số đo (`KeyResult`)** — dùng cho **check-in tiến độ** và làm cơ sở tính **điểm đề xuất**
-(§9 C9). Không phải nơi chấm điểm cuối năm:
+(§9 @@C6@@). Không phải nơi chấm điểm cuối năm:
 
 | Trường | Ý nghĩa | Ràng buộc / giá trị |
 |---|---|---|
@@ -366,8 +429,12 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `objective_id` | Mục tiêu gắn với | Bắt buộc |
 | `proposal` | Nội dung nhân viên tự đề xuất OKR năm tới | Tự do |
 | `improvement_area` | Điểm cần cải thiện | Tự do |
-| `attachments` | File đính kèm | Tùy chọn |
+| `status` | Trạng thái tự đề xuất | `not_started` (chưa viết) · `draft` (đang viết) · `submitted` (đã nộp) |
 | `created_at` | Lúc tạo | — |
+
+> **Card "Self proposal năm sau"** hiển thị trên trang **OKR của tôi** (một card riêng, không chỉ nằm
+> trong form đánh giá cuối năm) — kèm trạng thái: **chưa viết / đang viết / đã nộp**, để nhân viên
+> luôn thấy mình đã làm phần này hay chưa mà không phải chờ tới cuối năm.
 
 ### 4.3 Đánh giá & check-in
 
@@ -389,7 +456,7 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `business_score` | **Điểm nhóm Business** | Box 2 — giá trị `1` → `5`; trống nếu chưa chấm |
 | `people_score` | **Điểm nhóm People** | Box 3 — giá trị `1` → `5`; trống nếu chưa chấm |
 | `average_score` | **Điểm trung bình OKR** | **Tự tính** = (Business + People) ÷ 2; trống nếu một nhóm chưa chấm |
-| `attachments` | File đính kèm (cho cả 2 nhóm) | Danh sách file |
+| `attachments` | File đính kèm làm evidence hoặc chi tiết bổ sung (ảnh chụp kết quả, báo cáo, tài liệu) | Danh sách file — **chỉ ở bản chấm**, không phải lúc tạo OKR |
 | `self_proposal_id` | Tự đề xuất năm sau | Box 4 — trỏ tới bản tự đề xuất; trống nếu không có |
 | `grade` | **Xếp loại** | `A` · `B` · `C` · `D` — sinh tự động từ `average_score`; trống nếu chưa chấm |
 | `created_by` / `created_at` | Ai chấm · lúc chấm | — |
@@ -407,6 +474,7 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `progress_snapshot` | Tiến độ tại thời điểm check-in | `%` hoàn thành |
 | `note` | Ghi chú | Tự do |
 | `confidence` | Mức độ tin cậy | `0` → `1` |
+| `attachments` | File đính kèm làm evidence hoặc chi tiết bổ sung (ảnh chụp kết quả, báo cáo, tài liệu) | Danh sách file — tuỳ chọn |
 | `created_at` / `created_by` | Lúc check-in · ai check-in | — |
 
 > **Lịch sử check-in không ghi đè** — mỗi lần check-in là 1 dòng riêng, giữ nguyên giá trị cũ.
@@ -422,6 +490,7 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `comment` | Nhận xét | Bắt buộc khi **trả lại** hoặc **sửa điểm** |
 | `action` | Hành động | `approve` (duyệt điểm) · `return` (trả lại chấm lại) · `adjust` (sửa điểm) |
 | `adjustments` | Thay đổi Objective/KR giữa năm | Danh sách thay đổi — có audit |
+| `attachments` | File đính kèm làm evidence hoặc chi tiết bổ sung (ảnh chụp kết quả, báo cáo, tài liệu) | Danh sách file — tuỳ chọn |
 | `score_override_reason` | Lý do sửa điểm | **BẮT BUỘC** khi hành động là `adjust` |
 | `created_at` | Lúc review | — |
 
@@ -502,7 +571,7 @@ Hai thứ khác nhau, không trộn.
 
 > **Cảnh báo khi implement:** đừng dùng công thức cũ "tiến độ KR × trọng số" để tính điểm cuối năm —
 > công thức đó thuộc về mô hình KR-trọng-số, **không phải** mô hình form HR. Công thức đó chỉ dùng cho
-> **điểm đề xuất** ở màn hình review (§8 C9).
+> **điểm đề xuất** ở màn hình review (§8 @@C6@@).
 
 **Điểm tự chấm và điểm quản lý lưu song song** (Mục 4.3 yêu cầu rõ: *"Hệ thống lưu cả điểm tự chấm và điểm của quản lý để đối chiếu"*).
 
@@ -597,7 +666,7 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 > Chi tiết: `docs/04-convenience-features.md` §2.
 
-### C9. Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức ⭐ P1
+### @@C6@@. Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức ⭐ P1
 
 **Vấn đề:** Manager review 10 objective → mở từng cái, đọc từng KR, tự tính điểm. Lâu và không nhất quán giữa các người.
 
@@ -692,10 +761,10 @@ Số liệu do engine tính, câu chữ do mẫu câu dựng sẵn → **không 
 
 | Tính năng từng đề xuất | Thay bằng gì |
 |---|---|
-| Gợi ý điểm OKR | **Điểm đề xuất** theo công thức minh bạch — manager kiểm tra được (§8 C9) |
+| Gợi ý điểm OKR | **Điểm đề xuất** theo công thức minh bạch — manager kiểm tra được (§8 @@C6@@) |
 | Check-in assist | Prefill giá trị lần trước — 90% giá trị, 0 token |
 | Phát hiện OKR rủi ro | Rule so sánh tiến độ / confidence / lịch sử check-in |
-| Gợi ý viết KR | Gợi ý kế thừa từ OKR đã duyệt của quản lý (C17) |
+| Gợi ý viết KR | Gợi ý kế thừa từ OKR đã duyệt của quản lý (C14) |
 | Tóm tắt báo cáo | Mẫu câu dựng từ số liệu đã tính |
 | Viết nhận xét review | Manager tự viết — nhận xét cá nhân là việc của người, không nên để máy viết hộ |
 
@@ -706,16 +775,29 @@ Số liệu do engine tính, câu chữ do mẫu câu dựng sẵn → **không 
 - [ ] HR tạo được cycle với đủ 5 phase + hạn chót (mốc tháng mặc định theo timeline thật: Q1 → Mar-Apr → Jun-Jul → Nov-Dec)
 - [ ] Nhân viên nhận notification nhắc trước hạn 3 ngày
 - [ ] Sau `due_at`, objective tự khóa; chỉ HR mở lại được (kèm lý do → audit log)
+- [ ] **Nộp lên là khoá** · review giữa kỳ & cuối kỳ **mở lại được** cho NV sửa (xem §2.9)
 - [ ] Seed sẵn danh mục objective chuẩn từ OKR Form CSV (2 nhóm Business/People)
 
 **Mô hình 2 nhóm & thang điểm**
 - [ ] Mỗi objective thuộc **đúng 1 nhóm**: Business **hoặc** People
 - [ ] Nhân viên tạo OKR → có **cả 2 nhóm**, mỗi nhóm ≥ 1 đầu việc (không cho gửi nếu rỗng)
-- [ ] Đầu việc cho phép **không hạn chế số chữ** + **đính kèm file**
+- [ ] Đầu việc cho phép **không hạn chế số chữ**
+- [ ] Lúc **tạo OKR không có đính kèm file** ở mục tiêu/đầu việc
+- [ ] **Check-in giữa kỳ & cuối kỳ** và **bản chấm** cho phép **đính kèm file** làm evidence / chi tiết bổ sung
 - [ ] Điểm chỉ nhận **1–5**, không nhận số lẻ, không nhận 0
 - [ ] **Điểm trung bình do phần mềm tự tính** — không có ô nhập tay
 - [ ] Xếp loại A/B/C/D tự sinh từ điểm TB theo ngưỡng cấu hình được
 - [ ] Box 4 (self proposal năm sau) hiển thị được, kèm "điểm cần cải thiện"
+- [ ] **Trang "OKR của tôi" hiện card Self proposal năm sau với trạng thái** (chưa viết / đang viết / đã nộp)
+
+**Vòng đời chỉnh sửa OKR**
+- [ ] **Nộp lên là khoá** — sau khi nộp, không ai sửa được mục tiêu/đầu việc cho tới khi được mở lại
+- [ ] Trong đợt **review giữa kỳ**, QL bấm **"Mở cho nhân viên sửa"** → NV sửa/bổ sung được, nộp lại → khoá lại
+- [ ] Tương tự cho **đánh giá cuối kỳ** — mở lại → sửa → nộp → khoá
+- [ ] Mọi lần mở lại / sửa / nộp lại đều có **audit log** (ai mở, mở lúc nào, ai sửa gì)
+- [ ] **Xoá mục → vẫn lưu vết + bắt buộc lý do**: mục bị xoá không mất hẳn — hiện **gạch ngang, ghi "đã xoá"** kèm lý do trong lịch sử
+- [ ] **Không có lý do xoá thì không cho xoá**
+- [ ] **Điểm objective chỉ tính từ các mục chưa bị xoá**
 
 **Quy trình**
 - [ ] Tạo OKR tự nhập 2 nhóm, tổng trọng số KR (nếu có) phải = 100 (không cho submit nếu sai)
