@@ -21,7 +21,6 @@
 | A3 | Quản lý nhân viên | HR | S40 | `docs/01` §2 |
 | A4 | Cây nhóm lồng nhau, số tầng tự do | HR | S41 | `docs/01` §2 |
 | A5 | Nhật ký thay đổi | HR | S35 | `docs/01` §2 |
-| A6 | Ủy quyền khi đi công tác | QL | S37 | `docs/01` §2 |
 | **B. Chấm công — nhân viên** |
 | B1 | Chấm công trên điện thoại (1 chạm) | NV | S05m | `docs/09` |
 | B2 | Chấm công trên desktop | NV | S05 | `docs/02` §3 |
@@ -37,38 +36,37 @@
 | C5c | Đăng ký WFH | NV | S10 | `docs/02` §5.1 |
 | C6c | Số dư phép | NV | S09 | `docs/02` §5.1 |
 | **D. Đơn từ — quản lý & HR** |
-| D1 | Duyệt đơn hàng loạt + chip lý do | QL | S12 | `docs/04` §C8 |
+| D1 | Duyệt đơn hàng loạt + chip lý do | QL | S12 | `docs/04` §C7 |
 | D2 | Chi tiết đơn — timeline | QL | S13 | `docs/02` §5.2 |
-| D3 | Lịch nhóm + cảnh báo xung đột | QL | S14 | `docs/02` §5.2 |
-| D4 | Xử lý khiếu nại bảng công | HR | S33 | `docs/02` §5.3 |
+| D3 | Lịch nhóm + cảnh báo xung đột + phân quyền xem | QL | S14 | `docs/02` §5.2 |
+| D4 | Chi tiết 1 khiếu nại — 3 cột so sánh | HR | S33 | `docs/02` §5.3 |
 | D5 | Sổ phép (ledger) | HR | S34 | `docs/02` §5.3 |
 | **E. Bảng công & cấu hình — HR** |
-| E1 | Bảng công & chốt — sửa tại chỗ, 45 cột | HR | S15 | `docs/04` §C4 · `docs/02` §2.1.3 |
+| E1 | Bảng công & chốt — sửa tại chỗ, 53 cột | HR | S15 | `docs/04` §C4 · `docs/02` §2.1.3 |
 | E2 | Bộ lọc + lưu view | HR | S15 | `docs/04` §C5 |
-| E3 | Cấu hình quy định (19 luật) | HR | S16 | `docs/08` |
-| E4 | Cấu hình 1 luật (form sinh tự động) | HR | S17 | `docs/08` |
-| E5 | Dry-run ảnh hưởng + lịch sử phiên bản | HR | S18 | `docs/04` §C6 |
-| E6 | Trang quy định tra cứu | Tất cả | S19 | `docs/04` §C7 |
-| E7 | Ca làm việc & lịch nghỉ lễ | HR | S26 | `docs/02` §5.3 |
-| E8 | Quản lý loại nghỉ | HR | S32 | `docs/02` §2.3 |
-| E9 | Quản lý thiết bị (duyệt/thu hồi) | HR | S28 | `docs/01` §2 |
+| E3 | Cấu hình quy định (19 luật, chỉ toàn công ty) | HR | S16 | `docs/08` |
+| E4 | Cấu hình 1 luật (form sinh tự động + confirm khi lưu) | HR | S17 | `docs/08` |
+| E5 | Trang quy định tra cứu | Tất cả | S19 | `docs/04` §C6 |
+| E6 | Ca làm việc (linh hoạt) & lịch nghỉ lễ | HR | S26 | `docs/02` §5.3 |
+| E7 | Quản lý loại nghỉ (hiếu hỉ · tang · thai sản nam/nữ) | HR | S32 | `docs/02` §2.3 |
+| E8 | Quản lý thiết bị (duyệt/thu hồi, mặc định 2 máy) | HR | S28 | `docs/01` §2 |
+| E9 | Danh sách khiếu nại — xử lý nhanh tại chỗ | HR | S45 | `docs/02` §5.3 |
+| E10 | Bảng phép tất cả mọi người | HR | S46 | `docs/02` §5.3 |
 | **F. OKR** |
 | F1 | Dashboard OKR | NV | S20 | `docs/03` §2 |
-| F2 | Tạo OKR — tự nhập, 2 nhóm cố định | NV | S21 | `docs/03` §3 · `docs/04` §C17 |
+| F2 | Tạo OKR — tự nhập, 2 nhóm cố định | NV | S21 | `docs/03` §3 · `docs/04` §C14 |
 | F3 | Check-in tiến độ | NV | S22 | `docs/03` §4 |
 | F4 | Duyệt OKR đầu năm | QL | S42 | `docs/03` §5 |
 | F5 | Review giữa năm | QL | S43 | `docs/03` §5 |
 | F6 | Đánh giá cuối năm (form 4 box) | QL | S23 | `docs/03` §5 |
-| F7 | Review OKR cả nhóm | QL | S24 | `docs/04` §C9 |
+| F7 | Review OKR cả nhóm | QL | S24 | `docs/04` §C8 |
 | F8 | Báo cáo OKR + cột Trạng thái | HR | S25 | `docs/03` §6 |
 | F9 | Quản lý chu kỳ OKR | HR | S44 | `docs/03` §5 |
 | **G. Tiện lợi dùng chung** |
 | G1 | Todo inbox — màn hình mặc định | NV+QL | S02 | `docs/04` §C1 |
 | G2 | Command palette Ctrl+K | Tất cả | S03 | `docs/04` §C3 |
 | G3 | Thông báo & nhắc việc | Tất cả | S04, S04m | `docs/04` §C2 |
-| G4 | Tuỳ chỉnh thông báo | Tất cả | S36 | `docs/04` §C12 |
-| G5 | Báo cáo tự động theo lịch | HR | S39 | `docs/04` §C10 |
-| G6 | Import Excel | HR | S39 | `docs/04` §C11 |
+| G4 | Tuỳ chỉnh thông báo | Tất cả | S36 | `docs/04` §C9 |
 
 ---
 
@@ -113,17 +111,6 @@
 - [ ] Lọc theo người, theo đối tượng, theo khoảng thời gian
 - [ ] Không sửa được dòng nhật ký (append-only)
 **Phụ thuộc:** —
-
-### A6 · Ủy quyền 🔴 · S37
-**Cần có:** chọn người nhận, thời hạn, loại việc được ủy quyền.
-**Nghiệm thu:**
-- [ ] Trong thời hạn ủy quyền → người được ủy quyền duyệt được thay
-- [ ] Hết hạn → tự động thu quyền lại
-- [ ] Có thể thu hồi trước khi hết hạn
-**Phụ thuộc:** A4
-
----
-
 ## B. Chấm công — nhân viên
 
 ### B1 · Chấm công trên điện thoại 🔴 · S05m
@@ -169,17 +156,17 @@
 ### B5 · Thiết bị của tôi 🔴 · S27
 **Cần có:** đăng ký thiết bị, xem thiết bị đang đăng ký, thu hồi.
 **Nghiệm thu:**
-- [ ] **Max 1 thiết bị** — thiết bị thứ 2 phải được HR duyệt
+- [ ] **Mặc định 2 thiết bị** — thiết bị thứ 3 mới phải được HR duyệt
 - [ ] Nhân viên **tự thấy** mình đang chấm công trên bao nhiêu máy, ở đâu, lúc nào
 - [ ] Nhân viên **không tự xoá được** thiết bị đang chờ duyệt
 **Phụ thuộc:** A1
 
 ### B6 · Thêm thiết bị 🔴 · S29
 **Nghiệm thu:**
-- [ ] **Một flow duy nhất** cho cả "đăng ký lần đầu" và "thêm máy thứ 2" — không có 2 màn hình riêng
-- [ ] Mặc định vẫn là 1 máy; muốn thêm máy phải có lý do
+- [ ] **Một flow duy nhất** cho cả "đăng ký lần đầu" và "thêm máy thứ 3" — không có 2 màn hình riêng
+- [ ] Mặc định 2 máy; muốn thêm máy phải có lý do
 - [ ] Yêu cầu vào hàng chờ HR duyệt, có thời hạn hết hiệu lực
-**Phụ thuộc:** B5, E9
+**Phụ thuộc:** B5, E8
 
 ---
 
@@ -248,7 +235,7 @@
 - [ ] Mỗi đơn hiện **chip ✅/❌ điều kiện** ngay trên dòng, không phải mở mới thấy
 - [ ] Từ chối mà bỏ trống lý do → **nút bị disable**
 - [ ] Duyệt **12 đơn trong 3 phút**
-- 🟡 *(C8)* Chip lý do để từ chối nhanh cùng loại
+- 🟡 *(C7)* Chip lý do để từ chối nhanh cùng loại
 **Phụ thuộc:** C3c
 
 ### D2 · Chi tiết đơn 🔴 · S13
@@ -262,17 +249,19 @@
 **Nghiệm thu:**
 - [ ] Biết ai vắng mà **không phải hỏi ai**
 - [ ] Cảnh báo xung đột lịch: *"thứ Sáu này 3/5 người đều WFH, đội sẽ thiếu người"*
-- 🟡 *(C8)* Nhóm của tôi có cấu hình riêng: ai trong nhóm thấy được lịch của ai
+- 🟡 *(C7)* Nhóm của tôi có cấu hình riêng: ai trong nhóm thấy được lịch của ai
 **Phụ thuộc:** C5c
 
-### D4 · Xử lý khiếu nại bảng công 🔴 · S33
+### D4 · Chi tiết 1 khiếu nại 🔴 · S33
+> Đây là màn hình **chi tiết** — vào từ danh sách khiếu nại (E9) khi cần đối chiếu.
+> Phần xử lý nhanh đã nằm ngay trên danh sách, không phải mỗi khiếu nại đều vào đây.
 **Nghiệm thu:**
 - [ ] Đặt **3 cột cạnh nhau**: log chấm công gốc (không sửa được) · đơn từ liên quan · bảng công HR đang sửa
 - [ ] **Gợi ý nguyên nhân theo rule** — ví dụ *"thiếu check-out và chưa tạo đơn bổ sung công"*
 - [ ] 3 cách xử lý: sửa ô · tạo đơn bổ sung công · từ chối (bắt buộc lý do)
 - [ ] Từ chối → nhân viên **nhận được thông báo**
-- [ ] Chốt & khóa **chỉ chạy được khi mọi khiếu nại đã xử lý**
-**Phụ thuộc:** E1, B4
+- [ ] Nút quay lại → về **danh sách khiếu nại** (E9)
+**Phụ thuộc:** E9, E1, B4
 
 ### D5 · Sổ phép 🔴 · S34
 **Nghiệm thu:**
@@ -286,13 +275,13 @@
 
 ### E1 · Bảng công & chốt 🔴 · S15
 **Nghiệm thu:**
-- [ ] Đủ **45 cột** (26 cột ngày + 19 cột tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`
+- [ ] Đủ **53 cột** (5 thông tin + 31 cột ngày + 17 cột tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`
 - [ ] Ô ngày dùng **ký hiệu gốc** của công ty (R · AL · S · 1.00 · R/0.50) — export ra khớp file HR 100%
 - [ ] **Click vào ô để sửa tại chỗ**; sửa cột nhạy cảm (công thực tế · đi muộn · phép · vi phạm) **bắt buộc có lý do**
 - [ ] Sửa hàng loạt — tick nhiều dòng, 1 audit log cho cả lô
 - [ ] Cảnh báo sai lệch tự động (thiếu check-out, về sớm không có đơn) + nút [Sửa] / [Tạo đơn]
 - [ ] **Chốt & khóa** có bước xác nhận; sau khi khóa thì **không sửa được nữa**
-- [ ] Xuất Excel ra đúng 45 cột + ký hiệu gốc, đúng kỳ 01 → cuối tháng
+- [ ] Xuất Excel ra đúng 53 cột + ký hiệu gốc, đúng kỳ 01 → cuối tháng — khớp file `Pine team_T10.2026_Timekeeping Report.xlsx`
 **Phụ thuộc:** B1, C1c, C2c
 
 ### E2 · Bộ lọc + lưu view 🔴 · S15
@@ -307,8 +296,9 @@
 **Nghiệm thu:**
 - [ ] Thấy đủ **19 quy định** với giá trị đúng theo "Quyết định của HR" ở Mục 7
 - [ ] Mọi thay đổi có **ngày hiệu lực** và **lịch sử phiên bản**
-- [ ] Có thể ghi đè giá trị theo nhóm / chức danh
 - [ ] **Rollback được** về phiên bản cũ, có lý do
+- [ ] **Chỉ áp dụng cho toàn công ty** — không có lựa chọn ghi đè theo nhóm / chức danh ở màn hình này
+- [ ] Màn hình **không hiện** "Đang áp dụng / Sắp áp dụng / Đã hết hiệu lực" — chỉ có **nút "Lịch sử thay đổi"**
 **Phụ thuộc:** —
 
 ### E4 · Cấu hình 1 luật 🔴 · S17
@@ -316,43 +306,61 @@
 - [ ] Form **sinh tự động từ catalog** — thêm 1 luật mới không phải sửa form
 - [ ] Chỉ hiện trường liên quan (ví dụ chỉ hiện "hạn offline" khi bật "cho phép offline")
 - [ ] Nhân viên thấy **cùng nội dung** ở trang tra cứu → không có chuyện tài liệu lệch phần mềm
+- [ ] Bấm **Lưu** → hiện **hộp xác nhận** nội dung sắp lưu (thay đổi gì · ngày hiệu lực · ai bị ảnh hưởng) rồi mới lưu thật
+- [ ] Nút **"Lịch sử thay đổi"** mở ra lịch sử phiên bản của luật đó, kèm nút rollback
 **Phụ thuộc:** E3
 
-### E5 · Dry-run ảnh hưởng 🔴 · S18
-**Nghiệm thu:**
-- [ ] Xem trước ảnh hưởng **trước khi lưu**, có số liệu cụ thể
-- [ ] Biết **bảng công nào đã khóa → không bị đụng**
-- [ ] Lịch sử phiên bản xem được + rollback
-**Phụ thuộc:** E3
-
-### E6 · Trang quy định tra cứu 🔴 · S19
+### E5 · Trang quy định tra cứu 🔴 · S19
 **Nghiệm thu:**
 - [ ] Nhân viên mở ra thấy **quy định đang áp dụng với mình**, bằng ngôn ngữ tự nhiên
 - [ ] Nội dung **tự sinh từ cùng nguồn** với form cấu hình của HR
 - [ ] Đổi quota xong, nhân viên **thấy ngay** quy định mới
 **Phụ thuộc:** E3
 
-### E7 · Ca làm việc & lịch nghỉ lễ 🔴 · S26
+### E6 · Ca làm việc & lịch nghỉ lễ 🔴 · S26
 **Nghiệm thu:**
 - [ ] Giờ vào/ra, giờ nghỉ trưa, đủ 8h/ngày · 4h/nửa ngày — đều cấu hình được
+- [ ] **Ca linh hoạt**: cấu hình được khung giờ (ví dụ check-in 8h–10h · check-out 17h–19h) — làm đủ 8h trong khung thì **tính đủ 1 ngày công**, không bắt buộc đúng giờ
 - [ ] **Bộ gán ca**: nhóm + chức danh → ca
 - [ ] Ca ngoại lệ (7h30–16h30 · 7h00–16h00 · 10h00–19h00) gán cho nhóm, cần HR duyệt
 - [ ] Lịch nghỉ lễ theo năm — thêm ngày lễ không cần sửa code
 **Phụ thuộc:** —
 
-### E8 · Quản lý loại nghỉ 🔴 · S32
+### E7 · Quản lý loại nghỉ 🔴 · S32
 **Nghiệm thu:**
 - [ ] **Thêm loại nghỉ mới không cần sửa code**
 - [ ] Mỗi loại tự cấu hình: hưởng lương, trừ phép năm, đơn vị ngày/nửa ngày, cần giấy tờ, hạn gửi
 - [ ] Loại nghỉ có **3 tầng kế thừa** (nhóm → loại → trường hợp riêng)
+- [ ] Có **hiếu hỉ** (không trừ phép năm, báo trước) và **tang gia** (báo gấp được, không cần giấy tờ, cần 2 bước duyệt) — cả 2 đều cấu hình được như loại khác
+- [ ] **Thai sản tách nam / nữ**: nam 5 · 7 · 10 · 14 ngày theo chế độ · nữ 6 hoặc 7 tháng (BHXH chi trả, cần HR duyệt)
 **Phụ thuộc:** —
 
-### E9 · Quản lý thiết bị 🔴 · S28
+### E8 · Quản lý thiết bị 🔴 · S28
 **Nghiệm thu:**
 - [ ] Duyệt đăng ký mới / thu hồi thiết bị mất
-- [ ] Thấy thiết bị nào đang chấm công hộ (nhiều máy cùng lúc) → **cảnh báo**
+- [ ] **Mặc định 2 thiết bị** — máy thứ 3 mới phải xin HR duyệt (kèm lý do)
 - [ ] Mọi thao tác đều vào nhật ký thay đổi
 **Phụ thuộc:** B5
+
+### E9 · Danh sách khiếu nại 🔴 · S45
+**Nghiệm thu:**
+- [ ] Danh sách khiếu nại đang mở, **đếm ngược hạn** cho từng dòng
+- [ ] **Xử lý nhanh ngay trên dòng**: Sửa ô · Tạo đơn bổ sung công · Từ chối (bắt buộc chọn lý do)
+- [ ] Sửa ô trên dòng → có lý do bắt buộc + ghi vào nhật ký thay đổi
+- [ ] Từ chối → nhân viên **nhận được thông báo**
+- [ ] Click vào 1 dòng → mở **màn hình chi tiết** (D4) để đối chiếu 3 nguồn dữ liệu
+- [ ] Quá hạn 2 ngày → hiện "đã quá hạn" và tự đóng
+- [ ] Nút **Chốt & khóa** của HR **bị chặn** khi còn khiếu nại chưa xử lý
+**Phụ thuộc:** D4, E1
+
+### E10 · Bảng phép tất cả mọi người 🔴 · S46
+**Nghiệm thu:**
+- [ ] Bảng **1 dòng = 1 người**: phép năm còn · phép tồn 2025 · phép ốm đã dùng · thâm niên · tổng đã dùng
+- [ ] Lọc theo **nhóm** / **sắp hết phép** / **đã hết phép**
+- [ ] Click vào 1 người → mở **sổ phép chi tiết** của người đó (D5)
+- [ ] Số ở chân bảng = tổng của **những dòng đang lọc**
+- [ ] Người sắp hết phép được **đánh dấu riêng**, không phải tìm trong bảng
+**Phụ thuộc:** D5
 
 ---
 
@@ -367,14 +375,17 @@
 - [ ] Thấy rõ **việc cần làm** với OKR (chấm, cập nhật, chờ duyệt)
 - [ ] Hiện điểm hiện tại của 2 nhóm
 - [ ] Phần **20% mục tiêu công ty** hiện rõ nhưng **không tính vào điểm TB**
+- [ ] Có card **Self proposal năm sau** — hiện trạng thái (chưa viết / đang viết / đã nộp) + nút xem
 **Phụ thuộc:** A1
 
 ### F2 · Tạo OKR 🔴 · S21
 **Nghiệm thu:**
 - [ ] **2 nhóm cố định** Business / People, **tự nhập** từng đầu việc
-- [ ] **Gợi ý kế thừa từ OKR quản lý** — bấm 1 chạm để chép mục tiêu đã duyệt (C17)
-- [ ] Đính kèm file
+- [ ] **Gợi ý kế thừa từ OKR quản lý** — bấm 1 chạm để chép mục tiêu đã duyệt (C14)
+- [ ] **Không có ô đính kèm** ở bước tạo — file làm evidence chỉ đính kèm lúc check-in / đánh giá
 - [ ] Gửi → quản lý **duyệt / trả lại kèm góp ý**
+- [ ] **Sau khi gửi → khoá sửa.** Nhân viên không sửa được nữa cho tới khi được mở lại ở review giữa kỳ
+- [ ] Muốn **xoá 1 mục** → bắt buộc nhập lý do, mục đó **vẫn còn trong lịch sử** (không mất vết)
 **Phụ thuộc:** F1
 
 ### F3 · Check-in tiến độ 🔴 · S22
@@ -382,12 +393,15 @@
 - [ ] Check-in **hàng tháng** theo từng KR: giá trị, tiến độ, mức độ tin cậy
 - [ ] **Prefill giá trị lần trước**
 - [ ] Có mốc hạn, tự nhắc trước hạn
+- [ ] **Đính kèm file làm evidence** — ảnh chụp kết quả, báo cáo, tài liệu liên quan
+- [ ] Ở giai đoạn **review giữa kỳ** → nhân viên được sửa bổ sung OKR rồi nộp lại; nộp xong **khoá sửa lại**
 **Phụ thuộc:** F2
 
 ### F4 · Duyệt OKR đầu năm 🔴 · S42
 **Nghiệm thu:**
 - [ ] Quản lý duyệt hoặc trả lại **2 nhóm**
 - [ ] Trả lại → có góp ý, nhân viên thấy và sửa
+- [ ] Nút **"Mở cho nhân viên sửa"** → nhân viên sửa bổ sung được trong lúc quản lý đang review
 **Phụ thuộc:** F2
 
 ### F5 · Review giữa năm 🔴 · S43
@@ -414,7 +428,7 @@
 **Nghiệm thu:**
 - [ ] Bảng tổng hợp đủ **9 trường**, cột thời gian công tác **tự tính**
 - [ ] Có **cột Trạng thái** — đủ theo dõi ai chấm/chưa chấm/chờ QL (**không cần màn hình kanban riêng**)
-- [ ] Có **tóm tắt báo cáo** dựng từ số liệu đã tính (C18)
+- [ ] Có **tóm tắt báo cáo** dựng từ số liệu đã tính (C15)
 - [ ] Xuất Excel
 **Phụ thuộc:** F6
 
@@ -461,34 +475,18 @@
 - [ ] Chọn kênh nhận (trong app / email / push) cho từng loại
 - [ ] Đặt **giờ yên lặng**
 - [ ] Nhân viên **tự cấu hình được phần của chính mình** — không cấu hình được gì khác
-- ⚪ *(C12)* Onboarding tour + trạng thái rỗng có CTA
+- ⚪ *(C9)* Onboarding tour + trạng thái rỗng có CTA
 **Phụ thuộc:** G3
-
-### G5 · Báo cáo tự động theo lịch ⚪ · S39
-**Nghiệm thu:**
-- [ ] HR đặt lịch: báo cáo nào, gửi cho ai, ngày nào trong tháng
-- [ ] Có bản xem trước trước khi lên lịch
-**Phụ thuộc:** E1
-
-### G6 · Import Excel ⚪ · S39
-**Nghiệm thu:**
-- [ ] Map cột → preview → validate trước khi nhập
-- [ ] Lỗi dòng nào báo **dòng nào**, không phải "import thất bại"
-**Phụ thuộc:** E1
-
----
-
 ## Điều kiện cắt (nếu trượt tiến độ)
 
 **Cắt theo thứ tự, không đụng danh sách trước:**
 
-1. ⚪ G6 Import Excel → ⚪ G5 Báo cáo tự động → ⚪ G4 Tuỳ chỉnh thông báo
-2. 🟡 F7 Review OKR cả nhóm → 🟡 A6 Ủy quyền → 🟡 B6 Thêm thiết bị
+1. ⚪ F7 Review OKR cả nhóm → ⚪ B6 Thêm thiết bị → ⚪ E11 Bảng phép tổng hợp (giữ S34 sổ phép 1 NV)
 3. ❌ Rollback trong E5 (giữ lịch sử chỉ để xem) → ❌ multi-select động trong E3 (dùng select 1 giá trị)
 4. ❌ Lịch cố định WFH (giữ đăng ký lẻ) → ❌ Phụ lục nghỉ chi tiết trong D5
 
 **Không bao giờ cắt:**
-- ❌ **E1 Bảng công 45 cột + chốt + khóa + export Excel** (khớp file HR)
+- ❌ **E1 Bảng công 53 cột + chốt + khóa + export Excel** (khớp file HR)
 - ❌ **B1 Chấm công điện thoại 1 chạm < 4s**
 - ❌ **G1 Todo inbox** · **G2 Command palette** · **G3 Thông báo**
 - ❌ **E3 + E4 + E6 Cấu hình quy định + trang tra cứu** (cùng một catalog)

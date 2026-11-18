@@ -1,0 +1,37 @@
+Lịch nhóm: 
+	- cho xem theo phân quyền: 
+		- HR có quyền xem của cả công ty
+		- Manager có thể xem các thành viên mình quản lý
+		- Team lead và member có thể xem của các thành viên trong team của mình
+- Bảng công & chốt của HR
+	- Bảng cần hiển thị được đến công của từng ngày trong tháng, có thể tham khảo trong file "Pine team_T10.2026_Timekeeping Report.xlsx"
+	- Khi đó HR sẽ chỉnh sửa trên giá trị của ngày xác định (số tổng kết tự động cập nhật theo) và export ra file dạng như file "Pine team_T10.2026_Timekeeping Report.xlsx" 
+- Cấu hình quy định: 
+	- Hiện tại chỉ hỗ trợ áp dụng cho toàn công ty 
+	- Trên màn hình không cần hiện: Đang áp dụng, Sắp áp dụng,Đã hết hiệu lực, chỉ cần có nút lịch sử thay đổi là được rồi
+	- phép lễ tết, hiếu hỉ, thai sản cho nam và cho nữ… check lại các chế độ có thể cấu hình
+	- bỏ xem trc ảnh hưởng, chỉ cần khi lưu hiện confirm lại thông tin là được rồi
+- okr của tôi:
+	- thêm hiển thị cho Self proposal next year
+- okr:
+	- Sau thời gian tạo OKR + nộp lên, việc edit sẽ đóng lại không cho edit nữa, đến trong thời gian review giữa kì thì lại có thể cập nhật và bổ sung (với mục nào muốn xóa thì vẫn lưu vết và lí do xóa) nộp lên rồi thì lại không cho edit nữa, tương tự với cuối kỳ.
+	- trong thời gian manager review okr -> cho phép manager mở để member edit thêm
+	- Khi tạo OKR không cần tính năng đính kèm ở từng mục, khi checkin giữa kì hoặc cuối kì có thể thêm đính kèm file để làm evidence hoặc chi tiết bổ sung 
+- Ca làm việc: 
+	- flexible trong khoảng thời gian miễn đủ số giờ. Ví dụ thời gian làm việc 8 tiếng, giờ checkin có thể từ 8h-10h và checkout có thể từ 5h-7h, miễn sao người đó làm việc đủ 8 tiếng và checkin checkout trong khoảng thời gian đó sẽ vẫn tính đủ 1 ngày công 
+- Số thiết bị cho phép nâng lên 2 thiết bị mặc định.
+- bỏ tính năng cờ hiệu bất thường
+- Xử lý khiếu nại bảng công chưa thấy mockup cho màn hình danh sách khiếu nại và có thể xử lý nhanh trên màn hình danh sách, nếu cần xem chi tiết mới vào màn hình chi tiết từng người
+- Thêm màn hình bảng phép của tất cả mọi người cho HR theo dõi:
+	- Bảng danh sách thông tin về phép của các nhân viên ví dụ như phép còn, các loại phép đã sử dụng, tổng phép ...
+	- Click vào chi tiết có thể ra sổ phép của 1 nhân viên 
+	
+- bỏ tính năng uỷ quyền
+- bỏ màn hình Báo cáo & import
+
+- Màn hình phép dư: 
+	- cần có thêm các thông tin về phép ốm, phép thâm niên
+	- một note nhỏ về cách cộng ngày phép sau mỗi tháng: mỗi tháng trên 15 ngày mới cộng 1 ngày phép (ví dụ nếu vào công ty sau ngày 15 thì sau tháng đó vẫn không được cộng thêm 1 ngày phép)
+- 
+- bỏ tính năng okr template
+- bỏ okr board

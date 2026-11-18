@@ -53,7 +53,6 @@
 | **Thông báo (`Notification`)** | gửi cho **Người dùng**, gắn với 1 việc | 3 kênh: push · email · badge |
 | **Tuỳ chọn thông báo (`NotificationPreference`)** | của **Người dùng**, theo từng sự kiện × kênh | Chỉ lưu dòng khi user **tắt** hoặc đổi kênh |
 | **Đăng ký push (`PushSubscription`)** | của **Người dùng** | 1 người có thể đăng ký nhiều thiết bị |
-| **Ủy quyền (`Delegation`)** | giữa 2 **Người dùng**, có phạm vi & thời hạn | Quản lý đi công tác → giao việc duyệt cho người khác |
 | **Phiên đăng nhập (`RefreshToken`)** | của **Người dùng** | Chỉ lưu **mã băm** của phiên — lộ dữ liệu cũng không dùng được |
 
 ## 3. Các chỉ mục truy vấn quan trọng
@@ -85,8 +84,6 @@
 | `idx_refresh_token_hash` | `token_hash` | Tìm phiên đăng nhập theo mã băm | Đăng xuất thật (thu hồi phiên) |
 | `idx_refresh_token_user` | `user_id`, `revoked_at` | Liệt kê phiên của 1 người, đã thu hồi hay chưa | Thu hồi hàng loạt khi đổi mật khẩu |
 | `idx_notifpref_user` | `user_id` | Tuỳ chọn thông báo của 1 người | Bảng nhỏ, truy vấn theo người |
-| `idx_delegation_active` | `delegate_id`, `is_active`, `starts_at`, `ends_at` | Tìm ủy quyền đang hiệu lực của người nhận việc | Ưu tiên ủy quyền khi gán việc duyệt |
-| `idx_delegation_delegator` | `delegator_id`, `is_active` | Ủy quyền của 1 người | Quản lý danh sách ủy quyền đã giao |
 | `idx_pushsub_user` | `user_id` | Thiết bị đã đăng ký nhận push của 1 người | Gửi thông báo tới mọi thiết bị |
 | `idx_savedview_owner` | `owner_id`, `module` | View đã lưu của 1 người theo phân hệ | Mở nhanh bộ lọc đã lưu (C5) |
 | `idx_team_member_user` | `user_id` | Các nhóm 1 người thuộc | Phân quyền theo nhóm |
@@ -248,7 +245,7 @@ Kỳ 11/2026                                    (hôm nay 12/11 — đang ở b�
 | `next_run_at` | Lần chạy kế tiếp | Ghi tự động |
 | `is_active` | Lịch trình còn bật | Có / không |
 
-### Dữ liệu của core — đăng nhập, thông báo, ủy quyền
+### Dữ liệu của core — đăng nhập, thông báo, push
 
 Các phần này **chưa có trong ERD** nhưng cần cho D2. Bổ sung ở đây để không sót.
 
@@ -284,22 +281,6 @@ Các phần này **chưa có trong ERD** nhưng cần cho D2. Bổ sung ở đâ
 > **Vì sao chỉ lưu dòng khi user tắt, không lưu đầy đủ:**
 > mặc định là bật → không cần dòng nào cho user chưa tùy chỉnh. Bảng nhỏ, truy vấn đơn giản,
 > và tránh phải thay đổi cấu trúc khi thêm sự kiện mới vào ma trận 17.
-
-**Ủy quyền (`Delegation`)** — quản lý đi công tác → giao việc duyệt cho người khác:
-
-| Trường | Ý nghĩa | Ràng buộc / giá trị |
-|---|---|---|
-| `id` | Định danh ủy quyền | Khóa chính |
-| `delegator_id` | Người ủy quyền | Bắt buộc |
-| `delegate_id` | Người nhận việc | Bắt buộc |
-| `scope` | Phạm vi việc được ủy quyền | `all` \| `requests` \| `okr_review` \| `okr_score` |
-| `starts_at` | Thời điểm bắt đầu hiệu lực | Bắt buộc |
-| `ends_at` | Thời điểm kết thúc hiệu lực | Bắt buộc |
-| `is_active` | Ủy quyền còn hiệu lực | Có / không |
-| `reason` | Lý do ủy quyền | **BẮT BUỘC** — có vết trong nhật ký thay đổi |
-| `created_at` | Thời điểm tạo | Ghi tự động |
-
-> **Thứ tự ưu tiên khi gán việc duyệt:** ủy quyền đang hiệu lực > quản lý trực tiếp (`manager_id`) > HR theo phạm vi.
 
 **Đăng ký push (`PushSubscription`)** — 1 người có thể đăng ký nhiều thiết bị:
 
@@ -552,7 +533,7 @@ Công ty (nhóm gốc, parent = None)
 - Mỗi NV có **đúng 2 objective** mỗi kỳ (1 Business + 1 People) → duy nhất theo (`user_id`, `cycle_id`, `category`).
 - `OkrAchievement` **không có** trường trọng số — vì nhóm được chấm 1 điểm, không bình quân.
 
-### Bảng công — theo mẫu export thật (45 cột)
+### Bảng công — theo mẫu export thật (53 cột)
 
 **Ô công (`TimesheetDay`)** — 1 ô = 1 người × 1 ngày. Lưu **TRẠNG THÁI nửa ngày**, không lưu chuỗi ký hiệu.
 
@@ -572,7 +553,7 @@ Công ty (nhóm gốc, parent = None)
 > và **render ra ký hiệu gốc** bằng 1 hàm thuần → export khớp file HR 100%.
 > Chi tiết bảng tra cứu ký hiệu: `docs/02` §2.1.3.
 
-**Cột tổng hợp của bảng công** (19 cột theo file gốc) — lưu trên `Timesheet`:
+**Cột tổng hợp của bảng công** (17 cột theo file gốc) — lưu trên `Timesheet`:
 `manager_code` · `wfh_days` · `total_work_days` · `nl_days` · `al_days` · `cl_days` · `sick_days` ·
 `bhxh_days` · `ro_days` · `up_days` · `ml_days` · `pl_days` · `total_days` ·
 `remaining_leave_days` · `actual_work_days` · `paid_leave_days` · `unpaid_leave_days`.

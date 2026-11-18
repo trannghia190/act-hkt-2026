@@ -115,9 +115,9 @@ Từ chối → BẮT BUỘC chọn lý do (nút 1 chạm từ chip phổ biến
 ### 3.4. HR tổng hợp bảng công & chốt
 
 ```
-Bảng công tháng: 26 cột ngày + 19 cột tổng hợp
+Bảng công tháng: **53 cột** = 5 thông tin + 31 cột ngày + 17 cột tổng hợp (đúng file HR đang dùng)
 Mỗi ô ngày dùng KÝ HIỆU GỐC của công ty: R (WFH) · AL (phép) · S (ốm) · 1.00 · 0.50 · R/0.50 …
-19 cột tổng hợp tự tính theo đúng công thức trong file gốc
+17 cột tổng hợp tự tính theo đúng công thức trong file gốc (`AY=AM`, `AZ=SUM(AN,AO,AP,AQ,AS)`, `BA=sum(AR,AT,AU,AV)`)
 HR sửa ô sai → click vào ô, sửa tại chỗ, có audit log, cột tổng hợp tự tính lại
 Nhân viên xem bảng công của mình → **chọn tháng** (mặc định = tháng hiện tại)
 HR **công bố bảng công giữa kỳ** (ngày 11) → mở cửa sổ khiếu nại 2 ngày (đến 13/11)
@@ -184,16 +184,20 @@ Phép tồn:      trước 01/04 mang toàn bộ sang năm sau
 └──────────────────────────────────────────────────────────┘
 ┌─ BOX 2 ─ Business ─────────────────────────────────────┐
 │ Đầu việc TỰ DO — không giới hạn số lượng, không hạn chế  │
-│ số chữ · có đính kèm file                                │
+│ số chữ                                                 │
 └──────────────────────────────────────────────────────────┘
 ┌─ BOX 3 ─ People ───────────────────────────────────────┐
 │ Đầu việc TỰ DO — như trên                                 │
 └──────────────────────────────────────────────────────────┘
 ┌─ BOX 4 ─ Self proposal next year ──────────────────────┐
 │ Nhân viên tự đề xuất OKR năm tới + điểm cần cải thiện   │
+│ → card riêng trên "OKR của tôi", có trạng thái           │
 └──────────────────────────────────────────────────────────┘
       → Phần mềm TỰ TÍNH điểm trung bình (Business + People)
 ```
+
+> **Đính kèm file không nằm ở lúc tạo OKR.** Lúc tạo chỉ viết chữ; file làm **evidence hoặc
+> chi tiết bổ sung** đính kèm ở **check-in giữa kỳ / cuối kỳ** và ở **bản chấm**.
 
 **3 quy tắc chấm điểm:**
 
@@ -231,6 +235,22 @@ Jun–Jul            REVIEW      QL nhận xét + điều chỉnh mục tiêu (c
 Nov–Dec            ASSESSMENT  Đánh giá cuối năm — 5 bước
 ```
 
+**Vòng đời chỉnh sửa — nộp là khoá, review là mở lại:**
+
+```
+draft ──nộp──▶ submitted ──QL duyệt──▶ locked
+                     │                      │
+                     │ (giữa kỳ)            │ (cuối kỳ)
+                     ▼                      ▼
+                reopened  ──nộp lại──▶ locked
+                     ▲
+                     │ QL bấm "Mở cho nhân viên sửa" (đang review)
+```
+
+- **Setup**: NV nộp → QL duyệt → **khoá**, không ai sửa được nữa.
+- **Giữa kỳ & cuối kỳ**: QL bấm **"Mở cho nhân viên sửa"** → NV sửa/bổ sung → nộp lại → **khoá**.
+- **Xoá mục** → vẫn **lưu vết** (gạch ngang + "đã xoá") và **bắt buộc có lý do**; điểm chỉ tính mục chưa bị xoá.
+
 **Quy trình đánh giá cuối năm — 5 bước, mỗi bước có hạn chót riêng:**
 
 | Bước | Ai | Việc | Hạn |
@@ -264,7 +284,7 @@ họ và tên · mã NV · vị trí · **thời gian công tác** (tự tính t
 
 ---
 
-## 5. 18 tính năng tiện lợi (C1–C18)
+## 5. 15 tính năng tiện lợi (C1–C15)
 
 > **Đây là bảng duy nhất cần cập nhật khi thêm/bớt tính năng.**
 > Mỗi tính năng gắn với 1 màn hình trong `mockups/index.html` để team review.
@@ -276,22 +296,19 @@ họ và tên · mã NV · vị trí · **thời gian công tác** (tự tính t
 | **C3** | **Command palette Ctrl+K** — tìm mọi thứ trong 1 ô | Tất cả | S03 | P0 |
 | **C4** | **Sửa thẳng ô sai trong bảng công** — click vào ô sửa, có audit, bắt buộc lý do với cột nhạy cảm | HR | S15 | P0 |
 | **C5** | **Bộ lọc đa chiều + lưu view** — lọc chip, lưu & chia sẻ bằng URL | HR, QL | S15 | P0 |
-| **C6** | **Dry-run** — xem trước ảnh hưởng trước khi áp quy định | HR | S18 | P0 |
-| **C7** | **Trang quy định tra cứu** — nhân viên tự tra, sinh tự động từ cùng nguồn với form cấu hình | Tất cả | S19 | P0 |
-| **C8** | **Duyệt hàng loạt + chip lý do + chip điều kiện** | QL | S12, S14 | P1 |
-| **C9** | **Review OKR bảng so sánh cả nhóm** + điểm đề xuất theo công thức | QL | S24 | P1 |
-| **C10** | **Báo cáo tự động theo lịch** — đặt lịch, tự sinh & gửi kèm Excel | HR | S39 | P2 |
-| **C11** | **Import Excel** — map cột → preview → validate → import, có báo cáo lỗi | HR | S39 | P2 |
-| **C12** | **Onboarding tour + mọi empty state có CTA** — không màn hình nào trống chết | Tất cả | S36 | P2 |
-| **C13** | **Trình cấu hình quy định** — HR sửa quota/luật bằng form, có versioning + rollback + dry-run | HR | S16, S17, S32 | P0 |
-| **C14** | **Chấm công tối ưu điện thoại** — 1 chạm < 4s, haptic, offline | NV | S05m | P0 |
-| **C15** | **Nhắc việc theo từng actor** — 17 sự kiện × 3 vai trò, đúng người, chống spam | Tất cả | S04m | P0 |
-| **C16** | **Loại nghỉ cấu hình được** — thêm/sửa loại mà không sửa code (3 tầng kế thừa) | HR | S30, S32 | P0 |
-| **C17** | **Gợi ý kế thừa từ OKR quản lý** — bấm 1 chạm chép mục tiêu đã duyệt của quản lý | NV | S21 | P0 |
-| **C18** | **Tóm tắt báo cáo OKR** — dựng từ số liệu đã tính, kèm link tới nguồn | HR | S25 | P0 |
+| **C6** | **Trang quy định tra cứu** — nhân viên tự tra, sinh tự động từ cùng nguồn với form cấu hình | Tất cả | S19 | P0 |
+| **C7** | **Duyệt hàng loạt + chip lý do + chip điều kiện** | QL | S12, S14 | P1 |
+| **C8** | **Review OKR bảng so sánh cả nhóm** + điểm đề xuất theo công thức | QL | S24 | P1 |
+| **C9** | **Onboarding tour + mọi empty state có CTA** — không màn hình nào trống chết | Tất cả | S36 | P2 |
+| **C10** | **Trình cấu hình quy định** — HR sửa quota/luật bằng form, có versioning + rollback + **confirm khi lưu** | HR | S16, S17, S32 | P0 |
+| **C11** | **Chấm công tối ưu điện thoại** — 1 chạm < 4s, haptic, offline | NV | S05m | P0 |
+| **C12** | **Nhắc việc theo từng actor** — 17 sự kiện × 3 vai trò, đúng người, chống spam | Tất cả | S04m | P0 |
+| **C13** | **Loại nghỉ cấu hình được** — thêm/sửa loại mà không sửa code (3 tầng kế thừa) | HR | S30, S32 | P0 |
+| **C14** | **Gợi ý kế thừa từ OKR quản lý** — bấm 1 chạm chép mục tiêu đã duyệt của quản lý | NV | S21 | P0 |
+| **C15** | **Tóm tắt báo cáo OKR** — dựng từ số liệu đã tính, kèm link tới nguồn | HR | S25 | P0 |
 
-> **Ngoài 18 mục này** còn "C-cố" — tự động điền đơn đi muộn từ log chấm công thật (S07).
-> Không thuộc hệ thống đánh số C1–C18.
+> **Ngoài 15 mục này** còn "C-cố" — tự động điền đơn đi muộn từ log chấm công thật (S07).
+> Không thuộc hệ thống đánh số C1–C15.
 
 ### 19 quy định cấu hình được (không hard-code)
 
@@ -316,20 +333,20 @@ HR đổi tất cả bằng form, có ngày hiệu lực + rollback:
 | 2 | Đăng nhập + 4 vai trò + phân quyền theo nhóm | S01 |
 | 3 | Đơn từ 4 loại + quota chặn server + 2 trạng thái nháp/gửi | S07–S10, S31 |
 | 4 | Luồng duyệt theo nhóm (trưởng nhóm → HR) + rút đơn | S12, S13, S14 |
-| 5 | Bảng công 45 cột + ký hiệu gốc + sửa tại chỗ + chốt & khóa | S15 |
+| 5 | Bảng công 53 cột + ký hiệu gốc + sửa tại chỗ + chốt & khóa | S15 |
 | 6 | 8 loại nghỉ cấu hình được + số dư tự tính + luật phép tồn | S30, S32, S34 |
-| 7 | Trình cấu hình quy định (form + versioning + rollback + dry-run) | S16–S18 |
+| 7 | Trình cấu hình quy định (form + versioning + rollback + confirm khi lưu + lịch sử thay đổi) | S16, S17 |
 | 8 | Todo inbox + nhắc việc theo actor + command palette | S02, S03, S04, S04m |
 | 9 | OKR: 2 nhóm, thang 1–5, form 4 box, quy trình 5 bước, bảng tổng hợp 9 trường + cột Trạng thái | S20–S25, S42–S44 |
 | 10 | Quản lý nhân viên + cây quản lý (thấy ai duyệt cho ai) | S40, S41 |
 
 ### P1 — Nên có
-C8 duyệt hàng loạt (đã có UI, cần nối API) · C9 bảng so sánh review OKR
+C7 duyệt hàng loạt (đã có UI, cần nối API) · @@C6@@ bảng so sánh review OKR
 
 ### P2 — Có thì tốt, không có cũng nộp
-C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
+C10 báo cáo tự động · C11 import Excel · C9 onboarding tour
 
-> **Thứ tự cắt nếu trượt tiến độ:** bỏ C12 → C11 → C10 → C9 → C8.
+> **Thứ tự cắt nếu trượt tiến độ:** bỏ C9 → C11 → C10 → @@C6@@ → C7.
 > **Không bao giờ cắt:** bảng công + chốt & khóa · 4 loại đơn từ · trình cấu hình quy định · todo inbox · OKR 2 nhóm 1–5.
 
 ---
@@ -343,7 +360,7 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 | 1 | **Chấm công ngoài mạng công ty** | **CHẶN** | Ngoại lệ duy nhất: ngày WFH đã duyệt. Không có "chấm rồi HR xác minh sau". |
 | 2 | **GPS ngoài bán kính cho phép** | **CHẶN** | Bán kính mặc định **150m** (cấu hình 50–5000m). Sai số GPS > 100m cũng chặn. |
 | 3 | **Chấm công offline** | **Cho phép, cấu hình được** — mặc định **24 giờ** | Hạn chỉnh 1–72 giờ. Quá hạn → entry bị từ chối khi đồng bộ. |
-| 4 | **Đăng ký thiết bị thứ 2** | **Không ngoại lệ** | Hạn mức 1 máy. Máy thứ 2 phải gửi yêu cầu → HR duyệt. |
+| 4 | **Đăng ký thiết bị thứ 3** | **Không ngoại lệ** | **Mặc định 2 máy.** Máy thứ 3 phải gửi yêu cầu kèm lý do → HR duyệt. |
 | 5 | **Đơn từ có cần GPS/mạng công ty không** | **KHÔNG** | Chỉ chấm công mới cần. Đơn gửi từ đâu cũng được — người duyệt quyết định. |
 | 6 | **OKR: nhóm Business/People cố định** | **Bỏ** — nhân viên tự khai hoàn toàn | Cấu trúc cấp trên chỉ mang tính **tham khảo** (gợi ý để chép, không bắt buộc). |
 | 7 | **Cây phân tầng OKR** | **Không làm màn hình riêng** | Người dùng chỉ cần biết *ai duyệt mình* — đã có ở hộp thư duyệt + "Cần làm". |
@@ -351,12 +368,28 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 | 9 | **Xếp loại A/B/C/D có dùng cho lương?** | **Không** — hệ thống không quản lý lương | Xếp loại chỉ để hiển thị/báo cáo; HR đổi ngưỡng tùy ý, không ảnh hưởng dữ liệu lương. |
 | 10 | **Bảng công đã khóa** | **Không có điều chỉnh sau khóa** | Kỳ đã chốt là bản cuối cùng: đơn nhắm kỳ đó **chặn khi tạo**, đơn đang chờ **tự hủy**. Bỏ model điều chỉnh. |
 | 11 | **Thông báo** | **Tắt/bật được TẤT CẢ loại** | Kể cả nhắc việc quá hạn và nhắc hạn duyệt. Tắt không làm mất việc — vẫn nằm trong "Cần làm". |
-| 12 | **Quản lý template OKR** | **Bỏ** | 2 nhóm Business/People đã cố định, nhân viên tự nhập từng đầu việc — không có gì để làm template. Gợi ý duy nhất: chép từ OKR của quản lý (C17). |
+| 12 | **Quản lý template OKR** | **Bỏ** | 2 nhóm Business/People đã cố định, nhân viên tự nhập từng đầu việc — không có gì để làm template. Gợi ý duy nhất: chép từ OKR của quản lý (C14). |
 | 13 | **Bảng công của tôi — có chọn tháng không?** | **CÓ, mặc định = tháng hiện tại** | Dropdown + nút ‹ ›; URL `?month=YYYY-MM`. Kỳ đã chốt → chỉ đọc, không khiếu nại được. |
 | 14 | **Khi nào mở cửa sổ khiếu nại?** | **Sau khi HR công bố — ngày 11 hàng tháng** | Cửa sổ 2 ngày (đến 13/11). Công bố giữa kỳ để lỗi đầu tháng được khiếu nại ngay, không chờ 01/12. HR chốt & khóa sau 3 ngày kết thúc kỳ (03/12). Cả 3 mốc cấu hình được trong rule `payroll_period`. |
+| 15 | **Ủy quyền khi quản lý vắng** | **BỎ** | Không có model `Delegation`. Khi quản lý vắng, task duyệt giao cho `manager_id` hiện tại → trưởng nhóm → HR theo scope. |
+| 16 | **Cờ hiệu bất thường (rule phát hiện xoay vòng thiết bị, check-in hoàn hảo…)** | **BỎ** | Không suy đoán hành vi nhân viên. Chỉ giữ: giới hạn thiết bị · quản lý thiết bị · minh bạch · nhật ký thay đổi. |
+| 17 | **Quy định có áp dụng riêng cho từng nhóm không?** | **Cấu hình chỉ áp dụng toàn công ty** | Rule mặc định **global** — cùng một bộ quy định cho toàn công ty. Không chia rule theo nhóm/chi nhánh. |
+| 18 | **Xem trước ảnh hưởng (dry-run) khi lưu quy định?** | **BỎ dry-run — thay bằng confirm khi lưu** | Bấm "Lưu" → hộp thoại xác nhận nội dung sẽ áp dụng → xác nhận mới lưu. Ít màn hình hơn, ít thao tác hơn. |
+| 19 | **Ca làm việc có bắt buộc cố định không?** | **Ca linh hoạt trong khung** | HR đặt **khung giờ** (vd 8h00–18h00); nhân viên chọn giờ vào/ra trong khung. Ca cố định vẫn là 1 lựa chọn cấu hình được. |
+| 20 | **Sau khi nộp OKR thì còn sửa được không?** | **Khoá — mở lại ở review giữa kỳ/cuối kỳ** | Nộp là khoá. QL bấm **"Mở cho nhân viên sửa"** trong đợt review giữa kỳ & cuối kỳ → NV sửa/bổ sung → nộp lại → khoá. Mọi lần mở đều có audit log. |
+| 21 | **Xoá mục tiêu/đầu việc thì có mất hẳn không?** | **Không — xoá mềm, bắt buộc lý do** | Mục bị xoá vẫn còn, hiện **gạch ngang + "đã xoá"** kèm lý do trong lịch sử. Điểm chỉ tính từ mục chưa bị xoá. |
+| 22 | **Đính kèm file làm evidence ở đâu?** | **Chỉ ở check-in giữa kỳ/cuối kỳ và bản chấm** | Lúc **tạo OKR không có đính kèm** ở từng mục. File evidence (ảnh chụp kết quả, báo cáo, tài liệu) đính kèm ở check-in và đánh giá. |
+| 23 | **Thêm màn hình danh sách khiếu nại + bảng phép cho HR?** | **CÓ — thêm 2 màn hình** | S45 **Danh sách khiếu nại** (HR xử lý nhanh ngay trên bảng) · S46 **Bảng phép** (xem 1 lần biết ai còn bao nhiêu). |
+| 24 | **Bảng công có bao nhiêu cột?** | **53 cột** | Khớp đúng file export thật của công ty — có ký hiệu gốc, không tự diễn giải. |
 
 > **Ba quyết định #1–#3 là thay đổi hành vi so với bản trước** (từ "cảnh báo" → "chặn").
 > Đã cập nhật `docs/09-mobile-punch.md`, `docs/08-rule-builder.md`, `docs/02` và mockup S05/S05m.
+>
+> **Quyết định #15–#24** là vòng chốt mới: **bỏ** ủy quyền (#15) · **bỏ** cờ hiệu bất thường (#16) ·
+> quy định chỉ áp dụng toàn công ty (#17) · bỏ dry-run, thay bằng confirm khi lưu (#18) ·
+> ca linh hoạt trong khung (#19) · OKR khoá edit sau khi nộp, mở lại ở review giữa kỳ/cuối kỳ (#20) ·
+> xoá mục OKR vẫn lưu vết + bắt buộc lý do (#21) · đính kèm evidence chỉ ở check-in/đánh giá (#22) ·
+> thêm màn hình danh sách khiếu nại + bảng phép (#23) · bảng công 53 cột (#24).
 
 ## 8. Tiêu chí nghiệm thu
 
@@ -376,6 +409,10 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 - [ ] Xem bảng công của mình → thấy bộ lọc "Cần duyệt" riêng cho mình
 - [ ] **Bảng công của tôi có chọn tháng, mặc định = tháng hiện tại**; chọn kỳ đã chốt thì chỉ xem được, không khiếu nại được
 - [ ] OKR: chấm 1–5 mỗi nhóm, điểm TB tự tính, không có ô nhập tay
+- [ ] **Nộp OKR xong thì không sửa được** — chỉ khi QL mở ở đợt review giữa kỳ/cuối kỳ mới sửa & nộp lại được
+- [ ] **Xoá mục tiêu/đầu việc → phải nhập lý do**, mục vẫn còn trong lịch sử (gạch ngang + "đã xoá")
+- [ ] **Trang "OKR của tôi" hiện card Self proposal năm sau** kèm trạng thái (chưa viết / đang viết / đã nộp)
+- [ ] **Check-in giữa kỳ/cuối kỳ đính kèm được file** làm evidence (ảnh chụp kết quả, báo cáo, tài liệu)
 
 **Quản lý**
 - [ ] Hộp thư duyệt hiện chip ✅/❌ điều kiện ngay trên từng đơn
@@ -383,15 +420,19 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 - [ ] Từ chối mà bỏ trống lý do → nút bị disable
 - [ ] Đơn của nhóm mình → thấy đơn của đồng nghiệp cùng nhóm (nếu được cấu hình)
 - [ ] Review OKR: cả nhóm trên 1 bảng, có cột điểm đề xuất
+- [ ] **Trong đợt review giữa kỳ / cuối kỳ, bấm "Mở cho nhân viên sửa"** → nhân viên sửa & nộp lại được
 - [ ] Đổi quản lý của 1 nhân viên → đơn đang chờ giao cho người mới
 
 **HR**
 - [ ] Đổi quota đi muộn 2 → 3 lần/tháng bằng form, có ngày hiệu lực
-- [ ] Xem trước ảnh hưởng trước khi lưu, có số liệu cụ thể
+- [ ] Bấm "Lưu" → **hiện hộp thoại xác nhận** nội dung sẽ áp dụng; xác nhận mới lưu (không có màn hình dry-run riêng)
 - [ ] Rollback được về phiên bản cũ, có lý do
-- [ ] Bảng công export ra **đúng 45 cột + ký hiệu gốc** như file công ty
+- [ ] Bảng công export ra **đúng 53 cột + ký hiệu gốc** như file công ty
 - [ ] Sửa 1 ô bảng công → có audit log ghi field, giá trị cũ/mới, lý do, ai, lúc nào
 - [ ] Thêm loại nghỉ mới không cần sửa code
+- [ ] **Mặc định 2 thiết bị/người** — thiết bị thứ 3 phải gửi yêu cầu kèm lý do → HR duyệt
+- [ ] **Màn hình Danh sách khiếu nại** — xử lý nhanh ngay trên bảng
+- [ ] **Màn hình Bảng phép** — nhìn 1 lần biết ai còn bao nhiêu phép
 - [ ] Bảng tổng hợp OKR có đủ 9 trường, cột thời gian công tác tự tính
 - [ ] Bảng tổng hợp có **cột Trạng thái** — đủ theo dõi ai chấm/chưa chấm/chờ QL, **không cần màn hình kanban riêng**
 - [ ] Đổi trưởng nhóm → đơn mới tự giao cho người mới
@@ -412,6 +453,6 @@ C10 báo cáo tự động · C11 import Excel · C12 onboarding tour
 |---|---|
 | Quy định gốc của công ty (nguồn sự thật) | `doc/Rule chấm công.xlsx` · `doc/OKR_doc.md` · `doc/2026 OKR _ Guidance.pdf` |
 | Quy trình OKR & form đánh giá | `doc/OKR_doc.md` |
-| Mockup để review (46 màn hình) | `mockups/index.html` |
+| Mockup để review (45 màn hình) | `mockups/index.html` |
 | Bản đồ tính năng tổng thể | `PLAN.md` |
 | Chi tiết cho dev | `docs/01`–`docs/09` |
