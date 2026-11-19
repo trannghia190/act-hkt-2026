@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -36,6 +36,34 @@ export const TimesheetPage: React.FC = () => {
   const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [dayOverrides, setDayOverrides] = useState<Record<string, string>>({});
+  const [sheetStatus, setSheetStatus] = useState<string>('draft');
+  const [conflictMsg, setConflictMsg] = useState<string | null>(null);
+  const authh = (): Record<string, string> => { try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; } };
+  const loadSheet = () => {
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    fetch(`/api/v1/timesheets?month=${ym}`, { headers: authh() })
+      .then(r => r.json())
+      .then(j => {
+        const d = j?.data; if (!d) return;
+        setSheetStatus(d.status || 'draft');
+        setIsLocked(d.status === 'locked');
+        const mapped: TimesheetRow[] = (d.rows || []).map((r: any, i: number) => ({
+          id: String(i + 1), code: r.employeeCode, fullName: r.fullName, department: '—', team: r.positionName || '—',
+          standardDays: r.standardDays ?? 0, actualWorkDays: r.actualDays ?? 0,
+          paidLeaveDays: r.leaveDays ?? 0, holidayDays: r.holidayDays ?? 0, wfhDays: r.wfhDays ?? 0,
+          lateCount: r.lateCount ?? 0, penaltyLatePercent: 0, otWeekdayHours: 0, otWeekendHours: 0,
+          totalPayrollDays: r.actualDays ?? 0, status: d.status === 'locked' ? 'HR_LOCKED' : 'OPEN',
+        }));
+        const ov: Record<string, string> = {};
+        (d.rows || []).forEach((r: any, i: number) => {
+          Object.entries(r.days || {}).forEach(([day, sym]) => { ov[`${i + 1}-${day}`] = String(sym); });
+        });
+        setDayOverrides(ov);
+        setRows(mapped);
+      })
+      .catch(() => undefined);
+  };
+  useEffect(loadSheet, [selectedMonth]);
 
   // 31 cột ngày + 17 cột tổng hợp = 53 cột dữ liệu (đúng file Pine thật)
   const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -217,9 +245,25 @@ export const TimesheetPage: React.FC = () => {
     return true;
   });
 
-  const handleLockPayroll = () => {
+  const handleLockPayroll = async () => {
+    if (!window.confirm('Khoá kỳ công tháng này? Sau khi khoá là bản cuối cùng, không sửa được nữa.')) return;
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    const res = await fetch(`/api/v1/timesheets/lock?month=${ym}`, { method: 'POST', headers: authh() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Khoá kỳ công thất bại'); return; }
     setIsLocked(true);
+    setSheetStatus('locked');
     setRows(prev => prev.map(r => ({ ...r, status: 'HR_LOCKED' })));
+    showToast('Đã khoá kỳ công — bản cuối cùng');
+  };
+
+  const handlePublish = async () => {
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    const res = await fetch(`/api/v1/timesheets/publish?month=${ym}`, { method: 'POST', headers: authh() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Công bố thất bại'); return; }
+    setSheetStatus('published');
+    showToast(`Đã công bố — khiếu nại đến ${json?.data?.disputeDeadline ?? ''}`);
   };
 
   const handleExportExcel = () => {
@@ -255,6 +299,7 @@ export const TimesheetPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Tổng Hợp Công &amp; Chốt Lương (Master Timesheet)</h1>
             <Badge variant="accent">S15</Badge>
+            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá' : sheetStatus === 'published' ? 'Đang khiếu nại' : 'Bản nháp'}</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Bảng điều khiển 45 chỉ tiêu công, tự động tính trừ chuyên cần theo luật, cộng công thêm giờ (OT) và cho phép HR điều chỉnh kèm lưu vết
@@ -263,6 +308,9 @@ export const TimesheetPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportExcel}>
             📥 Xuất Excel (53 Cột)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePublish} disabled={isLocked || sheetStatus === 'published'}>
+            📣 {sheetStatus === 'published' ? 'Đã công bố' : 'Công bố bảng công'}
           </Button>
           <Button
             variant={isLocked ? 'secondary' : 'primary'}
@@ -274,6 +322,8 @@ export const TimesheetPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {conflictMsg && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">{conflictMsg}</div>}
 
       {/* Toast Alert */}
       {toastMsg && (
