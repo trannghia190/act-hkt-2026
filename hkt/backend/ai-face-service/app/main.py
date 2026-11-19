@@ -529,6 +529,76 @@ def list_enrolled_employees():
     return list(results.values())
 
 
+@app.get("/api/v1/face/employees/{employee_code}", summary="Get Enrolled Employee Face Detail", tags=["Biometrics"])
+def get_enrolled_employee(employee_code: str):
+    """Retrieves biometric profile information for a specific employee."""
+    code = employee_code.strip()
+    with sqlite3.connect(SQLITE_DB_FILE) as conn:
+        cursor = conn.execute(
+            "SELECT user_id, full_name, department, created_at FROM face_identities WHERE tenant_id = 'default' AND LOWER(user_id) = LOWER(?)",
+            (code,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return {
+                "employee_code": row[0],
+                "full_name": row[1],
+                "department": row[2] or "Khối Kỹ Thuật",
+                "has_face_vector": True,
+                "enrolled_at": row[3],
+            }
+
+    for k, info in employee_db.items():
+        if k.lower() == code.lower():
+            return {
+                "employee_code": info["employee_code"],
+                "full_name": info["full_name"],
+                "department": info["department"],
+                "has_face_vector": "vector" in info,
+                "enrolled_at": info.get("enrolled_at"),
+            }
+
+    raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ khuôn mặt cho nhân viên {code}")
+
+
+@app.delete("/api/v1/face/employees/{employee_code}", summary="Delete Enrolled Face Profile", tags=["Biometrics"])
+async def delete_enrolled_employee(employee_code: str):
+    """Deletes face identity from SQLite, in-memory cache, and PostgreSQL."""
+    code = employee_code.strip()
+    deleted = False
+
+    with sqlite3.connect(SQLITE_DB_FILE) as conn:
+        cursor = conn.execute(
+            "DELETE FROM face_identities WHERE tenant_id = 'default' AND LOWER(user_id) = LOWER(?)",
+            (code,),
+        )
+        conn.commit()
+        if cursor.rowcount > 0:
+            deleted = True
+
+    for k in list(employee_db.keys()):
+        if k.lower() == code.lower():
+            del employee_db[k]
+            deleted = True
+
+    if _db_pool:
+        try:
+            async with _db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE face_profiles SET status = 'reset' WHERE user_id IN (SELECT id FROM users WHERE LOWER(employee_code) = LOWER($1))",
+                    code,
+                )
+                deleted = True
+        except Exception as e:
+            logger.warning("Could not reset face_profile in postgres: %s", e)
+
+    return {
+        "status": "SUCCESS",
+        "employee_code": code,
+        "message": f"Đã xoá mẫu khuôn mặt cho nhân viên {code} thành công.",
+    }
+
+
 @app.post("/api/v1/face/verify-json", response_model=VerifyResponse, summary="1:N Face Verification (JSON)", tags=["Biometrics"])
 def verify_face_json(payload: VerifyJsonRequest):
     """1:N automated facial identification. Searches all enrolled employees to find best match."""

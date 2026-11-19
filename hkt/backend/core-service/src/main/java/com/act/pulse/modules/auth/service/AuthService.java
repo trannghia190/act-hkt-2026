@@ -18,6 +18,9 @@ public interface AuthService {
 
     boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore);
 
+    /** Reset / delete enrolled face profile for user. */
+    boolean resetFace(String employeeCode);
+
     /** Thu hồi toàn bộ phiên của tài khoản (đổi mật khẩu / đăng xuất). */
     void revokeAllSessions(UUID userId, String reason);
 

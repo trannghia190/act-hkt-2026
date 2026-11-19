@@ -43,7 +43,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { label: 'Quản lý nhân viên & tài khoản (S40)', path: '/admin/employees', group: 'Quản trị' },
     { label: 'Sơ đồ tổ chức & phòng ban (S41)', path: '/admin/org-tree', group: 'Quản trị' },
     { label: 'Ca làm việc & lịch nghỉ lễ (S26)', path: '/admin/shifts', group: 'Quản trị' },
-    { label: 'Đăng ký mẫu khuôn mặt 3 góc (S01-B)', path: '/auth/enroll-face', group: 'Xác thực' },
+    { label: 'Đăng ký mẫu khuôn mặt (S01-B)', path: '/auth/enroll-face', group: 'Xác thực' },
     { label: 'Cấu hình 19 quy định Rule Engine (S16)', path: '/admin/rules', group: 'Quản trị' },
     { label: 'Tra cứu nội quy công ty tự động sinh (S19)', path: '/admin/policy-doc', group: 'Tra cứu' },
     { label: 'Nhật ký kiểm toán hệ thống Audit Logs (S35)', path: '/admin/audit-logs', group: 'Kiểm toán' },
