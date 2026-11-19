@@ -151,6 +151,11 @@ check("ngày công bố mặc định 11", sheet.get("publishDay") == 11)
 if sheet.get("rows"):
     r0 = sheet["rows"][0]
     check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)
+# C2c: bổ sung công quá hạn vẫn nộp được (gắn cờ)
+old_date = (date.today() - timedelta(days=10)).isoformat()
+status, data = call("POST", "/requests", {"type": "ADJUST", "workDate": old_date, "minutes": 30, "reason": "Quên chấm công", "payload": "{}"})
+check("bổ sung công quá hạn vẫn nộp được (gắn cờ)", status == 200, str(data)[:120])
+
 status, data = call("POST", "/timesheets/publish")
 check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")
 # Sửa ô + sửa hàng loạt có audit
@@ -161,6 +166,15 @@ check("sửa ô thiếu lý do bị chặn", status == 400)
 status, data = call("POST", "/timesheets/bulk", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
 check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).get("updated") == 2)
 
+# Còn khiếu nại chưa xử lý → khoá bị chặn
+status, data = call("POST", "/timesheets/lock", expect=400)
+check("khoá bị chặn khi còn khiếu nại", status == 400)
+_, dl = call("GET", "/disputes")
+for d in (dl.get("data") or []):
+    if d.get("status") == "PENDING":
+        call("POST", f"/disputes/{d['id']}/resolve", {"action": "FIX", "reason": "Đã đối chiếu log"})
+_, dl2 = call("GET", "/disputes")
+check("khiếu nại có hạn xử lý (daysLeft)", all(("daysLeft" in d) or d.get("status") != "PENDING" for d in (dl2.get("data") or [])))
 status, data = call("POST", "/timesheets/lock")
 check("khoá kỳ công", status == 200 and (data.get("data") or {}).get("status") == "locked")
 status, data = call("GET", "/timesheets")

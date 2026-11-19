@@ -216,14 +216,26 @@ public class BusinessGapController {
     }
 
     private static final List<Map<String, Object>> DISPUTES = new java.util.ArrayList<>(List.of(
-            new java.util.HashMap<>(Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "reason", "Có check-in 08:47 nhưng bảng ghi vắng", "status", "PENDING")),
-            new java.util.HashMap<>(Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "reason", "Nghỉ phép đã duyệt nhưng ghi UP", "status", "PENDING"))
+            new java.util.HashMap<>(Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "reason", "Có check-in 08:47 nhưng bảng ghi vắng", "status", "PENDING", "deadline", java.time.LocalDate.now().plusDays(2).toString())),
+            new java.util.HashMap<>(Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "reason", "Nghỉ phép đã duyệt nhưng ghi UP", "status", "PENDING", "deadline", java.time.LocalDate.now().plusDays(1).toString()))
     ));
 
     @GetMapping("/disputes")
     @Operation(summary = "Danh sách khiếu nại (S45)")
     public ApiResponse<List<Map<String, Object>>> disputes() {
-        return ApiResponse.ok(new java.util.ArrayList<>(DISPUTES), "Danh sách khiếu nại");
+        var list = new java.util.ArrayList<Map<String, Object>>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        for (Map<String, Object> d : DISPUTES) {
+            Map<String, Object> copy = new java.util.HashMap<>(d);
+            String dl = String.valueOf(d.get("deadline"));
+            if ("PENDING".equals(d.get("status"))) {
+                long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, java.time.LocalDate.parse(dl));
+                copy.put("daysLeft", daysLeft);
+                if (daysLeft < 0) { copy.put("status", "EXPIRED"); copy.put("overdue", true); }
+            }
+            list.add(copy);
+        }
+        return ApiResponse.ok(list, "Danh sách khiếu nại");
     }
 
     @GetMapping("/disputes/{id}")
@@ -246,6 +258,9 @@ public class BusinessGapController {
         String action = body.getOrDefault("action", "REJECT");
         if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
             throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
+        }
+        if ("PENDING".equals(d.get("status"))) {
+            TimesheetController.DISPUTES_PENDING.decrementAndGet();
         }
         d.put("status", "REJECT".equals(action) ? "REJECTED" : "RESOLVED");
         d.put("action", action);
