@@ -364,7 +364,7 @@ export const CheckInPage: React.FC = () => {
             <span>
               {user?.faceEnrolled === false
                 ? '⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để lấy mẫu (S01-B)'
-                : 'Cập nhật lại mẫu khuôn mặt 3 góc (S01-B)'}
+                : 'Cập nhật lại mẫu khuôn mặt (S01-B)'}
             </span>
           </button>
         </div>

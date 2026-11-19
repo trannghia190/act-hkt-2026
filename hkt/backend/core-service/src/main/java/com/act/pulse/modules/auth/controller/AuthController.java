@@ -186,4 +186,11 @@ public class AuthController {
     public ApiResponse<Boolean> faceEnroll(@RequestBody EnrollFaceRequest request) {
         return enrollFace(request);
     }
+
+    @DeleteMapping("/face-profile/{employeeCode}")
+    @Operation(summary = "Xoá / Đặt lại hồ sơ khuôn mặt nhân viên")
+    public ApiResponse<Boolean> deleteFaceProfile(@PathVariable String employeeCode) {
+        boolean reset = authService.resetFace(employeeCode);
+        return ApiResponse.ok(reset, "Đã đặt lại hồ sơ khuôn mặt cho nhân viên: " + employeeCode);
+    }
 }

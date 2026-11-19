@@ -7,6 +7,7 @@ import com.act.pulse.modules.auth.dto.response.AuthResponse;
 import com.act.pulse.modules.auth.entity.LoginAttempt;
 import com.act.pulse.modules.auth.entity.RefreshToken;
 import com.act.pulse.modules.auth.entity.User;
+import com.act.pulse.modules.auth.entity.FaceProfile;
 import com.act.pulse.modules.auth.repository.FaceProfileRepository;
 import com.act.pulse.modules.auth.repository.LoginAttemptRepository;
 import com.act.pulse.modules.auth.repository.RefreshTokenRepository;
@@ -243,7 +244,36 @@ public class AuthServiceImpl implements AuthService {
             user.setActivatedAt(LocalDateTime.now());
         }
         userRepository.save(user);
-        log.info("Đã hoàn tất đăng ký khuôn mặt cho nhân viên: {}", employeeCode);
+
+        // Ensure active FaceProfile in database for pgvector consistency
+        FaceProfile fp = faceProfileRepository.findByUserId(user.getId())
+                .orElse(FaceProfile.builder().userId(user.getId()).build());
+        fp.setStatus("active");
+        fp.setEnrolledAt(LocalDateTime.now());
+        if (fp.getEmbedding() == null) {
+            fp.setEmbedding(new float[512]);
+        }
+        faceProfileRepository.save(fp);
+
+        log.info("Enrolled face profile for employee: {}", employeeCode);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean resetFace(String employeeCode) {
+        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
+
+        user.setFaceEnrolled(false);
+        userRepository.save(user);
+
+        faceProfileRepository.findByUserId(user.getId()).ifPresent(fp -> {
+            fp.setStatus("reset");
+            faceProfileRepository.save(fp);
+        });
+
+        log.info("Reset face profile for employee: {}", employeeCode);
         return true;
     }
 
