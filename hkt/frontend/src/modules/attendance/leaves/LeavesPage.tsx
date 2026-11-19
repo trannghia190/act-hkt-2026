@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -13,7 +13,7 @@ interface LeaveLedgerEntry {
 }
 
 export const LeavesPage: React.FC = () => {
-  const [balance] = useState({
+  const [balance, setBalance] = useState({
     carriedOver: 3.5, // Rollover from 2025
     grantedCurrentYear: 12.0,
     seniorityBonus: 1.0,
@@ -21,9 +21,11 @@ export const LeavesPage: React.FC = () => {
     used: 4.5,
     remaining: 12.0,
     expiringOnMarch31: 3.5,
+    annualRemaining: 8.5,
+    carriedRemaining: 3.5,
   });
 
-  const [ledger] = useState<LeaveLedgerEntry[]>([
+  const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([
     {
       id: 'L-004',
       date: '18/11/2026',
@@ -58,13 +60,41 @@ export const LeavesPage: React.FC = () => {
     }
   ]);
 
+  useEffect(() => {
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => {
+      if (j?.data) {
+        const granted = Number(j.data.granted || 0);
+        const used = Number(j.data.used || 0);
+        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted, used,
+          remaining: Number(j.data.remaining || 0),
+          annualRemaining: Number(j.data.annualRemaining ?? 0),
+          carriedRemaining: Number(j.data.carriedRemaining ?? 0) }));
+      }
+    }).catch(() => undefined);
+    fetch('/api/v1/leaves/my-ledger', { headers }).then(r => r.json()).then(j => {
+      if (Array.isArray(j?.data)) {
+        setLedger(j.data.map((e: any) => ({
+          id: e.id, date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
+          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0),
+          balanceAfter: Number(e.balanceAfter || 0),
+        })));
+      }
+    }).catch(() => undefined);
+  }, []);
+
   const [filterType, setFilterType] = useState('Tất cả');
+  const [filterYear, setFilterYear] = useState('2026');
   const filteredLedger = ledger.filter(entry => {
+    if (filterYear !== 'Tất cả' && !entry.date.endsWith(filterYear)) return false;
     if (filterType === 'Tất cả') return true;
     if (filterType === 'Phép năm') return entry.description.toLowerCase().includes('phép năm') || entry.type === 'GRANT';
     if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
     if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
     if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
+    if (filterType === 'Chức vụ') return entry.description.toLowerCase().includes('chức vụ');
+    if (filterType === 'Thâm niên') return entry.description.toLowerCase().includes('thâm niên');
     return true;
   });
 
@@ -87,7 +117,7 @@ export const LeavesPage: React.FC = () => {
       <div className="p-4 bg-amber-50 rounded-xl border border-amber-300 text-xs flex items-start gap-3 text-amber-900 shadow-xs">
         <span className="text-lg">⚠️</span>
         <div>
-          <div className="font-bold">Lưu ý về Hạn sử dụng phép tồn năm trước (Rollover Deadline)</div>
+          <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
           <p className="mt-0.5 text-amber-800 leading-relaxed">
             Bạn hiện có <strong>{balance.expiringOnMarch31} ngày phép tồn từ năm trước</strong>. Theo điều khoản số 04 trong Quy chế Nội bộ, toàn bộ số phép tồn này sẽ tự động hết hiệu lực sau ngày <strong>31/03/2027</strong>. Hãy chủ động lên kế hoạch nghỉ phép trước hạn.
           </p>
@@ -109,9 +139,11 @@ export const LeavesPage: React.FC = () => {
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20">
-          <div className="text-xs text-accent-dark font-medium">Số Dư Phép Còn Lại</div>
+          <div className="text-xs text-accent-dark font-medium">Tổng phép còn lại</div>
           <div className="text-2xl font-extrabold text-accent mt-1">{balance.remaining} ngày</div>
-          <div className="text-[11px] text-accent-dark mt-1">Sẵn sàng để đăng ký</div>
+          <div className="text-[11px] text-accent-dark mt-1">Phép năm {balance.annualRemaining ?? 8.5} + Phép tồn {balance.carriedRemaining ?? 3.5}</div>
+          <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${Math.round((balance.used / balance.totalEntitlement) * 100)}%` }} /></div>
+          <div className="text-[10px] text-ink-muted mt-1">Đã dùng {balance.used}/{balance.totalEntitlement} ngày</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -119,19 +151,32 @@ export const LeavesPage: React.FC = () => {
           <div className="text-2xl font-bold text-amber-700 mt-1">{balance.expiringOnMarch31} ngày</div>
           <div className="text-[11px] text-amber-600 mt-1">Cần ưu tiên trừ trước</div>
         </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép ốm (S)</div>
+          <div className="text-2xl font-bold text-ink mt-1">0 ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
+        </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép thâm niên</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.seniorityBonus} ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
+        </div>
       </div>
 
       {/* Bộ lọc lịch sử phép (S09) */}
       <div className="flex flex-wrap items-center gap-2">
-        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù'].map(f => (
+        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
           <button key={f} onClick={() => setFilterType(f)}
             className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {f}
           </button>
         ))}
-        <select className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
-          <option>Năm: 2026</option>
-          <option>Năm: 2025</option>
+        <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+          <option value="2026">Năm: 2026</option>
+          <option value="2025">Năm: 2025</option>
+          <option value="Tất cả">Tất cả năm</option>
         </select>
       </div>
 

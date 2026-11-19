@@ -1,472 +1,307 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from '../../../components/common/Card';
-import { Badge } from '../../../components/common/Badge';
-import { Button } from '../../../components/common/Button';
-import { Modal } from '../../../components/common/Modal';
-import { useAuth } from '../../../context/AuthContext';
+import React, { useEffect, useState } from 'react';
 
-export interface RuleItem {
-  code: string;
+interface RuleApi {
+  ruleKey: string;
   name: string;
-  category: 'CHECKIN' | 'LEAVE' | 'WFH' | 'OVERTIME' | 'PENALTY';
-  currentVersion: string;
-  parameters: Record<string, any>;
-  effectiveDate: string;
+  category: string;
+  dataType: string;
+  currentValue: string;
   description: string;
-  status: 'ACTIVE' | 'DRAFT';
+  versionCount: number;
+  effectiveFrom?: string;
 }
 
-const INITIAL_RULES: RuleItem[] = [
-  {
-    code: 'RULE_GRACE_PERIOD_MINUTES',
-    name: 'Dung sai giờ vào ca chuẩn (Grace Period)',
-    category: 'CHECKIN',
-    currentVersion: 'v2.1',
-    parameters: { grace_minutes: 15, apply_both_shifts: true },
-    effectiveDate: '01/01/2026',
-    description: 'Cho phép nhân viên check-in muộn tối đa 15 phút sau 08:30 (tức đến 08:45) mà không bị phạt đi muộn.',
-    status: 'ACTIVE'
-  },
-  {
-    code: 'RULE_LATE_MONTHLY_QUOTA',
-    name: 'Số lần đi muộn miễn phạt mỗi tháng (Quota)',
-    category: 'PENALTY',
-    currentVersion: 'v1.0',
-    parameters: { free_quota: 3, penalty_percent_from_4th: 5 },
-    effectiveDate: '01/01/2026',
-    description: 'Mỗi nhân viên có 3 lần đi muộn trong ngưỡng 15-30p không trừ chuyên cần. Từ lần thứ 4 trừ 5% chuyên cần.',
-    status: 'ACTIVE'
-  },
-  {
-    code: 'RULE_WFH_MONTHLY_LIMIT',
-    name: 'Hạn mức đăng ký làm từ xa (WFH Cap)',
-    category: 'WFH',
-    currentVersion: 'v2.0',
-    parameters: { max_days_per_month: 3, require_advance_hours: 12 },
-    effectiveDate: '15/10/2026',
-    description: 'Tối đa 3 ngày làm từ xa mỗi tháng cho khối Engineering & Data. Cần nộp đơn trước ít nhất 12 giờ.',
-    status: 'ACTIVE'
-  },
-  {
-    code: 'RULE_LEAVE_ROLLOVER_EXPIRY',
-    name: 'Hạn sử dụng phép tồn năm trước (Rollover Deadline)',
-    category: 'LEAVE',
-    currentVersion: 'v1.2',
-    parameters: { expiry_date: '31/03', max_carried_days: 5 },
-    effectiveDate: '01/01/2026',
-    description: 'Phép năm cũ được bảo lưu tối đa 5 ngày và bắt buộc phải sử dụng hết trước ngày 31/03 hàng năm.',
-    status: 'ACTIVE'
-  },
-  {
-    code: 'RULE_OVERTIME_MULTIPLIER',
-    name: 'Hệ số tính công làm thêm giờ (OT Factor)',
-    category: 'OVERTIME',
-    currentVersion: 'v1.0',
-    parameters: { weekday_multiplier: 1.5, weekend_multiplier: 2.0, holiday_multiplier: 3.0 },
-    effectiveDate: '01/01/2026',
-    description: 'Hệ số tính lương làm thêm giờ: Ngày thường x1.5, Thứ bảy & Chủ nhật x2.0, Nghỉ lễ x3.0 theo Bộ luật Lao động.',
-    status: 'ACTIVE'
-  },
-  {
-    code: 'RULE_MISSED_CHECKIN_EXPLANATION_WINDOW',
-    name: 'Cửa sổ thời gian giải trình quên chấm công',
-    category: 'CHECKIN',
-    currentVersion: 'v2.0',
-    parameters: { max_hours: 24, max_times_monthly: 3 },
-    effectiveDate: '01/09/2026',
-    description: 'Nhân viên bắt buộc phải nộp đơn giải trình quên check-in / check-out trong vòng 24 giờ kể từ thời điểm phát sinh.',
-    status: 'ACTIVE'
+interface VersionItem {
+  id: string;
+  version: string;
+  value: string;
+  effectiveFrom: string;
+  changeReason: string;
+}
+
+const TOKEN_KEY = 'pulse_auth_user';
+
+const authHeaders = (): Record<string, string> => {
+  try {
+    const user = JSON.parse(localStorage.getItem(TOKEN_KEY) || '{}');
+    return user?.accessToken ? { Authorization: `Bearer ${user.accessToken}` } : {};
+  } catch {
+    return {};
   }
-];
+};
 
-const STORAGE_KEY = 'pulse_rule_engine_data';
+const api = (path: string, init?: RequestInit) =>
+  fetch(`/api/v1${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
+  });
 
+/**
+ * S16/S17 — Trình cấu hình 19 quy định (docs/06).
+ * - Không dry-run: bấm Lưu → hộp xác nhận → PUT tạo phiên bản mới.
+ * - Chỉ scope toàn công ty; không badge trạng thái; có nút "Lịch sử thay đổi".
+ */
 export const RuleEnginePage: React.FC = () => {
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN';
+  const [rules, setRules] = useState<RuleApi[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
 
-  const [rules, setRules] = useState<RuleItem[]>(() => {
+  const [editing, setEditing] = useState<RuleApi | null>(null);
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [reason, setReason] = useState('');
+  const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  const [historyRule, setHistoryRule] = useState<RuleApi | null>(null);
+  const [versions, setVersions] = useState<VersionItem[]>([]);
+
+  const loadRules = async () => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
+      const res = await api('/rules');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+      setRules(json.data || []);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Không tải được danh sách quy định');
+    } finally {
+      setLoading(false);
     }
-    return INITIAL_RULES;
-  });
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('ALL');
-  const [successToast, setSuccessToast] = useState<string | null>(null);
-
-  // Edit modal
-  const [editingRule, setEditingRule] = useState<RuleItem | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', description: '', paramsJson: '', effectiveDate: '' });
-
-  // Add modal
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newRuleForm, setNewRuleForm] = useState({
-    code: '',
-    name: '',
-    category: 'CHECKIN' as RuleItem['category'],
-    description: '',
-    paramsJson: '{\n  "parameter_name": 10\n}',
-    effectiveDate: new Date().toISOString().split('T')[0]
-  });
-
-  // Dry-run modal
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-  }, [rules]);
+    loadRules();
+  }, []);
 
   const showToast = (msg: string) => {
-    setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 3000);
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
   };
 
-  const handleOpenEdit = (rule: RuleItem) => {
-    setEditingRule(rule);
-    setEditForm({
-      name: rule.name,
-      description: rule.description,
-      paramsJson: JSON.stringify(rule.parameters, null, 2),
-      effectiveDate: rule.effectiveDate
+  const openEdit = (rule: RuleApi) => {
+    setEditing(rule);
+    setFormValues(JSON.parse(rule.currentValue || '{}'));
+    setReason('');
+    setEffectiveDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const saveRule = async () => {
+    if (!editing) return;
+    if (!reason.trim()) {
+      alert('Bắt buộc nhập lý do thay đổi');
+      return;
+    }
+    const confirmed = window.confirm(
+      `Xác nhận thay đổi quy định?\n\n• ${editing.name}\n• Áp dụng từ: ${effectiveDate}\n• Lý do: ${reason}\n\nThay đổi áp dụng cho TOÀN CÔNG TY và sẽ tạo phiên bản mới.`,
+    );
+    if (!confirmed) return;
+    setSaving(true);
+    try {
+      const res = await api(`/rules/${encodeURIComponent(editing.ruleKey)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ currentValue: JSON.stringify(formValues), changeReason: reason, effectiveFrom: effectiveDate }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Lưu quy định thất bại');
+      setEditing(null);
+      showToast('Đã lưu quy định — tạo phiên bản mới');
+      await loadRules();
+    } catch (e: any) {
+      alert(e?.message || 'Lưu quy định thất bại');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openHistory = async (rule: RuleApi) => {
+    setHistoryRule(rule);
+    setVersions([]);
+    try {
+      const res = await api(`/rules/${encodeURIComponent(rule.ruleKey)}/versions`);
+      const json = await res.json();
+      if (res.ok) setVersions(json.data || []);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const rollback = async (versionId: string) => {
+    if (!historyRule) return;
+    const reason = window.prompt('Lý do rollback (bắt buộc):', 'Khôi phục theo quyết định của HR');
+    if (!reason || !reason.trim()) return;
+    if (!window.confirm('Hoàn tác về phiên bản này? Hệ thống sẽ tạo phiên bản mới, không xoá lịch sử.')) return;
+    const res = await api(`/rules/${encodeURIComponent(historyRule.ruleKey)}/rollback/${versionId}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() }),
     });
+    const json = await res.json();
+    if (!res.ok) {
+      alert(json?.message || 'Rollback thất bại');
+      return;
+    }
+    showToast('Đã rollback quy định');
+    setHistoryRule(null);
+    await loadRules();
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingRule) return;
+  const isFieldVisible = (key: string, values: Record<string, any>): boolean => {
+    if (key === 'offline_max_hours') return Boolean(values.allow_offline_punch);
+    if (key === 'geofence_radius_m' || key === 'gps_accuracy_tolerance_m') return Boolean(values.require_geofence);
+    if (key === 'face_match_threshold' || key === 'require_liveness' || key === 'face_max_attempts') {
+      return Boolean(values.require_face_verification);
+    }
+    if (key.startsWith('flexible_')) return Boolean(values.is_flexible);
+    return true;
+  };
 
-    try {
-      const parsedParams = JSON.parse(editForm.paramsJson);
-      const confirmed = window.confirm(
-        `Xác nhận thay đổi quy định?\n\n• ${editingRule.name}\n• Áp dụng từ: ${editForm.effectiveDate}\n\nThay đổi sẽ có hiệu lực theo ngày đã chọn và được ghi vào lịch sử phiên bản.`,
+  const renderField = (key: string, value: any) => {
+    if (typeof value === 'boolean') {
+      return (
+        <label key={key} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 text-sm">
+          <span className="font-mono text-xs">{key}</span>
+          <input type="checkbox" checked={value} onChange={(e) => setFormValues((v) => ({ ...v, [key]: e.target.checked }))} />
+        </label>
       );
-      if (!confirmed) return;
-      const vNum = parseFloat(editingRule.currentVersion.replace('v', '')) || 1.0;
-      const nextVersion = `v${(vNum + 0.1).toFixed(1)}`;
-
-      setRules(prev =>
-        prev.map(r =>
-          r.code === editingRule.code
-            ? {
-                ...r,
-                name: editForm.name.trim(),
-                description: editForm.description.trim(),
-                parameters: parsedParams,
-                effectiveDate: editForm.effectiveDate,
-                currentVersion: nextVersion
-              }
-            : r
-        )
+    }
+    if (typeof value === 'number') {
+      return (
+        <label key={key} className="block text-sm">
+          <span className="font-mono text-xs text-ink-muted">{key}</span>
+          <input type="number" className="mt-1 w-full border border-line rounded-lg p-2 text-sm"
+            value={value} onChange={(e) => setFormValues((v) => ({ ...v, [key]: Number(e.target.value) }))} />
+        </label>
       );
-
-      showToast(`Đã lưu quy định "${editingRule.code}" lên phiên bản ${nextVersion}`);
-      setEditingRule(null);
-    } catch (err: any) {
-      alert('Định dạng JSON tham số không hợp lệ: ' + err.message);
     }
+    if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+      return (
+        <label key={key} className="block text-sm">
+          <span className="font-mono text-xs text-ink-muted">{key} (JSON)</span>
+          <textarea className="mt-1 w-full border border-line rounded-lg p-2 text-xs font-mono" rows={2}
+            value={JSON.stringify(value)} onChange={(e) => { try { setFormValues((v) => ({ ...v, [key]: JSON.parse(e.target.value) })); } catch { /* ignore */ } }} />
+        </label>
+      );
+    }
+    return (
+      <label key={key} className="block text-sm">
+        <span className="font-mono text-xs text-ink-muted">{key}</span>
+        <input className="mt-1 w-full border border-line rounded-lg p-2 text-sm" value={String(value)}
+          onChange={(e) => setFormValues((v) => ({ ...v, [key]: e.target.value }))} />
+      </label>
+    );
   };
 
-  const handleSaveNewRule = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRuleForm.code.trim() || !newRuleForm.name.trim()) return;
-
-    try {
-      const parsedParams = JSON.parse(newRuleForm.paramsJson);
-      const ruleCode = newRuleForm.code.trim().toUpperCase();
-
-      if (rules.some(r => r.code === ruleCode)) {
-        alert(`Mã quy định "${ruleCode}" đã tồn tại!`);
-        return;
-      }
-
-      const created: RuleItem = {
-        code: ruleCode,
-        name: newRuleForm.name.trim(),
-        category: newRuleForm.category,
-        currentVersion: 'v1.0',
-        parameters: parsedParams,
-        effectiveDate: newRuleForm.effectiveDate,
-        description: newRuleForm.description.trim(),
-        status: 'ACTIVE'
-      };
-
-      setRules(prev => [created, ...prev]);
-      setIsAddOpen(false);
-      showToast(`Đã tạo quy tắc mới "${created.code}" thành công`);
-    } catch (err: any) {
-      alert('Định dạng JSON tham số không hợp lệ: ' + err.message);
-    }
-  };
-
-  const handleDeleteRule = (code: string) => {
-    if (confirm(`Bạn có chắc muốn xóa quy định "${code}"?`)) {
-      setRules(prev => prev.filter(r => r.code !== code));
-      showToast(`Đã xóa quy tắc ${code}`);
-    }
-  };
-
-  const filteredRules = rules.filter(r => {
-    const matchesCat = filterCategory === 'ALL' || r.category === filterCategory;
-    const matchesQ =
-      r.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCat && matchesQ;
+  const filtered = rules.filter((r) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return r.name.toLowerCase().includes(q) || r.ruleKey.toLowerCase().includes(q);
   });
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
-      {successToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <span>✓</span>
-          <span>{successToast}</span>
-        </div>
-      )}
+    <div className="space-y-4">
+      {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-canvas border border-line rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Động Cơ Quy Tắc &amp; Chính Sách (Rule Engine)</h1>
-            <Badge variant="accent">S16 / S17 / S18</Badge>
-          </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Quản trị 19 quy định nghiệp vụ, versioning bất biến; khi lưu sẽ hiện hộp thoại xác nhận nội dung áp dụng (không có dry-run)
-          </p>
+          <div className="text-xs text-accent font-semibold">S16 · HR</div>
+          <h1 className="text-xl font-bold text-ink mt-1">Cấu hình 19 quy định</h1>
+          <p className="text-xs text-ink-muted mt-1">Chỉ áp dụng toàn công ty · mỗi lần lưu tạo phiên bản có ngày hiệu lực + lý do.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {canManage && (
-            <Button variant="primary" size="sm" onClick={() => setIsAddOpen(true)}>
-              + Tạo Quy Định Mới
-            </Button>
-          )}
-        </div>
+        <input
+          className="text-xs px-3 py-2 rounded-lg border border-line bg-surface w-full sm:w-64"
+          placeholder="Tìm theo tên hoặc rule_id…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface p-3 rounded-xl border border-line shadow-2xs">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Tìm theo mã luật, tên, nội dung..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-accent w-full sm:w-72"
-          />
+      {loading && <div className="text-sm text-ink-muted">Đang tải 19 quy định…</div>}
+      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
 
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
-          >
-            <option value="ALL">Tất cả danh mục</option>
-            <option value="CHECKIN">Chấm công (CHECKIN)</option>
-            <option value="PENALTY">Chuyên cần &amp; Phạt (PENALTY)</option>
-            <option value="WFH">Làm việc từ xa (WFH)</option>
-            <option value="LEAVE">Nghỉ phép (LEAVE)</option>
-            <option value="OVERTIME">Làm thêm giờ (OVERTIME)</option>
-          </select>
-        </div>
-
-        <div className="text-xs text-ink-muted">
-          Tổng cộng: <strong className="text-ink">{filteredRules.length}</strong> quy định
-        </div>
+      <div className="bg-surface border border-line rounded-xl overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-canvas text-ink-secondary">
+            <tr>
+              <th className="text-left p-3">Quy định</th>
+              <th className="p-3">Nhóm</th>
+              <th className="p-3">Phiên bản</th>
+              <th className="p-3">Hiệu lực từ</th>
+              <th className="p-3 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.ruleKey} className="border-t border-line align-top">
+                <td className="p-3">
+                  <div className="font-semibold text-ink">{r.name}</div>
+                  <div className="text-[11px] font-mono text-ink-muted">{r.ruleKey}</div>
+                  <div className="text-[11px] text-ink-muted mt-1 max-w-xl">{r.description}</div>
+                </td>
+                <td className="p-3 text-center text-xs">{r.category}</td>
+                <td className="p-3 text-center text-xs">v{r.versionCount}</td>
+                <td className="p-3 text-center text-xs">{r.effectiveFrom || '—'}</td>
+                <td className="p-3 text-right whitespace-nowrap">
+                  <button className="text-xs px-2 py-1 rounded bg-accent text-white" onClick={() => openEdit(r)}>Sửa</button>
+                  <button className="text-xs px-2 py-1 rounded border border-line ml-1" onClick={() => openHistory(r)}>Lịch sử thay đổi</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Rules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRules.map(rule => (
-          <div
-            key={rule.code}
-            className="bg-surface rounded-xl border border-line p-5 shadow-2xs hover:border-accent transition-all flex flex-col justify-between relative group"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-mono text-[11px] font-semibold text-accent-dark">{rule.code}</span>
-                <Badge variant="ok">{rule.currentVersion}</Badge>
-              </div>
-              <h3 className="font-semibold text-xs text-ink mt-2">{rule.name}</h3>
-              <p className="text-[11px] text-ink-secondary mt-1.5 line-clamp-2 leading-relaxed">
-                {rule.description}
-              </p>
+      {editing && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setEditing(null)}>
+          <div className="bg-surface rounded-xl p-5 w-full max-w-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold">Sửa quy định — {editing.name}</h3>
+            <div className="text-[11px] text-ink-muted">Scope: toàn công ty · {editing.ruleKey}</div>
+            <label className="block text-xs font-semibold">Các field của quy định</label>
+            <div className="grid sm:grid-cols-2 gap-2 max-h-[45vh] overflow-auto pr-1">
+              {Object.entries(formValues)
+                .filter(([key]) => isFieldVisible(key, formValues))
+                .map(([key, value]) => renderField(key, value))}
             </div>
-
-            <div className="mt-4 pt-3 border-t border-line space-y-2">
-              <div className="bg-canvas p-2 rounded-lg font-mono text-[10px] text-ink overflow-x-auto max-h-24">
-                {JSON.stringify(rule.parameters, null, 2)}
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold">Ngày hiệu lực</label>
+                <input type="date" className="w-full border border-line rounded-lg p-2 text-sm" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
               </div>
-              <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                <span>Hiệu lực: {rule.effectiveDate}</span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => handleOpenEdit(rule)}
-                    className="text-accent font-medium hover:underline text-xs"
-                  >
-                    Chỉnh sửa
-                  </button>
-                  {canManage && (
-                    <button
-                      onClick={() => handleDeleteRule(rule.code)}
-                      className="text-status-danger hover:underline text-xs ml-1"
-                    >
-                      Xóa
-                    </button>
-                  )}
+              <div>
+                <label className="block text-xs font-semibold">Lý do thay đổi *</label>
+                <input className="w-full border border-line rounded-lg p-2 text-sm" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="VD: HR chốt tăng quota 2 → 3" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setEditing(null)}>Huỷ</button>
+              <button className="text-xs px-3 py-1.5 rounded bg-accent text-white disabled:opacity-50" disabled={saving} onClick={saveRule}>
+                {saving ? 'Đang lưu…' : 'Lưu phiên bản mới'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyRule && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setHistoryRule(null)}>
+          <div className="bg-surface rounded-xl p-5 w-full max-w-xl space-y-3 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold">Lịch sử thay đổi — {historyRule.name}</h3>
+            {versions.length === 0 && <div className="text-xs text-ink-muted">Chưa có phiên bản nào (đang dùng seed ban đầu).</div>}
+            {versions.map((v) => (
+              <div key={v.id} className="border border-line rounded-lg p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-semibold">{v.version} · {v.effectiveFrom}</span>
+                  <button className="px-2 py-1 rounded border border-line" onClick={() => rollback(v.id)}>Rollback</button>
                 </div>
+                <div className="text-ink-muted">Lý do: {v.changeReason}</div>
+                <pre className="bg-canvas p-2 rounded overflow-x-auto">{v.value}</pre>
               </div>
-            </div>
+            ))}
+            <div className="text-right"><button className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setHistoryRule(null)}>Đóng</button></div>
           </div>
-        ))}
-      </div>
-
-      {/* Edit Rule Modal */}
-      {editingRule && (
-        <Modal
-          isOpen={true}
-          onClose={() => setEditingRule(null)}
-          title={`Chỉnh sửa Quy định: ${editingRule.code}`}
-          maxWidth="lg"
-        >
-          <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-medium text-ink mb-1">Tên quy định</label>
-              <input
-                type="text"
-                required
-                value={editForm.name}
-                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium text-ink mb-1">Mô tả nghiệp vụ</label>
-              <textarea
-                rows={2}
-                required
-                value={editForm.description}
-                onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium text-ink mb-1">Tham số cấu hình (JSON Parameters)</label>
-              <textarea
-                rows={4}
-                required
-                value={editForm.paramsJson}
-                onChange={e => setEditForm({ ...editForm, paramsJson: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface font-mono text-[11px] text-ink"
-              />
-            </div>
-
-            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px]">
-              ⚠️ Khi lưu thay đổi, hệ thống sẽ tự động tăng <strong>Rule Version</strong> và ghi vết kiểm toán Audit Log (S35).
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button variant="outline" size="sm" type="button" onClick={() => setEditingRule(null)}>
-                Hủy
-              </Button>
-              <Button variant="primary" size="sm" type="submit">
-                Lưu Phiên Bản Mới
-              </Button>
-            </div>
-          </form>
-        </Modal>
+        </div>
       )}
-
-      {/* Add Rule Modal */}
-      {isAddOpen && (
-        <Modal
-          isOpen={true}
-          onClose={() => setIsAddOpen(false)}
-          title="Tạo Quy Định &amp; Luật Mới (Rule Engine)"
-          maxWidth="lg"
-        >
-          <form onSubmit={handleSaveNewRule} className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-medium text-ink mb-1">Mã Quy Định (Unique Code) *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: RULE_OVERTIME_LIMIT_MONTHLY"
-                  value={newRuleForm.code}
-                  onChange={e => setNewRuleForm({ ...newRuleForm, code: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono uppercase"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-ink mb-1">Phân Loại Nghiệp Vụ *</label>
-                <select
-                  value={newRuleForm.category}
-                  onChange={e => setNewRuleForm({ ...newRuleForm, category: e.target.value as any })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-                >
-                  <option value="CHECKIN">Chấm công (CHECKIN)</option>
-                  <option value="PENALTY">Chuyên cần &amp; Phạt (PENALTY)</option>
-                  <option value="WFH">Làm việc từ xa (WFH)</option>
-                  <option value="LEAVE">Nghỉ phép (LEAVE)</option>
-                  <option value="OVERTIME">Làm thêm giờ (OVERTIME)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-medium text-ink mb-1">Tên Quy Định Dễ Hiểu *</label>
-              <input
-                type="text"
-                required
-                placeholder="VD: Hạn mức tối đa làm thêm giờ trong tháng (40 giờ)"
-                value={newRuleForm.name}
-                onChange={e => setNewRuleForm({ ...newRuleForm, name: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium text-ink mb-1">Mô Tả Nghiệp Vụ &amp; Căn Cứ Luật</label>
-              <textarea
-                rows={2}
-                required
-                placeholder="Mô tả chi tiết nguyên tắc áp dụng và căn cứ theo điều khoản quy chế nội bộ..."
-                value={newRuleForm.description}
-                onChange={e => setNewRuleForm({ ...newRuleForm, description: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium text-ink mb-1">Tham Số Cấu Hình (JSON Parameters) *</label>
-              <textarea
-                rows={3}
-                required
-                value={newRuleForm.paramsJson}
-                onChange={e => setNewRuleForm({ ...newRuleForm, paramsJson: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface font-mono text-[11px] text-ink"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsAddOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" size="sm" type="submit">
-                Tạo Quy Định Mới
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* Dry Run Modal */}
     </div>
   );
 };

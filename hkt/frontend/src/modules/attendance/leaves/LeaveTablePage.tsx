@@ -1,43 +1,99 @@
 import React, { useEffect, useState } from 'react';
-const rows = [
-  { code: '136ACT', name: 'Vũ Văn Luận', team: 'Optimus', annual: 8.5, carried: 5, used: 3.5 },
-  { code: '05ACT', name: 'Nguyễn Thanh Tùng', team: 'Sirius', annual: 12, carried: 2, used: 6 },
-  { code: '01HR', name: 'Nguyễn Thị Thu Hà', team: 'HR', annual: 15, carried: 0, used: 4 },
+import { Link } from 'react-router-dom';
+
+interface Row { code: string; name: string; team: string; annual: number; carried: number; sick: number; seniority: number; used: number; }
+
+const initial: Row[] = [
+  { code: '136ACT', name: 'Vũ Văn Luận', team: 'Optimus', annual: 8.5, carried: 5, sick: 0, seniority: 1, used: 3.5 },
+  { code: '05ACT', name: 'Nguyễn Thanh Tùng', team: 'Sirius', annual: 12, carried: 2, sick: 1, seniority: 0, used: 6 },
+  { code: '01HR', name: 'Nguyễn Thị Thu Hà', team: 'HR', annual: 15, carried: 0, sick: 0, seniority: 2, used: 4 },
 ];
+
 export const LeaveTablePage: React.FC = () => {
-  const [data, setData] = useState(rows);
+  const [data, setData] = useState<Row[]>(initial);
+  const [team, setTeam] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('ALL');
+
   useEffect(() => {
-    fetch('/api/v1/leaves/table')
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    fetch('/api/v1/leaves/table', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => r.json())
-      .then(j => { if (Array.isArray(j?.data) && j.data.length) setData(j.data.map((u: any) => ({ code: u.employeeCode, name: u.fullName, team: u.team || '—', annual: Number(u.granted || 0), carried: 0, used: Number(u.used || 0) }))); })
+      .then(j => {
+        if (Array.isArray(j?.data) && j.data.length) {
+          setData(j.data.map((u: any) => ({
+            code: u.employeeCode, name: u.fullName, team: u.team || '—',
+            annual: Number(u.annualRemaining ?? u.granted ?? 0), carried: Number(u.carriedOver ?? 0),
+            sick: Number(u.sickUsed ?? 0), seniority: Number(u.seniority ?? 0), used: Number(u.totalUsed ?? u.used ?? 0),
+          })));
+        }
+      })
       .catch(() => undefined);
   }, []);
+
+  const teams = Array.from(new Set(data.map(r => r.team)));
+  const filtered = data.filter(r => {
+    if (team !== 'ALL' && r.team !== team) return false;
+    const rem = r.annual + r.carried;
+    if (status === 'NEAR' && rem >= 2) return false;
+    if (status === 'OUT' && rem > 0) return false;
+    const q = search.trim().toLowerCase();
+    return !q || r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q);
+  });
+  const total = (fn: (r: Row) => number) => filtered.reduce((a, r) => a + fn(r), 0);
+
   return (
-  <div className="max-w-4xl mx-auto space-y-4">
-    <div className="bg-canvas border border-line rounded-xl p-6">
-      <div className="text-xs text-accent font-semibold">S46 · HR</div>
-      <h1 className="text-xl font-bold text-ink mt-1">Bảng phép tất cả mọi người</h1>
-      <p className="text-xs text-ink-muted mt-1">Nhìn 1 lần biết ai còn bao nhiêu; click vào tên để mở sổ phép.</p>
-    </div>
-    <div className="bg-surface border border-line rounded-xl overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-canvas text-ink-secondary">
-          <tr><th className="text-left p-3">Nhân viên</th><th className="p-3">Nhóm</th><th className="p-3">Phép năm</th><th className="p-3">Phép tồn</th><th className="p-3">Đã dùng</th><th className="p-3">Còn lại</th></tr>
-        </thead>
-        <tbody>
-          {data.map(r => (
-            <tr key={r.code} className="border-t border-line">
-              <td className="p-3"><div className="font-semibold">{r.name}</div><div className="text-xs text-ink-muted">{r.code}</div></td>
-              <td className="p-3 text-center">{r.team}</td>
-              <td className="p-3 text-center">{r.annual}</td>
-              <td className="p-3 text-center">{r.carried}</td>
-              <td className="p-3 text-center">{r.used}</td>
-              <td className="p-3 text-center font-bold text-accent">{r.annual + r.carried - r.used}</td>
+    <div className="max-w-5xl mx-auto space-y-4">
+      <div className="bg-canvas border border-line rounded-xl p-6">
+        <div className="text-xs text-accent font-semibold">S46 · HR</div>
+        <h1 className="text-xl font-bold text-ink mt-1">Bảng phép tất cả mọi người</h1>
+        <p className="text-xs text-ink-muted mt-1">1 dòng = 1 người; click tên để mở sổ phép chi tiết. Người còn &lt; 2 ngày được đánh dấu.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <input className="text-xs px-3 py-2 rounded-lg border border-line bg-surface" placeholder="Tìm tên / mã NV" value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="text-xs px-2 py-2 rounded-lg border border-line bg-surface" value={team} onChange={e => setTeam(e.target.value)}>
+          <option value="ALL">Tất cả nhóm</option>
+          {teams.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select className="text-xs px-2 py-2 rounded-lg border border-line bg-surface" value={status} onChange={e => setStatus(e.target.value)}>
+          <option value="ALL">Mọi người</option>
+          <option value="NEAR">Sắp hết phép (&lt; 2 ngày)</option>
+          <option value="OUT">Đã hết phép</option>
+        </select>
+        <span className="text-xs text-ink-muted self-center">Người sắp hết phép được tô vàng</span>
+      </div>
+
+      <div className="bg-surface border border-line rounded-xl overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-canvas text-ink-secondary">
+            <tr><th className="text-left p-3">Nhân viên</th><th className="p-3">Nhóm</th><th className="p-3">Phép năm còn</th><th className="p-3">Phép tồn</th><th className="p-3">Ốm đã dùng</th><th className="p-3">Thâm niên</th><th className="p-3">Tổng đã dùng</th></tr>
+          </thead>
+          <tbody>
+            {filtered.map(r => (
+              <tr key={r.code} className={`border-t border-line ${r.annual + r.carried < 2 ? 'bg-amber-50' : ''}`}>
+                <td className="p-3"><Link className="font-semibold hover:underline" to={`/attendance/leave-ledger?user=${r.code}`}>{r.name}</Link><div className="text-xs text-ink-muted">{r.code}</div></td>
+                <td className="p-3 text-center">{r.team}</td>
+                <td className="p-3 text-center">{r.annual}</td>
+                <td className="p-3 text-center">{r.carried}</td>
+                <td className="p-3 text-center">{r.sick}</td>
+                <td className="p-3 text-center">{r.seniority}</td>
+                <td className="p-3 text-center">{r.used}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-line font-bold bg-canvas">
+              <td className="p-3" colSpan={2}>Tổng ({filtered.length} người)</td>
+              <td className="p-3 text-center">{total(r => r.annual)}</td>
+              <td className="p-3 text-center">{total(r => r.carried)}</td>
+              <td className="p-3 text-center">{total(r => r.sick)}</td>
+              <td className="p-3 text-center">{total(r => r.seniority)}</td>
+              <td className="p-3 text-center">{total(r => r.used)}</td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </tfoot>
+        </table>
+      </div>
     </div>
-  </div>
   );
 };

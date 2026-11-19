@@ -141,7 +141,8 @@ public class RuleEngineController {
 
     @PostMapping("/{ruleKey}/rollback/{versionId}")
     @Operation(summary = "Hoàn tác về một phiên bản cũ (tạo phiên bản mới, không xoá lịch sử)")
-    public ApiResponse<RuleItem> rollback(@PathVariable String ruleKey, @PathVariable String versionId) {
+    public ApiResponse<RuleItem> rollback(@PathVariable String ruleKey, @PathVariable String versionId,
+                                          @RequestBody(required = false) java.util.Map<String, String> body) {
         Rule rule = ruleRepository.findByRuleKey(ruleKey)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy quy định: " + ruleKey));
         RuleVersion target = ruleVersionRepository.findById(java.util.UUID.fromString(versionId))
@@ -153,7 +154,9 @@ public class RuleEngineController {
                 .version("v" + nextVersion)
                 .value(target.getValue())
                 .effectiveFrom(LocalDateTime.now())
-                .changeReason("ROLLBACK về " + target.getVersion())
+                .changeReason(body != null && body.get("reason") != null && !body.get("reason").isBlank()
+                        ? "ROLLBACK về " + target.getVersion() + ": " + body.get("reason")
+                        : "ROLLBACK về " + target.getVersion())
                 .createdBy(CurrentUser.userId())
                 .build();
         rollbackVersion.setCreatedAt(LocalDateTime.now());

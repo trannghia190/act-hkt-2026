@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -19,8 +19,11 @@ interface EnterpriseLeaveLedgerItem {
 
 export const AdminLeaveLedgerPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selectedCode, setSelectedCode] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
+  const [filterMonth, setFilterMonth] = useState('ALL');
 
   // Adjust leave modal state
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -98,10 +101,32 @@ export const AdminLeaveLedgerPage: React.FC = () => {
       item.reason.toLowerCase().includes(searchTerm.toLowerCase());
     const matchDept = selectedDept === 'ALL' || item.department.includes(selectedDept);
     const matchType = filterType === 'ALL' || item.type === filterType;
-    return matchSearch && matchDept && matchType;
+    const matchMonth = filterMonth === 'ALL' || item.date.includes(`/${filterMonth}/`);
+    return matchSearch && matchDept && matchType && matchMonth;
   });
 
-  const handleAdjustLeave = (e: React.FormEvent) => {
+  const authOnly = (): Record<string, string> => { try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; } };
+  const authJson = (): Record<string, string> => ({ 'Content-Type': 'application/json', ...authOnly() });
+  const loadLedger = (code: string) => {
+    if (!code) return;
+    fetch(`/api/v1/leaves/ledger/by-code/${encodeURIComponent(code)}`, { headers: authOnly() })
+      .then(r => r.json()).then(j => {
+        if (Array.isArray(j?.data)) setLedgerEntries(j.data.map((e: any) => ({
+          id: e.id, employeeCode: code, employeeName: employees.find(x => x.employeeCode === code)?.fullName || code,
+          department: '', date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
+          type: e.action, amount: Number(e.amount || 0), balanceAfter: Number(e.balanceAfter || 0),
+          reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
+        })));
+      }).catch(() => undefined);
+  };
+  useEffect(() => {
+    fetch('/api/v1/leaves/table', { headers: authOnly() }).then(r => r.json()).then(j => {
+      if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); } }
+    }).catch(() => undefined);
+  }, []);
+  useEffect(() => { if (selectedCode) loadLedger(selectedCode); }, [selectedCode, employees.length]);
+
+  const handleAdjustLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(adjustAmount);
     if (isNaN(amountNum)) return;
@@ -119,8 +144,9 @@ export const AdminLeaveLedgerPage: React.FC = () => {
       approvedBy: 'HR Admin (Thủ công)',
     };
 
-    setLedgerEntries([newEntry, ...ledgerEntries]);
+    await fetch('/api/v1/leaves/adjust', { method: 'POST', headers: authJson(), body: JSON.stringify({ employeeCode: adjustEmpCode, amount: amountNum, reason: adjustReason, leaveType: 'AL' }) });
     setIsAdjustModalOpen(false);
+    loadLedger(adjustEmpCode);
   };
 
   return (
@@ -157,6 +183,13 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           className="text-xs p-2.5 rounded-lg border border-line bg-surface flex-1 text-ink placeholder:text-ink-muted"
         />
 
+        <select value={selectedCode} onChange={e => setSelectedCode(e.target.value)} className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink">
+          {employees.map((e: any) => <option key={e.employeeCode} value={e.employeeCode}>{e.fullName} ({e.employeeCode})</option>)}
+        </select>
+        <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink">
+          <option value="ALL">Tất cả tháng</option>
+          {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => <option key={m} value={m}>Tháng {m}</option>)}
+        </select>
         <select
           value={selectedDept}
           onChange={(e) => setSelectedDept(e.target.value)}

@@ -4,14 +4,16 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
-import { getRequests, saveRequests, AttendanceRequestItem } from '../requests/requestStore';
+import { AttendanceRequestItem } from '../requests/requestStore';
 
 export const ApprovalsPage: React.FC = () => {
   const { user } = useAuth();
-  const [requests, setRequests] = useState<AttendanceRequestItem[]>(getRequests);
+  const [requests, setRequests] = useState<AttendanceRequestItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [filterType, setFilterType] = useState('ALL');
+  const [filterDate, setFilterDate] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Reject modal state
@@ -22,13 +24,29 @@ export const ApprovalsPage: React.FC = () => {
   const [approvingItem, setApprovingItem] = useState<AttendanceRequestItem | null>(null);
   const [approveComment, setApproveComment] = useState('Đồng ý phê duyệt');
 
-  useEffect(() => {
-    const handleStorage = () => {
-      setRequests(getRequests());
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  const authHeaders = (): Record<string, string> => {
+    try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }
+  };
+  const authOnly = (): Record<string, string> => {
+    try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; }
+  };
+  const mapRequest = (r: any): AttendanceRequestItem => {
+    const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
+    return {
+      id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: '',
+      team: r.team || '', type: r.requestType, typeName: typeNames[r.requestType] || r.requestType,
+      startDate: r.workDate || '', endDate: r.workDate || '', durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
+      reason: r.reason || '', status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
+      approver: '—', createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
+      approverComment: r.decisionComment || undefined,
+    } as AttendanceRequestItem;
+  };
+  const loadInbox = () => {
+    fetch('/api/v1/requests/inbox', { headers: authOnly() })
+      .then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setRequests(j.data.map(mapRequest)); })
+      .catch(() => undefined);
+  };
+  useEffect(loadInbox, []);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -41,18 +59,9 @@ export const ApprovalsPage: React.FC = () => {
 
   const handleBulkApprove = () => {
     const approverText = `${user?.fullName || 'Manager'} (${user?.role || 'MANAGER'})`;
-    const updated = requests.map(r =>
-      selectedIds.includes(r.id)
-        ? {
-            ...r,
-            status: 'APPROVED' as const,
-            approver: approverText,
-            approverComment: 'Duyệt hàng loạt qua hệ thống'
-          }
-        : r
-    );
-    setRequests(updated);
-    saveRequests(updated);
+    fetch('/api/v1/requests/bulk-approve', { method: 'POST', headers: authHeaders(), body: JSON.stringify(selectedIds) })
+      .then(r => r.json()).then(j => { if (!j?.success) throw new Error(j?.message); showToast(`Đã duyệt ${selectedIds.length} đơn`); loadInbox(); })
+      .catch(e => showToast(e?.message || 'Duyệt hàng loạt thất bại'));
     setSelectedIds([]);
     showToast(`Đã duyệt thành công ${selectedIds.length} đơn yêu cầu`);
   };
@@ -77,20 +86,10 @@ export const ApprovalsPage: React.FC = () => {
       })
     }).catch(err => console.log('Notification sent background:', err));
 
-    const updated = requests.map(r =>
-      r.id === approvingItem.id
-        ? {
-            ...r,
-            status: 'APPROVED' as const,
-            approver: approverText,
-            approverComment: comment
-          }
-        : r
-    );
-    setRequests(updated);
-    saveRequests(updated);
+    fetch(`/api/v1/requests/${approvingItem.id}/approve`, { method: 'POST', headers: authHeaders() })
+      .then(r => r.json()).then(j => { if (!j?.success) throw new Error(j?.message); showToast(`Đã duyệt đơn ${approvingItem.id}`); loadInbox(); })
+      .catch(e => showToast(e?.message || 'Duyệt đơn thất bại'));
     setApprovingItem(null);
-    showToast(`Đã duyệt đơn ${approvingItem.id} và gửi thông báo qua Gmail`);
   };
 
   const handleSingleReject = (e: React.FormEvent) => {
@@ -114,25 +113,17 @@ export const ApprovalsPage: React.FC = () => {
       })
     }).catch(err => console.log('Notification sent background:', err));
 
-    const updated = requests.map(r =>
-      r.id === rejectingItem.id
-        ? {
-            ...r,
-            status: 'REJECTED' as const,
-            approver: approverText,
-            approverComment: comment
-          }
-        : r
-    );
-    setRequests(updated);
-    saveRequests(updated);
+    fetch(`/api/v1/requests/${rejectingItem.id}/reject`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ comment }) })
+      .then(r => r.json()).then(j => { if (!j?.success) throw new Error(j?.message); showToast(`Đã từ chối đơn ${rejectingItem.id}`); loadInbox(); })
+      .catch(e => showToast(e?.message || 'Từ chối thất bại'));
     setRejectingItem(null);
     setRejectReason('');
-    showToast(`Đã từ chối đơn ${rejectingItem.id} và gửi thông báo qua Gmail`);
   };
 
   const currentTabItems = requests
     .filter(r => r.status === activeTab)
+    .filter(r => filterType === 'ALL' || r.type === filterType)
+    .filter(r => !filterDate || (r.startDate || '').includes(filterDate))
     .filter(r => {
       if (!searchKeyword.trim()) return true;
       const q = searchKeyword.toLowerCase();
@@ -291,7 +282,12 @@ export const ApprovalsPage: React.FC = () => {
                       />
                     </td>
                   )}
-                  <td className="py-3 px-4 font-mono font-medium text-ink">{item.id}</td>
+                  <td className="py-3 px-4 font-mono font-medium text-ink">
+                    {item.id}
+                    {item.status === 'PENDING' && item.createdAt && Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) >= 2 && (
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">⏰ Quá hạn</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4">
                     <div className="font-semibold text-ink">{item.requesterName}</div>
                     <div className="text-[11px] text-ink-muted font-mono">{item.requesterCode} · {item.team}</div>
@@ -423,7 +419,7 @@ export const ApprovalsPage: React.FC = () => {
               <Button variant="outline" size="sm" type="button" onClick={() => setRejectingItem(null)}>
                 Hủy
               </Button>
-              <Button variant="outline" size="sm" type="submit" className="text-status-danger border-status-danger hover:bg-status-danger/10">
+              <Button variant="outline" size="sm" type="submit" disabled={!rejectReason.trim()} className="text-status-danger border-status-danger hover:bg-status-danger/10">
                 Xác Nhận Từ Chối
               </Button>
             </div>

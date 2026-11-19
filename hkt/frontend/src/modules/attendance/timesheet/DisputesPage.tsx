@@ -13,7 +13,13 @@ export const DisputesPage: React.FC = () => {
       .then(j => { if (Array.isArray(j?.data)) setItems(j.data.map((d: any) => ({ id: d.id, employee: d.employee, date: d.date, reason: d.reason || 'Khiếu nại bảng công', status: d.status }))); })
       .catch(() => undefined);
   }, []);
-  const resolve = (id: string) => setItems(p => p.map(d => d.id === id ? { ...d, status: 'RESOLVED' as const } : d));
+  const resolve = async (id: string) => {
+    const reason = window.prompt('Lý do xử lý (bắt buộc):', 'Đã đối chiếu log chấm công và sửa ô');
+    if (!reason || !reason.trim()) return;
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    const res = await fetch(`/api/v1/disputes/${id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ action: 'FIX', reason }) });
+    if (res.ok) setItems(p => p.map(d => d.id === id ? { ...d, status: 'RESOLVED' as const } : d));
+  };
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">

@@ -6,6 +6,8 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.DeviceRegistration;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
+import com.act.pulse.modules.attendance.entity.AuditLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -26,6 +28,7 @@ public class BusinessGapController {
 
     private final AttendanceLogRepository attendanceLogRepository;
     private final DeviceRegistrationRepository deviceRegistrationRepository;
+    private final AuditLogRepository auditLogRepository;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -100,12 +103,6 @@ public class BusinessGapController {
         return ApiResponse.ok(userId == null ? List.of() : deviceRegistrationRepository.findByUserIdAndIsApprovedTrue(userId), "Thiết bị của tôi");
     }
 
-    @GetMapping("/admin/devices")
-    @Operation(summary = "Quản lý thiết bị (S28)")
-    public ApiResponse<List<DeviceRegistration>> allDevices() {
-        return ApiResponse.ok(deviceRegistrationRepository.findAll(), "Danh sách thiết bị");
-    }
-
     @PostMapping("/devices/request")
     @Operation(summary = "Yêu cầu thêm thiết bị (S29)")
     public ApiResponse<DeviceRegistration> requestDevice(@RequestBody DeviceRequest request) {
@@ -121,20 +118,45 @@ public class BusinessGapController {
         return ApiResponse.ok(deviceRegistrationRepository.save(device), "Đã gửi yêu cầu — chờ HR duyệt");
     }
 
+    private static final List<Map<String, Object>> DISPUTES = new java.util.ArrayList<>(List.of(
+            new java.util.HashMap<>(Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "reason", "Có check-in 08:47 nhưng bảng ghi vắng", "status", "PENDING")),
+            new java.util.HashMap<>(Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "reason", "Nghỉ phép đã duyệt nhưng ghi UP", "status", "PENDING"))
+    ));
+
     @GetMapping("/disputes")
     @Operation(summary = "Danh sách khiếu nại (S45)")
     public ApiResponse<List<Map<String, Object>>> disputes() {
-        return ApiResponse.ok(List.of(
-                Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "status", "PENDING"),
-                Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "status", "PENDING")
-        ), "Danh sách khiếu nại");
+        return ApiResponse.ok(new java.util.ArrayList<>(DISPUTES), "Danh sách khiếu nại");
     }
 
     @GetMapping("/disputes/{id}")
-    @Operation(summary = "Chi tiết khiếu nại (S33)")
+    @Operation(summary = "Chi tiết khiếu nại (S33/D4)")
     public ApiResponse<Map<String, Object>> dispute(@PathVariable String id) {
-        return ApiResponse.ok(Map.of("id", id, "status", "PENDING",
-                "before", "Vắng không phép", "after", "Có check-in 08:47"), "Chi tiết khiếu nại");
+        Map<String, Object> d = DISPUTES.stream().filter(x -> id.equals(x.get("id"))).findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        Map<String, Object> result = new java.util.HashMap<>(d);
+        result.put("before", "Vắng không phép (0 công)");
+        result.put("after", "Có check-in 08:47 · 1.00 công");
+        result.put("ruleHint", "Thiếu check-out và chưa tạo đơn bổ sung công");
+        return ApiResponse.ok(result, "Chi tiết khiếu nại");
+    }
+
+    @PostMapping("/disputes/{id}/resolve")
+    @Operation(summary = "Xử lý khiếu nại: sửa ô / tạo đơn bổ sung / từ chối (bắt buộc lý do)")
+    public ApiResponse<Map<String, Object>> resolveDispute(@PathVariable String id, @RequestBody Map<String, String> body) {
+        Map<String, Object> d = DISPUTES.stream().filter(x -> id.equals(x.get("id"))).findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        String action = body.getOrDefault("action", "REJECT");
+        if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
+            throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
+        }
+        d.put("status", "REJECT".equals(action) ? "REJECTED" : "RESOLVED");
+        d.put("action", action);
+        AuditLog log = AuditLog.builder().action("RESOLVE_DISPUTE").entityName("DISPUTE").entityId(id)
+                .userId(CurrentUser.userId()).reason(body.get("reason")).newValue(action).build();
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        auditLogRepository.save(log);
+        return ApiResponse.ok(d, "Đã xử lý khiếu nại");
     }
 
     @GetMapping("/notifications/preferences")
