@@ -22,7 +22,7 @@
 | O9 | HR chốt & khóa + báo cáo + export Excel | Sau hạn chót tự khóa |
 | O10 | Trường hợp đặc biệt (chuyển phòng, nhân viên mới, nghỉ việc) | |
 | O11 | Phân tầng Công ty → Phòng ban → Cá nhân | Cây mục tiêu liên kết |
-| **@@C6@@** | **Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức** | P1 |
+| **C8** | **Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức** | P1 |
 | **C1/C2** | **Todo inbox + nhắc việc** (check-in đến hạn, chưa tạo OKR) | P0 — dùng chung |
 
 > **Toàn bộ bài toán 2 làm bằng rule.** Điểm đề xuất cho review OKR là **công thức tính từ tiến độ KR** (minh bạch, manager kiểm tra được). Xem `docs/04-business-convenience-features.md` §5.
@@ -138,29 +138,25 @@ Individual OKRs (80%)             ← mỗi người tự khai
 > (manager trực tiếp → team lead → HR). Người dùng chỉ cần thấy *"việc của tôi đang chờ ai"*
 > — đã có ở hộp thư duyệt (S12) và trang "Cần làm" (S02).
 
-### 2.2 Thang điểm 1–5 & xếp loại
+### 2.2 Thang điểm 1–5
 
-**Thang điểm & ngưỡng xếp loại (cấu hình được theo chu kỳ OKR):**
+**Thang điểm (cấu hình được theo chu kỳ OKR):**
 
 | Trường | Ý nghĩa | Ràng buộc / giá trị |
 |---|---|---|
 | `scale_min` | Điểm thấp nhất trong thang chấm | `1` — theo form HR |
 | `scale_max` | Điểm cao nhất trong thang chấm | `5` — theo form HR |
-| `grade_thresholds` | Ngưỡng điểm trung bình để sinh **xếp loại** | Ví dụ: `A ≥ 4.5` · `B ≥ 3.5` · `C ≥ 2.5` · dưới 2.5 là `D` |
 
-| Điểm | Nghĩa | Xếp loại (ngưỡng mặc định, cấu hình được) |
-|---|---|---|
-| 5 | Vượt xuất | **A** ≥ 4.5 |
-| 4 | Vượt kỳ vọng | **B** ≥ 3.5 |
-| 3 | Đạt kỳ vọng | **C** ≥ 2.5 |
-| 2 | Đạt một phần | **D** < 2.5 |
-| 1 | Không đạt | |
+| Điểm | Nghĩa |
+|---|---|
+| 5 | Vượt xuất |
+| 4 | Vượt kỳ vọng |
+| 3 | Đạt kỳ vọng |
+| 2 | Đạt một phần |
+| 1 | Không đạt |
 
-> **Giữ nguyên xếp loại A/B/C/D** vì HR đã dùng khái niệm này — chỉ đổi **thang điểm** từ 0.0–1.0
-> sang 1–5 cho khớp form. Ngưỡng vẫn cấu hình được trong `OkrCycle.grade_thresholds`.
->
-> **Xếp loại chỉ để hiển thị/báo cáo.** Hệ thống **không quản lý lương** — không có luồng nào dùng
-> A/B/C/D để tính lương, nên HR đổi ngưỡng tùy ý mà không ảnh hưởng dữ liệu tài chính.
+> **Chỉ dùng điểm — KHÔNG xếp loại A/B/C/D** (quyết định 18/11/2026). Hệ thống hiển thị điểm
+> 1–5 của từng nhóm và điểm trung bình; không sinh thêm xếp loại.
 >
 > **Điểm trung bình chỉ tính từ 2 nhóm cá nhân** (Business + People của phần 80%).
 > Phần **20% mục tiêu công ty không tham gia điểm TB** — nó chỉ là bối cảnh tham khảo (PO chốt 17/11/2026).
@@ -352,7 +348,6 @@ draft ──nộp──▶ submitted ──QL duyệt──▶ locked
 | `summary_start` / `summary_due` | Mở đóng phase Tổng hợp | Sau phase Đánh giá cuối năm |
 | `scale_min` / `scale_max` | Thang điểm chấm | `1` → `5` — theo form HR |
 | `checkin_interval` | Nhịp check-in | `weekly` · `monthly` (mặc định) · `quarterly` |
-| `grade_thresholds` | Ngưỡng sinh **xếp loại** từ điểm TB | Ví dụ: A ≥ 4.5 · B ≥ 3.5 · C ≥ 2.5 |
 | `alignment_enabled` | Bật/tắt tính năng phân tầng | Có/Không |
 | `status` | Trạng thái chu kỳ | `draft` · `active` · `closed` |
 | `created_by` | Người tạo chu kỳ | — |
@@ -380,7 +375,6 @@ Nhóm được ghi ở trường `category: business|people` — mỗi objective
 | `submitted_at` / `approved_at` / `approved_by` | Lúc gửi · lúc duyệt · người duyệt | — |
 | `locked_at` | Lúc bị khóa (sau hạn chót) | Trống nếu chưa khóa |
 | `score` | Điểm cuối cùng đã chốt | `1` → `5`; trống nếu chưa chấm |
-| `grade` | Xếp loại sinh từ điểm TB | `A` · `B` · `C` · `D`; trống nếu chưa chấm |
 | `total_weight` | Tổng trọng số đầu việc | `100` khi có trọng số; trống nếu không áp dụng |
 
 **Đầu việc (`OkrAchievement`)** — Box 2 / Box 3 ("Key achievements"). **KHÔNG mang trọng số,
@@ -393,7 +387,7 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `title` | Nội dung đầu việc | **Không hạn chế số chữ** (theo form HR) |
 | `description` | Mô tả chi tiết | Tự do |
 | `display_order` | Thứ tự hiển thị trong nhóm | Số nguyên |
-| `progress` | Tiến độ trong phase check-in | `%` hoàn thành; trống nếu chưa check-in |
+| `progress` | Tiến độ trong phase check-in | `%` — **tự tính** từ giá trị mới ÷ mục tiêu; trống nếu chưa check-in |
 | `deleted_at` | Lúc bị xoá | Trống nếu chưa xoá — **xoá mềm**, không xoá hẳn bản ghi |
 | `delete_reason` | Lý do xoá | **BẮT BUỘC** khi xoá đầu việc |
 | `created_by` / `created_at` | Ai tạo · lúc tạo | — |
@@ -402,7 +396,7 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 > thuộc về **check-in** và **bản chấm** (xem §4.3) — lúc tạo OKR chỉ viết chữ, không tải file.
 
 **Chỉ số đo (`KeyResult`)** — dùng cho **check-in tiến độ** và làm cơ sở tính **điểm đề xuất**
-(§9 @@C6@@). Không phải nơi chấm điểm cuối năm:
+(§9 C8). Không phải nơi chấm điểm cuối năm:
 
 | Trường | Ý nghĩa | Ràng buộc / giá trị |
 |---|---|---|
@@ -415,7 +409,6 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `current_value` | Giá trị hiện tại | Số |
 | `weight` | Trọng số của chỉ số | Tổng các chỉ số = `100` |
 | `progress` | % hoàn thành | Tính tự động, có thể được ghi đè |
-| `confidence` | Mức độ tin cậy | `0` → `1` |
 | `self_score` | Điểm nhân viên tự chấm | `1` → `5`; trống nếu chưa chấm |
 | `manager_score` | Điểm quản lý chấm | `1` → `5`; trống nếu chưa chấm |
 | `manager_comment` | Nhận xét của quản lý | Tự do |
@@ -458,7 +451,6 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `average_score` | **Điểm trung bình OKR** | **Tự tính** = (Business + People) ÷ 2; trống nếu một nhóm chưa chấm |
 | `attachments` | File đính kèm làm evidence hoặc chi tiết bổ sung (ảnh chụp kết quả, báo cáo, tài liệu) | Danh sách file — **chỉ ở bản chấm**, không phải lúc tạo OKR |
 | `self_proposal_id` | Tự đề xuất năm sau | Box 4 — trỏ tới bản tự đề xuất; trống nếu không có |
-| `grade` | **Xếp loại** | `A` · `B` · `C` · `D` — sinh tự động từ `average_score`; trống nếu chưa chấm |
 | `created_by` / `created_at` | Ai chấm · lúc chấm | — |
 
 **Check-in (`OkrCheckIn`)** — lần cập nhật tiến độ định kỳ:
@@ -473,7 +465,6 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `new_value` | Giá trị mới | Số |
 | `progress_snapshot` | Tiến độ tại thời điểm check-in | `%` hoàn thành |
 | `note` | Ghi chú | Tự do |
-| `confidence` | Mức độ tin cậy | `0` → `1` |
 | `attachments` | File đính kèm làm evidence hoặc chi tiết bổ sung (ảnh chụp kết quả, báo cáo, tài liệu) | Danh sách file — tuỳ chọn |
 | `created_at` / `created_by` | Lúc check-in · ai check-in | — |
 
@@ -544,15 +535,6 @@ KHÔNG mang điểm riêng** — cả nhóm chấm 1 điểm 1–5. Đây là kh
 | `business_score` và `people_score` đều đã chấm | `average_score` = (điểm Business + điểm People) ÷ 2 — **phần mềm tự tính**, người dùng không nhập trực tiếp |
 | Một trong hai nhóm **chưa chấm** | `average_score` = **trống** (chưa có điểm trung bình) |
 
-**Cách sinh xếp loại (`grade`):**
-
-| Bước | Quy tắc |
-|---|---|
-| 1 | Nếu `average_score` trống → `grade` trống (chưa xếp loại) |
-| 2 | So `average_score` với ngưỡng **A → B → C** theo thứ tự giảm dần |
-| 3 | Điểm trung bình ≥ ngưỡng nào → lấy **xếp loại** tương ứng (`A`, `B` hoặc `C`) |
-| 4 | Không đạt ngưỡng nào của A/B/C → `D` |
-
 **Bảng điểm 1–5 → nhãn (hiển thị cho người dùng):**
 
 | Điểm | Nhãn |
@@ -571,7 +553,7 @@ Hai thứ khác nhau, không trộn.
 
 > **Cảnh báo khi implement:** đừng dùng công thức cũ "tiến độ KR × trọng số" để tính điểm cuối năm —
 > công thức đó thuộc về mô hình KR-trọng-số, **không phải** mô hình form HR. Công thức đó chỉ dùng cho
-> **điểm đề xuất** ở màn hình review (§8 @@C6@@).
+> **điểm đề xuất** ở màn hình review (§C8).
 
 **Điểm tự chấm và điểm quản lý lưu song song** (Mục 4.3 yêu cầu rõ: *"Hệ thống lưu cả điểm tự chấm và điểm của quản lý để đối chiếu"*).
 
@@ -624,7 +606,7 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 |---|---|
 | **Chuyển phòng / đổi quản lý giữa năm** | `OkrAssignment` chụp reviewer tại thời điểm gửi. Khi sơ đồ tổ chức đổi, **giữ nguyên reviewer cũ** cho các objective đã gửi. Cho phép HR/manager **reassign** kèm lý do (`reassign_reason`) → audit log đầy đủ, hiển thị "Reviewer: A (gốc) → B (tái phân công ngày X)". |
 | **Nhân viên mới vào giữa năm** | Cho phép tạo OKR cho phần còn lại. Hệ thống **tự scale** giá trị mục tiêu theo tỉ lệ thời gian còn lại (`target_value × remaining_days / total_days`) và **ghi chú** điều chỉnh. Hiển thị badge "OKR điều chỉnh cho nhân viên mới". |
-| **Nghỉ việc trước kỳ đánh giá** | `User.status = inactive` → ẩn khỏi báo cáo xếp loại, không tính vào phân bố điểm, nhưng **giữ lại lịch sử** (audit). Không cho gửi objective mới. |
+| **Nghỉ việc trước kỳ đánh giá** | `User.status = inactive` → ẩn khỏi báo cáo điểm, không tính vào phân bố điểm, nhưng **giữ lại lịch sử** (audit). Không cho gửi objective mới. |
 
 ## 7. Màn hình
 
@@ -633,12 +615,12 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 | Màn hình | Nội dung | Ghi chú UX | Mockup |
 |---|---|---|---|
 | **Dashboard OKR** | 2 nhóm Business & People cạnh nhau, phase hiện tại, đếm ngược hạn chót, điểm TB tự tính | "Bạn còn 5 ngày để check-in tháng 11" | **S20** |
-| **Danh sách OKR** | Card mỗi nhóm: tiến độ %, số đầu việc, trạng thái, mục tiêu cha theo cây nhóm | Sắp xếp theo deadline | S20 |
+| **Danh sách OKR** | Card mỗi nhóm: tiến độ %, số đầu việc, trạng thái · card **Self proposal năm sau** (trạng thái + hạn nộp) · card **Mục tiêu công ty 20%** (tham khảo, không tính điểm TB) | Sắp xếp theo deadline | S20 |
 | **Tạo OKR** | **Wizard 2 bước**: ① Điền 2 nhóm (Business + People) + Box 4 self proposal ② Gửi duyệt | Tự nhập từng đầu việc · **không có trọng số** · có gợi ý từ quản lý | **S21** |
 | **Chi tiết nhóm** | Danh sách đầu việc, progress bar, lịch sử check-in, timeline review | Nút "Check-in" nổi bật khi đến kỳ | S20 |
-| **Modal check-in** | 1 form nhẹ: giá trị mới (đã điền sẵn kỳ trước), mức độ tin cậy, ghi chú | Ghi chú gợi ý nếu có | **S22** |
+| **Modal check-in** | Form nhẹ: **chỉ giá trị mới** (đã điền sẵn kỳ trước) + ghi chú · **không có cột tiến độ / mức độ tin cậy** | Tiến độ do hệ thống tự tính | **S22** |
 | **Tự đánh giá (Bước 1)** | Form 4 box: Box 1 tự điền · Box 2 Business · Box 3 People · Box 4 self proposal | Chấm 1–5 mỗi nhóm, **điểm TB tự tính** | S23 |
-| **Kết quả đánh giá** | Điểm tự chấm vs điểm quản lý, điểm TB, xếp loại, lý do nếu lệch | | S23 |
+| **Kết quả đánh giá** | Điểm tự chấm vs điểm quản lý, điểm TB, lý do nếu lệch | | S23 |
 
 ### 7.2 Quản lý
 
@@ -653,9 +635,9 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 | Màn hình | Nội dung | Mockup |
 |---|---|---|
-| **Quản lý chu kỳ** | Timeline 5 phase (theo mốc tháng thật — §2.3), set hạn chót theo ngày, thang điểm 1–5, xếp loại, bật phân tầng | **S44** |
+| **Quản lý chu kỳ** | Timeline 5 phase (theo mốc tháng thật — §2.3), set hạn chót theo ngày, thang điểm 1–5 | **S44** |
 | **Bảng tổng hợp OKR** | **9 trường theo `OKR_doc.md` Bước 5** — tên · code · vị trí · thời gian công tác · nhóm · tên QL · điểm công việc · điểm con người · điểm TB (+ Note), **cộng cột Trạng thái** (đã chấm / chờ QL chấm / chưa tự đánh giá) để theo dõi tiến độ — **thay cho màn hình kanban riêng**. Export Excel | **S25** |
-| **Tiến độ nộp** | 4 widget: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · xếp loại | **S25** |
+| **Tiến độ nộp** | 4 widget: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · điểm TB theo nhóm | **S25** |
 | **Bàn giao (Bước 5)** | Màn hình xem bảng tổng hợp + nút export Excel bàn giao cho ban lãnh đạo | **S25** |
 >
 > **Cột "Thời gian công tác"** (trường 4 của bảng tổng hợp) — tính từ `User.start_date` tới 31/12
@@ -666,7 +648,7 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 > Chi tiết: `docs/04-business-convenience-features.md` §2.
 
-### @@C6@@. Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức ⭐ P1
+### C8. Review OKR dạng bảng so sánh cả nhóm + điểm đề xuất theo công thức ⭐ P1
 
 **Vấn đề:** Manager review 10 objective → mở từng cái, đọc từng KR, tự tính điểm. Lâu và không nhất quán giữa các người.
 
@@ -680,10 +662,9 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 | Bước | Quy tắc |
 |---|---|
-| 1 | Với **từng chỉ số (KR)** của mục tiêu: lấy **tiến độ** (`0` → `1`) |
-| 2 | **Điều chỉnh nhẹ theo độ tin cậy**: `tiến độ × (0.8 + 0.2 × độ tin cậy)` |
-| 3 | **Gia quyền theo trọng số**: nhân với `trọng số / 100` rồi cộng dồn lại thành tổng |
-| 4 | **Ánh xạ tổng (0 → 1) sang thang 1–5**: nhân 4, làm tròn xuống, cộng 1 |
+| 1 | Với **từng chỉ số (KR)**: **tiến độ** (`0` → `1`) — tự tính từ giá trị mới ÷ mục tiêu |
+| 2 | **Gia quyền theo trọng số**: nhân với `trọng số / 100` rồi cộng dồn lại thành tổng |
+| 3 | **Ánh xạ tổng (0 → 1) sang thang 1–5**: nhân 4, làm tròn xuống, cộng 1 |
 
 > **Đây là GỢI Ý cho manager, KHÔNG phải điểm chấm chính thức.**
 > Điểm cuối cùng theo mô hình HR vẫn là **chấm 1–5 ở tầng nhóm** (§5.1).
@@ -705,7 +686,6 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 **Cảnh báo (rule):**
 - Tiến độ không đổi ≥ 3 kỳ check-in
-- `confidence` = 0.9 nhưng `progress` = 0 (mâu thuẫn tự báo)
 - Lệch > 0.2 giữa tự chấm và điểm theo tiến độ
 - Objective > 60% ngày trong kỳ không check-in
 
@@ -713,7 +693,7 @@ Theo `doc/OKR_doc.md` Bước 1–5 (§2.4). Mỗi bước là **1 task approval
 
 ### Prefill check-in — nhớ giá trị lần trước
 
-Check-in mở form → **đã điền sẵn giá trị kỳ trước** + gợi ý mức độ tin cậy dựa trên biến động lịch sử. Nhân viên sửa con số, xong.
+Check-in mở form → **đã điền sẵn giá trị kỳ trước**. Nhân viên chỉ sửa con số, xong — không nhập tiến độ, không chọn mức độ tin cậy.
 
 > Đây là 90% giá trị của việc "gợi ý check-in", tốn 0 token.
 
@@ -750,7 +730,7 @@ dựng từ số liệu đã tính:
 ```
 📊 Báo cáo OKR 2026
 • 26/30 nhân viên đã nộp OKR (87%)
-• Điểm trung bình toàn công ty: 0.78 — xếp loại B (Đạt)
+• Điểm trung bình toàn công ty: 3.4
 • Phòng ban thấp nhất: Chăm sóc khách hàng (0.61)
 • Còn 14 objective chưa check-in đủ kỳ → xem danh sách
 ```
@@ -761,9 +741,9 @@ Số liệu do engine tính, câu chữ do mẫu câu dựng sẵn → **không 
 
 | Tính năng từng đề xuất | Thay bằng gì |
 |---|---|
-| Gợi ý điểm OKR | **Điểm đề xuất** theo công thức minh bạch — manager kiểm tra được (§8 @@C6@@) |
+| Gợi ý điểm OKR | **Điểm đề xuất** theo công thức minh bạch — manager kiểm tra được (§C8) |
 | Check-in assist | Prefill giá trị lần trước — 90% giá trị, 0 token |
-| Phát hiện OKR rủi ro | Rule so sánh tiến độ / confidence / lịch sử check-in |
+| Phát hiện OKR rủi ro | Rule so sánh tiến độ / lịch sử check-in |
 | Gợi ý viết KR | Gợi ý kế thừa từ OKR đã duyệt của quản lý (C14) |
 | Tóm tắt báo cáo | Mẫu câu dựng từ số liệu đã tính |
 | Viết nhận xét review | Manager tự viết — nhận xét cá nhân là việc của người, không nên để máy viết hộ |
@@ -786,7 +766,6 @@ Số liệu do engine tính, câu chữ do mẫu câu dựng sẵn → **không 
 - [ ] **Check-in giữa kỳ & cuối kỳ** và **bản chấm** cho phép **đính kèm file** làm evidence / chi tiết bổ sung
 - [ ] Điểm chỉ nhận **1–5**, không nhận số lẻ, không nhận 0
 - [ ] **Điểm trung bình do phần mềm tự tính** — không có ô nhập tay
-- [ ] Xếp loại A/B/C/D tự sinh từ điểm TB theo ngưỡng cấu hình được
 - [ ] Box 4 (self proposal năm sau) hiển thị được, kèm "điểm cần cải thiện"
 - [ ] **Trang "OKR của tôi" hiện card Self proposal năm sau với trạng thái** (chưa viết / đang viết / đã nộp)
 
@@ -840,7 +819,7 @@ Số liệu do engine tính, câu chữ do mẫu câu dựng sẵn → **không 
 - [ ] Mở form check-in → **giá trị kỳ trước đã điền sẵn**
 - [ ] Todo inbox hiện "chưa tạo OKR" / "check-in đến hạn" / "tự chấm chưa làm" / "bị trả lại"
 - [ ] Manager review 10 objective trên 1 bảng, có cột điểm đề xuất theo công thức
-- [ ] Cảnh báo rule: tiến độ đứng yên ≥3 kỳ, confidence cao nhưng progress = 0, lệch >0.2
+- [ ] Cảnh báo rule: tiến độ đứng yên ≥3 kỳ, lệch >0.2 giữa tự chấm và điểm theo tiến độ
 - [ ] Chấm hàng loạt các objective đã chọn trong bảng review
 - [ ] Gợi ý điểm hiển thị cạnh ô nhập, manager vẫn phải nhập điểm thật
 - [ ] Tóm tắt báo cáo dựng từ số liệu đã tính theo mẫu câu có sẵn

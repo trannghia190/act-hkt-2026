@@ -16,13 +16,14 @@
 | # | Tính năng | Vai trò | Màn hình | Tài liệu chi tiết |
 |---|---|---|---|---|
 | **A. Vào hệ thống & tổ chức** |
-| A1 | Đăng nhập theo vai trò | Tất cả | S01 | `docs/01` §3 |
+| A1 | Đăng nhập bằng Google công ty — vai trò tự xác định | Tất cả | S01 | `docs/01` §3 |
 | A2 | Cấu trúc điều hướng, 3 biến thể menu | Tất cả | S00 | `PLAN.md` §1.1 |
 | A3 | Quản lý nhân viên | HR | S40 | `docs/01` §2 |
 | A4 | Cây nhóm lồng nhau, số tầng tự do | HR | S41 | `docs/01` §2 |
 | A5 | Nhật ký thay đổi | HR | S35 | `docs/01` §2 |
 | **B. Chấm công — nhân viên** |
-| B1 | Chấm công trên điện thoại (1 chạm) | NV | S05m | `docs/09` |
+| B0 | Đăng ký khuôn mặt (face enrollment) | NV | S27, S05m | `docs/07` §2.4 |
+| B1 | Chấm công trên điện thoại (1 chạm + khuôn mặt) | NV | S05m | `docs/07` |
 | B2 | Chấm công trên desktop | NV | S05 | `docs/02` §3 |
 | B3 | Lịch công tháng | NV | S06 | `docs/02` §3 |
 | B4 | Bảng công của tôi + chọn tháng + khiếu nại | NV | S11 | `docs/02` §5.1 |
@@ -44,8 +45,8 @@
 | **E. Bảng công & cấu hình — HR** |
 | E1 | Bảng công & chốt — sửa tại chỗ, 53 cột | HR | S15 | `docs/04` §C4 · `docs/02` §2.1.3 |
 | E2 | Bộ lọc + lưu view | HR | S15 | `docs/04` §C5 |
-| E3 | Cấu hình quy định (19 luật, chỉ toàn công ty) | HR | S16 | `docs/08` |
-| E4 | Cấu hình 1 luật (form sinh tự động + confirm khi lưu) | HR | S17 | `docs/08` |
+| E3 | Cấu hình quy định (19 luật, chỉ toàn công ty) | HR | S16 | `docs/06` |
+| E4 | Cấu hình 1 luật (form sinh tự động + confirm khi lưu) | HR | S17 | `docs/06` |
 | E5 | Trang quy định tra cứu | Tất cả | S19 | `docs/04` §C6 |
 | E6 | Ca làm việc (linh hoạt) & lịch nghỉ lễ | HR | S26 | `docs/02` §5.3 |
 | E7 | Quản lý loại nghỉ (hiếu hỉ · tang · thai sản nam/nữ) | HR | S32 | `docs/02` §2.3 |
@@ -72,10 +73,12 @@
 
 ## A. Vào hệ thống & tổ chức
 
-### A1 · Đăng nhập theo vai trò 🔴 · S01
-**Cần có:** màn hình đăng nhập, 4 nút vào nhanh (nhân viên / quản lý / HR / admin).
+### A1 · Đăng nhập bằng Google công ty — vai trò tự xác định 🔴 · S01
+**Cần có:** trang đăng nhập 1 nút "Đăng nhập bằng Google công ty"; vai trò đọc từ tài khoản đã được phân; vào thẳng "Cần làm" — **không có màn hình chọn vai trò**.
 **Nghiệm thu:**
-- [ ] Chọn vai trò → vào thẳng màn hình mặc định của vai trò đó
+- [ ] Đăng nhập bằng tài khoản Google công ty → vào thẳng "Cần làm" của vai trò được phân
+- [ ] Không có bước/màn hình chọn vai trò; vai trò lấy từ phân quyền của tài khoản
+- [ ] Tài khoản Google ngoài tên miền công ty → từ chối kèm thông báo rõ
 - [ ] Sai thông tin → báo lỗi rõ ràng, không vào được
 - [ ] Phiên đăng nhập tự hết hạn → đưa về màn hình đăng nhập, **không mất dữ liệu đang làm dở**
 **Phụ thuộc:** —
@@ -86,6 +89,8 @@
 - [ ] Menu đúng theo vai trò, không có mục "chết" (bấm vào phải tới màn hình thật)
 - [ ] Trang mặc định sau đăng nhập = **"Cần làm"** (G1), không phải dashboard rỗng
 - [ ] Trên điện thoại: 4 mục dưới cùng + menu cuộn được
+- [ ] **2 module Chấm công / OKR tách nhóm riêng** trong menu, không trộn lẫn
+- [ ] **Badge số việc chờ** trên menu luôn hiện và khớp số việc thật trong "Cần làm"
 **Phụ thuộc:** A1
 
 ### A3 · Quản lý nhân viên 🔴 · S40
@@ -94,6 +99,8 @@
 - [ ] Lọc theo nhóm / chức danh / trạng thái
 - [ ] Đổi quản lý của 1 nhân viên → **đơn đang chờ giao cho người mới**, không mất
 - [ ] Thêm nhân viên mới → tự gán nhóm mặc định theo bộ gán ca
+- [ ] Đổi quản lý trực tiếp → **bắt buộc lý do**, ghi nhật ký thay đổi
+- [ ] Hiện **chuỗi cấp trên (ai duyệt cho ai)** ngay trên dòng nhân viên
 **Phụ thuộc:** A1
 
 ### A4 · Cây nhóm lồng nhau 🔴 · S41
@@ -102,6 +109,9 @@
 - [ ] Tạo nhóm trong nhóm → hiển thị đúng cây, không giới hạn số tầng
 - [ ] Nhóm không có trưởng → **vẫn hoạt động bình thường, không cảnh báo**
 - [ ] Đổi trưởng nhóm → **đơn mới tự giao cho người mới** (đơn cũ giữ nguyên)
+- [ ] Mỗi node hiện **số người + số đơn đang chờ** trong nhánh
+- [ ] **Tô đậm người/nhóm chưa có quản lý** — biết ngay đơn sẽ bị kẹt
+- [ ] Click 1 node → xem danh sách người bên dưới, lọc theo đơn đang chờ
 **Phụ thuộc:** A3
 
 ### A5 · Nhật ký thay đổi 🔴 · S35
@@ -110,29 +120,48 @@
 - [ ] Mọi thao tác sửa dữ liệu công / điểm đều có dòng nhật ký
 - [ ] Lọc theo người, theo đối tượng, theo khoảng thời gian
 - [ ] Không sửa được dòng nhật ký (append-only)
+- [ ] Hiện **giá trị cũ → giá trị mới** cho từng thay đổi
+- [ ] Lọc được **theo nhân viên bị tác động** (để trả lời khiếu nại)
+- [ ] Ghi **IP + thiết bị** của thao tác để truy vết
 **Phụ thuộc:** —
 ## B. Chấm công — nhân viên
 
-### B1 · Chấm công trên điện thoại 🔴 · S05m
-> Chi tiết đầy đủ: **`docs/07-business-mobile-punch.md`**. Đây là thao tác lặp lại nhiều nhất — và là thao tác người dùng ghét nhất nếu làm chậm.
+### B0 · Đăng ký khuôn mặt (face enrollment) 🔴 · S27, S05m
+**Cần có:** luồng chụp 3 góc + liveness, lưu vector đặc trưng (không lưu ảnh thô), HR reset kèm lý do.
 **Nghiệm thu:**
-- [ ] Mở app → màn hình chấm công hiện ngay, không qua menu
+- [ ] Chưa đăng ký → màn hình chấm công **chặn** và hiện nút "Đăng ký khuôn mặt"
+- [ ] Chụp 3 góc + liveness, chỉ trong mạng công ty; lưu **vector đặc trưng**, không lưu ảnh thô
+- [ ] HR xem trạng thái hồ sơ + reset kèm lý do → nhân viên đăng ký lại; có audit log
+- [ ] Mọi lần đăng ký/reset đều gắn với người dùng, thời điểm, người thực hiện
+**Phụ thuộc:** A1
+
+### B1 · Chấm công trên điện thoại (web responsive + khuôn mặt) 🔴 · S05m
+> Chi tiết đầy đủ: **`docs/07-business-mobile-punch.md`**. Đây là thao tác lặp lại nhiều nhất — và là thao tác người dùng ghét nhất nếu làm chậm. **Mở bằng trình duyệt điện thoại, không có app riêng.**
+**Nghiệm thu:**
+- [ ] Mở web trên điện thoại → màn hình chấm công hiện ngay, không qua menu
+- [ ] **Camera trước hiển thị ngay** trên màn hình + khung oval hướng dẫn khuôn mặt
 - [ ] Bấm 1 lần → kết quả trong **< 4 giây**, có phản hồi rung
-- [ ] Từng bước kiểm tra hiện **ngay khi bắt đầu**, không đợi xong mới hiện
+- [ ] **5 bước kiểm tra chạy song song** (thiết bị · mạng · GPS · ca · **khuôn mặt**), hiện **ngay khi bắt đầu**
+- [ ] **Khuôn mặt khớp hồ sơ ≥ 85% + liveness đạt** → chấm công được; trạng thái hiện ngay ("✓ Khớp 98%")
+- [ ] **Khuôn mặt không khớp/không đạt liveness → BỊ CHẶN**, hiện điểm khớp + số lần thử còn lại; hết 3 lần → hướng dẫn liên hệ HR
+- [ ] **Chưa đăng ký khuôn mặt → BỊ CHẶN**, hiện nút đăng ký (B0)
 - [ ] **Ngoài mạng công ty → BỊ CHẶN**, có gợi ý nối Wi-Fi công ty (trừ ngày WFH đã duyệt)
 - [ ] **Ngoài bán kính GPS → BỊ CHẶN**, hiện khoảng cách thật + bản đồ + 2 lối ra (WFH / Thử lại)
 - [ ] **GPS không lấy được hoặc độ chính xác > 100m → BỊ CHẶN**, kèm hướng dẫn đứng gần cửa sổ
 - [ ] Mất mạng → vẫn chấm được offline, đồng bộ lại sau, **có cờ cho HR**; quá hạn offline (mặc định 24h) → bị từ chối khi đồng bộ
 - [ ] Bấm 2 lần liên tiếp → nút đổi trạng thái, **không tạo 2 entry**
-- [ ] Màn hình chỉ có **2 thông tin + 1 nút**, không có form nào
-- [ ] Cài được như app, mở ra thẳng màn hình chấm công, không bị notch che
-**Phụ thuộc:** A1, B5
+- [ ] Màn hình chỉ có **camera + 2 thông tin + 1 nút**, không có form nào
+- [ ] **Không cần cài app**: cùng URL web responsive, mở trên iPhone Safari + Android Chrome; giao diện không bị notch che
+**Phụ thuộc:** A1, B0, B5
 
 ### B2 · Chấm công trên desktop 🔴 · S05
 **Nghiệm thu:**
-- [ ] Cùng bộ kiểm tra như B1, hiển thị trên desktop
+- [ ] Cùng bộ kiểm tra như B1 (gồm **khuôn mặt qua webcam**), hiển thị trên desktop
 - [ ] Nhân viên chưa chấm công ra hôm qua → hiện việc "Bổ sung công" với nút bấm 1 chạm
-**Phụ thuộc:** B1
+- [ ] Check-in/check-out **1 nút, không form** trên desktop
+- [ ] **Camera/webcam + khuôn mặt** chạy song song với 4 kiểm tra còn lại
+- [ ] **Hiện rõ lý do bị chặn** + cách khắc phục (mạng/GPS/khuôn mặt/thiết bị)
+**Phụ thuộc:** B0, B1
 
 ### B3 · Lịch công tháng 🔴 · S06
 **Nghiệm thu:**
@@ -144,7 +173,7 @@
 ### B4 · Bảng công của tôi 🔴 · S11
 **Nghiệm thu:**
 - [ ] **Có chọn tháng, mặc định = tháng hiện tại**; đổi tháng bằng dropdown hoặc nút ‹ ›; URL đổi theo `?month=YYYY-MM`
-- [ ] Heatmap 30 ngày — nhìn 1 cái thấy ngay ngày nào có vấn đề
+- [ ] **Lịch tháng dạng ô vuông** — mỗi ngày 1 ô, xếp theo tuần (T2 → CN); nhìn 1 cái thấy ngay ngày nào có vấn đề
 - [ ] Đủ **11 cột** số liệu, khớp với bảng điều khiển
 - [ ] **Chỉ khiếu nại được sau khi HR công bố** (ngày 11 hàng tháng) — trước đó xem số tạm tính nhưng khoá nút khiếu nại
 - [ ] Trong 2 ngày → khiếu nại được; quá 2 ngày → nút bị disable + giải thích
@@ -159,6 +188,8 @@
 - [ ] **Mặc định 2 thiết bị** — thiết bị thứ 3 mới phải được HR duyệt
 - [ ] Nhân viên **tự thấy** mình đang chấm công trên bao nhiêu máy, ở đâu, lúc nào
 - [ ] Nhân viên **không tự xoá được** thiết bị đang chờ duyệt
+- [ ] Mỗi ngày tối đa **1 check-in + 1 check-out/account**; unique `(user_id, work_date)` ở tầng dữ liệu
+- [ ] Quota tính **theo người**, không theo thiết bị
 **Phụ thuộc:** A1
 
 ### B6 · Thêm thiết bị 🔴 · S29
@@ -166,6 +197,8 @@
 - [ ] **Một flow duy nhất** cho cả "đăng ký lần đầu" và "thêm máy thứ 3" — không có 2 màn hình riêng
 - [ ] Mặc định 2 máy; muốn thêm máy phải có lý do
 - [ ] Yêu cầu vào hàng chờ HR duyệt, có thời hạn hết hiệu lực
+- [ ] **Bắt buộc nhập lý do** — thiếu lý do thì không gửi được
+- [ ] Yêu cầu thêm thiết bị **chỉ nhận từ mạng nội bộ công ty**
 **Phụ thuộc:** B5, E8
 
 ---
@@ -182,6 +215,7 @@
 - [ ] Quota 2 lần/tháng → lần 3 **bị chặn ngay lúc tạo**, kèm số đã dùng
 - [ ] "Lưu nháp" → **không trừ quota, không hiện cho quản lý**
 - [ ] Nhân viên hỏi "vì sao bị chặn" → hiện đúng lý do theo rule
+- [ ] Chọn lý do bằng **chip 1 chạm** (kẹt xe, họp, sự cố máy…)
 **Phụ thuộc:** B1
 
 ### C2c · Đơn bổ sung chấm công 🔴 · S31
@@ -189,6 +223,7 @@
 - [ ] Hạn nộp tính theo **ngày làm việc**, hiện rõ hạn là ngày nào
 - [ ] Quota 5 lần/tháng
 - [ ] Bắt buộc lý do
+- [ ] Quá hạn → nộp được nếu quy định cho phép, **bắt buộc lý do + gắn cờ**
 **Phụ thuộc:** B1
 
 ### C3c · Đơn của tôi 🔴 · S08
@@ -196,6 +231,8 @@
 - [ ] Lịch sử đơn + trạng thái rõ ràng (chờ duyệt / được duyệt / bị từ chối + lý do)
 - [ ] Badge quota còn lại luôn hiển thị
 - [ ] Nhân viên **không thấy đơn của đồng nghiệp** (trừ khi được cấu hình)
+- [ ] **Tab theo loại đơn + Tất cả**
+- [ ] Đơn bị trả lại → nút **"Sửa & gửi lại"** ngay trong danh sách
 **Phụ thuộc:** C1c
 
 ### C4c · Xin nghỉ phép 🔴 · S30
@@ -204,6 +241,9 @@
 - [ ] Đơn vị **ngày / nửa ngày**
 - [ ] Hạn gửi + giấy tờ đều cấu hình được theo từng loại
 - [ ] Số dư phép còn lại hiện ngay trong form
+- [ ] Đủ **8 loại nghỉ khớp cột bảng công**
+- [ ] Chọn ngày → **tự tính số ngày làm việc** (trừ cuối tuần + lễ)
+- [ ] Gửi đơn **từ bất kỳ đâu** — không cần GPS/mạng công ty
 **Phụ thuộc:** E8, C6c
 
 ### C5c · Đăng ký WFH 🔴 · S10
@@ -218,11 +258,13 @@
 ### C6c · Số dư phép 🔴 · S09
 **Nghiệm thu:**
 - [ ] Card từng loại nghỉ, progress bar phép năm
+- [ ] Thẻ **Tổng phép còn lại** = phép năm còn + phép tồn còn — tự cộng, đổi số dư thì tự cập nhật
 - [ ] **Phép ốm** và **phép thâm niên** có card riêng
 - [ ] **Cộng phép hàng tháng vào ngày 15**, chỉ người vào làm từ **ngày 15 trở về trước** mới cộng trong tháng đó (vào 20/11 → tháng 11 không cộng, kỳ đầu tiên là 15/12)
 - [ ] **Phép thâm niên cộng đúng ngày tròn thâm niên**, không gộp vào lần cộng ngày 15
 - [ ] Cảnh báo **phép tồn** theo luật (toàn bộ → 01/04; còn 5 ngày → 01/07; tồn = 0 từ 01/07)
-- [ ] Ẩn "phép tồn" vào dòng phụ nhỏ, không làm rối màn hình
+- [ ] Phép tồn là **thẻ riêng** cạnh phép năm (không ẩn vào dòng phụ)
+- [ ] **Lịch sử phép có filter**: theo loại phép (phép năm · tồn · chức vụ · thâm niên · ốm · bù) và theo năm; lọc xong danh sách chỉ còn dòng khớp
 **Phụ thuộc:** E8
 
 ---
@@ -243,6 +285,8 @@
 - [ ] Timeline đầy đủ: gửi → duyệt → kết quả, ai làm gì lúc nào
 - [ ] Hiện chip điều kiện quyết định kết quả
 - [ ] Có lịch sử chỉnh sửa
+- [ ] Hiện **ảnh hưởng tới bảng công** (cộng/trừ bao nhiêu phút công)
+- [ ] Có link tới **bảng công bị tác động**
 **Phụ thuộc:** D1
 
 ### D3 · Lịch nhóm 🔴 · S14
@@ -250,6 +294,10 @@
 - [ ] Biết ai vắng mà **không phải hỏi ai**
 - [ ] Cảnh báo xung đột lịch: *"thứ Sáu này 3/5 người đều WFH, đội sẽ thiếu người"*
 - 🟡 *(C7)* Nhóm của tôi có cấu hình riêng: ai trong nhóm thấy được lịch của ai
+- [ ] **Phân quyền xem 4 tầng**: HR cả công ty · Manager cấp dưới trực tiếp · Team lead nhóm mình · Member team mình — không thấy nhóm khác
+- [ ] Xem **tuần/tháng**, chuyển tuần trước/sau, lọc theo nhóm
+- [ ] Hiện đồng thời **WFH · nghỉ phép · đi muộn · công đủ** + đếm người có mặt mỗi ngày
+- [ ] Cảnh báo **xung đột lịch** khi vượt ngưỡng vắng (mặc định 60% nhóm)
 **Phụ thuộc:** C5c
 
 ### D4 · Chi tiết 1 khiếu nại 🔴 · S33
@@ -261,12 +309,17 @@
 - [ ] 3 cách xử lý: sửa ô · tạo đơn bổ sung công · từ chối (bắt buộc lý do)
 - [ ] Từ chối → nhân viên **nhận được thông báo**
 - [ ] Nút quay lại → về **danh sách khiếu nại** (E9)
+- [ ] Mọi thao tác xử lý khiếu nại **ghi audit log**
 **Phụ thuộc:** E9, E1, B4
 
 ### D5 · Sổ phép 🔴 · S34
 **Nghiệm thu:**
 - [ ] Mọi thay đổi số dư đều **truy vết được** — ai, lúc nào, vì lý do gì
 - [ ] Lọc theo người, theo thời gian, theo loại nghỉ
+- [ ] Xem sổ **theo nhân viên hoặc theo tháng**; lọc theo loại nghỉ/loại giao dịch
+- [ ] Hiện **số dư sau mỗi giao dịch** — cộng dồn khớp số dư hiển thị
+- [ ] HR **điều chỉnh tay** → tạo dòng `adjust` có lý do, **không sửa/xoá lịch sử**
+- [ ] **Export sổ ra Excel**
 **Phụ thuộc:** C4c
 
 ---
@@ -277,9 +330,8 @@
 **Nghiệm thu:**
 - [ ] Đủ **53 cột** (5 thông tin + 31 cột ngày + 17 cột tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`
 - [ ] Ô ngày dùng **ký hiệu gốc** của công ty (R · AL · S · 1.00 · R/0.50) — export ra khớp file HR 100%
-- [ ] **Click vào ô để sửa tại chỗ**; sửa cột nhạy cảm (công thực tế · đi muộn · phép · vi phạm) **bắt buộc có lý do**
+- [ ] **Click vào ô ngày để sửa tại chỗ** — sửa đúng ký hiệu công của ô đó, **không chọn trường**; **bắt buộc lý do**; **ô đã sửa hiện màu đỏ**
 - [ ] Sửa hàng loạt — tick nhiều dòng, 1 audit log cho cả lô
-- [ ] Cảnh báo sai lệch tự động (thiếu check-out, về sớm không có đơn) + nút [Sửa] / [Tạo đơn]
 - [ ] **Chốt & khóa** có bước xác nhận; sau khi khóa thì **không sửa được nữa**
 - [ ] Xuất Excel ra đúng 53 cột + ký hiệu gốc, đúng kỳ 01 → cuối tháng — khớp file `Pine team_T10.2026_Timekeeping Report.xlsx`
 **Phụ thuộc:** B1, C1c, C2c
@@ -315,6 +367,8 @@
 - [ ] Nhân viên mở ra thấy **quy định đang áp dụng với mình**, bằng ngôn ngữ tự nhiên
 - [ ] Nội dung **tự sinh từ cùng nguồn** với form cấu hình của HR
 - [ ] Đổi quota xong, nhân viên **thấy ngay** quy định mới
+- [ ] Mỗi quy định hiện **phiên bản + ngày hiệu lực**
+- [ ] Có **mục lục + tìm kiếm + lọc theo nhóm**, kèm ví dụ thực tế
 **Phụ thuộc:** E3
 
 ### E6 · Ca làm việc & lịch nghỉ lễ 🔴 · S26
@@ -324,6 +378,7 @@
 - [ ] **Bộ gán ca**: nhóm + chức danh → ca
 - [ ] Ca ngoại lệ (7h30–16h30 · 7h00–16h00 · 10h00–19h00) gán cho nhóm, cần HR duyệt
 - [ ] Lịch nghỉ lễ theo năm — thêm ngày lễ không cần sửa code
+- [ ] Cấu hình **geofence bán kính + dải IP mạng nội bộ** cho văn phòng
 **Phụ thuộc:** —
 
 ### E7 · Quản lý loại nghỉ 🔴 · S32
@@ -331,8 +386,11 @@
 - [ ] **Thêm loại nghỉ mới không cần sửa code**
 - [ ] Mỗi loại tự cấu hình: hưởng lương, trừ phép năm, đơn vị ngày/nửa ngày, cần giấy tờ, hạn gửi
 - [ ] Loại nghỉ có **3 tầng kế thừa** (nhóm → loại → trường hợp riêng)
-- [ ] Có **hiếu hỉ** (không trừ phép năm, báo trước) và **tang gia** (báo gấp được, không cần giấy tờ, cần 2 bước duyệt) — cả 2 đều cấu hình được như loại khác
-- [ ] **Thai sản tách nam / nữ**: nam 5 · 7 · 10 · 14 ngày theo chế độ · nữ 6 hoặc 7 tháng (BHXH chi trả, cần HR duyệt)
+- [ ] **Đơn nghỉ phép chỉ 1 bước duyệt: quản lý trực tiếp** — không chuyển HR, kể cả nghỉ dài ngày / thai sản
+- [ ] Có **hiếu hỉ** (không trừ phép năm) và **tang gia** (không cần giấy tờ) — cả 2 đều cấu hình được như loại khác
+- [ ] **Hạn nộp tính theo ngày, không theo giờ**: đi muộn/về sớm + đơn nghỉ đều mặc định **nộp trong vòng 3 ngày** sau ngày phát sinh (cấu hình 0–15)
+- [ ] **Thai sản tách nam / nữ**: nam 5 · 7 · 10 · 14 ngày theo chế độ · nữ 6 hoặc 7 tháng (BHXH chi trả · chỉ quản lý duyệt)
+- [ ] Đơn lưu **snapshot tham số** lúc gửi — đổi cấu hình sau không sai lịch sử
 **Phụ thuộc:** —
 
 ### E8 · Quản lý thiết bị 🔴 · S28
@@ -376,6 +434,8 @@
 - [ ] Hiện điểm hiện tại của 2 nhóm
 - [ ] Phần **20% mục tiêu công ty** hiện rõ nhưng **không tính vào điểm TB**
 - [ ] Có card **Self proposal năm sau** — hiện trạng thái (chưa viết / đang viết / đã nộp) + nút xem
+- [ ] Hiện **phase hiện tại + đếm ngược hạn chót** theo timeline cấu hình
+- [ ] Nút **Check-in nổi bật** khi đến kỳ
 **Phụ thuộc:** A1
 
 ### F2 · Tạo OKR 🔴 · S21
@@ -386,11 +446,12 @@
 - [ ] Gửi → quản lý **duyệt / trả lại kèm góp ý**
 - [ ] **Sau khi gửi → khoá sửa.** Nhân viên không sửa được nữa cho tới khi được mở lại ở review giữa kỳ
 - [ ] Muốn **xoá 1 mục** → bắt buộc nhập lý do, mục đó **vẫn còn trong lịch sử** (không mất vết)
+- [ ] Có **Box 4 — Self proposal năm sau** (đề xuất + điểm cần cải thiện, tuỳ chọn)
 **Phụ thuộc:** F1
 
 ### F3 · Check-in tiến độ 🔴 · S22
 **Nghiệm thu:**
-- [ ] Check-in **hàng tháng** theo từng KR: giá trị, tiến độ, mức độ tin cậy
+- [ ] Check-in **hàng tháng** theo từng đầu việc: **chỉ nhập giá trị mới** — không có cột tiến độ / mức độ tin cậy (tiến độ tự tính)
 - [ ] **Prefill giá trị lần trước**
 - [ ] Có mốc hạn, tự nhắc trước hạn
 - [ ] **Đính kèm file làm evidence** — ảnh chụp kết quả, báo cáo, tài liệu liên quan
@@ -402,12 +463,19 @@
 - [ ] Quản lý duyệt hoặc trả lại **2 nhóm**
 - [ ] Trả lại → có góp ý, nhân viên thấy và sửa
 - [ ] Nút **"Mở cho nhân viên sửa"** → nhân viên sửa bổ sung được trong lúc quản lý đang review
+- [ ] Hiện **2 nhóm Business/People cạnh nhau** kèm đầu việc
+- [ ] Chỉ thấy objective **trong phạm vi quản lý**; Duyệt/Trả lại bắt buộc góp ý
 **Phụ thuộc:** F2
 
 ### F5 · Review giữa năm 🔴 · S43
 **Nghiệm thu:**
 - [ ] Nhận xét, điều chỉnh mục tiêu
 - [ ] **Audit trail** — thay đổi gì, lúc nào, ai
+- [ ] Xem **tiến độ check-in từng người** theo 2 nhóm + lịch sử để thấy xu hướng
+- [ ] **Nhận xét riêng từng người** (coaching)
+- [ ] Điều chỉnh mục tiêu/thêm/bớt/kéo hạn → **bắt buộc lý do + audit trail**
+- [ ] Nút **"Mở cho nhân viên sửa"** → NV sửa bổ sung, nộp lại thì khoá
+- [ ] Hiện **chênh lệch điểm tự chấm dự kiến vs tiến độ thực tế**
 **Phụ thuộc:** F2
 
 ### F6 · Đánh giá cuối năm 🔴 · S23
@@ -415,13 +483,16 @@
 - [ ] Form **4 box** (kết quả · điều chỉnh · khó khăn · bài học)
 - [ ] **Chấm 1–5 mỗi nhóm**; **điểm TB tự tính** — không có ô nhập tay
 - [ ] Lưu **cả điểm tự chấm và điểm quản lý** để đối chiếu
-- [ ] Xếp loại A/B/C/D **chỉ để hiển thị** — không dùng cho lương
 **Phụ thuộc:** F3, F4
 
 ### F7 · Review OKR cả nhóm 🟡 · S24
 **Nghiệm thu:**
 - [ ] **1 bảng** thay vì mở từng objective
 - [ ] Có **cột điểm đề xuất** theo rule
+- [ ] **Cảnh báo rule** trên dòng: tiến độ đứng yên ≥ 3 kỳ · lệch điểm tự chấm vs đề xuất > 0.2
+- [ ] **Sắp xếp theo rủi ro** — việc cần xem trước lên trên
+- [ ] Lọc **chưa đánh giá / có cảnh báo / theo nhóm**
+- [ ] **Chấm hàng loạt** nhiều objective đã chọn; click 1 dòng → mở form đánh giá đầy đủ
 **Phụ thuộc:** F3
 
 ### F8 · Báo cáo OKR 🔴 · S25
@@ -430,13 +501,16 @@
 - [ ] Có **cột Trạng thái** — đủ theo dõi ai chấm/chưa chấm/chờ QL (**không cần màn hình kanban riêng**)
 - [ ] Có **tóm tắt báo cáo** dựng từ số liệu đã tính (C15)
 - [ ] Xuất Excel
+- [ ] Có **4 widget**: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · điểm TB theo nhóm
+- [ ] **HR chốt & khoá chu kỳ** sau khi Giám đốc đánh giá; tóm tắt có link tới widget nguồn
+- [ ] Danh sách **OKR rủi ro theo rule** kèm lý do
 **Phụ thuộc:** F6
 
 ### F9 · Quản lý chu kỳ OKR 🔴 · S44
 **Nghiệm thu:**
 - [ ] **Timeline 5 phase** theo mốc tháng thật
 - [ ] HR set hạn chót theo ngày, tự nhắc trước hạn
-- [ ] Cấu hình thang điểm, xếp loại
+- [ ] Cấu hình thang điểm (1–5)
 - [ ] Sau hạn chót → tự khóa, chỉ HR mở lại được
 **Phụ thuộc:** —
 
@@ -452,6 +526,8 @@
 - [ ] Mỗi việc có **1 nút hành động** — không phải menu
 - [ ] **Số phép còn lại hiện ngay** trên trang này
 - [ ] Nhân viên **không cần nhớ** việc đang chờ nằm ở module nào
+- [ ] **Deep-link**: bấm việc → thẳng màn hình cần xử lý
+- [ ] Trạng thái rỗng → **empty state có CTA**, không màn hình trắng
 **Phụ thuộc:** A2
 
 ### G2 · Command palette 🔴 · S03
@@ -459,23 +535,31 @@
 - [ ] `Ctrl+K` → tìm **nhân viên / đơn / quy định / cấu hình**
 - [ ] Gõ tiếp là ra kết quả, không phải bấm "tìm"
 - [ ] Từ kết quả → đi thẳng tới màn hình đích
+- [ ] **Lọc theo phạm vi quyền** — manager không thấy kết quả ngoài nhóm mình
+- [ ] Tìm **tiếng Việt không dấu** (`phep` → "phép", `dieu` → "đi muộn")
 **Phụ thuộc:** A2
 
 ### G3 · Thông báo & nhắc việc 🔴 · S04, S04m
 **Nghiệm thu:**
-- [ ] **3 kênh**: trong app · email · push
+- [ ] **3 kênh**: trong web · email · thông báo đẩy trình duyệt (Web Push)
 - [ ] **Đúng người, đúng lúc** — ma trận 17 sự kiện × 3 vai trò
 - [ ] **Chống spam**: gộp thông báo cùng loại, có quiet hours
 - [ ] Tắt thông báo **không làm mất việc** khỏi trang "Cần làm"
+- [ ] Tối đa **3 push/ngày/người**, quiet hours **21:00–07:00**, dedupe **12 giờ**
+- [ ] Việc quá hạn **> 3 ngày** → báo thêm cho quản lý; nhân viên vẫn thấy việc
+- [ ] **Badge số** trên menu luôn hiện và khớp việc đang chờ
 **Phụ thuộc:** G1
 
 ### G4 · Tuỳ chỉnh thông báo 🔴 · S36
 **Nghiệm thu:**
 - [ ] **Tắt/bật được TẤT CẢ loại** thông báo
-- [ ] Chọn kênh nhận (trong app / email / push) cho từng loại
+- [ ] Chọn kênh nhận (trong web / email / thông báo đẩy) cho từng loại
 - [ ] Đặt **giờ yên lặng**
 - [ ] Nhân viên **tự cấu hình được phần của chính mình** — không cấu hình được gì khác
 - ⚪ *(C9)* Onboarding tour + trạng thái rỗng có CTA
+- [ ] Tắt **giờ yên lặng** được; việc quá hạn vẫn nổi badge
+- [ ] Hiển thị **số việc chờ theo nhóm**: việc của tôi · việc tôi phụ trách
+- [ ] Thay đổi **lưu ngay**, có hiệu lực từ thông báo kế tiếp; có thể hoàn tác 1 click
 **Phụ thuộc:** G3
 ## Điều kiện cắt (nếu trượt tiến độ)
 

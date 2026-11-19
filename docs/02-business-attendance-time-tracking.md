@@ -7,7 +7,7 @@
 | # | Tính năng | Ghi chú |
 |---|---|---|
 | M1 | HR cấu hình ca làm việc + lịch ngày lễ/năm | Bảng điều khiển cấu hình |
-| M2 | Nhân viên chấm công vào/ra (web + PWA mobile-first) | Có geofence + thiết bị đăng ký |
+| M2 | Nhân viên chấm công vào/ra (web responsive mobile-first) | Một URL cho cả điện thoại + desktop, **không có app riêng**; có geofence + thiết bị đăng ký |
 | M3 | Đơn đi muộn/về sớm + đơn bổ sung chấm công | Quota chặn server-side |
 | M4 | Đơn nghỉ phép + số dư phép tự tính + luật phép tồn | Engine riêng, có unit test |
 | M5 | Đăng ký WFH + báo cáo công việc + lịch nhóm | |
@@ -44,6 +44,7 @@
 | **GPS không xác định / sai số > 100m** | **CHẶN** kèm hướng dẫn đứng gần cửa sổ | `attendance_security` |
 | **Chấm công offline** | **Cho phép**, cấu hình được — mặc định **24 giờ** | `attendance_security` |
 | **Thiết bị thứ 3** | **Mặc định 2 thiết bị** — máy thứ 3 phải xin HR duyệt kèm lý do | `attendance_security` + `share_account` |
+| **Xác thực khuôn mặt** | **BẮT BUỘC mỗi lần chấm công** — camera chụp ảnh, khớp hồ sơ đã đăng ký (≥ 85%) + liveness; không khớp/không đạt liveness → **CHẶN** | `attendance_security` |
 | **Đơn từ (đi muộn/nghỉ/WFH/bổ sung)** | **Không cần GPS, không cần mạng công ty** — chỉ chấm công mới cần | — |
 | Kỳ công | 01 → cuối tháng | HR Settings |
 | Đi muộn/về sớm — quota | 2 lần/tháng | `RuleConfig` scope=global |
@@ -62,7 +63,8 @@
 | **Đơn nghỉ ốm — hạn đăng ký** | **Muộn nhất sau 03 ngày** + **bắt buộc đính kèm giấy khám** | `RuleConfig` |
 | **Đi muộn/về sớm — hạn đăng ký** | **Muộn nhất sau 03 ngày** kể từ ngày đăng ký | `RuleConfig` |
 | Áp dụng chung | Không phân biệt nhóm/chức vụ | Mặc định global — **chỉ toàn công ty**, không ghi đè theo nhóm/chức vụ |
-| Đơn cần HR duyệt thêm | **Nhóm CA + Mobile** | `RuleConfig` scope=team |
+| Đơn cần HR duyệt thêm | **Nhóm CA + Mobile** — chỉ áp cho **đi muộn / bổ sung công / WFH** | `hr_approval` |
+| **Duyệt đơn nghỉ phép** | **CHỈ quản lý trực tiếp duyệt — không chuyển HR**, không phụ thuộc nhóm | `approval_flow` |
 | Xuất phiếu lương | Chỉ xuất bảng công chuẩn | Không tính lương |
 
 > **Ca làm việc linh hoạt (flexible window):** giờ check-in/ra có thể nằm trong **khung linh hoạt** do HR cấu hình.
@@ -77,16 +79,16 @@
 HR ghi rõ: *"Giờ đăng ký vào ngày thứ 3 phải trước giờ được bổ sung"* và cho ví dụ:
 > *"cần bổ sung giờ checkin là 08:00 **thứ Sáu**, vậy deadline đăng ký là trước **08:00 Thứ Hai tuần sau**"*
 
-→ Hạn tính theo **ngày lịch**, và **so với đúng giờ cần bổ sung** — không phải 23:59. Người dùng đăng ký lúc 09:00 thứ Sáu cho một ngày cần 08:00 → **đã trễ**, phải báo lỗi rõ ràng.
+→ **Chỉ giới hạn theo NGÀY — không yêu cầu giờ cụ thể** (quyết định chốt 18/11/2026). Hạn mặc định: nộp **trong vòng 3 ngày** kể từ ngày phát sinh; hết ngày thứ 3 là hạn cuối.
 
 **Cách tính hạn và thông báo khi trễ:**
 
 | Bước | Quy tắc |
 |---|---|
-| Tính ngày hạn | Ngày cần bổ sung + **3 ngày lịch** (không tính ngày làm việc) |
-| Giờ so sánh | So với **đúng giờ cần bổ sung** — không phải 23:59 ngày hạn |
-| Khi đã trễ | Báo rõ: *"Đã quá hạn đăng ký. Hạn của ngày {dd/mm} là {HH:MM} {thứ} — cần bổ sung trước giờ {HH:MM} đó."* |
-| Ví dụ | Cần 08:00 **thứ Sáu** → hạn đăng ký là 08:00 **thứ Hai tuần sau** |
+| Tính ngày hạn | Ngày phát sinh + **N ngày lịch** (mặc định **3**, cấu hình được 0–15) |
+| Giờ so sánh | **Không so giờ** — dùng hết ngày hạn là hạn cuối |
+| Khi đã trễ | Báo rõ: *"Đã quá hạn nộp đơn. Hạn của ngày {dd/mm} là hết ngày {dd/mm} (sau {N} ngày)."* |
+| Ví dụ | Đi muộn **thứ Sáu** → hạn nộp là **hết Chủ nhật** cùng tuần (nếu tính ngày lịch) hoặc hết **thứ Hai** (nếu tính ngày làm việc — cấu hình được) |
 
 **(b) Nút SUBMIT chứ không phải Save.**
 HR ghi rõ: *"Đăng ký qua portal cần ghi rõ số phút (≤ 30) và ấn nút **SUBMIT** thì đơn mới được ghi nhận. (Nhiều người chỉ ấn nút Save thì chỉ ở dạng **Nháp**)"*.
@@ -99,14 +101,15 @@ HR ghi rõ: *"Đăng ký qua portal cần ghi rõ số phút (≤ 30) và ấn n
 | Team | Luồng duyệt |
 |---|---|
 | **Các team khác** | Chuyển **manager** duyệt · nếu manager chưa duyệt thì người gửi **rút được đơn** |
-| **Team CA** | **Trưởng nhóm** duyệt lần 1 → **HR** duyệt lần 2 |
-| **Team Mobile** | **Trưởng nhóm** duyệt lần 1 → **HR** duyệt lần 2 |
+| **Team CA** | **Trưởng nhóm** duyệt lần 1 → **HR** duyệt lần 2 *(chỉ đơn đi muộn / bổ sung công / WFH)* |
+| **Team Mobile** | **Trưởng nhóm** duyệt lần 1 → **HR** duyệt lần 2 *(chỉ đơn đi muộn / bổ sung công / WFH)* |
+| **Mọi đơn nghỉ phép** | **Chỉ quản lý trực tiếp duyệt là đủ — không chuyển HR**, kể cả nghỉ dài ngày hay thai sản |
 
 > **Không hardcode tên người duyệt.** Luồng gắn với **nhóm**; ai là trưởng nhóm lấy từ
 > `Team.lead_id` — HR đổi trưởng nhóm là đổi người duyệt, không cần sửa code.
 > Cấu hình trong rule `approval_flow` (scope=team). Xem `docs/01-business-shared-core.md` §Tổ chức linh hoạt.
 
-→ Trong rule catalog: `hr_approval` **scope=team** với `teams = ["CA", "Mobile"]` — có thêm **bước duyệt đầu theo trưởng nhóm** thay vì manager.
+→ Trong rule catalog: `hr_approval` với `teams = ["CA", "Mobile"]` — có thêm **bước duyệt đầu theo trưởng nhóm** thay vì manager. **Không áp dụng cho đơn nghỉ phép.**
 → Tính năng **rút đơn** (`cancel` trong khi chờ duyệt) phải có cho mọi đơn, không chỉ sau khi đã gửi.
 
 ### 2.1.2. Tám loại nghỉ thật của công ty
@@ -120,7 +123,7 @@ Từ bảng NOTE trong `doc/Rule chấm công.xlsx` (row 76–97) — **đây l�
 | **S** | Nghỉ ốm | Đăng ký muộn nhất sau 03 ngày · **bắt buộc attach giấy khám** |
 | **RO** | Nghỉ bù | Ngày làm bù cho ngày lễ |
 | **CL** | Nghỉ việc riêng hưởng nguyên lương | |
-| **ML** | Nghỉ thai sản | Nữ: **6 hoặc 7 tháng** tùy con đầu tiên hay con thứ 2 · **BHXH chi trả** · cần HR duyệt |
+| **ML** | Nghỉ thai sản | Nữ: **6 hoặc 7 tháng** tùy con đầu tiên hay con thứ 2 · **BHXH chi trả** · cần giấy tờ |
 | **PL** | Nghỉ việc riêng khi có vợ sinh | Nam: 5 · 7 · 10 · 14 ngày… theo chế độ |
 | **UP** | Nghỉ không lương | Case: nghỉ trong thời gian **thử việc** · **hết ngày phép** |
 
@@ -368,23 +371,23 @@ có thể thêm loại mới mà không cần sửa code.*
 
 ```
 Tầng 1 — Rule chung toàn công ty (leave_type_defaults)
-   "Mọi loại nghỉ: báo trước 1 ngày làm việc, cần 1 bước duyệt"
+   "Mọi loại nghỉ: nộp trong vòng 3 ngày sau ngày bắt đầu nghỉ, cần 1 bước duyệt"
                           ↓ ghi đè
 Tầng 2 — Tham số của từng loại nghỉ (LeaveType.parameter_values)
-   "Nghỉ tang gia: báo trước 0 ngày (được báo gấp), không cần giấy tờ"
+   "Nghỉ tang gia: không cần giấy tờ, quản lý duyệt"
                           ↓ ghi đè
 Tầng 3 — Tham số riêng của một đơn (LeaveRequest.parameter_overrides)
    "Trường hợp này cần giấy tờ bổ sung"
 ```
 
 **Vì sao cần 3 tầng — ví dụ thật:**
-- "Nghỉ phép năm" và "Nghỉ hiếu hỉ" đều báo trước 1 ngày → lấy từ tầng 1
-- **"Nghỉ tang gia"** thì phải **được báo gấp, không cần giấy tờ, cần 2 bước duyệt** → tầng 2 ghi đè
+- "Nghỉ phép năm" và "Nghỉ hiếu hỉ" đều dùng hạn nộp 3 ngày → lấy từ tầng 1
+- **"Nghỉ tang gia"** thì **không cần giấy tờ**, chỉ quản lý duyệt → tầng 2 ghi đè
 - Trường hợp "Nghỉ ốm" nhưng công ty yêu cầu giấy từ ngày thứ 2 trong khi mặc định là từ ngày thứ 3 →
   HR đổi tham số của loại "Nghỉ ốm" ở tầng 2 (áp dụng cho mọi đơn nghỉ ốm)
 
-> **Điểm quan trọng:** nếu chỉ có 1 tầng (rule chung) thì không thể có "nghỉ tang gia báo gấp" mà vẫn
-> giữ "nghỉ phép năm báo trước 1 ngày". Đây là lý do phải có tầng 2, không phải chi tiết thừa.
+> **Điểm quan trọng:** nếu chỉ có 1 tầng (rule chung) thì không thể có "nghỉ tang gia không cần giấy tờ"
+> mà vẫn giữ "nghỉ ốm bắt buộc giấy khám từ ngày thứ 2". Đây là lý do phải có tầng 2, không phải chi tiết thừa.
 
 #### Danh mục tham số — có schema, không phải JSON tự do
 
@@ -414,11 +417,9 @@ một định nghĩa trong catalog, giống hệt `RuleField` của rule:
 | | `payer` | select | company | `company` · `insurance` (BHXH) |
 | | `unit` | select | full_day | `full_day` · `half_day` (cho phép nghỉ nửa ngày) |
 | | `color` | text | #17604d | Màu hiển thị trên lịch & bảng công |
-| **Hạn & duyệt** | `min_lead_days` | int | 1 | Phải báo trước ít nhất N ngày làm việc (0 = được báo gấp) |
+| **Hạn & duyệt** | `submit_within_days` | int | 3 | Nộp trong vòng N ngày kể từ ngày bắt đầu nghỉ (không yêu cầu giờ; 0–15) |
 | | `mark_late_request` | bool | true | Đơn báo gấp bị gắn cờ cho quản lý |
 | | `requires_manager_approval` | bool | true | Cần quản lý duyệt |
-| | `requires_hr_approval` | bool | false | Cần thêm bước HR duyệt |
-| | `min_days_for_hr_approval` | int | 3 | Nghỉ từ N ngày trở lên → thêm bước HR duyệt |
 | **Giấy tờ** | `require_document` | bool | false | Cần giấy tờ |
 | | `require_document_days` | int | 0 | Cần giấy tờ từ ngày thứ N (0 = từ ngày đầu) |
 | | `document_types` | multi_select | [] | Loại giấy tờ chấp nhận |
@@ -445,7 +446,7 @@ một định nghĩa trong catalog, giống hệt `RuleField` của rule:
 | **S** | Nghỉ ốm | công ty chi trả · **bắt buộc giấy khám** · không trừ phép năm | Cột `S` |
 | **RO** | Nghỉ bù | ngày làm bù cho ngày lễ · không trừ phép | Cột `RO` |
 | **CL** | Nghỉ riêng hưởng nguyên lương | hưởng lương · số ngày theo quy chế | Cột `CL` |
-| **ML** | Thai sản | **BHXH chi trả** · cần HR duyệt | Cột `ML` |
+| **ML** | Thai sản | **BHXH chi trả** · cần giấy tờ | Cột `ML` |
 | **PL** | Riêng khi có vợ sinh | nam: 5 · 7 · 10 · 14 ngày theo chế độ | Cột `PL` |
 | **UP** | Không lương | không hưởng lương · thử việc · hết phép năm | Cột `UP` |
 
@@ -455,13 +456,13 @@ một định nghĩa trong catalog, giống hệt `RuleField` của rule:
 
 | Loại | Mặc định quan trọng | Ghi chú |
 |---|---|---|
-| **Nghỉ hiếu hỉ** | báo trước 1 ngày · không cần giấy tờ · **không trừ phép năm** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `AL`) khi export |
-| **Nghỉ tang gia** | được báo gấp (0 ngày) · không cần giấy tờ · **cần 2 bước duyệt** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `CL`) khi export |
+| **Nghỉ hiếu hỉ** | không cần giấy tờ · **không trừ phép năm** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `AL`) khi export |
+| **Nghỉ tang gia** | được báo gấp (0 ngày) · không cần giấy tờ · **quản lý duyệt** | **Không có cột riêng trong bảng công** → gộp vào nhóm tương ứng (thường là `CL`) khi export |
 | **Thai sản — nam** | **5 · 7 · 10 · 14 ngày** tùy chế độ · không hưởng lương · không trừ phép năm | Gộp vào cột `PL` |
-| **Thai sản — nữ** | **6 hoặc 7 tháng** · **BHXH chi trả** · **cần HR duyệt** | Gộp vào cột `ML` |
+| **Thai sản — nữ** | **6 hoặc 7 tháng** · **BHXH chi trả** · **cần giấy tờ** | Gộp vào cột `ML` |
 
 > **Vì sao tách thai sản nam / nữ:** đây là **2 loại nghỉ riêng biệt** trong danh mục — quyền lợi, thời hạn và người chi trả khác nhau
-> (nam: 5 · 7 · 10 · 14 ngày theo chế độ; nữ: 6 hoặc 7 tháng, BHXH chi trả, cần HR duyệt).
+> (nam: 5 · 7 · 10 · 14 ngày theo chế độ; nữ: 6 hoặc 7 tháng, BHXH chi trả). **Duyệt: chỉ quản lý trực tiếp.**
 > Nhưng vì bảng công chỉ có **1 cột `ML`** và **1 cột `PL`**, nên khi export mỗi loại được **gộp vào cột tương ứng** —
 > **số cột bảng công không đổi**.
 
@@ -517,7 +518,6 @@ thay vì nhập lại từ đầu. Mất khoảng 30 giây.
 | `reason` | Lý do nghỉ | Bắt buộc khi loại nghỉ yêu cầu |
 | `attachments` | File kèm theo (giấy khám…) | Danh sách file |
 | `applied_parameters` | **Snapshot** tham số đã áp dụng cho đơn này — để không đổi theo sau khi HR sửa cấu hình | Danh sách cặp tham số · giá trị |
-| `requires_hr_approval` | Đơn này có cần HR duyệt thêm không | Có/Không — chốt lúc gửi |
 | `submitted_at` | Thời điểm gửi | Trống nếu còn nháp |
 | `decided_at` | Thời điểm có kết quả duyệt | Trống nếu chưa duyệt |
 
@@ -531,8 +531,8 @@ nguyên trạng thái lúc gửi. Nếu không có snapshot, báo cáo lương t
 
 | Thứ tự | Tầng | Nguồn | Ví dụ |
 |---|---|---|---|
-| 1 | Rule chung toàn công ty | Tham số mặc định của hệ thống | "Mọi loại nghỉ: báo trước 1 ngày làm việc, cần 1 bước duyệt" |
-| 2 | Tham số của từng loại nghỉ | `parameter_values` của loại nghỉ | "Nghỉ tang gia: báo trước 0 ngày (được báo gấp), không cần giấy tờ" |
+| 1 | Rule chung toàn công ty | Tham số mặc định của hệ thống | "Mọi loại nghỉ: nộp trong vòng 3 ngày, cần 1 bước duyệt" |
+| 2 | Tham số của từng loại nghỉ | `parameter_values` của loại nghỉ | "Nghỉ tang gia: không cần giấy tờ" |
 | 3 | Tham số riêng của một đơn | `applied_parameters` của đơn | "Trường hợp này cần giấy tờ bổ sung" |
 
 > **Tầng sau ghi đè tầng trước — nhưng chỉ ghi đè những tham số thực sự được chỉ định** (không ghi đè bằng giá trị rỗng/mặc định).
@@ -659,8 +659,13 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 | `work_date` | Ngày công | — |
 | `shift_id` | Ca áp dụng cho ngày đó | — |
 | `check_in_at` / `check_out_at` | Thời điểm vào / ra | Chỉ có giờ vào nếu quên chấm công ra |
-| `check_in_method` | Cách chấm công | `mobile` · `web` · `kiosk` |
+| `check_in_method` | Cách chấm công | `mobile_web` · `desktop_web` · `kiosk` (tất cả đều là web responsive, không có app native) |
 | `device_id` | Thiết bị đã đăng ký | Trống nếu không xác định |
+| `face_check_status` | Kết quả đối chiếu khuôn mặt | `passed` \| `failed` \| `pending_sync` (offline, chờ đối chiếu) \| `not_required` |
+| `face_match_score` | Điểm tương đồng khuôn mặt | 0–100; null nếu chưa kiểm tra |
+| `face_liveness_passed` | Vượt kiểm tra liveness | Có/Không |
+| `face_checked_at` | Thời điểm đối chiếu khuôn mặt | — |
+| `face_attempts` | Số lần thử trong phiên chấm công | 1 – `face_max_attempts` (mặc định 3) |
 | `check_in_ip` | Địa chỉ IP lúc chấm công | — |
 | `check_in_lat` / `check_in_lng` | Toạ độ lúc chấm công | Trống nếu không lấy được GPS |
 | `check_in_network_ok` | Có trong mạng nội bộ công ty không | Có/Không — `false` ngoài mạng → **chặn** (trừ ngày WFH đã duyệt) |
@@ -792,13 +797,14 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 
 | Màn hình | Nội dung | Ghi chú UX |
 |---|---|---|
-| **Chấm công** (trang chủ) | 1 nút lớn VÀO/RA, trạng thái hôm nay, ca đang làm, thông báo check | Nút to, phản hồi haptic, hiện rõ "bạn đang ở ngoài văn phòng" nếu GPS lệch |
+| **Chấm công** (trang chủ) | 1 nút lớn VÀO/RA, **camera trước hiển thị trực tiếp + khung khuôn mặt**, trạng thái hôm nay, ca đang làm, thông báo check | Nút to, phản hồi rung (nếu trình duyệt hỗ trợ), hiện rõ "bạn đang ở ngoài văn phòng" nếu GPS lệch; trạng thái khuôn mặt (khớp/không khớp) hiện ngay |
+| **Đăng ký khuôn mặt** | Chụp 3 góc + liveness → lưu vector đặc trưng; hiện trạng thái đã đăng ký | Chỉ đăng ký trong mạng công ty; HR reset được kèm lý do |
 | **Lịch công tháng** | Grid 31 ngày, màu theo trạng thái (đủ/đi muộn/nghỉ/WFH/vắng) | Chạm 1 ngày → chi tiết |
 | **Đơn từ** | Danh sách + nút "+" nhanh cho 4 loại | Badge quota còn lại luôn hiển thị |
 | **Tạo đơn** | Form ngắn, validate tức thì, hiện lý do bị chặn | "Bạn đã dùng 2/2 lượt đi muộn tháng này" |
-| **Số dư phép** | Card từng loại nghỉ, progress bar phép năm | Ẩn "phép tồn" vào dòng phụ nhỏ |
+| **Số dư phép** | Card từng loại nghỉ + **thẻ Tổng phép còn lại = phép năm + phép tồn**; lịch sử phép **có bộ lọc theo loại phép / năm** | Nhân viên không phải tự cộng; lọc "Phép năm" để xem riêng cách dùng phép năm |
 | **Đăng ký WFH** | Chọn ngày / lịch cố định, quota, cảnh báo đăng gấp | |
-| **Bảng công** | **Chọn tháng** (mặc định = tháng hiện tại): heatmap + bảng số liệu + nút khiếu nại | Trạng thái "còn N ngày để khiếu nại" đếm ngược (chỉ sau khi HR công bố ngày 11); kỳ đã chốt → chỉ đọc |
+| **Bảng công** | **Chọn tháng** (mặc định = tháng hiện tại): **lịch tháng dạng ô vuông** (mỗi ngày 1 ô, xếp theo tuần T2→CN) + bảng số liệu + nút khiếu nại | Trạng thái "còn N ngày để khiếu nại" đếm ngược (chỉ sau khi HR công bố ngày 11); kỳ đã chốt → chỉ đọc |
 
 ### 4.2 Quản lý
 
@@ -858,14 +864,9 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 | Nghỉ không lương | `AR` (BH) · `AT` (UP) · `AU` (ML) · `AV` (PL) |
 | Chấm công | `AL` (WFH/R) · `AK` (Quản lý trực tiếp) |
 
-> **Sửa ô ngày** = sửa 1 phần ngày (`morning` hoặc `afternoon`) → cột tổng hợp **tự tính lại**,
-> nhưng nếu HR sửa thẳng cột tổng hợp thì phải ghi lý do và **ghi đè** giá trị tính tay.
-> Đây là lý do cần trường `is_manual_override` trên từng cột tổng hợp.
-
-HR cũng được cảnh báo **tự động** về sai lệch trước khi phải tự tìm:
-- Thiếu `check_out` trong 1 ngày → gợi ý sửa (ô trống trong 31 cột ngày)
-- Về sớm 45' không có đơn → gợi ý tạo đơn hoặc ghi nhận vi phạm
-- Ô ngày trống trong ngày làm việc đã qua → cảnh báo "chưa chấm công"
+> **Sửa ô ngày** = sửa đúng ký hiệu công của ô đó (1 người × 1 ngày) → **17 cột tổng hợp tự tính lại**.
+> Cột tổng hợp là **chỉ đọc** — HR không sửa tay từng cột, chỉ sửa ô ngày.
+> **Ô đã sửa hiện màu đỏ** trên lưới để nhìn là biết; mọi lần sửa bắt buộc lý do + ghi nhật ký thay đổi.
 
 ### C5. Bộ lọc đa chiều + lưu view
 
@@ -877,7 +878,7 @@ Lọc theo: phòng ban × tháng × trạng thái × chỉ số (đi muộn / WF
 
 ### C6. Trang quy định tra cứu
 
-Render từ `RuleConfig` + `Document`: "Đi muộn / về sớm — 2 lần/tháng, tối đa 60 phút, phải gửi trước 08:00 hôm đó. Hiệu lực từ 01/11/2026 · Phiên bản 3". Kèm ví dụ thực tế.
+Render từ `RuleConfig` + `Document`: "Đi muộn / về sớm — 2 lần/tháng, tối đa 60 phút, nộp trong vòng 3 ngày kể từ ngày đi muộn. Hiệu lực từ 01/11/2026 · Phiên bản 3". Kèm ví dụ thực tế.
 
 ### C7. Duyệt hàng loạt + chip lý do + chip điều kiện
 
@@ -886,7 +887,7 @@ Mỗi đơn hiển thị kết quả check rule dạng chip ✅/❌ ngay trên d
 ```
 Minh Hà — Đi muộn 27' ngày 11/11
 ✅ Trong quota (1/2 lượt tháng 11)    ✅ Trong giờ hạn nộp
-❌ Trùng ngày đã xin phép 11/11       ⚠ Nghỉ 5 ngày → cần HR duyệt thêm
+❌ Trùng ngày đã xin phép 11/11       ✓ Nghỉ 5 ngày — quản lý duyệt là đủ
 ```
 
 Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip phổ biến.
@@ -903,6 +904,12 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Thử việc có con nhỏ < 1 tháng → yêu cầu 7 tiếng/ngày
 - [ ] Chấm công ngoài mạng công ty (và không phải ngày WFH đã duyệt) → **CHẶN**, hiện gợi ý nối Wi-Fi công ty
 - [ ] Chấm công từ thiết bị chưa đăng ký → bị từ chối, hướng dẫn đăng ký
+- [ ] **Camera trước hiển thị ngay trên màn hình chấm công**, kèm khung khuôn mặt + trạng thái khớp
+- [ ] **Khuôn mặt khớp hồ sơ ≥ 85% + liveness đạt** → chấm công thành công, chạy song song với thiết bị/mạng/GPS/ca
+- [ ] **Khuôn mặt không khớp hoặc không đạt liveness → CHẶN**, hiện điểm khớp + số lần thử còn lại; hết 3 lần → hướng dẫn liên hệ HR
+- [ ] **Chưa đăng ký khuôn mặt → chưa chấm công được**, hiện nút "Đăng ký khuôn mặt" (3 góc + liveness, chỉ trong mạng công ty)
+- [ ] HR reset hồ sơ khuôn mặt kèm lý do → nhân viên đăng ký lại; mọi lần reset có audit log
+- [ ] Ảnh chụp không lưu thô lâu dài — chỉ lưu vector đặc trưng; offline thì ảnh chờ đồng bộ rồi xoá
 - [ ] Đăng ký **máy thứ 3** (mặc định 2 thiết bị) → tạo yêu cầu chờ HR duyệt, bắt buộc có lý do
 - [ ] Ngoài geofence → **CHẶN** (không phải cảnh báo), hiện khoảng cách thật + bản đồ + 2 lối ra (WFH / Thử lại); bán kính cấu hình được, mặc định 150m
 - [ ] GPS sai số > 100m (cấu hình được) → **CHẶN** kèm hướng dẫn đứng gần cửa sổ
@@ -941,8 +948,9 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 - [ ] Bảng công tách riêng: nghỉ có lương / không lương / BHXH
 - [ ] Seed đủ **8 loại nghỉ có cột riêng** (NL · AL · S · RO · CL · ML · PL · UP), mỗi loại 1 dòng cấu hình
 - [ ] Có thêm loại nghỉ **không có cột riêng**: hiếu hỉ, tang gia, thai sản nam, thai sản nữ — mỗi loại 1 dòng cấu hình, không thêm cột mới vào bảng công
-- [ ] Nghỉ hiếu hỉ → báo trước 1 ngày · Nghỉ tang gia → báo gấp, 2 bước duyệt
-- [ ] Thai sản nam → 5 · 7 · 10 · 14 ngày theo chế độ · Thai sản nữ → 6 hoặc 7 tháng, BHXH chi trả, cần HR duyệt
+- [ ] Nghỉ hiếu hỉ / tang gia → không cần giấy tờ; hạn nộp tính theo ngày (mặc định 3 ngày)
+- [ ] Thai sản nam → 5 · 7 · 10 · 14 ngày theo chế độ · Thai sản nữ → 6 hoặc 7 tháng, BHXH chi trả
+- [ ] **Mọi đơn nghỉ phép chỉ 1 bước duyệt: quản lý trực tiếp** — không chuyển HR
 - [ ] Khi export bảng công, hiếu hỉ / tang gia / thai sản nam / thai sản nữ **gộp vào cột tương ứng** — bảng vẫn **đúng 53 cột**
 
 **Bảng công & export**
