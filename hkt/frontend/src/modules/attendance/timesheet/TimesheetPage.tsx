@@ -37,6 +37,29 @@ export const TimesheetPage: React.FC = () => {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [dayOverrides, setDayOverrides] = useState<Record<string, string>>({});
   const [sheetStatus, setSheetStatus] = useState<string>('draft');
+  const [savedViews, setSavedViews] = useState<{ name: string; f: any }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('pulse_timesheet_views') || '[]'); } catch { return []; }
+  });
+  const currentFilters = { filterDept, quickFilter, searchQuery, month: selectedMonth };
+  const applyView = (v: any) => {
+    setFilterDept(v.filterDept ?? 'ALL'); setQuickFilter(v.quickFilter ?? 'ALL');
+    setSearchQuery(v.searchQuery ?? ''); if (v.month) setSelectedMonth(v.month);
+  };
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search).get('view');
+    if (qs) { try { applyView(JSON.parse(decodeURIComponent(qs))); } catch { /* ignore */ } }
+  }, []);
+  const saveView = () => {
+    const name = window.prompt('Tên view (VD: Mobile · đi muộn)', 'View của tôi');
+    if (!name) return;
+    const next = [...savedViews.filter(v => v.name !== name), { name, f: currentFilters }];
+    setSavedViews(next); localStorage.setItem('pulse_timesheet_views', JSON.stringify(next));
+    showToast('Đã lưu view — mở lại bằng 1 click');
+  };
+  const shareView = async () => {
+    const url = `${location.origin}${location.pathname}?view=${encodeURIComponent(JSON.stringify(currentFilters))}`;
+    try { await navigator.clipboard.writeText(url); showToast('Đã copy link chia sẻ view'); } catch { window.prompt('Copy link chia sẻ:', url); }
+  };
   const [conflictMsg, setConflictMsg] = useState<string | null>(null);
   const authh = (): Record<string, string> => { try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; } };
   const loadSheet = () => {
@@ -79,15 +102,23 @@ export const TimesheetPage: React.FC = () => {
     return '1.00';
   };
 
-  const editDayCell = (row: TimesheetRow, day: number) => {
+  const monthOf = () => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; };
+
+  const editDayCell = async (row: TimesheetRow, day: number) => {
+    if (isLocked) { showToast('Kỳ công đã khoá — không sửa được ô'); return; }
     const current = daySymbol(row, day) || '(trống)';
-    const next = window.prompt(
-      `Sửa ô ngày ${day}/11 — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`,
-      daySymbol(row, day),
-    );
+    const next = window.prompt(`Sửa ô ngày ${day} — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`, daySymbol(row, day));
     if (next === null) return;
+    const reason = window.prompt('Lý do sửa (bắt buộc):', 'HR đối chiếu log chấm công');
+    if (!reason || !reason.trim()) return;
+    const res = await fetch(`/api/v1/timesheets/cell?month=${monthOf()}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authh() },
+      body: JSON.stringify({ employeeCode: row.code, day, symbol: next, reason: reason.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Sửa ô thất bại'); return; }
     setDayOverrides((prev) => ({ ...prev, [`${row.id}-${day}`]: next }));
-    showToast(`Đã sửa ô ngày ${day}/11 của ${row.fullName} — có ghi nhật ký thay đổi`);
+    showToast(`Đã sửa ô ngày ${day} của ${row.fullName} — có nhật ký`);
   };
 
   const showToast = (msg: string) => {
@@ -198,10 +229,17 @@ export const TimesheetPage: React.FC = () => {
     showToast(`Đã cập nhật thủ công ô công cho ${editingCell.row.fullName}`);
   };
 
-  const handleBulkApply = (e: React.FormEvent) => {
+  const handleBulkApply = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(bulkAdjustment.amount);
     if (isNaN(amountNum) || selectedIds.length === 0) return;
+    const codes = displayedRows.filter(r => selectedIds.includes(r.id)).map(r => r.code);
+    const res = await fetch(`/api/v1/timesheets/bulk?month=${monthOf()}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authh() },
+      body: JSON.stringify({ employeeCodes: codes, day: 1, symbol: String(amountNum), reason: bulkAdjustment.reason }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Sửa hàng loạt thất bại'); return; }
 
     setRows(prev =>
       prev.map(r => {
@@ -427,6 +465,19 @@ export const TimesheetPage: React.FC = () => {
             >
               🔻 Thiếu công
             </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+            {searchQuery && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Từ khoá: {searchQuery} <button onClick={() => setSearchQuery('')}>✕</button></span>}
+            {filterDept !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Nhóm: {filterDept} <button onClick={() => setFilterDept('ALL')}>✕</button></span>}
+            {quickFilter !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Lọc: {quickFilter} <button onClick={() => setQuickFilter('ALL')}>✕</button></span>}
+            <button onClick={saveView} className="px-2 py-1 rounded-full border border-line">💾 Lưu view</button>
+            <button onClick={shareView} className="px-2 py-1 rounded-full border border-line">🔗 Chia sẻ</button>
+            <select onChange={e => { const v = savedViews.find(x => x.name === e.target.value); if (v) applyView(v.f); }}
+              className="px-2 py-1 rounded-full border border-line bg-surface" defaultValue="">
+              <option value="" disabled>View đã lưu…</option>
+              {savedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+            </select>
           </div>
         </div>
       </Card>

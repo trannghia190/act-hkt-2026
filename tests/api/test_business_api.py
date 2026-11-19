@@ -153,6 +153,14 @@ if sheet.get("rows"):
     check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)
 status, data = call("POST", "/timesheets/publish")
 check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")
+# Sửa ô + sửa hàng loạt có audit
+status, data = call("POST", "/timesheets/cell", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": "Đối chiếu log"}, expect=200)
+check("sửa ô bảng công có lý do", status == 200 and (data.get("data") or {}).get("edited") is True)
+status, data = call("POST", "/timesheets/cell", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": ""}, expect=400)
+check("sửa ô thiếu lý do bị chặn", status == 400)
+status, data = call("POST", "/timesheets/bulk", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
+check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).get("updated") == 2)
+
 status, data = call("POST", "/timesheets/lock")
 check("khoá kỳ công", status == 200 and (data.get("data") or {}).get("status") == "locked")
 status, data = call("GET", "/timesheets")
