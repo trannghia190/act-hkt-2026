@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Local captured images & logs
+captured_images/
+*.log
+attendance_history.csv
+face_database.pkl
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Downloaded AI Models (auto-downloaded on first run)
+models/*.onnx
+!models/.gitkeep
+

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceID API Test Client — Thêm, Sửa, Xoá & Verify bằng Webcam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .tab-btn.active {
+            border-bottom: 2px solid #10b981;
+            color: #10b981;
+            font-weight: 700;
+        }
+        pre::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        pre::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Top Navigation -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center gap-3 shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-camera-viewfinder text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-base text-white tracking-wide flex items-center">
+                    FaceID API Test Client
+                    <span class="ml-2 px-2 py-0.5 text-[10px] font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 rounded-full font-semibold">Webcam Test Tool</span>
+                </h1>
+                <p class="text-xs text-slate-400">Giao diện client độc lập dùng Webcam chụp ảnh Base64 để gọi REST API (Thêm, Sửa, Xoá, Verify)</p>
+            </div>
+        </div>
+
+        <!-- Server Endpoint & Status -->
+        <div class="flex items-center space-x-2 text-xs">
+            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 space-x-2">
+                <span class="text-slate-400 font-medium">API Service:</span>
+                <input id="serverBaseUrl" type="text" value="http://localhost:8000" class="bg-transparent text-emerald-400 font-mono text-xs focus:outline-none w-48 font-semibold">
+                <button onclick="pingServer()" class="text-slate-400 hover:text-white" title="Kiểm tra kết nối">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+            <span id="connectionBadge" class="px-2.5 py-1.5 rounded-lg border font-mono font-semibold flex items-center space-x-1.5 bg-slate-900 text-slate-400 border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span>Đang kết nối...</span>
+            </span>
+            <a href="http://localhost:8000/docs" target="_blank" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold flex items-center space-x-1 transition shadow-md">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Swagger Docs</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- ============================================== -->
+        <!-- LEFT COLUMN (5 cols): WEBCAM & CAPTURE CONTROLS -->
+        <!-- ============================================== -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+            
+            <!-- Camera View Card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-2.5">
+                    <span class="text-xs font-bold text-slate-300 flex items-center">
+                        <i class="fa-solid fa-video mr-1.5 text-emerald-400"></i> Camera Trực Tiếp
+                    </span>
+                    <span id="camStatus" class="text-xs text-emerald-400 font-mono">Camera đang chạy</span>
+                </div>
+
+                <!-- Video Viewport -->
+                <div class="relative bg-black rounded-xl overflow-hidden aspect-video border border-slate-800 shadow-inner flex items-center justify-center">
+                    <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <canvas id="hiddenCanvas" class="hidden"></canvas>
+                    
+                    <!-- Flash Effect -->
+                    <div id="flashOverlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-20"></div>
+
+                    <!-- Face Guide Overlay -->
+                    <div class="absolute inset-0 border-2 border-emerald-500/20 pointer-events-none rounded-xl m-4 border-dashed flex items-center justify-center">
+                        <span class="text-[11px] text-emerald-400/40 font-mono">Đưa khuôn mặt vào khung</span>
+                    </div>
+                </div>
+
+                <!-- Shutter & Snapshot Controls -->
+                <div class="mt-3.5 flex items-center space-x-2">
+                    <button onclick="captureCurrentFrame()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Chụp Ảnh Khung Hình Này</span>
+                    </button>
+                    <button onclick="toggleCamera()" id="toggleCamBtn" class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold border border-slate-700 transition" title="Bật/Tắt Webcam">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+
+                <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 px-1">
+                    <label class="flex items-center space-x-1.5 cursor-pointer">
+                        <input id="autoSnapCheckbox" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-emerald-500 focus:ring-0">
+                        <span>Tự động chụp frame mới khi bấm thao tác API</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Frozen Snapshot Preview Card -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-300 flex items-center">
+                        <i class="fa-solid fa-image mr-1.5 text-indigo-400"></i> Ảnh Đã Chụp (Sẽ Gửi Sang API Dạng Base64)
+                    </span>
+                    <span id="base64SizeBadge" class="text-[11px] font-mono text-slate-500">Chưa có ảnh</span>
+                </div>
+
+                <div class="relative flex-1 min-h-[160px] max-h-[220px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center">
+                    <img id="capturedPreviewImg" src="" class="hidden w-full h-full object-contain">
+                    <div id="noSnapshotPlaceholder" class="text-xs text-slate-600 flex flex-col items-center">
+                        <i class="fa-regular fa-image text-3xl mb-1.5"></i>
+                        <span>Bấm "Chụp Ảnh" hoặc để tự động chụp khi gọi API</span>
+                    </div>
+                </div>
+
+                <div class="mt-2 text-[11px] text-slate-500 font-mono truncate" id="base64Snippet">
+                    Chuỗi Base64: (Trống)
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================== -->
+        <!-- RIGHT COLUMN (7 cols): API ACTION TABS          -->
+        <!-- ============================================== -->
+        <div class="lg:col-span-7 flex flex-col space-y-4">
+            
+            <!-- Card Containing Tabs -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl flex flex-col">
+                
+                <!-- Tab Navigation Headers -->
+                <div class="flex border-b border-slate-800 px-3 pt-2 text-xs font-semibold overflow-x-auto">
+                    <button onclick="switchTab('register')" id="tabBtn-register" class="tab-btn active px-4 py-3 flex items-center space-x-1.5 text-slate-400 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-user-plus text-emerald-400"></i>
+                        <span>1. Thêm (Register)</span>
+                    </button>
+                    <button onclick="switchTab('verify')" id="tabBtn-verify" class="tab-btn px-4 py-3 flex items-center space-x-1.5 text-slate-400 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-shield-check text-blue-400"></i>
+                        <span>2. Verify (1:1)</span>
+                    </button>
+                    <button onclick="switchTab('identify')" id="tabBtn-identify" class="tab-btn px-4 py-3 flex items-center space-x-1.5 text-slate-400 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-users-viewfinder text-purple-400"></i>
+                        <span>3. Identify (1:N)</span>
+                    </button>
+                    <button onclick="switchTab('update')" id="tabBtn-update" class="tab-btn px-4 py-3 flex items-center space-x-1.5 text-slate-400 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-user-pen text-amber-400"></i>
+                        <span>4. Sửa (Update)</span>
+                    </button>
+                    <button onclick="switchTab('users')" id="tabBtn-users" class="tab-btn px-4 py-3 flex items-center space-x-1.5 text-slate-400 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-solid fa-address-book text-rose-400"></i>
+                        <span>5. Danh sách & Xóa</span>
+                    </button>
+                </div>
+
+                <!-- Tab Body Content -->
+                <div class="p-5">
+                    
+                    <!-- ============================================== -->
+                    <!-- TAB 1: REGISTER / THÊM MỚI                     -->
+                    <!-- ============================================== -->
+                    <div id="tab-register" class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-sm font-bold text-white flex items-center">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2"></span>
+                                    Đăng Ký Khuôn Mặt Mới
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Gọi API: <code class="text-emerald-400 font-mono">POST /api/v1/faces/register</code> (JSON Base64)</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Mã Nhân Viên (user_id): *</label>
+                                <input id="regUserId" type="text" placeholder="Ví dụ: NV-001 hoặc 1111" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Họ và Tên (full_name): *</label>
+                                <input id="regFullName" type="text" placeholder="Ví dụ: Nguyễn Văn A" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Tenant ID:</label>
+                                <input id="regTenantId" type="text" value="default" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono">
+                            </div>
+                        </div>
+
+                        <button onclick="handleApiRegister()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Chụp & Đăng Ký Khuôn Mặt (POST)</span>
+                        </button>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- TAB 2: VERIFY 1:1                             -->
+                    <!-- ============================================== -->
+                    <div id="tab-verify" class="hidden space-y-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-blue-400 mr-2"></span>
+                                Xác Thực Khuôn Mặt 1:1 (So Khớp Đúng Người)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Gọi API: <code class="text-blue-400 font-mono">POST /api/v1/faces/verify</code></p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Chọn hoặc nhập Mã NV cần so khớp:</label>
+                            <div class="flex space-x-2">
+                                <select id="verifyUserSelect" onchange="document.getElementById('verifyUserId').value = this.value" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none w-1/2 font-mono">
+                                    <option value="">-- Chọn từ danh sách --</option>
+                                </select>
+                                <input id="verifyUserId" type="text" placeholder="Hoặc nhập mã (ví dụ: NV-001)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <button onclick="handleApiVerify()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-blue-950">
+                            <i class="fa-solid fa-fingerprint"></i>
+                            <span>Chụp & Verify 1:1 (POST)</span>
+                        </button>
+
+                        <!-- Verify Result Box -->
+                        <div id="verifyResultBox" class="hidden p-4 rounded-xl border flex items-center space-x-3">
+                            <div id="verifyIcon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"></div>
+                            <div class="flex-1">
+                                <div id="verifyTitle" class="font-extrabold text-sm"></div>
+                                <div id="verifyDesc" class="text-xs text-slate-300 mt-0.5 font-mono"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- TAB 3: IDENTIFY 1:N                           -->
+                    <!-- ============================================== -->
+                    <div id="tab-identify" class="hidden space-y-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-purple-400 mr-2"></span>
+                                Nhận Diện 1:N (Tìm Xem Là Ai Trong Cơ Sở Dữ Liệu)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Gọi API: <code class="text-purple-400 font-mono">POST /api/v1/faces/identify</code></p>
+                        </div>
+
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400">
+                            <i class="fa-solid fa-circle-info text-purple-400 mr-1.5"></i>
+                            Không cần nhập mã nhân viên. Hệ thống sẽ so khớp khuôn mặt trước camera với <b>tất cả</b> nhân viên đã đăng ký và chọn ra người có độ tương đồng cao nhất.
+                        </div>
+
+                        <button onclick="handleApiIdentify()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-purple-950">
+                            <i class="fa-solid fa-users-viewfinder"></i>
+                            <span>Chụp & Nhận Diện 1:N (Ai Đây?)</span>
+                        </button>
+
+                        <!-- Identify Result Box -->
+                        <div id="identifyResultBox" class="hidden p-4 rounded-xl border flex items-center space-x-3">
+                            <div id="identifyIcon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"></div>
+                            <div class="flex-1">
+                                <div id="identifyTitle" class="font-extrabold text-sm"></div>
+                                <div id="identifyDesc" class="text-xs text-slate-300 mt-0.5 font-mono"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- TAB 4: UPDATE / SỬA                            -->
+                    <!-- ============================================== -->
+                    <div id="tab-update" class="hidden space-y-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span>
+                                Cập Nhật Thông Tin Hoặc Đổi Ảnh Mẫu
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Gọi API: <code class="text-amber-400 font-mono">PUT /api/v1/faces/users/{user_id}</code></p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Mã NV cần sửa (user_id): *</label>
+                                <input id="updateUserId" type="text" placeholder="Nhập mã NV..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Họ và Tên Mới:</label>
+                                <input id="updateFullName" type="text" placeholder="Để trống nếu không đổi tên" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div class="sm:col-span-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                                <label class="flex items-center space-x-2 cursor-pointer font-semibold text-slate-300">
+                                    <input id="updateFaceCheckbox" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0">
+                                    <span>Chụp ảnh mới từ camera để thay thế vector khuôn mặt hiện tại</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button onclick="handleApiUpdate()" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-950">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Lưu Cập Nhật Nhân Viên (PUT)</span>
+                        </button>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- TAB 5: LIST & DELETE / DANH SÁCH & XÓA         -->
+                    <!-- ============================================== -->
+                    <div id="tab-users" class="hidden space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-sm font-bold text-white flex items-center">
+                                    <span class="w-2 h-2 rounded-full bg-rose-400 mr-2"></span>
+                                    Danh Sách & Quản Lý Nhân Viên
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Gọi API: <code class="text-rose-400 font-mono">GET /users</code> & <code class="text-rose-400 font-mono">DELETE /{user_id}</code></p>
+                            </div>
+                            <button onclick="loadUsersList()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 transition flex items-center space-x-1">
+                                <i class="fa-solid fa-rotate-right"></i>
+                                <span>Làm mới</span>
+                            </button>
+                        </div>
+
+                        <input id="searchUserInput" oninput="loadUsersList()" type="text" placeholder="Tìm theo tên hoặc mã NV..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-rose-500 focus:outline-none">
+
+                        <!-- Users Table Container -->
+                        <div class="border border-slate-800 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 font-mono">
+                                    <tr>
+                                        <th class="p-2.5">Mã NV</th>
+                                        <th class="p-2.5">Họ và Tên</th>
+                                        <th class="p-2.5">Ngày tạo</th>
+                                        <th class="p-2.5 text-right">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
+                                    <tr>
+                                        <td colspan="4" class="p-4 text-center text-slate-500">Đang tải danh sách...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Real-time API Request & Response Debug Inspector -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-xs font-bold text-emerald-400 flex items-center">
+                        <i class="fa-solid fa-terminal mr-1.5"></i> API Console: Chi Tiết Gói Tin Gửi & Nhận
+                    </span>
+                    <span id="apiStatusBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-950 text-slate-500 border border-slate-800">Chưa có request</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-semibold mb-1 flex items-center justify-between">
+                            <span>Request Payload (Đã rút gọn Base64):</span>
+                            <span id="reqMethodUrl" class="font-mono text-indigo-400"></span>
+                        </div>
+                        <pre id="apiConsoleRequest" class="bg-slate-950 text-indigo-300 p-2.5 rounded-xl border border-slate-800 overflow-x-auto max-h-36 font-mono text-[11px]">Chưa gửi dữ liệu...</pre>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-semibold mb-1 flex items-center justify-between">
+                            <span>Response Body:</span>
+                            <span id="resTime" class="font-mono text-emerald-400"></span>
+                        </div>
+                        <pre id="apiConsoleResponse" class="bg-slate-950 text-emerald-300 p-2.5 rounded-xl border border-slate-800 overflow-x-auto max-h-36 font-mono text-[11px]">Chưa có phản hồi...</pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Client Script -->
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hiddenCanvas');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const capturedPreviewImg = document.getElementById('capturedPreviewImg');
+        const noSnapshotPlaceholder = document.getElementById('noSnapshotPlaceholder');
+        const base64SizeBadge = document.getElementById('base64SizeBadge');
+        const base64Snippet = document.getElementById('base64Snippet');
+        const serverBaseUrlInput = document.getElementById('serverBaseUrl');
+        const connectionBadge = document.getElementById('connectionBadge');
+        const autoSnapCheckbox = document.getElementById('autoSnapCheckbox');
+
+        let isCameraRunning = false;
+        let lastCapturedBase64 = null;
+
+        function getBaseUrl() {
+            return serverBaseUrlInput.value.trim().replace(/\/+$/, '');
+        }
+
+        // ==============================================================
+        // CAMERA HANDLING
+        // ==============================================================
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+                video.srcObject = stream;
+                isCameraRunning = true;
+                document.getElementById('camStatus').innerText = 'Camera đang chạy';
+                document.getElementById('camStatus').className = 'text-xs text-emerald-400 font-mono';
+            } catch (err) {
+                console.error('Camera error:', err);
+                document.getElementById('camStatus').innerText = 'Không thể mở Camera!';
+                document.getElementById('camStatus').className = 'text-xs text-rose-400 font-mono';
+            }
+        }
+
+        function toggleCamera() {
+            if (isCameraRunning && video.srcObject) {
+                video.srcObject.getTracks().forEach(t => t.stop());
+                video.srcObject = null;
+                isCameraRunning = false;
+                document.getElementById('camStatus').innerText = 'Camera đã tắt';
+                document.getElementById('camStatus').className = 'text-xs text-slate-500 font-mono';
+            } else {
+                startCamera();
+            }
+        }
+
+        function triggerFlash() {
+            flashOverlay.style.opacity = '0.9';
+            setTimeout(() => { flashOverlay.style.opacity = '0'; }, 150);
+        }
+
+        function captureCurrentFrame() {
+            if (!video.videoWidth) {
+                alert('Camera chưa sẵn sàng hoặc đã tắt!');
+                return null;
+            }
+            triggerFlash();
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const base64 = canvas.toDataURL('image/jpeg', 0.88);
+            lastCapturedBase64 = base64;
+
+            // Render Preview
+            capturedPreviewImg.src = base64;
+            capturedPreviewImg.classList.remove('hidden');
+            noSnapshotPlaceholder.classList.add('hidden');
+
+            const sizeKb = (base64.length * 0.75 / 1024).toFixed(1);
+            base64SizeBadge.innerText = `${sizeKb} KB (Base64 JPEG)`;
+            base64Snippet.innerText = `Chuỗi: ${base64.substring(0, 45)}...`;
+
+            return base64;
+        }
+
+        function getActiveImageBase64() {
+            if (autoSnapCheckbox.checked) {
+                return captureCurrentFrame();
+            }
+            if (lastCapturedBase64) {
+                return lastCapturedBase64;
+            }
+            return captureCurrentFrame();
+        }
+
+        // ==============================================================
+        // TAB SWITCHING
+        // ==============================================================
+        function switchTab(tabName) {
+            ['register', 'verify', 'identify', 'update', 'users'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tabBtn-${t}`).classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tabBtn-${tabName}`).classList.add('active');
+
+            if (tabName === 'users') {
+                loadUsersList();
+            } else if (tabName === 'verify' || tabName === 'update') {
+                populateUserDropdowns();
+            }
+        }
+
+        // ==============================================================
+        // LOGGING & INSPECTOR
+        // ==============================================================
+        function logApiCall(method, url, requestPayload, status, responseData) {
+            document.getElementById('reqMethodUrl').innerText = `${method} ${url}`;
+            document.getElementById('apiStatusBadge').innerText = `HTTP ${status}`;
+            document.getElementById('apiStatusBadge').className = status >= 200 && status < 300
+                ? 'text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800'
+                : 'text-[11px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800';
+
+            // Sanitize payload to truncate base64
+            let displayPayload = { ...requestPayload };
+            if (displayPayload.image_base64) {
+                displayPayload.image_base64 = displayPayload.image_base64.substring(0, 35) + '...[TRUNCATED_BASE64]';
+            }
+
+            document.getElementById('apiConsoleRequest').innerText = JSON.stringify(displayPayload, null, 2);
+            document.getElementById('apiConsoleResponse').innerText = JSON.stringify(responseData, null, 2);
+            document.getElementById('resTime').innerText = new Date().toLocaleTimeString();
+        }
+
+        // ==============================================================
+        // PING SERVER STATUS
+        // ==============================================================
+        async function pingServer() {
+            const baseUrl = getBaseUrl();
+            try {
+                const res = await fetch(`${baseUrl}/`);
+                const data = await res.json();
+                connectionBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400">Online (Port 8000)</span>';
+                connectionBadge.className = 'px-2.5 py-1.5 rounded-lg border font-mono font-semibold flex items-center space-x-1.5 bg-emerald-950/40 border-emerald-800';
+            } catch (err) {
+                connectionBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span><span class="text-rose-400">Không kết nối được</span>';
+                connectionBadge.className = 'px-2.5 py-1.5 rounded-lg border font-mono font-semibold flex items-center space-x-1.5 bg-rose-950/40 border-rose-800';
+            }
+        }
+
+        // ==============================================================
+        // API CALL: 1. REGISTER
+        // ==============================================================
+        async function handleApiRegister() {
+            const uid = document.getElementById('regUserId').value.trim();
+            const name = document.getElementById('regFullName').value.trim();
+            const tenant = document.getElementById('regTenantId').value.trim() || 'default';
+
+            if (!uid || !name) {
+                alert('Vui lòng nhập Mã NV và Họ tên!');
+                return;
+            }
+
+            const b64 = getActiveImageBase64();
+            if (!b64) return;
+
+            const url = `${getBaseUrl()}/api/v1/faces/register`;
+            const payload = { user_id: uid, full_name: name, image_base64: b64, tenant_id: tenant };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                logApiCall('POST', url, payload, res.status, data);
+
+                if (res.ok) {
+                    alert(`✅ Đăng ký thành công cho ${name} (${uid})!`);
+                    document.getElementById('regUserId').value = '';
+                    document.getElementById('regFullName').value = '';
+                    loadUsersList();
+                } else {
+                    alert(`❌ Lỗi (${res.status}): ${data.detail || JSON.stringify(data)}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi mạng khi kết nối tới API Service!');
+            }
+        }
+
+        // ==============================================================
+        // API CALL: 2. VERIFY 1:1
+        // ==============================================================
+        async function handleApiVerify() {
+            const uid = document.getElementById('verifyUserId').value.trim();
+            if (!uid) {
+                alert('Vui lòng nhập hoặc chọn Mã NV cần verify!');
+                return;
+            }
+
+            const b64 = getActiveImageBase64();
+            if (!b64) return;
+
+            const url = `${getBaseUrl()}/api/v1/faces/verify`;
+            const payload = { user_id: uid, image_base64: b64, tenant_id: 'default' };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                logApiCall('POST', url, payload, res.status, data);
+
+                const box = document.getElementById('verifyResultBox');
+                const icon = document.getElementById('verifyIcon');
+                const title = document.getElementById('verifyTitle');
+                const desc = document.getElementById('verifyDesc');
+
+                box.classList.remove('hidden');
+
+                if (res.ok && data.is_match) {
+                    box.className = 'p-4 rounded-xl border flex items-center space-x-3 bg-emerald-950/60 border-emerald-600 text-emerald-200';
+                    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 bg-emerald-500 text-black font-bold';
+                    icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    title.innerText = `TRÙNG KHỚP (MATCH) — ${data.full_name} (${data.user_id})`;
+                    desc.innerText = `Độ tương đồng: ${data.similarity} (Ngưỡng yêu cầu: ${data.threshold})`;
+                } else {
+                    box.className = 'p-4 rounded-xl border flex items-center space-x-3 bg-rose-950/60 border-rose-600 text-rose-200';
+                    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 bg-rose-600 text-white font-bold';
+                    icon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                    title.innerText = `KHÔNG TRÙNG KHỚP (MISMATCH)`;
+                    desc.innerText = res.ok 
+                        ? `Độ tương đồng: ${data.similarity} (Dưới ngưỡng ${data.threshold})`
+                        : (data.detail || 'Không tìm thấy người dùng này trong hệ thống');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi mạng khi kết nối tới API Service!');
+            }
+        }
+
+        // ==============================================================
+        // API CALL: 3. IDENTIFY 1:N
+        // ==============================================================
+        async function handleApiIdentify() {
+            const b64 = getActiveImageBase64();
+            if (!b64) return;
+
+            const url = `${getBaseUrl()}/api/v1/faces/identify`;
+            const payload = { image_base64: b64, tenant_id: 'default' };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                logApiCall('POST', url, payload, res.status, data);
+
+                const box = document.getElementById('identifyResultBox');
+                const icon = document.getElementById('identifyIcon');
+                const title = document.getElementById('identifyTitle');
+                const desc = document.getElementById('identifyDesc');
+
+                box.classList.remove('hidden');
+
+                if (res.ok && data.is_identified) {
+                    box.className = 'p-4 rounded-xl border flex items-center space-x-3 bg-purple-950/60 border-purple-600 text-purple-200';
+                    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 bg-purple-500 text-white font-bold';
+                    icon.innerHTML = '<i class="fa-solid fa-user-check"></i>';
+                    title.innerText = `ĐÃ NHẬN DIỆN: ${data.full_name} (${data.user_id})`;
+                    desc.innerText = `Độ tương đồng: ${data.similarity} (Ngưỡng yêu cầu: ${data.threshold})`;
+                } else {
+                    box.className = 'p-4 rounded-xl border flex items-center space-x-3 bg-slate-900 border-slate-700 text-slate-300';
+                    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 bg-slate-800 text-slate-400 font-bold';
+                    icon.innerHTML = '<i class="fa-solid fa-user-xmark"></i>';
+                    title.innerText = `NGƯỜI LẠ / CHƯA ĐĂNG KÝ`;
+                    desc.innerText = `Không tìm thấy ai khớp trên ngưỡng (${data.similarity || 0} < ${data.threshold || 0.363})`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi mạng khi kết nối tới API Service!');
+            }
+        }
+
+        // ==============================================================
+        // API CALL: 4. UPDATE
+        // ==============================================================
+        async function handleApiUpdate() {
+            const uid = document.getElementById('updateUserId').value.trim();
+            const fullName = document.getElementById('updateFullName').value.trim();
+            const replaceFace = document.getElementById('updateFaceCheckbox').checked;
+
+            if (!uid) {
+                alert('Vui lòng nhập Mã NV cần sửa!');
+                return;
+            }
+
+            let payload = {
+                tenant_id: 'default'
+            };
+            if (fullName) payload.full_name = fullName;
+
+            if (replaceFace) {
+                const b64 = getActiveImageBase64();
+                if (!b64) return;
+                payload.image_base64 = b64;
+            }
+
+            const url = `${getBaseUrl()}/api/v1/faces/users/${encodeURIComponent(uid)}`;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                logApiCall('PUT', url, payload, res.status, data);
+
+                if (res.ok) {
+                    alert(`✅ Cập nhật thành công cho ${uid}!`);
+                    loadUsersList();
+                } else {
+                    alert(`❌ Lỗi (${res.status}): ${data.detail || JSON.stringify(data)}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi mạng khi kết nối tới API Service!');
+            }
+        }
+
+        // ==============================================================
+        // API CALL: 5. LIST & DELETE
+        // ==============================================================
+        async function loadUsersList() {
+            const search = document.getElementById('searchUserInput')?.value.trim() || '';
+            const url = `${getBaseUrl()}/api/v1/faces/users?tenant_id=default&search=${encodeURIComponent(search)}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+
+                if (!res.ok || !data.users || data.users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">Chưa có nhân viên nào trong cơ sở dữ liệu.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.users.map(u => `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-2.5 font-bold text-emerald-400">${u.user_id}</td>
+                        <td class="p-2.5 text-white">${u.full_name}</td>
+                        <td class="p-2.5 text-slate-500 text-[11px]">${u.created_at || ''}</td>
+                        <td class="p-2.5 text-right space-x-1.5 whitespace-nowrap">
+                            <button onclick="quickVerify('${u.user_id}')" class="px-2 py-1 bg-blue-950 text-blue-400 hover:bg-blue-900 rounded font-bold text-[11px] border border-blue-800 transition" title="So khớp">
+                                <i class="fa-solid fa-shield-check mr-0.5"></i> Verify
+                            </button>
+                            <button onclick="quickEdit('${u.user_id}', '${u.full_name}')" class="px-2 py-1 bg-amber-950 text-amber-400 hover:bg-amber-900 rounded font-bold text-[11px] border border-amber-800 transition" title="Chỉnh sửa">
+                                <i class="fa-solid fa-pen mr-0.5"></i> Sửa
+                            </button>
+                            <button onclick="handleApiDelete('${u.user_id}')" class="px-2 py-1 bg-rose-950 text-rose-400 hover:bg-rose-900 rounded font-bold text-[11px] border border-rose-800 transition" title="Xóa">
+                                <i class="fa-solid fa-trash mr-0.5"></i> Xóa
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function handleApiDelete(userId) {
+            if (!confirm(`Bạn có chắc chắn muốn XÓA nhân viên [${userId}] khỏi cơ sở dữ liệu?`)) {
+                return;
+            }
+
+            const url = `${getBaseUrl()}/api/v1/faces/users/${encodeURIComponent(userId)}?tenant_id=default`;
+
+            try {
+                const res = await fetch(url, { method: 'DELETE' });
+                const data = await res.json();
+                logApiCall('DELETE', url, {}, res.status, data);
+
+                if (res.ok) {
+                    alert(`✅ Đã xóa nhân viên [${userId}]!`);
+                    loadUsersList();
+                } else {
+                    alert(`❌ Lỗi (${res.status}): ${data.detail || JSON.stringify(data)}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi mạng khi xóa!');
+            }
+        }
+
+        async function populateUserDropdowns() {
+            try {
+                const res = await fetch(`${getBaseUrl()}/api/v1/faces/users?tenant_id=default&limit=200`);
+                const data = await res.json();
+                const sel = document.getElementById('verifyUserSelect');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' + 
+                    data.users.map(u => `<option value="${u.user_id}">${u.full_name} (${u.user_id})</option>`).join('');
+            } catch (e) {}
+        }
+
+        function quickVerify(userId) {
+            switchTab('verify');
+            document.getElementById('verifyUserId').value = userId;
+        }
+
+        function quickEdit(userId, fullName) {
+            switchTab('update');
+            document.getElementById('updateUserId').value = userId;
+            document.getElementById('updateFullName').value = fullName;
+        }
+
+        // Init
+        startCamera();
+        pingServer();
+        setInterval(pingServer, 5000);
+    </script>
+</body>
+</html>
