@@ -1,0 +1,22 @@
+package com.act.pulse.common.security;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
+/** Băm SHA-256 — dùng cho refresh token (chỉ lưu mã băm, không lưu bản thô). */
+public final class Hashing {
+
+    private Hashing() {
+    }
+
+    public static String sha256(String raw) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(raw.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Không tìm thấy thuật toán SHA-256", ex);
+        }
+    }
+}
