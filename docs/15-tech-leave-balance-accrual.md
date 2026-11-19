@@ -72,7 +72,7 @@ Phép năm cũ chưa sử dụng hết không được bảo lưu vĩnh viễn m
 Để tránh khiếu nại "nhân viên không biết bị mất phép", hệ thống kích hoạt Cron Job tự động quét và gửi thông báo nhắc nhở đa kênh:
 
 * **Mốc 1 (Trước 01/04 - Xóa phép tồn > 5 ngày):**
-  * *Trước 30 ngày (01/03):* Email + Push app: *"Bạn còn X ngày phép năm cũ. Lưu ý sau ngày 31/03 bạn chỉ được giữ lại tối đa 5 ngày!"*
+  * *Trước 30 ngày (01/03):* Email + Web Push (trình duyệt): *"Bạn còn X ngày phép năm cũ. Lưu ý sau ngày 31/03 bạn chỉ được giữ lại tối đa 5 ngày!"*
   * *Trước 15 ngày (15/03):* Thông báo nhắc lại.
   * *Trước 3 ngày (28/03):* Thông báo khẩn cấp (Urgent badge).
 * **Mốc 2 (Trước 01/07 - Xóa toàn bộ phép tồn về 0):**
@@ -85,3 +85,15 @@ Phép năm cũ chưa sử dụng hết không được bảo lưu vĩnh viễn m
 Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo mô hình **Sổ cái kế toán kép (Double-entry Ledger)** trong bảng `leave_ledger`:
 * Mỗi dòng ghi nhận: `Mã NV`, `Thời điểm`, `Hành động` (+ Cấp định kỳ tháng 15, - Nghỉ AL đơn #102, + Thâm niên, - Hủy phép tồn quá hạn), `Số lượng (+/-)`, `Số dư cuối`, `Người thực hiện / Hệ thống tự động`.
 * Đảm bảo tính minh bạch 100%, nhân viên và HR đều có thể tra cứu chi tiết từng ngày phép đến từ đâu và đã dùng vào ngày nào.
+
+---
+
+## 6. Loại Nghỉ Cấu Hình Được & Snapshot Tham Số
+
+* **8 loại nghỉ có cột bảng công** (AL · S · NL · RO · CL · ML · PL · UP) + các loại **không có cột riêng**
+  (hiếu hỉ, tang gia, thai sản nam/nữ) — HR thêm/sửa loại **không cần sửa code** (rule `leave_type_defaults`).
+* Mô hình **3 tầng kế thừa**: rule chung → tham số riêng từng loại → ghi đè của một đơn.
+* Đơn lưu **`applied_parameters` snapshot** lúc gửi → đổi cấu hình sau không làm sai lịch sử.
+* Sổ phép (`leave_ledger`) **append-only**: chỉ thêm dòng `GRANT/USED/EXPIRED/ADJUST`, không sửa/xoá;
+  điều chỉnh tay phải có lý do + người thực hiện.
+* Màn hình: S32 (quản lý loại nghỉ) · S34 (sổ phép) · S09 (số dư + tổng phép còn lại).

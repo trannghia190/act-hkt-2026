@@ -8,7 +8,6 @@ import { EmployeeManagementPage } from '../modules/shared/admin/EmployeeManageme
 import { OrgTreePage } from '../modules/shared/admin/OrgTreePage';
 import { ShiftHolidayPage } from '../modules/shared/admin/ShiftHolidayPage';
 import { AuditLogPage } from '../modules/shared/admin/AuditLogPage';
-import { DelegationPage } from '../modules/shared/notifications/DelegationPage';
 import { FaceEnrollmentPage } from '../modules/auth/FaceEnrollmentPage';
 
 // 2. Attendance & Time Tracking Pages
@@ -16,6 +15,7 @@ import { CheckInPage } from '../modules/attendance/checkin/CheckInPage';
 import { CalendarPage } from '../modules/attendance/calendar/CalendarPage';
 import { TeamSchedulePage } from '../modules/attendance/calendar/TeamSchedulePage';
 import { RequestsPage } from '../modules/attendance/requests/RequestsPage';
+import { RequestDetailPage } from '../modules/attendance/requests/RequestDetailPage';
 import { ApprovalsPage } from '../modules/attendance/approvals/ApprovalsPage';
 import { LeavesPage } from '../modules/attendance/leaves/LeavesPage';
 import { AdminLeaveLedgerPage } from '../modules/attendance/leaves/AdminLeaveLedgerPage';
@@ -23,6 +23,17 @@ import { TimesheetPage } from '../modules/attendance/timesheet/TimesheetPage';
 import { MyTimesheetPage } from '../modules/attendance/timesheet/MyTimesheetPage';
 import { RuleEnginePage } from '../modules/attendance/rules/RuleEnginePage';
 import { PolicyDocPage } from '../modules/attendance/rules/PolicyDocPage';
+import { MyDevicesPage } from '../modules/attendance/devices/MyDevicesPage';
+import { AddDevicePage } from '../modules/attendance/devices/AddDevicePage';
+import { AdminDevicesPage } from '../modules/attendance/devices/AdminDevicesPage';
+import { LeaveTypesPage } from '../modules/attendance/leaves/LeaveTypesPage';
+import { LeaveTablePage } from '../modules/attendance/leaves/LeaveTablePage';
+import { DisputesPage } from '../modules/attendance/timesheet/DisputesPage';
+import { DisputeDetailPage } from '../modules/attendance/timesheet/DisputeDetailPage';
+import { NotificationPrefsPage } from '../modules/shared/notifications/NotificationPrefsPage';
+import { MobileNotificationsPage } from '../modules/shared/notifications/MobileNotificationsPage';
+import { OKRCyclesPage } from '../modules/okr/cycles/OKRCyclesPage';
+import { TeamReviewPage } from '../modules/okr/reports/TeamReviewPage';
 
 // 3. OKR & Performance Appraisal Pages
 import { OKRDashboardPage } from '../modules/okr/dashboard/OKRDashboardPage';
@@ -30,8 +41,6 @@ import { MyOKRPage } from '../modules/okr/my-okr/MyOKRPage';
 import { OKRAssessmentPage } from '../modules/okr/assessment/OKRAssessmentPage';
 import { MidYearReviewPage } from '../modules/okr/assessment/MidYearReviewPage';
 import { OKRApprovalsPage } from '../modules/okr/reports/OKRApprovalsPage';
-import { TeamBoardPage } from '../modules/okr/reports/TeamBoardPage';
-import { CalibrationPage } from '../modules/okr/calibration/CalibrationPage';
 import { OKRReportsPage } from '../modules/okr/reports/OKRReportsPage';
 
 export const AppRoutes: React.FC = () => {
@@ -72,7 +81,7 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/admin/departments"
+        path="/admin/teams"
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE']}>
             <OrgTreePage />
@@ -84,14 +93,6 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}>
             <ShiftHolidayPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/delegations"
-        element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}>
-            <DelegationPage />
           </ProtectedRoute>
         }
       />
@@ -128,6 +129,7 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/attendance/requests" element={<RequestsPage />} />
+      <Route path="/attendance/requests/:id" element={<RequestDetailPage />} />
       <Route
         path="/attendance/approvals"
         element={
@@ -162,12 +164,23 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/attendance/policy-doc" element={<PolicyDocPage />} />
+      <Route path="/attendance/devices" element={<MyDevicesPage />} />
+      <Route path="/attendance/devices/add" element={<AddDevicePage />} />
+      <Route path="/attendance/disputes" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><DisputesPage /></ProtectedRoute>} />
+      <Route path="/attendance/disputes/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><DisputeDetailPage /></ProtectedRoute>} />
+      <Route path="/attendance/leave-table" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><LeaveTablePage /></ProtectedRoute>} />
+      <Route path="/admin/devices" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><AdminDevicesPage /></ProtectedRoute>} />
+      <Route path="/admin/leave-types" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><LeaveTypesPage /></ProtectedRoute>} />
+      <Route path="/settings/notifications" element={<NotificationPrefsPage />} />
+      <Route path="/notifications" element={<MobileNotificationsPage />} />
 
       {/* =========================================
           MODULE 3: OKR & PERFORMANCE APPRAISAL
          ========================================= */}
       <Route path="/okr/dashboard" element={<OKRDashboardPage />} />
       <Route path="/okr/my-okr" element={<MyOKRPage />} />
+      <Route path="/okr/cycles" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><OKRCyclesPage /></ProtectedRoute>} />
+      <Route path="/okr/team-review" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}><TeamReviewPage /></ProtectedRoute>} />
       <Route path="/okr/assessment" element={<OKRAssessmentPage />} />
       <Route
         path="/okr/mid-year-review"
@@ -182,15 +195,6 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}>
             <OKRApprovalsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/okr/team-board" element={<TeamBoardPage />} />
-      <Route
-        path="/okr/calibration"
-        element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}>
-            <CalibrationPage />
           </ProtectedRoute>
         }
       />

@@ -37,6 +37,7 @@ import {
   X,
 } from 'lucide-react';
 
+// S00 — Cấu trúc điều hướng: 3 biến thể menu dùng chung 1 shell
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Home,
   Inbox,

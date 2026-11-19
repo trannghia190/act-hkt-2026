@@ -61,7 +61,7 @@ export const OKRAssessmentPage: React.FC = () => {
             <Badge variant="ok">Hoàn thành: 91%</Badge>
           </div>
           <p className="text-xs text-ink-secondary">
-            Hoàn thiện bảng tổng hợp chấm công 45 cột, module tính phép tự động theo Luật Lao động.
+            Hoàn thiện bảng tổng hợp chấm công 53 cột, module tính phép tự động theo Luật Lao động.
           </p>
         </div>
 

@@ -647,7 +647,7 @@ tbody tr:hover{background:var(--surface-2)}
     </tr></thead>
     <tbody>
       <tr><td><a class="id" href="#s00">S00</a></td><td>Kiến trúc</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Cấu trúc điều hướng — 2 module tách biệt, 1 shell dùng chung</td></tr>
-      <tr><td><a class="id" href="#s01">S01</a></td><td>Nền tảng dùng chung</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Đăng nhập bằng Google công ty — vai trò tự xác định</td></tr>
+      <tr><td><a class="id" href="#s01">S01</a></td><td>Nền tảng dùng chung</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Đăng nhập tài khoản nội bộ — vai trò tự xác định</td></tr>
       <tr><td><a class="id" href="#s02">S02</a></td><td>C1</td><td>Nhân viên &amp; Quản lý</td><td><span class="badge d">P0</span></td><td>Todo inbox — màn hình mặc định sau khi đăng nhập</td></tr>
       <tr><td><a class="id" href="#s03">S03</a></td><td>C3</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Command palette Ctrl+K — tìm mọi thứ trong 1 ô</td></tr>
       <tr><td><a class="id" href="#s04">S04</a></td><td>C2</td><td>Tất cả</td><td><span class="badge d">P0</span></td><td>Thông báo & nhắc việc — 3 kênh, có chống spam</td></tr>
@@ -785,30 +785,32 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">01</div>
     <div>
       <div class="eyebrow">Nền tảng dùng chung · Tất cả vai trò · P0</div>
-      <h2>Đăng nhập bằng tài khoản Google công ty</h2>
-      <p class="desc">Một nút duy nhất: <b>Đăng nhập bằng Google công ty</b>. Sau khi xác thực, hệ thống tự đọc vai trò đã được phân của tài khoản và đưa thẳng vào màn hình <b>"Cần làm"</b> — <b>không có bước chọn vai trò</b>.</p>
+      <h2>Đăng nhập tài khoản nội bộ</h2>
+      <p class="desc"><b>Không dùng Google SSO.</b> HR cấp tài khoản → gửi email kích hoạt (mật khẩu tạm) qua Gmail → lần đầu <b>bắt buộc đổi mật khẩu</b> và <b>đăng ký khuôn mặt</b> → vào thẳng <b>"Cần làm"</b>. Vai trò <b>tự xác định từ tài khoản</b> — <b>không có bước chọn vai trò</b>.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag">P0</span>Google OAuth (PKCE) — chỉ chấp nhận email thuộc tên miền công ty (@act.vn)</li>
+        <li><span class="tag">P0</span>Đăng nhập bằng <b>email công ty + mật khẩu</b> (bcrypt cost 12) — không Google/Keycloak/OAuth</li>
+        <li><span class="tag">P0</span>HR cấp tài khoản (đơn lẻ hoặc import Excel) → hệ thống <b>gửi email kích hoạt</b> qua Gmail kèm mật khẩu tạm</li>
+        <li><span class="tag">P0</span><b>Lần đăng nhập đầu: bắt buộc đổi mật khẩu</b> (≥ 8 ký tự, có hoa/thường/số/ký tự đặc biệt) → <b>bắt buộc đăng ký khuôn mặt</b> → mới vào được hệ thống</li>
         <li><span class="tag">P0</span><b>Vai trò tự xác định</b> từ tài khoản (role + phạm vi xem) — không hiển thị màn hình chọn vai trò</li>
-        <li><span class="tag">P0</span>Đăng nhập xong → vào thẳng "Cần làm" của vai trò được phân</li>
-        <li>Email + mật khẩu (bcrypt) chỉ là fallback cho buổi demo — role vẫn lấy từ tài khoản</li>
-        <li>Rate limit 5 lần / 10 phút / IP · JWT access 15′ + refresh 7 ngày (httpOnly cookie)</li>
+        <li>Sai 5 lần → khoá 10 phút · sai 10 lần → khoá vĩnh viễn, HR mở khóa · JWT access 15′ + refresh 7 ngày (httpOnly cookie)</li>
+        <li>Đăng nhập từ <b>thiết bị mới</b> → cảnh báo cho người dùng và quản lý</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Bấm "Đăng nhập bằng Google công ty" → vào thẳng "Cần làm" của vai trò được phân</li>
+        <li>Đăng nhập bằng email + mật khẩu → vào thẳng "Cần làm" của vai trò được phân</li>
         <li><b>Không có bước/màn hình chọn vai trò</b> ở bất kỳ luồng đăng nhập nào</li>
-        <li>Google account ngoài tên miền công ty → từ chối kèm thông báo rõ</li>
+        <li><b>Không dùng Google/Keycloak/OAuth</b> — hệ thống tự quản lý tài khoản</li>
+        <li>Lần đăng nhập đầu: <b>bắt buộc đổi mật khẩu</b> → <b>bắt buộc đăng ký khuôn mặt</b> → mới vào được "Cần làm"</li>
         <li>Menu hiển thị đúng theo 4 vai trò (employee · manager · hr · admin)</li>
         <li>Gọi URL ngoài phạm vi quyền → trả 403, không phải 404</li>
-        <li>Đăng nhập sai 5 lần → khoá 10 phút</li>
+        <li>Đăng nhập sai 5 lần → khoá 10 phút; sai 10 lần → khoá vĩnh viễn</li>
       </ul>
     </div>
   </div>
@@ -835,10 +837,17 @@ tbody tr:hover{background:var(--surface-2)}
       <div style="flex:1;display:grid;place-items:center;padding:34px;background:var(--canvas)">
         <div style="width:100%;max-width:330px">
           <h3 style="font-size:18px;margin-bottom:5px">Đăng nhập</h3>
-          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Dùng tài khoản Google do công ty cấp để tiếp tục</div>
-          <button class="btn p wide" style="padding:10px;gap:8px">
-            <svg width="15" height="15" viewBox="0 0 24 24" style="background:#fff;border-radius:50%;padding:1.5px"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.51 6.16-4.51z"/></svg>
-            Đăng nhập bằng Google công ty</button>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Dùng tài khoản công ty do HR cấp</div>
+          <div class="field">
+            <label>Email công ty</label>
+            <input class="inp" value="minh.nguyen@act.vn">
+          </div>
+          <div class="field">
+            <label>Mật khẩu</label>
+            <input class="inp" type="password" value="••••••••••">
+            <div class="hint">Quên mật khẩu? Liên hệ HR để được reset (hệ thống gửi mật khẩu tạm qua email).</div>
+          </div>
+          <button class="btn p wide" style="padding:10px">Đăng nhập</button>
           <div style="border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-top:14px;background:var(--surface)">
             <div style="font-size:11.5px;font-weight:640">Vai trò tự xác định từ tài khoản</div>
             <div style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:4px">
@@ -852,10 +861,100 @@ tbody tr:hover{background:var(--surface-2)}
             </div>
           </div>
           <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:12px">
-            Tài khoản ngoài @act.vn sẽ bị từ chối</div>
+            Sai 5 lần → khoá 10 phút · sai 10 lần → khoá vĩnh viễn</div>
           <div style="text-align:center;font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.6">
             <b>Chỉ dùng cho buổi demo:</b> nhanvien@act.vn · quanly@act.vn · hr@act.vn · admin@act.vn
             — mật khẩu <code>demo@123</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mock-label" style="margin-top:22px">Mockup — Lần đăng nhập đầu: bắt buộc đổi mật khẩu</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/login/change-password</div></div>
+    <div style="display:flex;min-height:380px">
+      <div style="flex:1;background:#141c1a;color:#fff;padding:40px 36px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="sb-mark" style="width:32px;height:32px">A</div>
+          <div><div style="font-weight:640;font-size:14px">ACT HR</div>
+          <div style="font-size:11px;color:#7c918b">Quản lý nhân sự nội bộ</div></div>
+        </div>
+        <div>
+          <div style="font-size:22px;font-weight:650;letter-spacing:-.02em;line-height:1.3;margin-bottom:10px">
+            Mật khẩu tạm<br>chỉ dùng được 1 lần.</div>
+          <div style="font-size:13px;color:#9db0aa;line-height:1.6">
+            Tài khoản do HR cấp. Đổi mật khẩu lần đầu trước khi vào hệ thống —
+            sau đó bạn sẽ đăng ký khuôn mặt để chấm công.</div>
+        </div>
+        <div style="font-size:11px;color:#61756f">© 2026 ACT Hackathon</div>
+      </div>
+      <div style="flex:1;display:grid;place-items:center;padding:34px;background:var(--canvas)">
+        <div style="width:100%;max-width:330px">
+          <h3 style="font-size:18px;margin-bottom:5px">Đổi mật khẩu bắt buộc</h3>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Bước cuối trước khi vào hệ thống</div>
+          <div class="field">
+            <label>Mật khẩu tạm (đã gửi qua email)</label>
+            <input class="inp" type="password" value="••••••••••">
+          </div>
+          <div class="field">
+            <label>Mật khẩu mới</label>
+            <input class="inp" type="password" value="••••••••••">
+            <div class="hint">Tối thiểu 8 ký tự · 1 chữ hoa · 1 chữ thường · 1 chữ số · 1 ký tự đặc biệt</div>
+          </div>
+          <div class="field">
+            <label>Xác nhận mật khẩu mới</label>
+            <input class="inp" type="password" value="••••••••••">
+          </div>
+          <button class="btn p wide" style="padding:10px">Đổi mật khẩu &amp; tiếp tục</button>
+          <div style="border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-top:14px;background:var(--surface)">
+            <div style="font-size:11.5px;line-height:1.6;color:var(--muted)">
+              <b style="color:var(--ink-2)">Bước tiếp theo:</b> đăng ký khuôn mặt 3 góc để chấm công bằng camera.
+              Không đăng ký thì chưa chấm công được.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mock-label" style="margin-top:22px">Mockup — Lần đăng nhập đầu: bắt buộc đăng ký khuôn mặt</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/login/enroll-face</div></div>
+    <div style="display:flex;min-height:380px">
+      <div style="flex:1;background:#141c1a;color:#fff;padding:40px 36px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="sb-mark" style="width:32px;height:32px">A</div>
+          <div><div style="font-weight:640;font-size:14px">ACT HR</div>
+          <div style="font-size:11px;color:#7c918b">Quản lý nhân sự nội bộ</div></div>
+        </div>
+        <div>
+          <div style="font-size:22px;font-weight:650;letter-spacing:-.02em;line-height:1.3;margin-bottom:10px">
+            Mỗi lần chấm công<br>phải là chính bạn.</div>
+          <div style="font-size:13px;color:#9db0aa;line-height:1.6">
+            Đăng ký khuôn mặt 3 góc, chỉ lưu vector đặc trưng — không lưu ảnh thô.
+            Sau đó mỗi lần chấm công, camera sẽ đối chiếu với hồ sơ này.</div>
+        </div>
+        <div style="font-size:11px;color:#61756f">© 2026 ACT Hackathon</div>
+      </div>
+      <div style="flex:1;display:grid;place-items:center;padding:34px;background:var(--canvas)">
+        <div style="width:100%;max-width:330px">
+          <h3 style="font-size:18px;margin-bottom:5px">Đăng ký khuôn mặt</h3>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Bước cuối · 3 góc · chỉ trong mạng công ty</div>
+          <div class="facecam" style="width:150px;height:150px;margin:0 auto;border-radius:50%">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#8fa39c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#8fa39c"/></svg>
+            <div class="ft">Chính diện</div>
+          </div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:12px">
+            <span class="chip" style="justify-content:center">✓ Chính diện</span>
+            <span class="chip" style="justify-content:center">↻ Quay trái</span>
+            <span class="chip" style="justify-content:center">↻ Quay phải</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.6">
+            Ánh sáng đầy đủ, không đeo khẩu trang / kính râm.<br>
+            HR có thể reset hồ sơ nếu bạn đổi diện mạo.</div>
+          <button class="btn p wide" style="padding:10px;margin-top:14px">Hoàn tất đăng ký</button>
         </div>
       </div>
     </div>
@@ -5397,7 +5496,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">An toàn chấm công · Nhân viên &amp; HR · P0</div>
       <h2>Thiết bị đăng ký &amp; chống dùng chung tài khoản</h2>
-      <p class="desc">Nếu 2 nhân viên share tài khoản để chấm công hộ: <b>device registration đơn thuần không chặn được</b> (cả 2 máy đều hợp lệ). Giải pháp: giới hạn <b>1 check-in/ngày</b> để việc chia ca không còn lợi nhuận, SSO Google công ty, quota tính theo người, và <b>xác thực khuôn mặt</b> ở mỗi lần chấm công.</p>
+      <p class="desc">Nếu 2 nhân viên share tài khoản để chấm công hộ: <b>device registration đơn thuần không chặn được</b> (cả 2 máy đều hợp lệ). Giải pháp: giới hạn <b>1 check-in/ngày</b> để việc chia ca không còn lợi nhuận, tài khoản nội bộ (bắt buộc đổi mật khẩu lần đầu) + cảnh báo đăng nhập lạ, quota tính theo người, và <b>xác thực khuôn mặt</b> ở mỗi lần chấm công.</p>
     </div>
   </div>
   <div class="spec">
@@ -5405,7 +5504,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Chặn ở gốc — làm share account không đáng</h4>
       <ul>
         <li><span class="tag p0">P0</span><b>1 check-in + 1 check-out/ngày/account</b> → 2 người share thì mỗi người chỉ công được nửa ngày</li>
-        <li><span class="tag p0">P0</span><b>SSO Google công ty</b> + cảnh báo đăng nhập lạ</li>
+        <li><span class="tag p0">P0</span><b>Tài khoản nội bộ</b> — bắt buộc đổi mật khẩu lần đầu + cảnh báo đăng nhập lạ</li>
         <li><span class="tag p0">P0</span><b>Xác thực khuôn mặt</b> mỗi lần chấm — camera + liveness, khớp hồ sơ ≥ 85%; người khác cầm máy vẫn không qua được</li>
         <li><span class="tag p0">P0</span><b>Mặc định 2 thiết bị</b> — máy thứ 3 mới phải được HR duyệt</li>
         <li><span class="tag p0">P0</span>Unique <code>(user_id, work_date)</code> ở tầng DB</li>

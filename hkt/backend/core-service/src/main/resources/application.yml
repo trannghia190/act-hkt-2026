@@ -30,12 +30,8 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/act-pulse}
-#          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/act-pulse/protocol/openid-connect/certs}
+  # Không dùng Keycloak/OAuth2 — xác thực bằng JWT tự phát hành (HS512).
+  # Phiên refresh lưu trong bảng refresh_tokens để thu hồi được.
 
   data:
     redis:
@@ -66,9 +62,10 @@ spring:
 
 app:
   jwt:
+    # HS512 yêu cầu tối thiểu 64 byte (512 bit). Thay bằng secret riêng khi triển khai.
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-    expiration-ms: 3600000 # 1 hour
-    refresh-expiration-ms: 2592000000 # 30 days
+    expiration-ms: 900000          # 15 phút — business docs/01 §3.2
+    refresh-expiration-ms: 604800000 # 7 ngày — business docs/01 §3.2
   services:
     ai-face-service-url: ${AI_FACE_SERVICE_URL:http://localhost:8000}
 

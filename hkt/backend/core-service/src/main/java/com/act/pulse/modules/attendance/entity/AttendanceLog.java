@@ -4,9 +4,14 @@ import com.act.pulse.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Bản ghi chấm công — 1 dòng / người / ngày (unique {@code user_id, work_date}).
+ * <p>Business: docs/02 §2.1 (cấu trúc bản ghi) + docs/05 (mô hình dữ liệu).</p>
+ */
 @Entity
 @Table(name = "attendance_logs")
 @Getter
@@ -22,12 +27,19 @@ public class AttendanceLog extends BaseEntity {
     @Column(name = "shift_id")
     private UUID shiftId;
 
-    @Column(name = "type", nullable = false, length = 20)
-    private String type; // CHECK_IN, CHECK_OUT
+    @Column(name = "device_id")
+    private UUID deviceId;
 
-    @Column(name = "server_timestamp", nullable = false)
-    @Builder.Default
-    private LocalDateTime serverTimestamp = LocalDateTime.now();
+    @Column(name = "work_date", nullable = false)
+    private LocalDate workDate;
+
+    /** Giờ vào — thời gian máy chủ (NTP), không bao giờ dùng client_time. */
+    @Column(name = "check_in_at")
+    private LocalDateTime checkInAt;
+
+    /** Giờ ra — cùng ngày, cùng dòng với giờ vào. */
+    @Column(name = "check_out_at")
+    private LocalDateTime checkOutAt;
 
     @Column(name = "is_offline_sync")
     @Builder.Default
@@ -45,6 +57,28 @@ public class AttendanceLog extends BaseEntity {
     @Column(name = "distance_meters", precision = 10, scale = 2)
     private BigDecimal distanceMeters;
 
+    /** VALID | INCOMPLETE — không có trạng thái "gắn cờ nhưng vẫn tính công". */
     @Column(name = "status", nullable = false, length = 30)
-    private String status; // VALID, FLAGGED_LOW_GPS, FLAGGED_OUTSIDE_WIFI, REJECTED
+    private String status;
+
+    // ── Kết quả xác thực khuôn mặt ──────────────────────────────────────
+    /** passed | failed | pending_sync | not_required */
+    @Column(name = "face_check_status", length = 20)
+    private String faceCheckStatus;
+
+    @Column(name = "face_match_score", precision = 5, scale = 2)
+    private BigDecimal faceMatchScore;
+
+    @Column(name = "face_liveness_passed")
+    private Boolean faceLivenessPassed;
+
+    @Column(name = "face_checked_at")
+    private LocalDateTime faceCheckedAt;
+
+    @Column(name = "face_attempts")
+    @Builder.Default
+    private Integer faceAttempts = 1;
+
+    @Column(name = "reject_reason", length = 200)
+    private String rejectReason;
 }
