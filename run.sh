@@ -31,6 +31,34 @@ case "$MODE" in
     exec python3 -m http.server "${PORT}" --directory "${SCRIPT_DIR}/mockups"
     ;;
 
+  face|ai-face|ai)
+    echo "=========================================="
+    echo " Starting Face Recognition AI Service"
+    echo " URL:  http://localhost:8000"
+    echo " Dir:  ${SCRIPT_DIR}/hkt/face-recognition"
+    echo "=========================================="
+    exec "${SCRIPT_DIR}/hkt/face-recognition/run.sh" --service
+    ;;
+
+  all|dev)
+    echo "=========================================="
+    echo " Starting ACT HR 2026 AI Service + Frontend"
+    echo " AI:   http://localhost:8000"
+    echo " UI:   http://localhost:${PORT}"
+    echo "=========================================="
+    "${SCRIPT_DIR}/hkt/face-recognition/run.sh" --service &
+    AI_PID=$!
+    sleep 2
+
+    cd "${SCRIPT_DIR}/hkt/frontend"
+    if [ ! -d "node_modules" ]; then
+      npm install
+    fi
+
+    trap "kill $AI_PID 2>/dev/null; exit 0" SIGINT SIGTERM
+    npm run dev -- --port "${PORT}" --host
+    ;;
+
   docker|full)
     echo "=========================================="
     echo " Starting ACT HR 2026 Full Stack via Docker"
