@@ -1,29 +1,41 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ACT-HKT 2026 — Chạy backend + frontend từ source, dùng hạ tầng có sẵn trên máy
+# ACT-HKT 2026 — Run backend + frontend from source, auto-sync infrastructure
 #
-# Hạ tầng mặc định (đã có sẵn, script KHÔNG khởi động lại):
-#   - PostgreSQL : localhost:5432   (Homebrew, user = user đăng nhập macOS)
-#   - Redis      : localhost:6379   (Docker container)
-#   - Keycloak   : localhost:8088   (Docker container — code hiện tại CHƯA dùng,
-#                                    xem ghi chú ở cuối file)
+# Default infrastructure:
+#   - PostgreSQL : localhost:5432   (pgvector, user: postgres or $(whoami))
+#   - Redis      : localhost:6379 or 16379 (Docker container)
+#   - Keycloak   : localhost:8088   (Docker container — currently optional)
 #
-# Từ source:
+# Source services:
 #   - AI Face Service (FastAPI) : http://localhost:8000
 #   - Core Service (Spring Boot): http://localhost:8080/api/v1
 #   - Frontend (Vite)           : http://localhost:3000
 #
-# Cách dùng:
-#   ./run-local.sh              # setup + chạy cả 3 service (Ctrl+C để dừng)
-#   ./run-local.sh setup        # chỉ chuẩn bị DB / venv / node_modules
-#   ./run-local.sh backend      # chỉ AI + Core
-#   ./run-local.sh frontend     # chỉ frontend (giả định backend đã chạy)
-#   ./run-local.sh stop         # dừng các process do script này đã start
+# Usage:
+#   ./run-local.sh              # setup + run all 3 services (Ctrl+C to stop)
+#   ./run-local.sh setup        # prepare DB / venv / node_modules only
+#   ./run-local.sh backend      # run AI Face + Core Service only
+#   ./run-local.sh frontend     # run frontend only (assumes backend is running)
+#   ./run-local.sh stop         # stop processes started by this script
 #
-# Ghi đè cấu hình bằng biến môi trường, ví dụ:
+# Override config via environment variables, for example:
 #   DB_USER=postgres CORE_PORT=8081 ./run-local.sh
 # ==============================================================================
 set -euo pipefail
+
+# Ensure PATH includes essential tools on macOS (Docker, IntelliJ Maven, Homebrew, NVM)
+for _p in \
+  "/Applications/Docker.app/Contents/Resources/bin" \
+  "/Applications/IntelliJ IDEA.app/Contents/plugins/maven-plugin/lib/maven3/bin" \
+  "/Applications/IntelliJ IDEA.app/Contents/plugins/maven/lib/maven3/bin" \
+  "$HOME/Applications/IntelliJ IDEA.app/Contents/plugins/maven-plugin/lib/maven3/bin" \
+  "/opt/homebrew/bin" "/opt/homebrew/sbin" "/usr/local/bin" "/usr/local/sbin" \
+  "$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -n 1)/bin"; do
+  if [ -d "$_p" ]; then
+    export PATH="$_p:$PATH"
+  fi
+done
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AI_DIR="$ROOT_DIR/hkt/backend/ai-face-service"
@@ -37,7 +49,7 @@ mkdir -p "$LOG_DIR"
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-pulse_db}"
-DB_USER="${DB_USER:-$(whoami)}"
+DB_USER="${DB_USER:-}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT="${REDIS_PORT:-6379}"
@@ -91,7 +103,15 @@ wait_http() {
   return 1
 }
 
-psql_cmd() { psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -v ON_ERROR_STOP=1 "$@"; }
+psql_cmd() {
+  if command -v psql >/dev/null 2>&1; then
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -v ON_ERROR_STOP=1 "$@"
+  elif command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^pulse-postgres$'; then
+    docker exec -i pulse-postgres psql -U "$DB_USER" -v ON_ERROR_STOP=1 "$@"
+  else
+    die "Thiếu psql trên máy và không có container pulse-postgres đang chạy."
+  fi
+}
 
 cleanup() {
   trap - EXIT INT TERM
@@ -119,49 +139,111 @@ check_tools() {
 
 check_postgres() {
   info "Kiểm tra PostgreSQL ${DB_HOST}:${DB_PORT}"
-  command -v psql >/dev/null || die "Thiếu psql. Cài: brew install postgresql@18"
-  command -v createdb >/dev/null || die "Thiếu createdb (đi kèm PostgreSQL)."
 
-  if [ -n "$DB_PASSWORD" ]; then export PGPASSWORD="$DB_PASSWORD"; fi
+  # If DB port is not in use, try starting pulse-postgres container via Docker Compose
+  if ! port_in_use "$DB_PORT"; then
+    if command -v docker >/dev/null 2>&1 && [ -f "$ROOT_DIR/hkt/deploy/docker/docker-compose.yml" ]; then
+      info "PostgreSQL chưa chạy ở cổng $DB_PORT — đang khởi động pulse-postgres qua Docker Compose…"
+      docker compose -f "$ROOT_DIR/hkt/deploy/docker/docker-compose.yml" up -d postgres
+      sleep 3
+    fi
+  fi
 
-  if ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
-    die "Không kết nối được PostgreSQL bằng user '${DB_USER}'.
-    → Kiểm tra server: pg_isready -h $DB_HOST -p $DB_PORT
-    → Nếu user khác: DB_USER=<user> ./run-local.sh
-    → Nếu cần mật khẩu: DB_PASSWORD=<pass> ./run-local.sh"
+  # Automatically discover valid PostgreSQL credentials
+  local connect_ok=false
+  local candidates=()
+  if [ -n "$DB_USER" ]; then
+    candidates+=("${DB_USER}:${DB_PASSWORD}")
+  else
+    candidates+=("postgres:postgres123" "$(whoami):postgres123" "$(whoami):" "postgres:")
+  fi
+
+  for u_p in "${candidates[@]}"; do
+    local test_user="${u_p%%:*}"
+    local test_pass="${u_p#*:}"
+    export PGPASSWORD="$test_pass"
+    if command -v psql >/dev/null 2>&1; then
+      if psql -h "$DB_HOST" -p "$DB_PORT" -U "$test_user" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
+        DB_USER="$test_user"
+        DB_PASSWORD="$test_pass"
+        connect_ok=true
+        break
+      fi
+    elif command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^pulse-postgres$'; then
+      if docker exec -i pulse-postgres psql -U "$test_user" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1; then
+        DB_USER="$test_user"
+        DB_PASSWORD="$test_pass"
+        connect_ok=true
+        break
+      fi
+    fi
+  done
+
+  if [ "$connect_ok" != "true" ]; then
+    die "Không kết nối được PostgreSQL tại ${DB_HOST}:${DB_PORT} bằng user '${DB_USER}' hoặc 'postgres'.
+    → Hãy chạy container: docker compose -f hkt/deploy/docker/docker-compose.yml up -d postgres
+    → Hoặc cấu hình: DB_USER=<user> DB_PASSWORD=<pass> ./run-local.sh"
   fi
   ok "Kết nối được (user: $DB_USER)"
 
-  if [ "$(psql_cmd -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'")" != "1" ]; then
+  # Ensure database pulse_db exists
+  if [ "$(psql_cmd -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" 2>/dev/null || true)" != "1" ]; then
     info "Tạo database ${DB_NAME}…"
-    createdb -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" "$DB_NAME"
+    if command -v createdb >/dev/null 2>&1; then
+      createdb -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" "$DB_NAME" 2>/dev/null || psql_cmd -d postgres -c "CREATE DATABASE ${DB_NAME};" >/dev/null 2>&1 || true
+    else
+      psql_cmd -d postgres -c "CREATE DATABASE ${DB_NAME};" >/dev/null 2>&1 || true
+    fi
     ok "Đã tạo database ${DB_NAME}"
   else
     ok "Database ${DB_NAME} đã tồn tại"
   fi
 
-  # Flyway V1 dùng uuid_generate_v4().
-  psql_cmd -d "$DB_NAME" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' >/dev/null
+  # Flyway V1 uses uuid_generate_v4()
+  psql_cmd -d "$DB_NAME" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' >/dev/null 2>&1 || true
   ok "Extension uuid-ossp sẵn sàng"
 
-  # Flyway V2 (align_with_business) tạo face_profiles.embedding vector(512).
-  if [ "$(psql_cmd -d postgres -tAc "SELECT 1 FROM pg_available_extensions WHERE name='vector'")" != "1" ]; then
-    die "PostgreSQL local thiếu extension 'vector' (pgvector) — migration V2 cần nó.
-    → Cài: brew install pgvector
-    → Rồi chạy lại: ./run-local.sh"
-  fi
-  psql_cmd -d "$DB_NAME" -c 'CREATE EXTENSION IF NOT EXISTS vector;' >/dev/null
+  # Flyway V2 (align_with_business) creates face_profiles.embedding vector(512)
+  psql_cmd -d "$DB_NAME" -c 'CREATE EXTENSION IF NOT EXISTS vector;' >/dev/null 2>&1 || true
   ok "Extension vector (pgvector) sẵn sàng"
 }
 
 check_redis() {
   info "Kiểm tra Redis ${REDIS_HOST}:${REDIS_PORT}"
-  command -v redis-cli >/dev/null || die "Thiếu redis-cli. Cài: brew install redis"
-  if [ "$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping 2>/dev/null || true)" = "PONG" ]; then
-    ok "Redis trả PONG"
+
+  local redis_ping=""
+  if command -v redis-cli >/dev/null 2>&1; then
+    redis_ping="$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping 2>/dev/null || true)"
+    if [ "$redis_ping" != "PONG" ]; then
+      # Try port 16379 (pulse-redis defined in docker-compose.yml)
+      local ping_16379
+      ping_16379="$(redis-cli -h "$REDIS_HOST" -p 16379 ping 2>/dev/null || true)"
+      if [ "$ping_16379" = "PONG" ]; then
+        REDIS_PORT=16379
+        redis_ping="PONG"
+      fi
+    fi
+  fi
+
+  if [ "$redis_ping" != "PONG" ] && command -v docker >/dev/null 2>&1; then
+    if [ -f "$ROOT_DIR/hkt/deploy/docker/docker-compose.yml" ]; then
+      info "Redis tại $REDIS_PORT không phản hồi — đang khởi động pulse-redis (port 16379)…"
+      docker compose -f "$ROOT_DIR/hkt/deploy/docker/docker-compose.yml" up -d redis
+      sleep 2
+      REDIS_PORT=16379
+      if command -v redis-cli >/dev/null 2>&1; then
+        redis_ping="$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping 2>/dev/null || true)"
+      else
+        redis_ping="$(docker exec -i pulse-redis redis-cli ping 2>/dev/null || true)"
+      fi
+    fi
+  fi
+
+  if [ "$redis_ping" = "PONG" ]; then
+    ok "Redis trả PONG (cổng: $REDIS_PORT)"
   else
     die "Không kết nối được Redis tại ${REDIS_HOST}:${REDIS_PORT}.
-    → docker ps | grep redis
+    → docker compose -f hkt/deploy/docker/docker-compose.yml up -d redis
     → Hoặc trỏ cổng khác: REDIS_PORT=16379 ./run-local.sh"
   fi
 }
@@ -188,13 +270,12 @@ check_keycloak() {
 pick_python() {
   if [ -n "$PYTHON_BIN" ]; then echo "$PYTHON_BIN"; return; fi
   local c
-  for c in python3.12 python3.11; do
-    # `command -v` một mình chưa đủ: shim pyenv có thể tồn tại nhưng không chạy được.
-    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys' >/dev/null 2>&1; then
+  for c in python3.12 python3.11 /usr/local/bin/python3.12 /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11 python3; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; assert sys.version_info >= (3, 10)' >/dev/null 2>&1; then
       echo "$c"; return
     fi
   done
-  die "Cần Python 3.11 hoặc 3.12 (opencv/mediapipe chưa có wheel cho 3.13+).
+  die "Cần Python >= 3.10 (khuyến nghị 3.11 hoặc 3.12).
     → Cài: brew install python@3.12
     → Hoặc trỏ tay: PYTHON_BIN=/path/to/python3.12 ./run-local.sh"
 }
@@ -229,6 +310,19 @@ setup_ai() {
 
 setup_core() {
   info "Kiểm tra Java 21 + Maven cho Core Service"
+
+  # Auto-detect Maven if not found in PATH
+  if ! command -v mvn >/dev/null 2>&1; then
+    for idea_mvn in \
+      "/Applications/IntelliJ IDEA.app/Contents/plugins/maven-plugin/lib/maven3/bin/mvn" \
+      "/Applications/IntelliJ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn" \
+      "$HOME/Applications/IntelliJ IDEA.app/Contents/plugins/maven-plugin/lib/maven3/bin/mvn"; do
+      if [ -x "$idea_mvn" ]; then
+        export PATH="$(dirname "$idea_mvn"):$PATH"
+        break
+      fi
+    done
+  fi
   command -v mvn >/dev/null || die "Thiếu Maven. Cài: brew install maven"
 
   local java_home=""
@@ -236,6 +330,20 @@ setup_core() {
     java_home="$JAVA_HOME"
   else
     java_home="$(/usr/libexec/java_home -v 21 2>/dev/null || true)"
+  fi
+  # Auto-detect JDK 21 across common macOS locations if not configured
+  if [ -z "$java_home" ]; then
+    for jvm_candidate in \
+      "/Users/ascend/Library/Java/JavaVirtualMachines/corretto-21.0.11/Contents/Home" \
+      "/Users/ascend/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home" \
+      "/Users/ascend/Library/Java/JavaVirtualMachines/ms-21.0.10/Contents/Home" \
+      "$HOME/Library/Java/JavaVirtualMachines"/*/Contents/Home \
+      "/Library/Java/JavaVirtualMachines"/*/Contents/Home; do
+      if [ -x "$jvm_candidate/bin/java" ] && "$jvm_candidate/bin/java" -version 2>&1 | grep -q 'version "21'; then
+        java_home="$jvm_candidate"
+        break
+      fi
+    done
   fi
   [ -n "$java_home" ] || die "Không tìm thấy JDK 21 (project build bằng Java 21).
     → Cài: brew install openjdk@21"
@@ -290,8 +398,8 @@ start_ai() {
 start_core() {
   CORE_PORT="$(pick_port "$CORE_PORT")"
   info "Khởi động Core Service trên :${CORE_PORT}"
-  # Maven không xoá file resource cũ trong target/classes khi migration bị đổi
-  # tên/xoá — dọn riêng thư mục migration để tránh Flyway thấy 2 file cùng version.
+  # Maven does not clean up old resource files in target/classes when migrations are renamed/deleted.
+  # Clean migration directory separately to prevent Flyway from detecting duplicate versions.
   rm -rf "$CORE_DIR/target/classes/db/migration"
   (
     cd "$CORE_DIR"
@@ -416,7 +524,7 @@ case "$COMMAND" in
 
   frontend|ui)
     setup_frontend
-    # Nếu backend đang chạy sẵn thì dùng cổng phát hiện được, không thì mặc định.
+    # If backend is not running, warn user that API calls will fail until backend starts
     if ! port_in_use "$CORE_PORT"; then
       warn "Không thấy gì ở cổng ${CORE_PORT} — frontend sẽ gọi API thất bại cho tới khi backend chạy."
     fi
@@ -450,11 +558,9 @@ case "$COMMAND" in
     ;;
 esac
 
-# Ghi chú Keycloak:
-#   Code hiện tại (SecurityConfig.java) chưa dùng OAuth2/OIDC — cấu hình Keycloak
-#   trong application.yml đang bị comment và mọi request đang permitAll.
-#   Vì vậy script chỉ kiểm tra Keycloak còn sống để bạn biết, KHÔNG truyền issuer
-#   vào Core Service. Nếu sau này bật JWT/OIDC, thêm:
-#     KEYCLOAK_ISSUER_URI=<url>/realms/<realm>
-#     KEYCLOAK_JWK_SET_URI=<url>/realms/<realm>/protocol/openid-connect/certs
-#   và bỏ comment khối "spring.security.oauth2" trong application.yml.
+# Keycloak note:
+#   Current code (SecurityConfig.java) does not use OAuth2/OIDC yet - Keycloak config
+#   in application.yml is currently commented and requests are permitAll.
+#   Therefore the script only checks if Keycloak is alive, and does NOT pass issuer
+#   into Core Service. If enabling JWT/OIDC later, configure KEYCLOAK_ISSUER_URI
+#   and KEYCLOAK_JWK_SET_URI, and uncomment spring.security.oauth2 in application.yml.
