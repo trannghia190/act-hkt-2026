@@ -1,20 +1,24 @@
-# 09 — Thiết kế chấm công trên điện thoại
+# 09 — Thiết kế chấm công trên giao diện web responsive
 
 > **Nguyên tắc:** nhân viên chấm công **2 lần/ngày, trên điện thoại, khi đang đứng ở cửa văn phòng**.
 > Đây là thao tác lặp lại nhiều nhất trong toàn hệ thống — và là thao tác mà người dùng **ghét nhất** nếu làm chậm.
 > Mục tiêu: **1 chạm, < 3 giây, không cần tìm đâu đó.**
+>
+> **Không có mobile app riêng.** Chấm công chạy trên **cùng một giao diện web responsive** với bản desktop —
+> mở bằng trình duyệt điện thoại (Safari/Chrome), cùng URL, không cần tải/cài app, không qua App Store/Google Play.
 
 ---
 
-## 1. Ràng buộc thật của mobile
+## 1. Ràng buộc thật của mobile web
 
 | Ràng buộc | Hệ quả thiết kế |
 |---|---|
 | Điện thoại thường bị khóa màn hình, đang cầm tay, có thể phải tay kia cầm túi | Nút phải **to**, ở **vị trí dễ chạm** (không phải góc trên cùng) |
 | Mạng công ty Wi-Fi yếu / chập chờn ở tầng cao | Phải có **trạng thái pending** + tự retry, không báo lỗi ngay |
 | GPS trong tòa nhà bị lệch 20–50m | Bán kính geofence ≥ 150m, và **hiện khoảng cách thật** chứ không chỉ "ngoài văn phòng" |
-| 1 người có thể quên mở app | Nút chấm công phải **ở màn hình chính**, không sâu trong menu |
+| 1 người có thể quên mở web | Nút chấm công phải **ở màn hình mặc định sau đăng nhập**, không sâu trong menu |
 | Sáng/tối khác nhau, làm việc ngoài trời | Tương phản cao, nút lớn, trạng thái đọc được bằng mắt (không chỉ màu) |
+| Mở bằng trình duyệt điện thoại, không có app để cài | Thiết kế **mobile-first + responsive** ngay trong web app; không phụ thuộc API native |
 
 ---
 
@@ -65,7 +69,7 @@ Không có haptic thì nút tròn 112px vẫn cảm giác "chạm vào hình", k
 
 ### 2.3. Màn hình đang chờ (quan trọng ở nơi Wi-Fi yếu)
 
-Khi bấm VÀO, hệ thống phải kiểm tra 4 thứ: thiết bị · mạng nội bộ · GPS · ca làm việc.
+Khi bấm VÀO, hệ thống phải kiểm tra **5 thứ chạy song song**: thiết bị · mạng nội bộ · GPS · ca làm việc · **khuôn mặt**.
 **Không được để nhân viên đứng đợi 5 giây không biết chuyện gì xảy ra.**
 
 ```
@@ -76,7 +80,8 @@ Khi bấm VÀO, hệ thống phải kiểm tra 4 thứ: thiết bị · mạng n
 │                                 │
 │    ✓ Thiết bị hợp lệ            │  ← từng bước hiện dần
 │    ✓ Trong mạng công ty          │
-│    ⠙ Đang xác thựnh vị trí…     │
+│    ⠙ Đang xác thực vị trí…     │
+│    ⠙ Đang nhận diện khuôn mặt…  │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -92,12 +97,50 @@ Khi bấm VÀO, hệ thống phải kiểm tra 4 thứ: thiết bị · mạng n
 | **GPS ngoài bán kính** | **Chặn** — hiện khoảng cách thật + bản đồ + đề xuất WFH |
 | GPS không lấy được (> 2s) hoặc accuracy quá kém | **Chặn** — "Không xác định được vị trí" + nút [Thử lại] |
 | Ca làm việc | Không có ca hôm nay → chặn, báo "Hôm nay bạn không có ca" |
+| **Khuôn mặt** | **Chặn** — hiện điểm khớp + số lần thử còn lại; không đạt liveness cũng chặn |
 
 > **Quyết định PO (16/11/2026):** ngoài mạng công ty → **chặn**. Ngoài bán kính GPS cấu hình → **chặn**.
 > Không có đường vòng "chấm rồi HR xác minh sau" — vì như vậy là cho phép chấm từ nhà.
 > **Ngoại lệ duy nhất: ngày WFH đã được duyệt** — ngày đó được chấm ngoài mạng và ngoài bán kính.
+> **Khuôn mặt không có ngoại lệ** — kể cả ngày WFH vẫn phải khớp hồ sơ.
 
-### 2.4. Offline — trường hợp mạng chết
+### 2.4. Xác thực khuôn mặt — camera trực tiếp, chạy song song
+
+Màn hình chấm công **mở camera trước ngay khi vào**: khung oval hướng dẫn + trạng thái "Đang nhận diện…" → "✓ Khớp 98%".
+Khi bấm VÀO/RA, hệ thống chụp 1 frame và đối chiếu với **hồ sơ khuôn mặt đã đăng ký** — chạy song song với 4 bước còn lại.
+
+**Một lần chấm công gồm:**
+
+1. Lấy frame từ camera trước (yêu cầu HTTPS + quyền camera).
+2. **Liveness** — chống ảnh in, ảnh trên màn hình, video phát lại (mặc định bật).
+3. **So khớp 1:1** với vector đã đăng ký; ngưỡng mặc định **85%** (HR cấu hình 70–99%).
+4. Ghi kết quả vào `TimeEntry`: `face_check_status`, `face_match_score`, `face_liveness_passed`, `face_attempts`.
+
+**Đăng ký lần đầu (Face enrollment):**
+
+- Chưa có hồ sơ → màn hình chấm công hiện **"Chưa đăng ký khuôn mặt"** + nút [Đăng ký khuôn mặt]; **chưa chấm công được**.
+- Chụp **3 góc** (thẳng · quay trái · quay phải) + liveness; **chỉ đăng ký trong mạng nội bộ công ty**.
+- Chỉ lưu **vector đặc trưng**, không lưu ảnh thô; phải có đồng ý sinh trắc học trước khi chụp.
+- HR **reset hồ sơ** khi nhận diện sai kéo dài (đổi diện mạo, đeo kính khác…) kèm lý do + audit log → nhân viên đăng ký lại.
+
+**Không đạt → xử lý:**
+
+| Tình huống | Hành vi |
+|---|---|
+| Không khớp (< ngưỡng) | **Chặn** — hiện điểm khớp + "Thử lại (còn 2/3)" |
+| Không đạt liveness | **Chặn** — "Không phát hiện khuôn mặt thật" + hướng dẫn bỏ ảnh/che camera |
+| Không có camera hoặc chưa cấp quyền | **Chặn** — hướng dẫn bật quyền camera; không có đường vòng |
+| Quá `face_max_attempts` (mặc định 3) | Khoá phiên chấm công, hướng dẫn liên hệ HR |
+| Chưa đăng ký khuôn mặt | **Chặn** + nút [Đăng ký khuôn mặt] |
+
+> **Vì sao không cho "HR xác minh sau":** nếu cho phép chấm khi khuôn mặt sai rồi HR duyệt sau, lớp xác thực
+> mất tác dụng đúng lúc cần nhất (người chấm hộ). HR chỉ can thiệp bằng cách **reset hồ sơ** sau khi xác minh danh tính.
+
+**Offline:** vẫn chụp ảnh khi mất mạng. Nếu trình duyệt chạy được kiểm tra cục bộ → so khớp với vector đã lưu trên máy;
+nếu không → lưu ảnh tạm (mã hoá) trong IndexedDB, đánh `face_check_status = pending_sync`, server đối chiếu khi có mạng.
+Không khớp khi đồng bộ → entry **không được tính công** cho đến khi HR xử lý.
+
+### 2.5. Offline — trường hợp mạng chết
 
 Nhân viên vẫn phải vào được văn phòng dù Wi-Fi chết.
 
@@ -127,18 +170,20 @@ Cơ chế: lưu entry vào **IndexedDB** trên máy, đồng bộ lại khi có 
 
 ---
 
-## 3. PWA — phải "cài được" và mở ra là thấy
+## 3. Web responsive — mở bằng trình duyệt là dùng được, không cần app riêng
 
 | Yếu tố | Yêu cầu |
 |---|---|
-| Manifest | `display: standalone`, `theme_color: #17604d`, icon 192 + 512, `orientation: portrait` |
-| Service worker | Cache app shell (HTML/CSS/JS) để mở được offline |
-| iOS | `apple-mobile-web-app-capable`, `apple-touch-icon` 180×180, `viewport-fit=cover` |
-| Safe area | `env(safe-area-inset-*)` — tránh notch và thanh home indicator |
-| Install prompt | Hiện nút **"Thêm vào màn hình chính"** sau khi dùng 2 lần (không hỏi ngay lúc mới vào — gây khó chịu) |
-| Haptic | `navigator.vibrate` |
+| Nền tảng | **Một URL web duy nhất** cho cả điện thoại và máy tính — không có app native, không có App Store/Google Play |
+| Bố cục | **Mobile-first** (thiết kế ở 375px trước), tự co giãn lên tablet/desktop bằng breakpoint |
+| Trình duyệt | Chạy trên **iPhone Safari** và **Android Chrome**; không phụ thuộc tính năng chỉ có ở app |
+| Safe area | `env(safe-area-inset-*)` — tránh notch và thanh home indicator khi mở full màn hình |
+| Lối tắt (tuỳ chọn) | Trình duyệt có sẵn "Thêm vào màn hình chính" — chỉ là bookmark, **không bắt buộc**, không qua store |
+| Offline | Cache trang web (HTML/CSS/JS) + IndexedDB để mở và ghi nhận khi mất mạng |
+| Camera | `getUserMedia` (camera trước) trên **HTTPS**; iOS Safari + Android Chrome đều hỗ trợ; quyền camera bắt buộc |
+| Rung | `navigator.vibrate` nếu trình duyệt hỗ trợ — không có thì vẫn dùng bình thường |
 
-**Sau khi cài PWA, mở app = thẳng màn hình chấm công**, không qua splash/đăng nhập lại (JWT lưu trong localStorage, refresh token trong httpOnly cookie).
+**Mở URL (hoặc lối tắt đã thêm) = thẳng màn hình chấm công**, không qua splash/đăng nhập lại (JWT lưu trong localStorage, refresh token trong httpOnly cookie).
 
 ---
 
@@ -180,9 +225,9 @@ Không cho chấm kèm cờ `low_gps_accuracy` — vì như vậy là mở đư�
 
 | Bước | Thao tác của nhân viên | Thời gian |
 |---|---|---|
-| 1 | Mở app (từ home screen) | 1.0s |
+| 1 | Mở web trên điện thoại (trình duyệt hoặc lối tắt) | 1.0s |
 | 2 | Bấm nút VÀO | 0.3s |
-| 3 | Xác thực tự động (4 bước song song) | 1.5–2.5s |
+| 3 | Xác thực tự động (**5 bước song song**: thiết bị · mạng · GPS · ca · **khuôn mặt**) | 1.8–2.8s |
 | 4 | Xanh + haptic + toast "Đã chấm công lúc 09:41" | — |
 
 **Tổng: < 4 giây, 1 cú bấm thật.**
@@ -195,7 +240,7 @@ Không cho chấm kèm cờ `low_gps_accuracy` — vì như vậy là mở đư�
 - ❌ Không hiện danh sách 30 ngày chấm công (chuyển sang màn hình riêng khi cần)
 - ❌ Không hiện cảnh báo dài dòng ở trạng thái bình thường — chỉ hiện khi có vấn đề
 
-> **Nguyên tắc:** màn hình chấm công chỉ có **2 thông tin** (giờ + trạng thái xác thực) và **1 nút**. Mọi thứ khác ở màn hình khác.
+> **Nguyên tắc:** màn hình chấm công chỉ có **camera khuôn mặt + 2 thông tin** (giờ + trạng thái xác thực) và **1 nút**. Mọi thứ khác ở màn hình khác.
 
 ---
 
@@ -223,7 +268,7 @@ Nhân viên cần biết hôm nay ca gì, đã chấm công chưa, còn thiếu 
 
 | Yêu cầu | Cách làm |
 |---|---|
-| Đọc bằng màn hình đọc | `aria-label` mô tả đầy đủ: *"Chấm công vào, ca 08:30 đến 17:30, đã xác thực vị trí trong văn phòng"* |
+| Đọc bằng màn hình đọc | `aria-label` mô tả đầy đủ: *"Chấm công vào, ca 08:30 đến 17:30, đã xác thực vị trí trong văn phòng và khuôn mặt khớp 98%"* |
 | Vùng chạm | Ø 112px — vượt xa chuẩn 44px |
 | Tương phản | ≥ 4.5:1 cho chữ, ≥ 3:1 cho viền nút |
 | Không chỉ dựa vào màu | Mỗi trạng thái có **ký hiệu + chữ** (✓ / ⚠ / ✕), không chỉ màu xanh–đỏ |
@@ -234,8 +279,8 @@ Nhân viên cần biết hôm nay ca gì, đã chấm công chưa, còn thiếu 
 
 ## 8. Acceptance criteria
 
-- [ ] Mở app → màn hình chấm công hiện ngay (không qua menu)
-- [ ] Bấm nút 1 lần → ghi nhận thành công trong < 4 giây, có haptic
+- [ ] Mở web trên điện thoại → màn hình chấm công hiện ngay (không qua menu)
+- [ ] Bấm nút 1 lần → ghi nhận thành công trong < 4 giây, có rung (nếu trình duyệt hỗ trợ)
 - [ ] Nút đủ lớn để bấm bằng 1 tay, không bấm nhầm khi đi nhanh
 - [ ] Mỗi bước kiểm tra hiện **ngay khi bắt đầu**, không đợi xong mới hiện
 - [ ] Mất mạng → vẫn chấm công được offline, đồng bộ lại sau, có cờ cho HR; quá hạn offline (mặc định 24h) → bị từ chối khi đồng bộ
@@ -243,9 +288,13 @@ Nhân viên cần biết hôm nay ca gì, đã chấm công chưa, còn thiếu 
 - [ ] **Ngoài bán kính GPS → BỊ CHẶN**, hiện khoảng cách thật + bản đồ + 2 lối ra (WFH / Thử lại)
 - [ ] **GPS không lấy được hoặc accuracy > 100m → BỊ CHẶN** kèm hướng dẫn đứng gần cửa sổ
 - [ ] Ngày WFH đã duyệt → chấm được ngoài mạng và ngoài bán kính (ngoại lệ duy nhất)
-- [ ] Bán kính và hạn offline đổi được trong rule `attendance_security`, không sửa code
+- [ ] **Camera trước hiển thị trên màn hình chấm công** + khung khuôn mặt; trạng thái khớp hiện ngay
+- [ ] **Khuôn mặt khớp ≥ 85% + liveness đạt** → chấm công được; không khớp/không đạt liveness → **BỊ CHẶN**
+- [ ] **Chưa đăng ký khuôn mặt → chưa chấm công được**, có nút đăng ký (3 góc + liveness) trong mạng công ty
+- [ ] **Không lưu ảnh thô lâu dài** — chỉ vector đặc trưng; HR reset được kèm lý do + audit log
+- [ ] Bán kính, ngưỡng khớp khuôn mặt và hạn offline đổi được trong rule `attendance_security`, không sửa code
 - [ ] Bấm 2 lần liên tiếp → nút đổi trạng thái, không tạo 2 entry
-- [ ] Màn hình chỉ có 2 thông tin + 1 nút, không có form nào
-- [ ] PWA cài được, mở ra thẳng màn hình chấm công, có safe-area + haptic
+- [ ] Màn hình chỉ có camera khuôn mặt + 2 thông tin + 1 nút, không có form nào
+- [ ] **Không cần cài app**: mở URL bằng trình duyệt điện thoại là chấm công được; giao diện responsive đúng ở 375px
 - [ ] Đọc bằng màn hình đọc nghe được đủ thông tin; trạng thái không chỉ phân biệt bằng màu
-- [ ] Chạy được trên iPhone Safari và Android Chrome ở kích thước 375px
+- [ ] Chạy được trên iPhone Safari và Android Chrome; có safe-area + rung (nếu trình duyệt hỗ trợ)

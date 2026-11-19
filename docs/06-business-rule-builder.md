@@ -73,7 +73,7 @@ Mỗi trường cấu hình (`fields`) mô tả:
 |---|---|
 | `key` | Mã định danh của trường — dùng để lưu giá trị |
 | `label` | Nhãn hiển thị trên form cho HR |
-| `type` | Kiểu dữ liệu: số nguyên · số thập phân · công tắc · giờ · ngày-trong-tháng · ngày · lựa chọn · lựa chọn nhiều · chữ · ngưỡng xếp loại |
+| `type` | Kiểu dữ liệu: số nguyên · số thập phân · công tắc · giờ · ngày-trong-tháng · ngày · lựa chọn · lựa chọn nhiều · chữ |
 | `unit` | Đơn vị hiển thị sau ô nhập (vd "lần/tháng", "phút", "mét") |
 | `min` / `max` | Giá trị nhỏ nhất / lớn nhất được phép nhập |
 | `options` | Danh sách lựa chọn cố định (mỗi lựa chọn có một mã và một nhãn hiển thị) |
@@ -97,18 +97,18 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | Nhóm nghiệp vụ (`domain`) | `timesheet` |
 | Danh mục (`category`) | Đơn từ |
 | Phạm vi áp dụng (`allowed_scopes`) | Toàn công ty |
-| Mô tả (`description`) | Số lần được tạo đơn mỗi tháng, thời lượng tối đa mỗi lần và thời điểm phải gửi. |
+| Mô tả (`description`) | Số lần được tạo đơn mỗi tháng, thời lượng tối đa mỗi lần và hạn nộp (tính theo ngày, không theo giờ). |
 
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
 | `max_count` | Số lần tối đa | Số nguyên | 2 lần/tháng | 0 – 31 | Số đơn đi muộn/về sớm một nhân viên được tạo trong một tháng. Vượt số này thì **không cho tạo đơn**. |
 | `max_minutes` | Thời lượng tối đa mỗi lần | Số nguyên | 60 phút | 1 – 480 | Một đơn không được cover quá số phút này. |
-| `submit_before` | Đơn phải gửi trước | Giờ | 08:00 | — | Đơn gửi sau thời điểm này sẽ bị từ chối. |
+| `submit_within_days` | Hạn nộp sau ngày phát sinh | Số nguyên | 3 ngày | 0 – 15 | Đơn phải gửi **trong vòng N ngày** kể từ ngày đi muộn/về sớm. Không có yêu cầu giờ cụ thể. |
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `max_count` = 2 · `max_minutes` = 60 · `submit_before` = 08:00 |
-| Câu thông báo (`policy_template`) | "Bạn được tạo đơn đi muộn/về sớm **{max_count} lần mỗi tháng**, mỗi lần tối đa **{max_minutes} phút**. Đơn phải gửi trước **{submit_before}**." |
+| Giá trị mặc định (`default_value`) | `max_count` = 2 · `max_minutes` = 60 · `submit_within_days` = 3 |
+| Câu thông báo (`policy_template`) | "Bạn được tạo đơn đi muộn/về sớm **{max_count} lần mỗi tháng**, mỗi lần tối đa **{max_minutes} phút**. Đơn phải gửi **trong vòng {submit_within_days} ngày** kể từ ngày đi muộn/về sớm." |
 
 ##### 3.1.2 · Bổ sung chấm công — `makeup`
 
@@ -153,27 +153,25 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | Giá trị mặc định (`default_value`) | `max_count` = 2 · `min_lead_working_days` = 1 · `allow_late_request` = Bật · `report_required` = Bật |
 | Câu thông báo (`policy_template`) | "Bạn được đăng ký WFH **{max_count} ngày mỗi tuần**. Đăng ký trước ít nhất **{min_lead_working_days} ngày làm việc**." |
 
-##### 3.1.4 · Nhóm cần HR duyệt thêm — `hr_approval`
+##### 3.1.4 · Nhóm có bước HR duyệt thêm — `hr_approval`
 
 | Thuộc tính | Nội dung |
 |---|---|
 | Nhóm nghiệp vụ (`domain`) | `timesheet` |
 | Danh mục (`category`) | Đơn từ |
 | Phạm vi áp dụng (`allowed_scopes`) | Toàn công ty |
-| Mô tả (`description`) | Những nhóm mà mọi đơn nghỉ đều phải qua thêm bước HR duyệt sau khi trưởng nhóm/quản lý duyệt. Theo quyết định của HR: CA + Mobile. |
+| Mô tả (`description`) | Những nhóm có thêm bước HR duyệt sau khi trưởng nhóm/quản lý duyệt — **chỉ áp cho đơn đi muộn / bổ sung công / WFH**. Đơn nghỉ phép **không** đi qua quy định này. Theo quyết định của HR: CA + Mobile. |
 
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
-| `teams` | Nhóm áp dụng | Lựa chọn nhiều | CA, Mobile | Danh sách nhóm lấy từ hệ thống | Đơn của nhân viên thuộc các nhóm này sẽ chuyển thêm bước HR duyệt. |
+| `teams` | Nhóm áp dụng | Lựa chọn nhiều | CA, Mobile | Danh sách nhóm lấy từ hệ thống | Đơn **đi muộn / bổ sung công / WFH** của nhân viên thuộc các nhóm này sẽ chuyển thêm bước HR duyệt. |
 
 | Thuộc tính | Nội dung |
 |---|---|
 | Giá trị mặc định (`default_value`) | `teams` = CA, Mobile |
-| Câu thông báo (`policy_template`) | "Đơn nghỉ phép của nhân viên thuộc **{teams}** sẽ được quản lý duyệt trước, sau đó chuyển thêm 1 bước để HR duyệt." |
+| Câu thông báo (`policy_template`) | "Đơn **đi muộn / bổ sung công / WFH** của nhân viên thuộc **{teams}** sẽ được quản lý duyệt trước, sau đó chuyển thêm 1 bước để HR duyệt." |
 
-> **Lưu ý về phạm vi của quy định này:** ngưỡng *"nghỉ từ N ngày trở lên cần HR duyệt"* **KHÔNG** nằm ở đây — nó là **tham số của từng loại nghỉ** (`requires_hr_approval` + `min_days_for_hr_approval` trong `leave_type_defaults`). Nhờ vậy mỗi loại nghỉ tự quyết định, thay vì 1 quy định chung áp đè lên tất cả.
->
-> **Vì sao:** *"Nghỉ tang gia"* có thể cần 2 bước duyệt, còn *"Nghỉ phép năm"* thì không — nếu gộp vào 1 quy định thì không diễn tả được.
+> **Đơn nghỉ phép — không áp dụng quy định này.** Mọi đơn nghỉ phép (kể cả nghỉ dài ngày, thai sản) **chỉ cần quản lý trực tiếp duyệt là đủ** — không chuyển HR, không phụ thuộc nhóm. Đây là quyết định chốt ngày 18/11/2026.
 
 #### Nhóm "Chấm công & bảng công"
 
@@ -217,12 +215,16 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | `allow_offline_punch` | Cho phép chấm công khi mất mạng | Công tắc | Bật | — | Cho phép nhân viên check-in khi rớt mạng. |
 | `offline_max_hours` | Hạn đồng bộ offline tối đa | Số nguyên | 24 giờ | 1 – 72 · chỉ hiện khi `allow_offline_punch` = Bật | Quá hạn → entry bị từ chối khi đồng bộ, nhân viên phải tạo đơn bổ sung công. |
 | `max_devices` | Số thiết bị được đăng ký | Số nguyên | 2 thiết bị | 1 – 5 | Mặc định mỗi nhân viên được đăng ký **2 thiết bị** (VD: điện thoại + máy tính). Muốn dùng máy thứ 3 thì phải gửi yêu cầu kèm lý do để **HR duyệt**. |
+| `require_face_verification` | Bắt buộc xác thực khuôn mặt | Công tắc | Bật | — | Mỗi lần chấm công phải chụp ảnh qua camera và đối chiếu với **hồ sơ khuôn mặt đã đăng ký**. Không khớp → chặn. |
+| `face_match_threshold` | Ngưỡng khớp khuôn mặt | Số nguyên (%) | 85% | 70 – 99 · chỉ hiện khi `require_face_verification` = Bật | Điểm tương đồng tối thiểu. Cao hơn → chặt hơn nhưng dễ chặn nhầm khi ánh sáng/kính thay đổi. |
+| `require_liveness` | Bắt buộc kiểm tra liveness | Công tắc | Bật | — | Chống dùng ảnh in, ảnh trên màn hình hoặc video phát lại. Không đạt → chặn. |
+| `face_max_attempts` | Số lần thử khuôn mặt mỗi phiên | Số nguyên | 3 lần | 1 – 10 | Quá số lần → khoá phiên chấm công, hướng dẫn liên hệ HR đăng ký lại. |
 | `grace_minutes` | Số phút đến muộn được miễn | Số nguyên | 0 phút | 0 – 60 | Số phút đến muộn vẫn không bị tính là đi muộn. |
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `require_internal_network` = Bật · `require_geofence` = Bật · `geofence_radius_m` = 150 · `gps_accuracy_tolerance_m` = 100 · `allow_offline_punch` = Bật · `offline_max_hours` = 24 · `max_devices` = 2 · `grace_minutes` = 0 |
-| Câu thông báo (`policy_template`) | "Chấm công chỉ hợp lệ trên **thiết bị đã đăng ký**, trong **mạng nội bộ công ty**, trong bán kính **{geofence_radius_m}m** quanh văn phòng. Mất mạng thì vẫn chấm được, nhưng phải đồng bộ trong **{offline_max_hours} giờ**. Bạn được đăng ký tối đa **{max_devices} thiết bị**. Ngoại lệ duy nhất: ngày WFH đã được duyệt." |
+| Giá trị mặc định (`default_value`) | `require_internal_network` = Bật · `require_geofence` = Bật · `geofence_radius_m` = 150 · `gps_accuracy_tolerance_m` = 100 · `allow_offline_punch` = Bật · `offline_max_hours` = 24 · `max_devices` = 2 · `require_face_verification` = Bật · `face_match_threshold` = 85 · `require_liveness` = Bật · `face_max_attempts` = 3 · `grace_minutes` = 0 |
+| Câu thông báo (`policy_template`) | "Chấm công chỉ hợp lệ trên **thiết bị đã đăng ký**, trong **mạng nội bộ công ty**, trong bán kính **{geofence_radius_m}m** quanh văn phòng, và **khuôn mặt khớp hồ sơ đã đăng ký (≥ {face_match_threshold}%)**. Mất mạng thì vẫn chấm được, nhưng phải đồng bộ trong **{offline_max_hours} giờ**. Bạn được đăng ký tối đa **{max_devices} thiết bị**. Ngoại lệ duy nhất: ngày WFH đã được duyệt." |
 
 ##### 3.1.7 · Chống dùng chung tài khoản — `share_account`
 
@@ -367,16 +369,18 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
-| `min_lead_days` | Phải báo trước ít nhất | Số nguyên | 1 ngày làm việc | 0 – 30 | 0 = được báo gấp. Loại nghỉ riêng có thể ghi đè (VD: nghỉ tang gia = 0). |
-| `requires_manager_approval` | Cần quản lý duyệt | Công tắc | Bật | — | Đơn phải qua bước duyệt của quản lý trực tiếp. |
-| `requires_hr_approval` | Cần thêm bước HR duyệt | Công tắc | Tắt | — | Đơn ngoài bước quản lý còn phải qua thêm một bước HR duyệt. |
-| `min_days_for_hr_approval` | Nghỉ từ N ngày trở lên → thêm bước HR duyệt | Số nguyên | 3 ngày | 0 – 60 | Ngưỡng số ngày nghỉ tính từ đó sẽ kích hoạt bước duyệt HR. |
+| `submit_within_days` | Hạn nộp sau ngày bắt đầu nghỉ | Số nguyên | 3 ngày | 0 – 15 | Đơn phải gửi **trong vòng N ngày** kể từ ngày bắt đầu nghỉ — không yêu cầu báo trước theo giờ. Từng loại ghi đè được. |
+| `requires_manager_approval` | Cần quản lý duyệt | Công tắc | Bật | — | Đơn phải qua bước duyệt của quản lý trực tiếp — **đây là bước duyệt duy nhất của đơn nghỉ phép**. |
 | `require_document_days` | Cần giấy tờ từ ngày thứ | Số nguyên | 0 ngày | 0 – 30 | 0 = không cần giấy tờ. Từng loại ghi đè được (VD: nghỉ ốm = 2). |
+
+> **Nghỉ phép chỉ có 1 bước duyệt: quản lý trực tiếp.** Không có bước HR duyệt cho bất kỳ loại nghỉ nào —
+> kể cả nghỉ dài ngày, tang gia hay thai sản (quyết định chốt 18/11/2026). HR vẫn **nhận thông báo** và
+> thấy đơn trong báo cáo, nhưng **không phải bước duyệt**. Vì vậy quy định này **không còn trường** `requires_hr_approval` / `min_days_for_hr_approval`.
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `min_lead_days` = 1 · `requires_manager_approval` = Bật · `requires_hr_approval` = Tắt · `min_days_for_hr_approval` = 3 · `require_document_days` = 0 |
-| Câu thông báo (`policy_template`) | "Đơn nghỉ phép phải được gửi trước ít nhất **{min_lead_days} ngày làm việc**. Nghỉ từ **{min_days_for_hr_approval} ngày** trở lên sẽ được quản lý duyệt rồi chuyển HR duyệt thêm." |
+| Giá trị mặc định (`default_value`) | `submit_within_days` = 3 · `requires_manager_approval` = Bật · `require_document_days` = 0 |
+| Câu thông báo (`policy_template`) | "Đơn nghỉ phép phải được gửi **trong vòng {submit_within_days} ngày** kể từ ngày bắt đầu nghỉ và được **quản lý trực tiếp duyệt** — không cần chuyển HR." |
 
 ##### 3.1.13 · Chính sách nhắc việc — `notification`
 
@@ -410,19 +414,17 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | Nhóm nghiệp vụ (`domain`) | `leave` |
 | Danh mục (`category`) | Nghỉ phép |
 | Phạm vi áp dụng (`allowed_scopes`) | Toàn công ty |
-| Mô tả (`description`) | Khi nào phải gửi đơn, có cần duyệt không, và giới hạn số ngày. |
+| Mô tả (`description`) | Hạn nộp theo ngày, giấy tờ và giới hạn số ngày nghỉ. |
 
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
-| `min_lead_days` | Phải gửi trước ít nhất | Số nguyên | 1 ngày làm việc | 0 – 30 | 0 = được gửi cùng ngày. Nếu không đủ thời gian, đơn được gắn cờ "gấp" nhưng vẫn tạo được. |
-| `mark_late_request` | Đơn gửi muộn được đánh dấu | Công tắc | Bật | — | Đơn không đủ thời gian báo trước sẽ bị gắn cờ để quản lý thấy. |
 | `require_document_days` | Loại nghỉ cần giấy tờ từ ngày thứ | Số nguyên | 2 ngày | 0 – 30 | 0 = không cần giấy tờ. VD: nghỉ ốm từ ngày thứ 3 trở đi cần giấy y tế. |
 | `max_consecutive_days` | Số ngày nghỉ liên tiếp tối đa | Số nguyên | 0 ngày | 0 – 60 | 0 = không giới hạn. Vượt thì cần kèm lý do và quản lý duyệt. |
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `min_lead_days` = 1 · `mark_late_request` = Bật · `require_document_days` = 2 · `max_consecutive_days` = 0 |
-| Câu thông báo (`policy_template`) | "Đơn nghỉ phép phải được gửi trước ít nhất **{min_lead_days} ngày làm việc**. Loại nghỉ cần giấy tờ từ ngày thứ **{require_document_days}** trở đi." |
+| Giá trị mặc định (`default_value`) | `require_document_days` = 2 · `max_consecutive_days` = 0 |
+| Câu thông báo (`policy_template`) | "Loại nghỉ cần giấy tờ từ ngày thứ **{require_document_days}** trở đi. Hạn nộp tính theo ngày (mặc định **3 ngày** sau ngày bắt đầu nghỉ)." |
 
 ##### 3.1.15 · Cách cộng phép — `leave_accrual`
 
@@ -519,7 +521,7 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | Nhóm nghiệp vụ (`domain`) | `okr` |
 | Danh mục (`category`) | Đánh giá OKR |
 | Phạm vi áp dụng (`allowed_scopes`) | Toàn công ty |
-| Mô tả (`description`) | Thang điểm, xếp loại, tần suất cập nhật và phân tầng. |
+| Mô tả (`description`) | Thang điểm, tần suất cập nhật và phân tầng. |
 
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
@@ -527,14 +529,13 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | `scale_max` | Điểm cao nhất | Số nguyên | 5 điểm | 1 – 5 | Chấm 1–5 mỗi nhóm (Business/People), không có điểm lẻ. |
 | `score_categories` | Số nhóm điểm | Số nguyên | 2 nhóm | Cố định bằng 2 | Business + People. Phần mềm tự tính điểm trung bình. |
 | `checkin_interval` | Tần suất cập nhật tiến độ | Lựa chọn | Hàng tháng | Hàng tuần · Hàng tháng · Hàng quý | Nhân viên phải cập nhật tiến độ OKR bao nhiêu lần một kỳ. |
-| `grade_thresholds` | Ngưỡng xếp loại | Ngưỡng xếp loại | A ≥ 4.5 · B ≥ 3.5 · C ≥ 2.5 | Các ngưỡng phải giảm dần | Áp trên điểm trung bình 1–5. |
 | `alignment_enabled` | Bật phân tầng Công ty → Phòng ban → Cá nhân | Công tắc | Bật | — | Bật cơ chế liên kết mục tiêu từ cấp công ty xuống cấp cá nhân. |
 | `weight_sum` | Tổng trọng số các KR | Số nguyên | 100% | 50 – 200 | Tổng trọng số của tất cả KR trong một mục tiêu. |
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `scale_min` = 1 · `scale_max` = 5 · `score_categories` = 2 · `checkin_interval` = Hàng tháng · `grade_thresholds` = A ≥ 4.5, B ≥ 3.5, C ≥ 2.5 · `alignment_enabled` = Bật · `weight_sum` = 100 |
-| Câu thông báo (`policy_template`) | "Bạn được cập nhật tiến độ **{checkin_interval}**. Điểm OKR được chấm trên thang **{scale_min} – {scale_max}** theo 2 nhóm Business và People — phần mềm tự tính điểm trung bình. Xếp loại A/B/C/D theo ngưỡng do công ty quy định." |
+| Giá trị mặc định (`default_value`) | `scale_min` = 1 · `scale_max` = 5 · `score_categories` = 2 · `checkin_interval` = Hàng tháng · `alignment_enabled` = Bật · `weight_sum` = 100 |
+| Câu thông báo (`policy_template`) | "Bạn được cập nhật tiến độ **{checkin_interval}**. Điểm OKR được chấm trên thang **{scale_min} – {scale_max}** theo 2 nhóm Business và People — phần mềm tự tính điểm trung bình. Chỉ dùng điểm, không xếp loại." |
 
 ### 3.2. Bảng đối chiếu với quyết định của HR (Mục 7)
 
@@ -549,7 +550,8 @@ Mọi giá trị mặc định trong catalog **khớp đúng** với cột "Quy�
 | WFH: 2 lần/tuần | `wfh` | `max_count` = 2 |
 | Bổ sung công: 5 lần/tháng | `makeup` | `max_count` = 5 |
 | Rule áp dụng chung, không phân biệt phòng ban | tất cả `allowed_scopes` | `global` — **chỉ toàn công ty**, không ghi đè theo phòng ban |
-| Đơn cần HR duyệt thêm: CA + Mobile | `hr_approval` | `teams` = [CA, Mobile] |
+| Đơn **đi muộn / bổ sung công / WFH** của CA + Mobile có thêm bước HR | `hr_approval` | `teams` = [CA, Mobile] |
+| **Đơn nghỉ phép chỉ quản lý trực tiếp duyệt** | `leave_type_defaults` | `requires_manager_approval` = Bật, không có bước HR |
 | Phép hàng tháng +1 ngày 15 | `leave_accrual` | mode monthly, day 15 |
 | Phép thâm niên +1/2 năm | `leave_seniority` | every 2 năm, +1 ngày |
 | Phép chức vụ manager +3 | `leave_position_bonus` | positions [Manager], +3 ngày |
@@ -596,7 +598,7 @@ Mọi giá trị mặc định trong catalog **khớp đúng** với cột "Quy�
 | `wfh` | Quota engine khi đăng ký WFH | Quota/tuần (2 ngày) · chặn ngày thứ 3 · đơn tối thiểu 0,5 ngày · hạn đăng ký |
 | `approval_flow` | Approval engine — cấu hình luồng duyệt theo nhóm | **Approver (bắt buộc)** + **viewer (tùy chọn — để phối hợp)** + SLA. Không hardcode tên trưởng nhóm |
 | `hr_approval` | Approval engine khi tạo task bước 2 | Phòng ban nào mọi đơn đều qua HR (CA + Mobile) |
-| `attendance_security` | Punch service khi check-in | Mạng nội bộ + geofence + số thiết bị + phút miễn trễ |
+| `attendance_security` | Punch service khi check-in | Mạng nội bộ + geofence + **khuôn mặt (khớp + liveness)** + số thiết bị + phút miễn trễ |
 | `share_account` | Punch service + trang "Thiết bị đăng ký" | 1 check-in/ngày + 2 thiết bị + SSO + chính sách thiết bị mới |
 | `late_without_request` | Job tổng hợp bảng công | Trừ đúng phút thực tế (theo quyết định HR) |
 | `payroll_period` | Job tổng hợp + màn hình bảng công | Kỳ công 01→cuối tháng · **công bố ngày 11** + hạn khiếu nại 2 ngày + khóa sau 3 ngày |
@@ -607,7 +609,7 @@ Mọi giá trị mặc định trong catalog **khớp đúng** với cột "Quy�
 | `leave_position_bonus` | Job cộng phép đầu năm | +3 ngày cho chức danh Manager (tổng 15 ngày/năm) |
 | `leave_carryover` | Job mốc 01/04 & 01/07 | Chuyển tồn · giữ 5 ngày · hết hạn = 0 |
 | `notification` | Job `scan_and_notify` | Chống spam + giờ nhắc + số push/ngày |
-| `okr_evaluation` | Engine chấm điểm + form review | **Thang 1–5 · 2 nhóm Business/People** · xếp loại · tần suất check-in · phân tầng |
+| `okr_evaluation` | Engine chấm điểm + form review | **Thang 1–5 · 2 nhóm Business/People** · tần suất check-in · phân tầng |
 
 **Nguồn quy định:** `shift_times`, `shift`, `wfh`, `hr_approval`, `leave_accrual`, `leave_seniority`,
 `leave_position_bonus`, `leave_carryover` lấy trực tiếp từ **`doc/Rule chấm công.xlsx`** (sheet *"Rule về
@@ -629,15 +631,15 @@ ghi đè của đơn (tầng 3). Ba rule `leave_*` ở trên đều cộng/trừ
 │ ĐƠN TỪ                                          Áp dụng cho            │
 │ ┌─────────────────────────────────────────────────────────────────────┐ │
 │ │ Đi muộn / về sớm                              Toàn công ty           │ │
-│ │ 2 lần/tháng · tối đa 60 phút · gửi trước 08:00                    │ │
+│ │ 2 lần/tháng · tối đa 60 phút · nộp trong 3 ngày                   │ │
 │ │ Hiệu lực từ 01/10/2026 · phiên bản 2              [ Cấu hình ]      │ │
 │ ├─────────────────────────────────────────────────────────────────────┤ │
 │ │ Bổ sung chấm công                            Toàn công ty           │ │
 │ │ 5 lần/tháng · hạn 3 ngày làm việc · bắt buộc lý do                │ │
 │ │ Hiệu lực từ 01/10/2026 · phiên bản 1              [ Cấu hình ]      │ │
 │ ├─────────────────────────────────────────────────────────────────────┤ │
-│ │ Cần HR duyệt thêm                                                  │ │
-│ │ Nghỉ từ 3 ngày · phòng ban: CA, Mobile                             │ │
+│ │ Nhóm có bước HR duyệt thêm                                         │ │
+│ │ Đi muộn / bổ sung / WFH · nhóm: CA, Mobile · (nghỉ phép: không áp) │ │
 │ │ ⚠ Đơn hôm nay đến hạn nộp                                        │ │
 │ │                                                      [ Cấu hình ]      │ │
 │ └─────────────────────────────────────────────────────────────────────┘ │
@@ -668,7 +670,7 @@ ghi đè của đơn (tầng 3). Ba rule `leave_*` ở trên đều cộng/trừ
 │ ┌─────────────────────────────────────────────────────────────────────┐ │
 │ │ Số lần tối đa            [  2  ]  lần/tháng                         │ │
 │ │ Thời lượng tối đa/lần    [ 60  ]  phút                              │ │
-│ │ Đơn phải gửi trước        [ 08:00 ]                                 │ │
+│ │ Hạn nộp sau ngày phát sinh [ 3 ] ngày                               │ │
 │ └─────────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 │ HIỆU LỰC TỪ                                                            │
@@ -702,7 +704,6 @@ ghi đè của đơn (tầng 3). Ba rule `leave_*` ở trên đều cộng/trừ
 | Ngày-trong-tháng | Ô chọn ngày | Hiển thị "01/04" dạng DD/MM |
 | Lựa chọn | Danh sách 1 lựa chọn | |
 | Lựa chọn nhiều | Danh sách nhiều lựa chọn | Lựa chọn động từ danh sách phòng ban / chức danh / loại nghỉ lấy từ hệ thống |
-| Ngưỡng xếp loại | Bộ chỉnh ngưỡng | Editor nhỏ: A ≥ 0.9, B ≥ 0.7, C ≥ 0.5, bắt buộc giảm dần |
 | Chữ | Ô nhập nhiều dòng | |
 
 **Điều kiện hiển thị (`visible_when`):** field chỉ hiện khi field khác đúng giá trị (ví dụ "Ngày kết thúc" chỉ hiện khi chế độ = "Ngày cố định"). Form phải tự ẩn/hiện — không reload trang.
@@ -767,7 +768,7 @@ ghi đè của đơn (tầng 3). Ba rule `leave_*` ở trên đều cộng/trừ
 │                                                                         │
 │ ĐI MUỘN / VỀ SỚM                                                        │
 │ Bạn được tạo đơn đi muộn/về sớm 2 lần mỗi tháng, mỗi lần tối đa       │
-│ 60 phút. Đơn phải gửi trước 08:00.                                     │
+│ 60 phút. Đơn phải gửi trong vòng 3 ngày kể từ ngày phát sinh.          │
 │                                                                         │
 │ Hiệu lực từ 01/10/2026 · Phiên bản 2                                    │
 │ Liên quan: Đơn từ · Bảng công                                           │

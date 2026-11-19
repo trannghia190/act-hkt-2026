@@ -32,7 +32,7 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 |---|---|---|
 | `id` | Định danh người dùng | Khóa chính |
 | `email` | Email đăng nhập | Bắt buộc, duy nhất |
-| `password_hash` | Mật khẩu đã băm | Chỉ lưu dạng băm, không lưu bản thô |
+| `password_hash` | Mật khẩu đã băm | Chỉ lưu dạng băm, không lưu bản thô; chỉ dùng cho tài khoản demo/fallback |
 | `full_name` | Họ tên hiển thị | Bắt buộc |
 | `avatar_url` | Ảnh đại diện | Tùy chọn |
 | `role` | Vai trò hệ thống | `employee` \| `manager` \| `hr` \| `admin` |
@@ -40,7 +40,7 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 | `manager_id` | Quản lý trực tiếp | Tham chiếu `User`; **căn cứ để duyệt đơn** |
 | `hire_date` | Ngày vào làm | Bắt buộc |
 | `status` | Trạng thái làm việc | `active` \| `inactive` |
-| `google_sub` | Liên kết tài khoản Google SSO | Tùy chọn; dùng để khớp tài khoản khi đăng nhập bằng Google |
+| `google_sub` | Liên kết tài khoản Google SSO | Bắt buộc với tài khoản thật; lưu ở lần đăng nhập Google đầu tiên để khớp các lần sau |
 
 ### Phân quyền theo phạm vi (Mục 3)
 
@@ -154,6 +154,30 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 - Mỗi user tối đa **2 thiết bị đang hoạt động** (`max_devices`, cấu hình được trong C10).
 - Chấm công từ thiết bị chưa được duyệt → **từ chối** + ghi log.
 - **Thiết bị mới không tự đăng ký được** — luôn tạo yêu cầu chờ HR duyệt (xem §2.1).
+
+### Hồ sơ khuôn mặt (xác thực khi chấm công)
+
+**Hồ sơ khuôn mặt (`FaceProfile`)** — mỗi nhân viên có tối đa 1 hồ sơ đang hoạt động:
+
+| Trường | Ý nghĩa | Ràng buộc / giá trị |
+|---|---|---|
+| `id` | Định danh hồ sơ | Khóa chính |
+| `user_id` | Nhân viên sở hữu | Duy nhất với hồ sơ `active`; tham chiếu `User` |
+| `embedding` | Vector đặc trưng khuôn mặt | **Không lưu ảnh thô**; so khớp 1:1 khi chấm công |
+| `model_version` | Phiên bản model nhận diện | Dùng khi nâng cấp model để đăng ký lại nếu cần |
+| `status` | Trạng thái hồ sơ | `active` (đang dùng) \| `reset` (HR đã huỷ, cần đăng ký lại) |
+| `enrolled_at` | Thời điểm đăng ký | Bắt buộc; phải đang trong mạng nội bộ công ty |
+| `enrolled_by` | Người thực hiện | Nhân viên tự đăng ký; HR có thể hỗ trợ |
+| `consent_at` | Thời điểm đồng ý sinh trắc học | Bắt buộc trước khi chụp |
+| `last_verified_at` | Lần khớp gần nhất | Ghi mỗi lần chấm công thành công |
+| `reset_by` / `reset_reason` | Ai huỷ và vì sao | Bắt buộc khi HR reset (VD: đổi diện mạo, đeo kính khác) |
+
+Nguyên tắc:
+- **Mỗi lần chấm công** camera trước chụp ảnh → kiểm tra **liveness** → so khớp 1:1 với `embedding` đã đăng ký; chạy **song song** với kiểm tra thiết bị / mạng / GPS / ca.
+- Không khớp hoặc không đạt liveness → **chặn** (không có đường vòng "HR xác minh sau").
+- **Chỉ lưu vector đặc trưng**, không lưu ảnh thô. Ảnh chụp lúc chấm công chỉ tồn tại tạm để đối chiếu; offline thì lưu tạm trên máy đến khi đồng bộ xong rồi xoá.
+- Nhân viên chưa có hồ sơ → **chưa chấm công được**; bấm "Đăng ký khuôn mặt" (3 góc + liveness) trong mạng công ty.
+- HR **reset hồ sơ** khi nhận diện sai kéo dài (đổi diện mạo, phẫu thuật, kính…) kèm lý do + audit log.
 
 ### 2.1. Vòng đời thiết bị — đăng ký / duyệt / thay thế / thu hồi
 
@@ -645,11 +669,14 @@ HR đã quyết định: *"Em nghĩ nên dùng tài khoản google của công t
 
 | Quy tắc | Nội dung |
 |---|---|
-| Cách đăng nhập | Bằng **tài khoản cá nhân (Google)** hoặc **tài khoản công ty** (email + mật khẩu) |
+| Cách đăng nhập | **Tài khoản Google của công ty** (@act.vn) — 1 nút "Đăng nhập bằng Google công ty" trên trang đăng nhập |
+| Tên miền | Chỉ chấp nhận email thuộc tên miền công ty; tài khoản Google ngoài tên miền bị **từ chối kèm thông báo rõ** |
+| Xác định vai trò | **Tự động** từ tài khoản (`User.role` + `UserScope`) — **không có bước/màn hình chọn vai trò** ở bất kỳ luồng đăng nhập nào |
+| Sau đăng nhập | Vào thẳng màn hình **"Cần làm"** (todo inbox) của vai trò được phân |
 | Giới hạn thử | Tối đa **5 lần thử trong 10 phút / IP** — quá là chặn tạm thời |
-| Khớp tài khoản | Khi đăng nhập bằng Google, tài khoản được khớp theo địa chỉ email công ty |
+| Khớp tài khoản | Tài khoản được khớp theo địa chỉ email công ty; `google_sub` lưu liên kết Google SSO |
 | Phiên đăng nhập | Phiên ngắn hạn (15 phút) + phiên làm mới dài hạn (7 ngày); đăng xuất thu hồi được |
-| Tài khoản demo | Có sẵn tài khoản demo cho **4 vai trò** (mỗi vai trò 1 tài khoản + 1 nhân viên thường), hiển thị nút "Đăng nhập nhanh" trên trang login để judge không mất thời gian |
+| Tài khoản demo | Chỉ dùng cho buổi demo (email + mật khẩu fallback) — **vai trò vẫn tự lấy từ tài khoản**, không có màn hình chọn vai trò |
 
 > **Lưu ý bảo mật:** phiên làm mới được **thu hồi được** (đăng xuất hoặc đổi mật khẩu) và
 > **chỉ lưu dạng băm** trong hệ thống — không lưu bản thô → dump dữ liệu không lộ phiên dùng được.
@@ -678,12 +705,12 @@ Thông báo & nhắc việc **đẩy tới người dùng ngay (realtime)** — 
 
 ## 5. Acceptance criteria cho Core
 
-- [ ] Đăng nhập được bằng Google (demo) và user/pass (fallback)
+- [ ] Đăng nhập bằng **Google công ty** → vào thẳng "Cần làm" của vai trò được phân; **không có bước chọn vai trò**
 - [ ] Menu hiển thị đúng theo 4 vai trò, URL không thuộc vai trò trả 403
 - [ ] Manager chỉ thấy dữ liệu cấp dưới trực tiếp; HR thấy toàn công ty; HR giới hạn theo chi nhánh không thấy chi nhánh khác
 - [ ] **Lịch nhóm**: HR xem toàn công ty · Manager xem cấp dưới trực tiếp (`manager_id`) · Team lead xem nhóm mình phụ trách (`Team.lead_id`) · Member xem team của mình (`TeamMember`) — **không** thấy team khác
 - [ ] **Thiết bị**: mặc định **2 thiết bị**; thiết bị thứ 3 phải gửi yêu cầu kèm lý do → HR duyệt
-- [ ] Approval flow 2 bước (manager → HR) chạy được
+- [ ] Approval flow chạy đúng: **nghỉ phép = 1 bước (quản lý)**; đi muộn / bổ sung / WFH của CA, Mobile = 2 bước (quản lý/trưởng nhóm → HR)
 - [ ] Task quá SLA sinh notification
 - [ ] Mọi thao tác duyệt/từ chối/sửa điểm đều có bản ghi audit log
 - [ ] Notification đẩy tức thời lên badge (không cần refresh)

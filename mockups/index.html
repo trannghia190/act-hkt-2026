@@ -241,6 +241,7 @@ tbody tr:hover{background:var(--surface-2)}
 .ts-grid tbody tr:hover td:nth-child(2){background:var(--surface-2)}
 .ts-grid tbody tr td:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
 .ts-grid tbody tr:hover td:first-child{background:var(--surface-2)}
+.ts-grid td.dc.edited{background:var(--danger-soft);box-shadow:inset 0 0 0 1.5px #f0b3ab;color:var(--danger);font-weight:650}
 
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px}
 .kpi .k{font-size:11.5px;color:var(--muted);margin-bottom:5px}
@@ -281,6 +282,22 @@ tbody tr:hover{background:var(--surface-2)}
 .heat i.wfh{background:#b6d3ea} .heat i.leave{background:#d9cdea} .heat i.none{background:transparent;
   border:1px dashed var(--line)}
 .heat i.sel{outline:2px solid var(--accent);outline-offset:1px}
+
+/* Lịch tháng dạng ô vuông — dùng cho "Bảng công của tôi" */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .h{font-size:10.5px;color:var(--muted);font-weight:650;text-align:center;padding-bottom:2px}
+.cal .d{border:1px solid var(--line);border-radius:9px;min-height:58px;padding:6px 7px;
+  display:flex;flex-direction:column;gap:2px;font-size:11px;line-height:1.25;background:var(--surface)}
+.cal .d b{font-size:11px;color:var(--muted);font-weight:650}
+.cal .d span{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.cal .d small{font-size:9.5px;color:var(--warn)}
+.cal .d.out{background:var(--surface-2);border-style:dashed;opacity:.5}
+.cal .d.ok{background:#eaf6ee;border-color:#b9ddc6}
+.cal .d.late{background:#fdf3e3;border-color:#f0d9b0}
+.cal .d.wfh{background:#eef4fa;border-color:#b6d3ea}
+.cal .d.leave{background:#f3eff9;border-color:#d9cdea}
+.cal .d.today{outline:2px solid var(--accent);outline-offset:-1px;background:var(--accent-soft)}
+.cal .d.today b{color:var(--accent)}
 
 .overlay{position:absolute;inset:0;background:rgba(20,28,26,.42);display:grid;place-items:center;
   padding:20px;overflow:auto}
@@ -410,6 +427,15 @@ tbody tr:hover{background:var(--surface-2)}
   box-shadow:0 0 0 1px var(--accent-line),0 6px 18px rgba(23,96,77,.28)}
 .m-bigbtn.out{background:#fff;color:var(--danger);border-color:var(--danger-soft);box-shadow:0 0 0 1px #f0c3bd}
 .m-bigbtn.dis{background:var(--line-2);color:var(--muted);border-color:var(--line-2);box-shadow:none}
+.facecam{position:relative;overflow:hidden;background:linear-gradient(160deg,#2c3a35,#0e1513);
+  border:3px solid var(--ok);box-shadow:0 0 0 4px var(--ok-soft)}
+.facecam svg{position:absolute;inset:0;width:100%;height:100%}
+.facecam .fg{position:absolute;inset:9px;border:1.5px dashed rgba(255,255,255,.55);border-radius:50%}
+.facecam .ft{position:absolute;left:0;right:0;bottom:0;background:rgba(15,22,20,.75);color:#fff;
+  font-size:9px;padding:3px 0;text-align:center;font-weight:640}
+.facecam.bad{border-color:var(--danger);box-shadow:0 0 0 4px var(--danger-soft)}
+.facecam.bad .ft{background:rgba(120,25,18,.82)}
+.facecam.bad .fg{border-color:rgba(255,190,182,.6)}
 .m-shiftinfo{text-align:center;font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.6}
 .m-shiftinfo b{color:var(--ink-2);font-weight:600}
 
@@ -601,7 +627,7 @@ tbody tr:hover{background:var(--surface-2)}
       <tr><td><a class="id" href="#s24">C8</a></td><td>Review OKR dạng bảng so sánh cả nhóm</td><td>QL</td><td><span class="badge w">P1</span></td><td>90′ / 10 OKR</td><td class="num">25 phút</td><td><a href="#s24">S24</a></td></tr>
       <tr><td><a class="id" href="#s36">C9</a></td><td>Onboarding tour + mọi empty state có CTA</td><td>Tất cả</td><td><span class="badge n">P2</span></td><td>Màn hình trắng, không biết làm gì</td><td class="num">Có CTA</td><td><a href="#s36">S36</a></td></tr>
       <tr><td><a class="id" href="#s16">C10</a></td><td>Trình cấu hình quy định (versioning, rollback, confirm khi lưu)</td><td>HR</td><td><span class="badge d">P0</span></td><td>Gọi API / sửa DB</td><td class="num">30 giây</td><td><a href="#s16">S16, S17</a></td></tr>
-      <tr><td><a class="id" href="#s05m">C11</a></td><td>Chấm công tối ưu điện thoại (1 chạm, haptic, offline)</td><td>NV</td><td><span class="badge d">P0</span></td><td>~4 chạm + tìm menu</td><td class="num">1 chạm &lt; 4s</td><td><a href="#s05m">S05m</a></td></tr>
+      <tr><td><a class="id" href="#s05m">C11</a></td><td>Chấm công tối ưu điện thoại — web responsive (1 chạm, rung, offline)</td><td>NV</td><td><span class="badge d">P0</span></td><td>~4 chạm + tìm menu</td><td class="num">1 chạm &lt; 4s</td><td><a href="#s05m">S05m</a></td></tr>
       <tr><td><a class="id" href="#s04m">C12</a></td><td>Nhắc việc theo từng actor (17 sự kiện × 3 vai trò)</td><td>Tất cả</td><td><span class="badge d">P0</span></td><td>Thông báo chung chung</td><td class="num">Đúng người</td><td><a href="#s04m">S04m</a></td></tr>
       <tr><td><a class="id" href="#s30">C13</a></td><td>Loại nghỉ cấu hình được (3 tầng kế thừa, không sửa code)</td><td>HR</td><td><span class="badge d">P0</span></td><td>Sửa code + deploy</td><td class="num">1 form</td><td><a href="#s30">S30, S32</a></td></tr>
       <tr><td><a class="id" href="#s21">C14</a></td><td>Gợi ý kế thừa từ OKR quản lý (bấm 1 chạm để chép)</td><td>NV</td><td><span class="badge d">P0</span></td><td>Nghĩ lại mục tiêu đã có ở cấp trên</td><td class="num">1 chạm</td><td><a href="#s21">S21</a></td></tr>
@@ -621,13 +647,13 @@ tbody tr:hover{background:var(--surface-2)}
     </tr></thead>
     <tbody>
       <tr><td><a class="id" href="#s00">S00</a></td><td>Kiến trúc</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Cấu trúc điều hướng — 2 module tách biệt, 1 shell dùng chung</td></tr>
-      <tr><td><a class="id" href="#s01">S01</a></td><td>Nền tảng dùng chung</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Đăng nhập — nút vào nhanh theo vai trò</td></tr>
+      <tr><td><a class="id" href="#s01">S01</a></td><td>Nền tảng dùng chung</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Đăng nhập bằng Google công ty — vai trò tự xác định</td></tr>
       <tr><td><a class="id" href="#s02">S02</a></td><td>C1</td><td>Nhân viên &amp; Quản lý</td><td><span class="badge d">P0</span></td><td>Todo inbox — màn hình mặc định sau khi đăng nhập</td></tr>
       <tr><td><a class="id" href="#s03">S03</a></td><td>C3</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Command palette Ctrl+K — tìm mọi thứ trong 1 ô</td></tr>
       <tr><td><a class="id" href="#s04">S04</a></td><td>C2</td><td>Tất cả</td><td><span class="badge d">P0</span></td><td>Thông báo & nhắc việc — 3 kênh, có chống spam</td></tr>
       <tr><td><a class="id" href="#s04m">S04M</a></td><td>C2</td><td>Tất cả vai trò</td><td><span class="badge d">P0</span></td><td>Thông báo & nhắc việc — đúng người, đúng lúc, không spam</td></tr>
-      <tr><td><a class="id" href="#s05">S05</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Chấm công — một nút, bốn lớp chống gian lận</td></tr>
-      <tr><td><a class="id" href="#s05m">S05M</a></td><td>Bài toán 1</td><td>Nhân viên</td><td></td><td>Chấm công trên điện thoại — 1 chạm, dưới 4 giây</td></tr>
+      <tr><td><a class="id" href="#s05">S05</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Chấm công — một nút, năm lớp xác thực (gồm khuôn mặt)</td></tr>
+      <tr><td><a class="id" href="#s05m">S05M</a></td><td>Bài toán 1</td><td>Nhân viên</td><td></td><td>Chấm công trên điện thoại — 1 chạm + khuôn mặt, dưới 4 giây</td></tr>
       <tr><td><a class="id" href="#s06">S06</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Lịch công tháng — nhìn 1 màn hình là biết cả tháng</td></tr>
       <tr><td><a class="id" href="#s07">S07</a></td><td>C-cố</td><td>Nhân viên</td><td></td><td>Tạo đơn đi muộn — điền sẵn từ log chấm công thật</td></tr>
       <tr><td><a class="id" href="#s08">S08</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Đơn của tôi — lịch sử + trạng thái rõ ràng</td></tr>
@@ -662,7 +688,7 @@ tbody tr:hover{background:var(--surface-2)}
       <tr><td><a class="id" href="#s41">S41</a></td><td>Nền tảng dùng chung</td><td>HR</td><td><span class="badge d">P0</span></td><td>Cây phân tầng quản lý — nhóm lồng nhau, số tầng tự do</td></tr>
       <tr><td><a class="id" href="#s42">S42</a></td><td>Bài toán 2</td><td>Quản lý</td><td><span class="badge d">P0</span></td><td>Duyệt OKR đầu năm — 2 nhóm, duyệt hoặc trả lại</td></tr>
       <tr><td><a class="id" href="#s43">S43</a></td><td>Bài toán 2</td><td>Quản lý</td><td><span class="badge d">P0</span></td><td>Review giữa năm — nhận xét và điều chỉnh mục tiêu</td></tr>
-      <tr><td><a class="id" href="#s44">S44</a></td><td>Bài toàn 2</td><td>HR</td><td><span class="badge d">P0</span></td><td>Quản lý chu kỳ OKR — timeline 5 phase, thang điểm, xếp loại</td></tr>
+      <tr><td><a class="id" href="#s44">S44</a></td><td>Bài toàn 2</td><td>HR</td><td><span class="badge d">P0</span></td><td>Quản lý chu kỳ OKR — timeline 5 phase, thang điểm</td></tr>
       <tr><td><a class="id" href="#s45">S45</a></td><td>Bài toán 1</td><td>HR</td><td><span class="badge d">P0</span></td><td>Danh sách khiếu nại — xử lý nhanh ngay trên bảng</td></tr>
       <tr><td><a class="id" href="#s46">S46</a></td><td>Bài toán 1</td><td>HR</td><td><span class="badge d">P0</span></td><td>Bảng phép của tất cả mọi người — nhìn 1 lần biết ai còn bao nhiêu</td></tr>
     </tbody>
@@ -759,25 +785,27 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">01</div>
     <div>
       <div class="eyebrow">Nền tảng dùng chung · Tất cả vai trò · P0</div>
-      <h2>Đăng nhập — nút vào nhanh theo vai trò</h2>
-      <p class="desc">HR đã chốt dùng tài khoản Google của công ty. Vẫn giữ đăng nhập user/password làm fallback, và có <b>4 nút đăng nhập nhanh</b> để judge không mất thời gian tìm tài khoản khi demo.</p>
+      <h2>Đăng nhập bằng tài khoản Google công ty</h2>
+      <p class="desc">Một nút duy nhất: <b>Đăng nhập bằng Google công ty</b>. Sau khi xác thực, hệ thống tự đọc vai trò đã được phân của tài khoản và đưa thẳng vào màn hình <b>"Cần làm"</b> — <b>không có bước chọn vai trò</b>.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag">P0</span>Google OAuth (PKCE) — tự liên kết theo email @công ty</li>
-        <li><span class="tag">P0</span>User / password (bcrypt) làm fallback</li>
-        <li><span class="tag">P0</span>4 nút đăng nhập nhanh — 1 click vào đúng vai trò</li>
-        <li>Rate limit 5 lần / 10 phút / IP</li>
-        <li>JWT access 15′ + refresh 7 ngày (httpOnly cookie)</li>
+        <li><span class="tag">P0</span>Google OAuth (PKCE) — chỉ chấp nhận email thuộc tên miền công ty (@act.vn)</li>
+        <li><span class="tag">P0</span><b>Vai trò tự xác định</b> từ tài khoản (role + phạm vi xem) — không hiển thị màn hình chọn vai trò</li>
+        <li><span class="tag">P0</span>Đăng nhập xong → vào thẳng "Cần làm" của vai trò được phân</li>
+        <li>Email + mật khẩu (bcrypt) chỉ là fallback cho buổi demo — role vẫn lấy từ tài khoản</li>
+        <li>Rate limit 5 lần / 10 phút / IP · JWT access 15′ + refresh 7 ngày (httpOnly cookie)</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Bấm 1 nút đăng nhập nhanh → vào thẳng màn hình mặc định của vai trò</li>
+        <li>Bấm "Đăng nhập bằng Google công ty" → vào thẳng "Cần làm" của vai trò được phân</li>
+        <li><b>Không có bước/màn hình chọn vai trò</b> ở bất kỳ luồng đăng nhập nào</li>
+        <li>Google account ngoài tên miền công ty → từ chối kèm thông báo rõ</li>
         <li>Menu hiển thị đúng theo 4 vai trò (employee · manager · hr · admin)</li>
         <li>Gọi URL ngoài phạm vi quyền → trả 403, không phải 404</li>
         <li>Đăng nhập sai 5 lần → khoá 10 phút</li>
@@ -805,33 +833,29 @@ tbody tr:hover{background:var(--surface-2)}
         <div style="font-size:11px;color:#61756f">© 2026 ACT Hackathon</div>
       </div>
       <div style="flex:1;display:grid;place-items:center;padding:34px;background:var(--canvas)">
-        <div style="width:100%;max-width:320px">
+        <div style="width:100%;max-width:330px">
           <h3 style="font-size:18px;margin-bottom:5px">Đăng nhập</h3>
-          <div style="font-size:12.5px;color:var(--muted);margin-bottom:18px">Dùng tài khoản công ty để tiếp tục</div>
-          <button class="btn s wide" style="margin-bottom:16px;padding:9px">
-            <svg width="15" height="15" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.51 6.16-4.51z"/></svg>
-            Tiếp tục với Google</button>
-          <div style="display:flex;align-items:center;gap:11px;margin-bottom:16px">
-            <div style="flex:1;height:1px;background:var(--line)"></div>
-            <span style="font-size:11px;color:var(--muted)">hoặc đăng nhập nhanh để xem demo</span>
-            <div style="flex:1;height:1px;background:var(--line)"></div>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Dùng tài khoản Google do công ty cấp để tiếp tục</div>
+          <button class="btn p wide" style="padding:10px;gap:8px">
+            <svg width="15" height="15" viewBox="0 0 24 24" style="background:#fff;border-radius:50%;padding:1.5px"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.51 6.16-4.51z"/></svg>
+            Đăng nhập bằng Google công ty</button>
+          <div style="border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-top:14px;background:var(--surface)">
+            <div style="font-size:11.5px;font-weight:640">Vai trò tự xác định từ tài khoản</div>
+            <div style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:4px">
+              Hệ thống đọc phân quyền của tài khoản và đưa bạn thẳng vào màn hình
+              <b>“Cần làm”</b> của vai trò đó. Không có bước chọn vai trò.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px">
+              <span class="chip" style="justify-content:center">👤 Nhân viên</span>
+              <span class="chip" style="justify-content:center">👔 Quản lý</span>
+              <span class="chip" style="justify-content:center">🏢 HR</span>
+              <span class="chip" style="justify-content:center">⚙️ Admin</span>
+            </div>
           </div>
-          <div class="grid2" style="gap:9px">
-            <button class="btn s" style="flex-direction:column;gap:3px;padding:11px 8px;align-items:flex-start">
-              <span style="font-size:11.5px;font-weight:620">👤 Nhân viên</span>
-              <span style="font-size:10.5px;color:var(--muted);font-weight:400">employee@act.vn</span></button>
-            <button class="btn s" style="flex-direction:column;gap:3px;padding:11px 8px;align-items:flex-start">
-              <span style="font-size:11.5px;font-weight:620">👔 Quản lý</span>
-              <span style="font-size:10.5px;color:var(--muted);font-weight:400">manager@act.vn</span></button>
-            <button class="btn s" style="flex-direction:column;gap:3px;padding:11px 8px;align-items:flex-start">
-              <span style="font-size:11.5px;font-weight:620">🏢 HR</span>
-              <span style="font-size:10.5px;color:var(--muted);font-weight:400">hr@act.vn</span></button>
-            <button class="btn s" style="flex-direction:column;gap:3px;padding:11px 8px;align-items:flex-start">
-              <span style="font-size:11.5px;font-weight:620">⚙️ Admin</span>
-              <span style="font-size:10.5px;color:var(--muted);font-weight:400">admin@act.vn</span></button>
-          </div>
-          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px">
-            Mật khẩu demo chung: <code>demo@123</code></div>
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:12px">
+            Tài khoản ngoài @act.vn sẽ bị từ chối</div>
+          <div style="text-align:center;font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.6">
+            <b>Chỉ dùng cho buổi demo:</b> nhanvien@act.vn · quanly@act.vn · hr@act.vn · admin@act.vn
+            — mật khẩu <code>demo@123</code></div>
         </div>
       </div>
     </div>
@@ -865,7 +889,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Mở app (vai trò nhân viên) → vào thẳng trang này, không phải dashboard rỗng</li>
+        <li>Mở web (vai trò nhân viên) → vào thẳng trang này, không phải dashboard rỗng</li>
         <li>Mọi việc đều có nút hành động 1 chạm, bấm ra đúng màn hình đích</li>
         <li>Việc quá hạn luôn nằm trên cùng, phân biệt màu rõ</li>
         <li>Giải quyết xong việc → biến mất khỏi inbox</li>
@@ -1023,7 +1047,7 @@ tbody tr:hover{background:var(--surface-2)}
         <div class="palette-item on">
           <div class="k">📖</div>
           <div style="flex:1"><div>Đi muộn / về sớm</div>
-            <div class="sub">2 lần/tháng · tối đa 60 phút · gửi trước 08:00 · hiệu lực 01/10/2026</div></div>
+            <div class="sub">2 lần/tháng · tối đa 60 phút · nộp trong 3 ngày · hiệu lực 01/10/2026</div></div>
           <span class="badge a">Quy định</span>
         </div>
         <div class="palette-item">
@@ -1064,14 +1088,14 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">C2 · Tất cả · P0</div>
       <h2>Thông báo &amp; nhắc việc — 3 kênh, có chống spam</h2>
-      <p class="desc">Todo inbox chỉ hữu ích khi người dùng mở app. Nhắc việc phải tới đúng lúc — nhưng nhắc nhiều quá thì bỏ qua, nên có chính sách chống spam rõ ràng.</p>
+      <p class="desc">Todo inbox chỉ hữu ích khi người dùng mở web. Nhắc việc phải tới đúng lúc — nhưng nhắc nhiều quá thì bỏ qua, nên có chính sách chống spam rõ ràng.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span><b>Push trong app</b> — ngay khi có việc mới</li>
+        <li><span class="tag p0">P0</span><b>Thông báo đẩy trình duyệt</b> (Web Push) — ngay khi có việc mới</li>
         <li><span class="tag p0">P0</span><b>Email digest</b> — 1 lần/ngày lúc 08:00, gom hết việc chưa xong</li>
         <li><span class="tag p0">P0</span><b>Badge đếm số</b> trên menu, luôn hiện</li>
         <li><span class="tag p1">P1</span>Escalate: việc quá hạn 3 ngày → báo thêm cho quản lý</li>
@@ -1090,7 +1114,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Acceptance criteria</h4>
       <ul>
         <li>Đúng việc đúng người — ma trận 17 sự kiện × 3 vai trò, không ai nhận nhầm thông báo của người khác</li>
-        <li>3 kênh hoạt động độc lập: trong app · email · push</li>
+        <li>3 kênh hoạt động độc lập: trong web · email · thông báo đẩy trình duyệt</li>
         <li>Nhân viên tắt 1 loại thông báo → <b>loại đó không còn gửi</b>, nhưng việc tương ứng vẫn còn ở trang "Cần làm"</li>
         <li>Giờ yên lặng 21:00–07:00 → không có push nào gửi trong khung giờ đó; sang khoảng 8h gộp lại gửi 1 lần</li>
         <li>Cùng 1 việc trong 12h chỉ nhắc 1 lần — không nhắc lại dù chưa xử lý</li>
@@ -1168,17 +1192,17 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">C2 · Tất cả vai trò · P0</div>
       <h2>Thông báo &amp; nhắc việc — đúng người, đúng lúc, không spam</h2>
-      <p class="desc">Todo inbox chỉ hữu ích khi người dùng mở app. Phần nhắc việc mới là thứ <b>kéo họ quay lại</b> — nên nó phải đúng người, đúng lúc, và không spam. Dưới đây là ma trận 17 sự kiện × 3 vai trò, và cách gom nhắc cho quản lý thay vì bắn 12 notification lẻ.</p>
+      <p class="desc">Todo inbox chỉ hữu ích khi người dùng mở web. Phần nhắc việc mới là thứ <b>kéo họ quay lại</b> — nên nó phải đúng người, đúng lúc, và không spam. Dưới đây là ma trận 17 sự kiện × 3 vai trò, và cách gom nhắc cho quản lý thay vì bắn 12 notification lẻ.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>3 kênh</h4>
       <ul>
-        <li><span class="tag p0">P0</span><b>Push trong app</b> — ngay khi có việc phát sinh (thông báo đẩy của trình duyệt)</li>
+        <li><span class="tag p0">P0</span><b>Thông báo đẩy trình duyệt</b> (Web Push) — ngay khi có việc phát sinh</li>
         <li><span class="tag p0">P0</span><b>Email digest</b> — 1 lần/ngày lúc 08:00, gom mọi việc chưa xong</li>
         <li><span class="tag p0">P0</span><b>Badge đếm số</b> trên menu — luôn hiện</li>
-        <li><span class="tag p1">P1</span>Fallback khi chưa cài PWA → vẫn có email + badge, không mất thông tin</li>
+        <li><span class="tag p1">P1</span>Fallback khi chưa bật quyền thông báo đẩy → vẫn có email + badge, không mất thông tin</li>
       </ul>
     </div>
     <div>
@@ -1468,8 +1492,8 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">05</div>
     <div>
       <div class="eyebrow">Bài toán 1 · Nhân viên · P0</div>
-      <h2>Chấm công — một nút, bốn lớp chống gian lận</h2>
-      <p class="desc">Mục 6.1: chấm công vào/ra qua app di động hoặc web, chỉ hợp lệ khi trong mạng nội bộ công ty, chỉ trên thiết bị đã đăng ký, kèm kiểm tra GPS. Giao diện <b>mobile-first</b> — nút lớn, phản hồi haptic, hiện rõ lý do bị chặn.</p>
+      <h2>Chấm công — một nút, năm lớp xác thực</h2>
+      <p class="desc">Mục 6.1: chấm công vào/ra qua <b>web responsive</b> — mở trên cả điện thoại và máy tính, <b>không có app riêng</b>. Chỉ hợp lệ khi trong mạng nội bộ công ty, trên thiết bị đã đăng ký, trong bán kính GPS, đúng ca — và <b>khuôn mặt khớp hồ sơ đã đăng ký</b> qua camera. Giao diện <b>mobile-first</b> — nút lớn, phản hồi rung, hiện rõ lý do bị chặn.</p>
     </div>
   </div>
   <div class="spec">
@@ -1477,21 +1501,24 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span>Check-in / check-out — 1 nút, không cần form</li>
-        <li><span class="tag p0">P0</span>Kiểm tra: thiết bị đã đăng ký · trong IP nội bộ · trong geofence · ngày WFH đã duyệt</li>
-        <li><span class="tag p0">P0</span>Hiện rõ <b>lý do bị chặn</b> + cách khắc phục</li>
-        <li><span class="tag p0">P0</span>Đăng ký thiết bị lần đầu (fingerprint) — <b>hạn mức 1 máy, không ngoại lệ</b></li>
-        <li><span class="tag p0">P0</span>PWA cài được, có haptic, fullscreen, offline shell</li>
+        <li><span class="tag p0">P0</span><b>Camera trước hiển thị ngay</b> + khung khuôn mặt; chụp ảnh và đối chiếu hồ sơ đã đăng ký (<b>≥ 85%</b> + liveness)</li>
+        <li><span class="tag p0">P0</span>5 kiểm tra chạy song song: thiết bị · IP nội bộ · geofence · ca · <b>khuôn mặt</b></li>
+        <li><span class="tag p0">P0</span>Hiện rõ <b>lý do bị chặn</b> + cách khắc phục (kể cả khuôn mặt không khớp)</li>
+        <li><span class="tag p0">P0</span>Đăng ký thiết bị lần đầu (fingerprint) — <b>mặc định 2 máy; máy thứ 3 phải xin HR duyệt</b></li>
+        <li><span class="tag p0">P0</span>Web responsive: cùng 1 URL cho điện thoại + desktop · rung (Vibration API) · offline bằng bộ nhớ trình duyệt</li>
         <li>Chế độ demo mô phỏng: vào mạng công ty / ra ngoài văn phòng / thiết bị lạ</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Chấm công thành công → hiện giờ + trạng thái ngay lập tức</li>
+        <li>Chấm công thành công → hiện giờ + trạng thái + <b>"Khuôn mặt khớp 98%"</b> ngay lập tức</li>
         <li>Ngoài mạng công ty (và không phải ngày WFH) → <b>CHẶN</b> + gợi ý nối Wi-Fi công ty</li>
         <li>Thiết bị chưa đăng ký → từ chối + hướng dẫn đăng ký</li>
         <li>Ngoài geofence → <b>CHẶN</b>, hiện khoảng cách thật + bản đồ + 2 lối ra (bán kính cấu hình được)</li>
-        <li>Ngày WFH đã duyệt → chấm công ngoài mạng vẫn OK, bảng công đánh dấu <code>wfh_days</code></li>
+        <li><b>Khuôn mặt không khớp hoặc không đạt liveness → CHẶN</b>, hiện điểm khớp + số lần thử còn lại; hết 3 lần → hướng dẫn liên hệ HR</li>
+        <li><b>Chưa đăng ký khuôn mặt → CHẶN</b>, hiện nút "Đăng ký khuôn mặt" (3 góc + liveness, trong mạng công ty)</li>
+        <li>Ngày WFH đã duyệt → chấm công ngoài mạng vẫn OK, bảng công đánh dấu <code>wfh_days</code>; <b>khuôn mặt vẫn phải khớp</b></li>
       </ul>
     </div>
   </div>
@@ -1510,7 +1537,12 @@ tbody tr:hover{background:var(--surface-2)}
           <div class="punch">
             <div class="clock">09:41</div>
             <div class="dt">Thứ Tư, 12/11/2026</div>
-            <div style="margin-top:14px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
+            <div class="facecam" style="width:144px;height:144px;margin:15px auto 0;border-radius:22px">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#8fa39c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#8fa39c"/></svg>
+              <div class="fg" style="border-radius:18px"></div>
+              <div class="ft">✓ Khuôn mặt khớp 98%</div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
               <span class="badge g">● Trong văn phòng</span>
               <span class="badge g">● Mạng công ty</span>
               <span class="badge g">● iPhone 15 · đã đăng ký</span>
@@ -1526,7 +1558,7 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
               <div class="timeline">
                 <div class="tl"><div class="tt">Vào lúc 08:47 <span class="badge w" style="margin-left:5px">Trễ 17′</span></div>
-                  <div class="tm">Thiết bị đã đăng ký · Trong văn phòng · Mạng công ty</div></div>
+                  <div class="tm">Thiết bị đã đăng ký · Trong văn phòng · Mạng công ty · Khuôn mặt 98%</div></div>
                 <div class="tl dim"><div class="tt" style="color:var(--muted)">Ra — chưa chấm</div>
                   <div class="tm">Có thể chấm từ 16:30</div></div>
               </div>
@@ -1584,6 +1616,43 @@ tbody tr:hover{background:var(--surface-2)}
       </div>
     </div>
   </div>
+
+  <div class="mock-label" style="margin-top:22px">Mockup — Trạng thái bị chặn (khuôn mặt không khớp)</div>
+  <div class="browser">
+    <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+      <div class="url">act-hr.vn/punch · khuôn mặt không khớp</div></div>
+    <div class="app" style="min-height:380px">
+      <div class="appmain">
+        <div class="body" style="max-width:560px;margin:0 auto">
+          <div class="alert d" style="margin-bottom:14px">
+            <span class="ic">⚠</span>
+            <div><b>Chưa thể chấm công — khuôn mặt không khớp hồ sơ.</b>
+              <div style="margin-top:5px;font-size:12px">Điểm khớp <b>62%</b> &lt; ngưỡng 85%. Đây là lần thử <b>2/3</b> — bạn còn 1 lần thử.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:18px;align-items:center">
+            <div class="facecam bad" style="width:150px;height:150px;border-radius:22px;flex:0 0 auto">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#9c8f8c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#9c8f8c"/></svg>
+              <div class="fg" style="border-radius:18px"></div>
+              <div class="ft">✕ Khớp 62%</div>
+            </div>
+            <div style="flex:1;font-size:12.5px;line-height:1.9">
+              <div><b style="color:var(--ok)">✓</b> Thiết bị đã đăng ký</div>
+              <div><b style="color:var(--ok)">✓</b> Trong mạng nội bộ công ty</div>
+              <div><b style="color:var(--ok)">✓</b> Trong bán kính văn phòng</div>
+              <div><b style="color:var(--danger)">✕</b> Khuôn mặt không khớp (62% &lt; 85%)</div>
+              <div style="color:var(--muted)">○ Ghi vào bảng công</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:9px;margin-top:16px">
+            <button class="btn p">Thử lại (còn 1 lần)</button>
+            <button class="btn s">Liên hệ HR đăng ký lại</button>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:10px">Hết 3 lần thử → khoá phiên chấm công. Không có đường vòng "HR xác minh sau" — HR chỉ reset hồ sơ khuôn mặt sau khi kiểm tra danh tính.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -1595,7 +1664,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">Bài toán 1 · Nhân viên · P0 — màn hình dùng nhiều nhất</div>
       <h2>Chấm công trên điện thoại — 1 chạm, dưới 4 giây</h2>
-      <p class="desc">Nhân viên chấm công <b>2 lần/ngày trên điện thoại</b>, thường là lúc đang đứng ở cửa văn phòng. Đây là thao tác lặp lại nhiều nhất — và thao tác mà người dùng ghét nhất nếu làm chậm. Màn hình chỉ có <b>2 thông tin + 1 nút</b>, không có form nào. Chi tiết: `docs/09-mobile-punch.md`.</p>
+      <p class="desc">Nhân viên chấm công <b>2 lần/ngày trên điện thoại</b>, thường là lúc đang đứng ở cửa văn phòng — mở bằng <b>trình duyệt điện thoại (web responsive)</b>, <b>không cần cài app riêng</b>. Camera trước mở ngay và <b>đối chiếu khuôn mặt với hồ sơ đã đăng ký</b> song song với thiết bị/mạng/GPS/ca. Màn hình chỉ có <b>camera + 2 thông tin + 1 nút</b>, không có form nào. Chi tiết: <code>docs/07-business-mobile-punch.md</code>.</p>
     </div>
   </div>
   <div class="spec">
@@ -1603,21 +1672,26 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span>Nút tròn Ø 112px ở giữa màn hình — vùng chạm tự nhiên khi cầm 1 tay</li>
-        <li><span class="tag p0">P0</span>4 bước xác thực hiện <b>song song</b>, hiển thị ngay khi bắt đầu</li>
-        <li><span class="tag p0">P0</span><b>Haptic feedback</b> — bấm / thành công / lỗi có rung khác nhau</li>
+        <li><span class="tag p0">P0</span><b>Camera trước hiển thị ngay</b> + khung oval; chụp ảnh và khớp hồ sơ (<b>≥ 85%</b> + liveness)</li>
+        <li><span class="tag p0">P0</span><b>5 bước xác thực chạy song song</b> (thiết bị · mạng · vị trí · ca · khuôn mặt), hiển thị ngay khi bắt đầu</li>
+        <li><span class="tag p0">P0</span>Khuôn mặt không khớp / chưa đăng ký → <b>CHẶN</b> + hướng dẫn thử lại hoặc đăng ký</li>
+        <li><span class="tag p0">P0</span><b>Phản hồi rung</b> (Vibration API) — bấm / thành công / lỗi có rung khác nhau</li>
         <li><span class="tag p0">P0</span><b>Offline</b> — mất mạng vẫn vào được văn phòng, đồng bộ sau (≤ 24h)</li>
-        <li><span class="tag p0">P0</span>GPS chậm / kém chính xác → vẫn chấm công được, đánh dấu để HR xác minh</li>
+        <li><span class="tag p0">P0</span>GPS kém chính xác (&gt; 100m) hoặc không lấy được → <b>CHẶN</b> + hướng dẫn đứng gần cửa sổ rồi thử lại</li>
         <li><span class="tag p0">P0</span>Ngoài bán kính → <b>CHẶN</b> + hiện <b>khoảng cách thật</b> + bản đồ + 2 lối ra (WFH / Thử lại)</li>
         <li><span class="tag p0">P0</span>Ngoài mạng công ty → <b>CHẶN</b> (trừ ngày WFH đã duyệt)</li>
         <li><span class="tag p0">P0</span>Mất mạng hoàn toàn → <b>cho phép offline</b>, hạn đồng bộ cấu hình được (mặc định 24h)</li>
-        <li><span class="tag p0">P0</span>PWA cài được · mở ra thẳng màn hình này · safe-area</li>
+        <li><span class="tag p0">P0</span>Mở bằng trình duyệt điện thoại (không cần cài app) · vào thẳng màn hình này · safe-area</li>
         <li><span class="tag p1">P1</span>Trạng thái ngày: đã vào / chưa ra · ca · giờ nghỉ</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Bấm 1 lần → thành công trong <b>&lt; 4 giây</b>, có haptic</li>
+        <li><b>Không cần cài app</b>: mở URL bằng trình duyệt điện thoại → vào thẳng màn hình chấm công</li>
+        <li><b>Camera trước hiển thị kèm khung khuôn mặt</b>; khớp ≥ 85% + liveness → hiện "✓ Khớp 98%"</li>
+        <li>Khuôn mặt không khớp / không đạt liveness / chưa đăng ký → <b>bị chặn</b> kèm hướng dẫn</li>
+        <li>Bấm 1 lần → thành công trong <b>&lt; 4 giây</b>, có phản hồi rung</li>
         <li>Mỗi bước kiểm tra hiện <b>ngay khi bắt đầu</b> (không đợi xong mới hiện)</li>
         <li>Không có form, không có nút "Xác nhận" thêm, không có menu trên màn hình này</li>
         <li>Mất mạng → vẫn chấm công được, có cờ <code>synced_offline</code> cho HR</li>
@@ -1628,7 +1702,7 @@ tbody tr:hover{background:var(--surface-2)}
     </div>
   </div>
 
-  <div class="mock-label">Mockup — 4 trạng thái trên điện thoại</div>
+  <div class="mock-label">Mockup — 5 trạng thái trên điện thoại</div>
   <div class="phone-row">
 
     <!-- 1. Chưa chấm công -->
@@ -1640,6 +1714,10 @@ tbody tr:hover{background:var(--surface-2)}
           <div class="m-punch">
             <div class="clock">09:41</div>
             <div class="dt">Thứ Tư, 12/11/2026</div>
+            <div class="facecam" style="width:104px;height:104px;margin:11px auto 0;border-radius:50%">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#8fa39c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#8fa39c"/></svg>
+              <div class="ft">✓ Khớp 98%</div>
+            </div>
             <div class="m-stats">
               <span class="ok">● Trong văn phòng</span>
               <span class="ok">● Mạng công ty</span>
@@ -1656,7 +1734,7 @@ tbody tr:hover{background:var(--surface-2)}
           <div class="ti"><span class="ii">☑</span>Cần làm<span class="bd">3</span></div>
         </div>
       </div></div>
-      <div class="phone-cap"><b>1. Chưa chấm công</b>Nút lớn ở giữa · 3 trạng thái xác thực luôn hiện</div>
+      <div class="phone-cap"><b>1. Chưa chấm công</b>Camera + khuôn mặt khớp 98% · nút lớn ở giữa</div>
     </div>
 
     <!-- 2. Đang xác thực -->
@@ -1675,6 +1753,7 @@ tbody tr:hover{background:var(--surface-2)}
               <div class="m-step"><div class="s">✓</div><span>Thiết bị đã đăng ký</span></div>
               <div class="m-step"><div class="s">✓</div><span>Trong mạng nội bộ công ty</span></div>
               <div class="m-step"><div class="s wait">◠</div><span style="color:var(--muted)">Đang xác thực vị trí…</span></div>
+              <div class="m-step"><div class="s wait">◠</div><span style="color:var(--muted)">Đang nhận diện khuôn mặt…</span></div>
               <div class="m-step"><div class="s" style="background:var(--line-2);color:var(--muted)">○</div>
                 <span style="color:var(--muted)">Ghi vào bảng công</span></div>
             </div>
@@ -1698,19 +1777,20 @@ tbody tr:hover{background:var(--surface-2)}
             <div class="m-stats"><span class="ok">● Thiết bị hợp lệ</span></div>
             <div class="m-stats"><span class="ok">● Mạng công ty</span></div>
             <div class="m-stats"><span class="ok">● Vị trí trong văn phòng</span></div>
+            <div class="m-stats"><span class="ok">● Khuôn mặt khớp 98%</span></div>
           </div>
           <div class="m-card">
             <h4>Hôm nay</h4>
             <div class="m-tl">
               <div class="m-ti"><div class="tt">✓ Vào lúc 09:41</div>
-                <div class="tm">Trong văn phòng · Mạng công ty</div></div>
+                <div class="tm">Trong văn phòng · Mạng công ty · Khuôn mặt 98%</div></div>
               <div class="m-ti dim"><div class="tt" style="color:var(--muted)">○ Ra — chưa chấm</div>
                 <div class="tm">Có thể chấm từ 16:30</div></div>
             </div>
           </div>
         </div>
       </div></div>
-      <div class="phone-cap"><b>3. Thành công</b>Haptic 2 nhịp ngắn + màn hình xanh xác nhận</div>
+      <div class="phone-cap"><b>3. Thành công</b>Rung 2 nhịp ngắn + màn hình xanh xác nhận</div>
     </div>
 
     <!-- 4. Bị chặn -->
@@ -1744,6 +1824,39 @@ tbody tr:hover{background:var(--surface-2)}
         </div>
       </div></div>
       <div class="phone-cap"><b>4. Bị chặn</b>Hiện khoảng cách thật + bản đồ + 2 lựa chọn</div>
+    </div>
+
+    <!-- 5. Khuôn mặt không khớp -->
+    <div>
+      <div class="phone"><div class="pscreen">
+        <div class="statusbar"><span>9:41</span><span class="r">●●●● ᴡɪꜰɪ</span></div>
+        <div class="appbar"><div class="t">Chấm công</div><div class="av">MH</div></div>
+        <div class="pbody">
+          <div class="m-alert d" style="margin-top:10px">
+            <span class="ic">⚠</span>
+            <div><b>Khuôn mặt không khớp hồ sơ.</b>
+              <div style="margin-top:4px">Điểm khớp <b>62%</b> &lt; ngưỡng 85% · lần thử <b>2/3</b>.</div>
+            </div>
+          </div>
+          <div class="facecam bad" style="width:112px;height:112px;margin:14px auto 0;border-radius:50%">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#9c8f8c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#9c8f8c"/></svg>
+            <div class="ft">✕ Khớp 62%</div>
+          </div>
+          <div class="m-card" style="margin-top:12px">
+            <h4>Đã kiểm tra</h4>
+            <div style="font-size:11.5px;line-height:1.9">
+              <div><b style="color:var(--ok)">✓</b> Thiết bị · mạng · vị trí</div>
+              <div><b style="color:var(--danger)">✕</b> Khuôn mặt không khớp (62% &lt; 85%)</div>
+              <div style="color:var(--muted)">○ Chưa ghi công</div>
+            </div>
+          </div>
+          <div style="margin-top:13px">
+            <button class="m-btn p">Thử lại (còn 1 lần)</button>
+            <button class="m-btn s" style="margin-top:7px">Liên hệ HR đăng ký lại</button>
+          </div>
+        </div>
+      </div></div>
+      <div class="phone-cap"><b>5. Khuôn mặt không khớp</b>Chặn + điểm khớp + số lần thử · hết 3 lần khoá phiên</div>
     </div>
   </div>
 
@@ -1804,7 +1917,7 @@ tbody tr:hover{background:var(--surface-2)}
 
   <div class="alert a" style="margin-top:22px">
     <span class="ic">◈</span>
-    <div><b>Đo được: 1 chạm, dưới 4 giây.</b> Mở app (1.0s) → bấm nút (0.3s) → 4 bước xác thực song song (1.5–2.5s) → xanh + haptic.
+    <div><b>Đo được: 1 chạm, dưới 4 giây.</b> Mở web (1.0s) → bấm nút (0.3s) → 5 bước xác thực song song, gồm khuôn mặt (1.8–2.8s) → xanh + rung.
       Đây là tính năng nhân viên dùng nhiều nhất và chạm vào nhiều nhất — nên nó phải là thứ nhanh nhất trong hệ thống, không phải thứ đầy đủ nhất.</div>
   </div>
 </section>
@@ -2234,7 +2347,9 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span>Card từng loại nghỉ với số dư còn lại + progress</li>
+        <li><span class="tag p0">P0</span>Thẻ <b>Tổng phép còn lại</b> = phép năm + phép tồn — nhân viên không phải tự cộng</li>
         <li><span class="tag p0">P0</span>Hiện rõ <b>lịch sử cộng/trừ</b> (sổ cái phép append-only)</li>
+        <li><span class="tag p0">P0</span><b>Lọc lịch sử phép</b> theo loại phép (phép năm · tồn · chức vụ · thâm niên · ốm · bù) và theo năm</li>
         <li><span class="tag p0">P0</span>Cảnh báo phép tồn sắp hết hạn + mốc hạn</li>
         <li><span class="tag p0">P0</span>Hiện nguồn cộng: hàng tháng · <b>thâm niên</b> · chức vụ</li>
         <li><span class="tag p0">P0</span>Card <b>phép ốm</b> — số ngày đã nghỉ + yêu cầu giấy khám</li>
@@ -2253,6 +2368,8 @@ tbody tr:hover{background:var(--surface-2)}
         <li>Mốc 01/04: toàn bộ phép năm cũ dùng được → 01/07: còn 5 ngày → từ 01/07 tồn = 0</li>
         <li>Phép tồn bảo lưu thủ công không bị reset</li>
         <li>Mọi giao dịch đều truy vết được (ai cộng, khi nào, vì lý do gì)</li>
+        <li><b>Tổng phép còn lại</b> luôn = phép năm còn + phép tồn còn; số dư đổi thì tổng tự cập nhật</li>
+        <li>Lọc <b>"Phép năm"</b> → chỉ hiện các dòng phép năm, đúng thứ tự mới nhất trước</li>
       </ul>
     </div>
   </div>
@@ -2294,6 +2411,19 @@ tbody tr:hover{background:var(--surface-2)}
                 <div style="font-size:11.5px;color:var(--warn);margin-top:9px;line-height:1.5">
                   Dùng được toàn bộ đến <b>01/04/2026</b> · chỉ còn 5 ngày đến <b>01/07/2026</b><br>
                   Từ 01/07/2026 phép tồn 2025 = <b>0</b></div>
+              </div>
+            </div>
+            <div class="card" style="border-color:var(--accent-line);background:var(--accent-soft)">
+              <div class="card-b">
+                <div class="row-b"><span style="font-size:13px;font-weight:570">Tổng phép còn lại</span>
+                  <span class="badge a">Tự cộng</span></div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin:9px 0 7px">
+                  <span style="font-size:30px;font-weight:680;letter-spacing:-.02em;color:var(--accent)" class="tnum">13.5</span>
+                  <span style="font-size:13px;color:var(--muted)">ngày dùng được</span></div>
+                <div class="bar"><i style="width:79%"></i></div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:9px;line-height:1.5">
+                  <b>Phép năm 8.5</b> + <b>Phép tồn 5.0</b><br>
+                  Tự cộng — không phải tự tính. Phép chức vụ / thâm niên đã nằm trong phép năm.</div>
               </div>
             </div>
             <div class="card">
@@ -2347,6 +2477,19 @@ tbody tr:hover{background:var(--surface-2)}
           <div class="card">
             <div class="card-h"><h3>Lịch sử phép của tôi</h3><div class="spacer"></div>
               <span style="font-size:12px;color:var(--muted)">Sổ cái phép — mọi thay đổi đều là 1 dòng ghi thêm</span></div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;
+              padding:11px 16px;border-bottom:1px solid var(--line-2)">
+              <span style="font-size:11.5px;color:var(--muted);font-weight:600">Lọc:</span>
+              <span class="chip on">Tất cả</span>
+              <span class="chip">Phép năm</span>
+              <span class="chip">Phép tồn</span>
+              <span class="chip">Phép chức vụ</span>
+              <span class="chip">Thâm niên</span>
+              <span class="chip">Phép ốm</span>
+              <span class="chip">Nghỉ bù</span>
+              <div class="spacer"></div>
+              <span class="chip">Năm: 2026 ✕</span>
+            </div>
             <div class="card-b" style="padding:0">
               <table>
                 <thead><tr><th>Ngày</th><th>Loại</th><th>Thay đổi</th><th>Số dư sau</th><th>Lý do</th></tr></thead>
@@ -2518,7 +2661,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span>Chọn tháng — mặc định là tháng hiện tại</li>
         <li><span class="tag p0">P0</span>Đếm ngược hạn khiếu nại (2 ngày)</li>
         <li><span class="tag p0">P0</span>Nút "Khiếu nại" mở form chọn ô cần sửa + lý do</li>
-        <li><span class="tag p0">P0</span>Heatmap 30 ngày — nhìn 1 cái thấy ngay ngày nào có vấn đề</li>
+        <li><span class="tag p0">P0</span><b>Lịch tháng dạng ô vuông</b> — mỗi ngày 1 ô, xếp theo tuần (T2 → CN); nhìn 1 cái thấy ngay ngày nào có vấn đề</li>
         <li>Lịch sử 12 tháng — kỳ đã chốt xem được, không khiếu nại được</li>
         <li>Chỉ khiếu nại được <b>sau khi HR công bố</b> bảng công (ngày 11 hàng tháng) — trước đó xem số tạm tính nhưng khoá nút khiếu nại</li>
       </ul>
@@ -2527,7 +2670,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Acceptance criteria</h4>
       <ul>
         <li>Bảng công có đủ 11 cột, số liệu khớp với bảng điều khiển</li>
-        <li>Mở app → tự động hiện tháng hiện tại; đổi tháng bằng dropdown hoặc nút ‹ ›, URL đổi theo <code>?month=YYYY-MM</code></li>
+        <li>Mở web → tự động hiện tháng hiện tại; đổi tháng bằng dropdown hoặc nút ‹ ›, URL đổi theo <code>?month=YYYY-MM</code></li>
         <li>Chọn tháng đã chốt → dữ liệu hiển thị ở chế độ chỉ đọc, badge "Đã chốt", nút khiếu nại bị disable</li>
         <li>Chọn tháng chưa công bố → hiện số tạm tính, nút khiếu nại kèm lý do "HR chưa công bố bảng công" bị disable</li>
         <li>Trong 2 ngày → khiếu nại được; quá 2 ngày → nút bị disable + giải thích</li>
@@ -2599,10 +2742,52 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
             </div>
             <div class="card-b">
-              <div class="heat" style="grid-template-columns:repeat(30,1fr)">
-                <i class="none"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="late"></i><i class="ok"></i><i class="none"></i><i class="none"></i><i class="ok"></i><i class="late"></i><i class="leave"></i><i class="wfh"></i><i class="wfh"></i><i class="none"></i><i class="none"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="none"></i><i class="none"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="none"></i><i class="none"></i><i class="ok"></i>
+                            <div class="cal">
+                <div class="h">T2</div><div class="h">T3</div><div class="h">T4</div><div class="h">T5</div><div class="h">T6</div><div class="h">T7</div><div class="h">CN</div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"><b>1</b></div>
+                <div class="d ok"><b>2</b><span>1.00</span></div>
+                <div class="d ok"><b>3</b><span>1.00</span></div>
+                <div class="d ok"><b>4</b><span>1.00</span></div>
+                <div class="d late"><b>5</b><span>1.00</span><small>Trễ 22′</small></div>
+                <div class="d ok"><b>6</b><span>1.00</span></div>
+                <div class="d out"><b>7</b></div>
+                <div class="d out"><b>8</b></div>
+                <div class="d ok"><b>9</b><span>1.00</span></div>
+                <div class="d late"><b>10</b><span>1.00</span><small>Trễ 40′ · đã duyệt</small></div>
+                <div class="d leave"><b>11</b><span>AL</span></div>
+                <div class="d wfh today"><b>12</b><span>R</span></div>
+                <div class="d wfh"><b>13</b><span>R</span></div>
+                <div class="d out"><b>14</b></div>
+                <div class="d out"><b>15</b></div>
+                <div class="d ok"><b>16</b><span>1.00</span></div>
+                <div class="d ok"><b>17</b><span>1.00</span></div>
+                <div class="d ok"><b>18</b><span>1.00</span></div>
+                <div class="d ok"><b>19</b><span>1.00</span></div>
+                <div class="d ok"><b>20</b><span>1.00</span></div>
+                <div class="d out"><b>21</b></div>
+                <div class="d out"><b>22</b></div>
+                <div class="d ok"><b>23</b><span>1.00</span></div>
+                <div class="d ok"><b>24</b><span>1.00</span></div>
+                <div class="d ok"><b>25</b><span>1.00</span></div>
+                <div class="d ok"><b>26</b><span>1.00</span></div>
+                <div class="d ok"><b>27</b><span>1.00</span></div>
+                <div class="d out"><b>28</b></div>
+                <div class="d out"><b>29</b></div>
+                <div class="d ok"><b>30</b><span>1.00</span></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
+                <div class="d out"></div>
               </div>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:9px">01 → 30/11/2026 · 30 ngày, mỗi ô 1 ngày · ô rỗng = cuối tuần / ngày nghỉ · ô tím = phép · ô xanh = WFH</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:9px">Lịch tháng 11/2026 · mỗi ngày 1 ô vuông · xếp theo tuần (T2 → CN) · ô tím = phép · ô xanh = WFH · ô viền đậm = hôm nay</div>
             </div>
           </div>
 
@@ -2666,11 +2851,11 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p1">P1</span><b>Chip điều kiện quyết định</b> ✅/❌ cạnh mỗi đơn (quota · hạn nộp · trùng ngày · cần HR duyệt)</li>
+        <li><span class="tag p1">P1</span><b>Chip điều kiện quyết định</b> ✅/❌ cạnh mỗi đơn (quota · hạn nộp · trùng ngày)</li>
         <li><span class="tag p1">P1</span><b>Duyệt hàng loạt</b> — tick nhiều đơn, duyệt 1 lần</li>
         <li><span class="tag p1">P1</span><b>Chip lý do</b> từ chối phổ biến — 1 chạm</li>
         <li><span class="tag p1">P1</span>Sắp xếp theo rủi ro: đơn có vấn đề rule nằm trên cùng</li>
-        <li><span class="tag p1">P1</span>Đơn cần HR duyệt thêm được tách riêng khi duyệt hàng loạt</li>
+        <li><span class="tag p1">P1</span>Đơn có thêm bước HR (đi muộn / bổ sung / WFH của CA, Mobile) được tách riêng khi duyệt hàng loạt</li>
         <li><span class="tag p0">P0</span>Từ chối bắt buộc có lý do · trả lại bắt buộc có góp ý</li>
       </ul>
     </div>
@@ -2704,7 +2889,6 @@ tbody tr:hover{background:var(--surface-2)}
             <div class="row">
               <span class="chip">Tất cả <b style="margin-left:3px">12</b></span>
               <span class="chip on">Cần tôi duyệt <b style="margin-left:3px">12</b></span>
-              <span class="chip">Cần HR duyệt <b style="margin-left:3px">3</b></span>
               <span class="chip">Quá hạn <b style="margin-left:3px">3</b></span>
             </div>
           </div>
@@ -2727,7 +2911,7 @@ tbody tr:hover{background:var(--surface-2)}
                     <div style="font-size:12.5px;color:var(--ink-2)">Phép năm · Lý do: Tang lễ gia đình · Ngày 16–20/11</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
                       <span class="badge g">✅ Trong số dư phép (8.5 ngày)</span>
-                      <span class="badge w">⚠ Nghỉ 5 ngày → cần HR duyệt thêm</span>
+                      <span class="badge i">Nghỉ 5 ngày · quản lý duyệt</span>
                       <span class="badge g">✅ Không trùng ngày đã nghỉ</span>
                     </div>
                   </div>
@@ -2799,7 +2983,7 @@ tbody tr:hover{background:var(--surface-2)}
         <div style="display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)">
           <span style="width:17px;height:17px;border-radius:4px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
           <b style="font-size:13px">Đã chọn 5 đơn</b>
-          <span style="font-size:12.5px;color:var(--muted)">4 đơn chỉ cần bạn duyệt · 1 đơn sẽ tự chuyển HR</span>
+          <span style="font-size:12.5px;color:var(--muted)">4 đơn nghỉ phép duyệt 1 lần là xong · 1 đơn WFH của nhóm Mobile chuyển thêm HR</span>
           <div class="spacer"></div>
           <button class="btn s sm">Bỏ chọn</button>
           <button class="btn p sm">Duyệt 5 đơn</button>
@@ -2817,7 +3001,7 @@ tbody tr:hover{background:var(--surface-2)}
           <div style="margin-top:11px;padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:12px;color:var(--muted)">
             <b style="color:var(--ink-2)">Sẽ làm gì với 5 đơn này:</b><br>
             • 4 đơn → thông báo cho nhân viên ngay, kết quả cập nhật vào bảng công tháng 11<br>
-            • 1 đơn nghỉ 5 ngày của phòng CA → <b>chỉ duyệt bước 1</b>, tự chuyển HR duyệt tiếp
+            • 1 đơn nghỉ 5 ngày của phòng CA → <b>duyệt 1 lần là xong</b> (nghỉ phép không chuyển HR)
           </div>
         </div>
       </div>
@@ -2841,7 +3025,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Timeline: gửi → duyệt / trả lại → (HR duyệt) → áp vào bảng công</li>
+        <li><span class="tag p0">P0</span>Timeline: gửi → duyệt / trả lại → áp vào bảng công</li>
         <li><span class="tag p0">P0</span>Hiện chip điều kiện quyết định đầy đủ</li>
         <li><span class="tag p0">P0</span>Ảnh hưởng tới bảng công (sẽ cộng bao nhiêu phút công)</li>
         <li><span class="tag p0">P0</span>Lịch sử đầy đủ + link tới bảng công bị tác động</li>
@@ -2887,8 +3071,8 @@ tbody tr:hover{background:var(--surface-2)}
                       <div style="font-size:14px;font-weight:620">5 ngày</div></div>
                     <div><div style="font-size:11px;color:var(--muted)">Còn trong số dư</div>
                       <div style="font-size:14px;font-weight:620">8.5 ngày ✓</div></div>
-                    <div><div style="font-size:11px;color:var(--muted)">Cần HR duyệt</div>
-                      <div style="font-size:14px;font-weight:620;color:var(--warn)">Có (≥3 ngày)</div></div>
+                    <div><div style="font-size:11px;color:var(--muted)">Bước duyệt</div>
+                      <div style="font-size:14px;font-weight:620;color:var(--ok)">1 — quản lý</div></div>
                   </div>
                   <div style="font-size:12.5px;color:var(--ink-2)"><b>Lý do:</b> Tang lễ gia đình — cả nhà về quê dự</div>
                 </div>
@@ -2902,16 +3086,14 @@ tbody tr:hover{background:var(--surface-2)}
                       <div class="tm">13/11/2026 09:14 · Chờ duyệt</div></div>
                     <div class="tl"><div class="tt">Bạn (quản lý) đang duyệt <span class="badge w">Bước hiện tại</span></div>
                       <div class="tm">Hạn xử lý: 14/11/2026 09:14</div></div>
-                    <div class="tl dim"><div class="tt" style="color:var(--muted)">HR duyệt thêm</div>
-                      <div class="tm">Bắt buộc — nghỉ từ 3 ngày trở lên</div></div>
                     <div class="tl dim"><div class="tt" style="color:var(--muted)">Áp vào bảng công 11/2026</div>
-                      <div class="tm">Tự động khi cả 2 bước xong</div></div>
+                      <div class="tm">Tự động ngay khi quản lý duyệt</div></div>
                   </div>
                 </div>
                 <div class="card-f">
                   <button class="btn s">Trả lại kèm góp ý</button>
                   <div class="spacer"></div>
-                  <button class="btn p">Duyệt &amp; chuyển HR</button>
+                  <button class="btn p">Duyệt</button>
                 </div>
               </div>
             </div>
@@ -2924,7 +3106,7 @@ tbody tr:hover{background:var(--surface-2)}
                     <div style="display:flex;gap:7px"><span class="badge g">✓</span><span>Trong số dư phép (8.5 ngày)</span></div>
                     <div style="display:flex;gap:7px"><span class="badge g">✓</span><span>Không trùng ngày đã nghỉ</span></div>
                     <div style="display:flex;gap:7px"><span class="badge g">✓</span><span>Không trùng ngày WFH đã duyệt</span></div>
-                    <div style="display:flex;gap:7px"><span class="badge w">!</span><span>Nghỉ ≥3 ngày → cần HR duyệt thêm</span></div>
+                    <div style="display:flex;gap:7px"><span class="badge g">✓</span><span>Nghỉ phép — chỉ cần quản lý duyệt</span></div>
                   </div>
                 </div>
               </div>
@@ -3081,21 +3263,19 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span><b>53 cột</b> (5 thông tin + <b>31 cột ngày</b> + 17 cột tổng hợp) theo mẫu <code>doc/Pine team_T10.2026_Timekeeping Report.xlsx</code> — <b>hiển thị công của từng ngày trong tháng</b></li>
         <li><span class="tag p0">P0</span>Ô ngày dùng <b>ký hiệu gốc</b> của công ty (1.00 · R · AL · S · R/0.50 · 0.50/R …) · click vào ô để sửa tại chỗ</li>
         <li><span class="tag p0">P0</span><b>17 cột tổng hợp tự tính</b> theo đúng công thức file gốc — sửa 1 ô ngày thì số tổng kết tự cập nhật</li>
-        <li><span class="tag p0">P0</span><b>Bắt buộc lý do</b> khi sửa cột nhạy cảm (công thực tế · đi muộn · phép · vi phạm)</li>
+        <li><span class="tag p0">P0</span>Click vào <b>1 ô ngày</b> → sửa đúng giá trị công của ô đó (không chọn trường) · <b>bắt buộc lý do</b></li>
         <li><span class="tag p0">P0</span><b>Sửa hàng loạt</b> — tick nhiều dòng, 1 audit log cho cả lô</li>
         <li><span class="tag p0">P0</span><b>Bộ lọc đa chiều</b> + <b>lưu view</b> + URL chia sẻ</li>
-        <li><span class="tag p0">P0</span>Cảnh báo sai lệch tự động (thiếu check-out, về sớm không có đơn)</li>
-        <li><span class="tag p0">P0</span>Chốt &amp; khóa kỳ · xử lý khiếu nại · export Excel chuẩn</li>
+                <li><span class="tag p0">P0</span>Chốt &amp; khóa kỳ · xử lý khiếu nại · export Excel chuẩn</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
-        <li>Sửa 1 ô → có audit log ghi rõ field, giá trị cũ/mới, lý do, ai, lúc nào</li>
-        <li>Sửa cột nhạy cảm mà không có lý do → bị chặn</li>
+        <li>Sửa 1 ô → audit log ghi rõ ngày, ký hiệu cũ/mới, lý do, ai, lúc nào · <b>ô đã sửa hiện màu đỏ</b> trên bảng</li>
+        <li>Sửa ô mà không có lý do → bị chặn</li>
         <li>Lọc "Mobile · 11/2026 · đi muộn &gt; 0" → lưu lại, mở lại bằng 1 click</li>
-        <li>Sai lệch tự động được báo trước, có nút [Sửa] / [Tạo đơn]</li>
-        <li>Chốt → khóa; đơn duyệt sau đó vào kỳ hiện tại, không sửa kỳ đã chốt</li>
+                <li>Chốt → khóa; đơn duyệt sau đó vào kỳ hiện tại, không sửa kỳ đã chốt</li>
         <li>Export Excel ra đúng <b>53 cột + ký hiệu gốc</b>, đúng kỳ 01 → cuối tháng — khớp file Pine</li>
       </ul>
     </div>
@@ -3123,13 +3303,6 @@ tbody tr:hover{background:var(--surface-2)}
             </div>
           </div>
 
-          <div class="grid4" style="margin-bottom:12px">
-            <div class="kpi"><div class="k">Tổng công chuẩn</div><div class="v tnum">660</div><div class="d">ngày · 30 NV</div></div>
-            <div class="kpi"><div class="k">Tổng đi muộn</div><div class="v tnum">1,247</div><div class="d">phút · 34 lần</div></div>
-            <div class="kpi"><div class="k">Tổng WFH</div><div class="v tnum">58</div><div class="d">ngày</div></div>
-            <div class="kpi"><div class="k">Sai lệch cần xem</div><div class="v tnum" style="color:var(--danger)">2</div><div class="d dn">thiếu check-out · về sớm</div></div>
-          </div>
-
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;align-items:center">
             <span style="font-size:11.5px;color:var(--muted);font-weight:600">Bộ lọc:</span>
             <span class="chip on">Nhóm: Mobile ✕</span>
@@ -3143,19 +3316,6 @@ tbody tr:hover{background:var(--surface-2)}
             <span class="chip">WFH tuần này</span>
             <span class="chip on">Mobile · T11 · đi muộn &gt; 0</span>
             <button class="btn g sm">💾 Lưu view</button>
-          </div>
-
-          <div class="alert w" style="margin-bottom:11px">
-            <span class="ic">⚠</span>
-            <div><b>2 sai lệch được phát hiện tự động:</b>
-              <div style="margin-top:6px;display:flex;flex-direction:column;gap:5px">
-                <div>• <b>Minh Hà</b> — thiếu <code>check_out</code> ngày 05/11 (chấm công ra lúc 18:47 nhưng ca kết thúc 17:30)
-                  <button class="btn s sm" style="margin-left:7px">Sửa</button></div>
-                <div>• <b>Bình Nguyễn</b> — về sớm 45′ ngày 18/11 không có đơn được duyệt
-                  <button class="btn s sm" style="margin-left:7px">Xem</button>
-                  <button class="btn s sm" style="margin-left:5px">Tạo đơn</button></div>
-              </div>
-            </div>
           </div>
 
           <div class="tbl-wrap ts-wrap">
@@ -3222,37 +3382,37 @@ tbody tr:hover{background:var(--surface-2)}
                 <tr>
                   <td><span style="display:inline-block;width:14px;height:14px;border:1px solid var(--line);border-radius:3px"></span></td>
                   <td><b>NGUYỄN THANH TÙNG</b><div style="font-size:10.5px;color:var(--muted)">Sirius · 05ACT</div></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R/0.50</span></td>
-<td class="dc wfh"><span class="edit">R/0.50</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc leave"><span class="edit">AL</span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc wfh"><span class="edit">R/0.50</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
-<td class="dc wfh"><span class="edit">R/0.50</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R/0.50</span></td>
-<td class="dc"><span class="edit">1.00</span></td>
-<td class="dc wfh"><span class="edit">R</span></td>
-<td class="dc"><span class="edit"><span style="color:var(--line-2)">·</span></span></td>
+<td class="dc">1.00</td>
+<td class="dc">1.00</td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc edited">1.00</td>
+<td class="dc wfh">R</td>
+<td class="dc">1.00</td>
+<td class="dc wfh">R</td>
+<td class="dc wfh">R</td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc">1.00</td>
+<td class="dc wfh">R/0.50</td>
+<td class="dc wfh">R/0.50</td>
+<td class="dc wfh">R</td>
+<td class="dc leave">AL</td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc">1.00</td>
+<td class="dc">1.00</td>
+<td class="dc wfh">R</td>
+<td class="dc wfh">R/0.50</td>
+<td class="dc">1.00</td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
+<td class="dc wfh">R/0.50</td>
+<td class="dc">1.00</td>
+<td class="dc wfh">R/0.50</td>
+<td class="dc">1.00</td>
+<td class="dc wfh">R</td>
+<td class="dc"><span style="color:var(--line-2)">·</span></td>
                   <td style="border-left:2px solid var(--line);font-size:11px;color:var(--muted)">05ACT</td>
                   <td class="tnum" style="">8.5</td>
                   <td class="tnum" style="">21</td>
@@ -3490,7 +3650,7 @@ tbody tr:hover{background:var(--surface-2)}
             <span><i style="background:#eef2ff;border:1px solid #b6d3ea"></i> R — WFH</span>
             <span><i style="background:#f3eff9;border:1px solid #d9cdea"></i> AL / S — phép, ốm</span>
             <span><i style="background:var(--surface);border:1px dashed var(--line)"></i> · — cuối tuần / nghỉ</span>
-            <span><i style="background:var(--accent-soft);border:1px solid var(--accent-line)"></i> ô vừa sửa</span>
+            <span><i style="background:var(--danger-soft);border:1px solid #f0b3ab"></i> ô đã sửa</span>
           </div>
           <div style="margin-top:11px;font-size:12px;color:var(--muted);background:var(--surface-2);
             border-radius:8px;padding:10px">
@@ -3510,21 +3670,22 @@ tbody tr:hover{background:var(--surface-2)}
     <div style="position:relative;min-height:380px;background:var(--canvas);padding:20px;display:grid;place-items:center">
       <div style="position:absolute;inset:0;background:rgba(20,28,26,.42)"></div>
       <div class="modal" style="position:relative;max-width:460px">
-        <div class="modal-h"><h3>Sửa ô bảng công</h3><div class="spacer"></div>
+        <div class="modal-h"><h3>Sửa ô ngày 05/11</h3><div class="spacer"></div>
           <button class="btn g sm">✕</button></div>
         <div class="modal-b">
           <div style="font-size:12.5px;color:var(--muted);margin-bottom:13px">
             <b style="color:var(--ink)">Minh Hà</b> · Bảng công 11/2026 · Hỗ trợ Chăm sóc khách hàng</div>
-          <div class="field">
-            <label>Trường <span style="color:var(--danger)">*</span></label>
-            <div class="sel"><span>Công thực tế (giờ)</span><span class="cv">▾</span></div>
-            <div class="hint">Cột nhạy cảm — bắt buộc ghi lý do khi sửa.</div>
+          <div style="display:flex;align-items:center;gap:9px;background:var(--surface-2);border-radius:9px;
+            padding:11px 13px;margin-bottom:13px">
+            <span style="font-size:12px;color:var(--muted)">Ô ngày</span>
+            <b style="font-size:13px">05/11/2026</b>
+            <span style="font-size:12px;color:var(--muted);margin-left:auto">Hiện tại</span>
+            <span class="badge n" style="font-family:ui-monospace,monospace">1.00</span>
           </div>
-          <div class="grid2">
-            <div class="field"><label>Giá trị cũ</label>
-              <input class="inp" value="21.5" disabled></div>
-            <div class="field"><label>Giá trị mới <span style="color:var(--danger)">*</span></label>
-              <input class="inp" value="22"></div>
+          <div class="field">
+            <label>Ký hiệu mới <span style="color:var(--danger)">*</span></label>
+            <input class="inp" value="1.00">
+            <div class="hint">Chỉ sửa đúng giá trị công của ô này. Ký hiệu gốc: <b>1.00</b> · <b>0.50</b> · <b>R</b> · <b>AL</b> · <b>S</b> · <b>R/0.50</b> · <b>0.50/R</b> …</div>
           </div>
           <div class="field">
             <label>Lý do sửa <span style="color:var(--danger)">*</span></label>
@@ -3536,12 +3697,12 @@ tbody tr:hover{background:var(--surface-2)}
           </div>
           <div class="alert a">
             <span class="ic">🔒</span>
-            <div>Thay đổi này được ghi vào <b>nhật ký thay đổi</b> với giá trị cũ, giá trị mới, lý do, người sửa và thời điểm. Nhân viên không sửa được, nhưng có thể khiếu nại trong 2 ngày.</div>
+            <div>Thay đổi ghi vào <b>nhật ký thay đổi</b>: ngày, ký hiệu cũ → mới, lý do, người sửa, thời điểm. <b>Ô đã sửa hiện màu đỏ</b> trên bảng để lần sau nhìn là thấy. Nhân viên có thể khiếu nại trong 2 ngày.</div>
           </div>
         </div>
         <div class="modal-f">
           <button class="btn g">Hủy</button>
-          <button class="btn p">Lưu thay đổi</button>
+          <button class="btn p">Lưu ô này</button>
         </div>
       </div>
     </div>
@@ -3637,7 +3798,7 @@ tbody tr:hover{background:var(--surface-2)}
               <div class="rh">
                 <div style="flex:1">
                   <div class="rn">Đi muộn / về sớm</div>
-                  <div class="rv">2 lần/tháng · tối đa 60 phút/lần · đơn phải gửi trước 08:00</div>
+                  <div class="rv">2 lần/tháng · tối đa 60 phút/lần · nộp trong vòng 3 ngày</div>
                   <div class="meta">Hiệu lực từ 01/10/2026 · phiên bản 2 · Sửa bởi HR · "Tăng quota hỗ trợ mùa cao điểm"</div>
                 </div>
                 <div class="sc">
@@ -3687,8 +3848,8 @@ tbody tr:hover{background:var(--surface-2)}
             <div class="rulecard">
               <div class="rh">
                 <div style="flex:1">
-                  <div class="rn">Cần HR duyệt thêm</div>
-                  <div class="rv">Nghỉ từ 3 ngày trở lên · nhóm: CA, Mobile · loại nghỉ: Thai sản</div>
+                  <div class="rn">Nhóm có bước HR duyệt thêm</div>
+                  <div class="rv">Chỉ đơn đi muộn / bổ sung công / WFH · nhóm: CA, Mobile · (nghỉ phép: quản lý duyệt là đủ)</div>
                   <div class="meta">Hiệu lực từ 01/10/2026 · phiên bản 1</div>
                 </div>
                 <div class="sc">
@@ -3772,7 +3933,6 @@ tbody tr:hover{background:var(--surface-2)}
         <li><code>month_day</code> — hiển thị dạng DD/MM (01/04)</li>
         <li><code>select</code> — 1 lựa chọn</li>
         <li><code>multi_select</code> — options động từ nhóm / chức danh / loại nghỉ</li>
-        <li><code>grade_thresholds</code> — editor A/B/C/D, validate giảm dần</li>
         <li><code>text</code> — TextArea</li>
       </ul>
     </div>
@@ -3823,9 +3983,9 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
 
               <div class="field">
-                <label>Đơn phải gửi trước</label>
-                <div class="inp-wrap" style="max-width:160px"><input class="inp" value="08:00"></div>
-                <div class="hint">Đơn gửi sau thời điểm này sẽ bị từ chối.</div>
+                <label>Hạn nộp sau ngày phát sinh</label>
+                <div class="inp-wrap" style="max-width:160px"><input class="inp" value="3"><span class="unit">ngày</span></div>
+                <div class="hint">Đơn phải gửi trong vòng N ngày kể từ ngày đi muộn/về sớm — không yêu cầu giờ cụ thể.</div>
               </div>
 
               <div class="field">
@@ -3969,7 +4129,7 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
               <div style="font-size:13.5px;line-height:1.7;color:var(--ink-2)">
                 Bạn được tạo đơn đi muộn/về sớm <b>3 lần mỗi tháng</b>, mỗi lần tối đa <b>60 phút</b>.
-                Đơn phải gửi trước <b>08:00</b>.</div>
+                Đơn phải nộp <b>trong vòng 3 ngày</b> kể từ ngày đi muộn/về sớm.</div>
               <div class="alert a" style="margin-top:11px">
                 <span class="ic">💡</span>
                 <div><b>Ví dụ:</b> Bạn đi muộn 45 phút thứ 2 trong tháng → vẫn tạo được đơn (còn 1 lượt).
@@ -4043,8 +4203,6 @@ tbody tr:hover{background:var(--surface-2)}
                   <div class="tnum" style="font-size:17px;font-weight:650">3</div></div>
                 <div><div style="font-size:11.5px;color:var(--muted)">Điểm trung bình</div>
                   <div class="tnum" style="font-size:17px;font-weight:650;color:var(--accent)">3.5</div></div>
-                <div><div style="font-size:11.5px;color:var(--muted)">Xếp loại</div>
-                  <div style="font-size:15px;font-weight:650;margin-top:2px">B — Đạt</div></div>
                 <div><div style="font-size:11.5px;color:var(--muted)">Tần suất check-in</div>
                   <div style="font-size:15px;font-weight:650;margin-top:2px">Hàng tháng</div></div>
               </div>
@@ -4077,9 +4235,9 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span><b>2 nhóm</b> Business &amp; People hiển thị cạnh nhau, mỗi nhóm 1 điểm 1–5</li>
         <li><span class="tag p0">P0</span><b>Điểm trung bình do phần mềm tự tính</b> — không có ô nhập tay</li>
         <li><span class="tag p0">P0</span>Tiến độ từng nhóm + số đầu việc trong mỗi nhóm</li>
-        <li><span class="tag p0">P0</span>Việc cần chú ý: chưa tự đánh giá · bị trả lại · chưa gắn mục tiêu cha</li>
+        <li><span class="tag p0">P0</span>Việc cần chú ý: chưa tự đánh giá · bị trả lại · chưa viết Self proposal</li>
         <li><span class="tag p0">P0</span>Nút &quot;Check-in&quot; nổi bật khi đến kỳ</li>
-        <li><span class="tag p0">P0</span>Hiện mục tiêu cha theo <b>cây nhóm</b> — nếu chưa gắn thì báo rõ</li>
+        <li><span class="tag p0">P0</span>Card <b>Mục tiêu công ty 20%</b> — chỉ tham khảo (copy xuống), không tính vào điểm TB</li>
         <li><span class="tag p0">P0</span>Mỗi nhóm có nút &quot;Xem chi tiết&quot; → mở đúng nhóm đó</li>
         <li><span class="tag p0">P0</span>Card <b>Self proposal năm sau</b> — hiện trạng thái (chưa viết · đang viết · đã nộp) + nút xem</li>
       </ul>
@@ -4089,7 +4247,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li><span class="tag p0">P0</span>Đếm ngược hạn chót chính xác theo ngày, không phải tháng</li>
         <li><span class="tag p0">P0</span>Điểm 1–5 chỉ hiện khi đã đánh giá — chưa đánh giá thì hiện &quot;Chưa đánh giá&quot;</li>
-        <li><span class="tag p0">P0</span>Mục tiêu chưa gắn objective cha → hiện cảnh báo, nút [Gắn mục tiêu cha]</li>
+        <li><span class="tag p0">P0</span>Card Self proposal hiện trạng thái rõ: chưa viết / đang viết / đã nộp, kèm hạn nộp</li>
         <li><span class="tag p0">P0</span>Tiến độ khớp với trang chi tiết nhóm</li>
         <li><span class="tag p0">P0</span>Self proposal năm sau hiện trạng thái rõ ràng — nhân viên biết mình đã nộp chưa</li>
       </ul>
@@ -4220,32 +4378,49 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
               <div class="spacer"></div>
               <div style="font-size:12.5px;color:var(--muted);max-width:290px">
-                Chỉ khi đủ điểm cả 2 nhóm thì hệ thống mới tính điểm trung bình và xếp loại A/B/C/D.</div>
+                Chỉ khi đủ điểm cả 2 nhóm thì hệ thống mới tính điểm trung bình.</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-h">
+              <div><h3 style="font-size:14px">Self proposal — đề xuất cho năm sau</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Mục tiêu &amp; điểm cần cải thiện cho 2027</div></div>
+              <div class="spacer"></div>
+              <span class="badge n">BOX 4</span>
+              <span class="badge w">Đang viết</span>
+            </div>
+            <div class="card-b">
+              <div style="font-size:12.5px;line-height:1.75;color:var(--ink-2)">
+                <b style="color:var(--ink)">Đề xuất mục tiêu 2027</b><br>
+                · Business: tự động hoá 50% ticket lặp lại · xây bộ tài liệu CSKH chuẩn<br>
+                · People: đào tạo 3 nhân sự mới · chủ động phối hợp với nhóm Mobile<br><br>
+                <b style="color:var(--ink)">2 điểm cần cải thiện</b><br>
+                · Quản lý thời gian khi có nhiều ticket gấp<br>
+                · Chưa chủ động đề xuất cải tiến quy trình
+              </div>
+              <div style="margin-top:12px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+                <button class="btn p sm">Tiếp tục viết đề xuất</button>
+                <span style="font-size:11.5px;color:var(--muted)">Lưu nháp 12/11 · hạn nộp 30/11/2026</span>
+              </div>
             </div>
           </div>
 
           <div class="card">
             <div class="card-h">
-              <div><h3 style="font-size:14px">Mục tiêu cấp trên — theo cây nhóm</h3>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Mục tiêu của bạn nằm dưới nhóm nào</div></div>
+              <div><h3 style="font-size:14px">Mục tiêu công ty — 20% (tham khảo)</h3>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Không tính vào điểm TB — chỉ để biết mục tiêu chung</div></div>
+              <div class="spacer"></div>
+              <span class="badge n">CÔNG TY</span>
             </div>
             <div class="card-b">
-              <div style="display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:9px">
-                <span class="badge n">CÔNG TY</span>
-                <b>ACT — Công ty CP Công nghệ ACT</b>
-                <span style="color:var(--muted)">→</span>
-                <span class="badge n">NHÓM</span>
-                <b>CSKH</b>
-                <span style="color:var(--muted)">→</span>
-                <span class="badge n">NHÓM CON</span>
-                <b>Chăm sóc khách hàng</b>
+              <div style="font-size:12.5px;line-height:1.75;color:var(--ink-2)">
+                · Giữ chân 90% khách hàng doanh nghiệp trong 2027<br>
+                · Nâng NPS lên 60+
               </div>
-              <div class="alert w" style="margin:0">
-                <span class="ic">⚠</span>
-                <div><b>1 đầu việc chưa gắn mục tiêu cha</b> — mục tiêu đó sẽ không có mục tiêu cấp trên
-                và không ai thấy nó đang phục vụ mục tiêu chung nào.</div>
-                <div class="spacer"></div>
-                <button class="btn sm">Gắn mục tiêu cha</button>
+              <div style="margin-top:11px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn s sm">Chép vào OKR của tôi</button>
+                <span style="font-size:11.5px;color:var(--muted)">Copy xuống — không phải cây phân tầng</span>
               </div>
             </div>
           </div>
@@ -4441,8 +4616,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li><span class="tag p0">P0</span>Check-in theo từng <b>đầu việc</b> trong 2 nhóm Business &amp; People</li>
         <li><span class="tag p0">P0</span><b>Prefill</b>: giá trị kỳ trước đã điền sẵn — chỉ sửa con số</li>
-        <li><span class="tag p0">P0</span>Hiện mức độ tin cậy (cao / vừa / thấp) cho mỗi đầu việc</li>
-        <li><span class="tag p0">P0</span>Tiến độ tính tự động — không cần nhập %</li>
+                <li><span class="tag p0">P0</span><b>Chỉ nhập giá trị mới</b> — không có cột tiến độ, không có mức độ tin cậy; tiến độ do hệ thống tự tính</li>
         <li><span class="tag p0">P0</span>Lịch sử check-in: không ghi đè giá trị cũ</li>
         <li><span class="tag p0">P0</span>Nhắc trước hạn: job quét hằng ngày, còn ≤ 3 ngày thì báo</li>
       </ul>
@@ -4508,20 +4682,17 @@ tbody tr:hover{background:var(--surface-2)}
             </div>
             <div class="card-b" style="padding:0">
               <table>
-                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th><th>Tiến độ</th><th style="width:150px">Mức độ tin cậy</th></tr></thead>
+                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th></tr></thead>
                 <tbody>
                   <tr><td>Giảm thời gian phản hồi ticket</td><td class="tnum">9.2 phút</td>
                     <td><div class="inp-wrap"><input class="inp" value="8.4" style="padding:5px 8px;font-size:12.5px"><span class="unit">phút</span></div></td>
-                    <td class="tnum" style="color:var(--ok);font-weight:600">76%</td>
-                    <td><span class="chip on">Cao</span></td></tr>
+                    </tr>
                   <tr><td>Tỷ lệ giải quyết lần 1</td><td class="tnum">79%</td>
                     <td><div class="inp-wrap"><input class="inp" value="85" style="padding:5px 8px;font-size:12.5px"><span class="unit">%</span></div></td>
-                    <td class="tnum" style="color:var(--ok);font-weight:600">100%</td>
-                    <td><span class="chip on">Cao</span></td></tr>
+                    </tr>
                   <tr><td>Tỷ lệ giữ chân khách hàng</td><td class="tnum">4.3 điểm</td>
                     <td><div class="inp-wrap"><input class="inp" value="4.5" style="padding:5px 8px;font-size:12.5px"><span class="unit">điểm</span></div></td>
-                    <td class="tnum" style="color:var(--warn);font-weight:600">54%</td>
-                    <td><span class="chip">Vừa</span></td></tr>
+                    </tr>
                 </tbody>
               </table>
             </div>
@@ -4535,16 +4706,14 @@ tbody tr:hover{background:var(--surface-2)}
             </div>
             <div class="card-b" style="padding:0">
               <table>
-                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th><th>Tiến độ</th><th style="width:150px">Mức độ tin cậy</th></tr></thead>
+                <thead><tr><th>Đầu việc</th><th>Giá trị kỳ trước</th><th>Giá trị mới</th></tr></thead>
                 <tbody>
                   <tr><td>Đào tạo 3 nhân sự mới đạt chuẩn</td><td class="tnum">1 / 3</td>
                     <td><div class="inp-wrap"><input class="inp" value="2" style="padding:5px 8px;font-size:12.5px"><span class="unit">/ 3</span></div></td>
-                    <td class="tnum" style="color:var(--ok);font-weight:600">67%</td>
-                    <td><span class="chip on">Cao</span></td></tr>
+                    </tr>
                   <tr><td>Tỷ lệ giữ chân khách hàng</td><td class="tnum">4.3 điểm</td>
                     <td><div class="inp-wrap"><input class="inp" value="4.4" style="padding:5px 8px;font-size:12.5px"><span class="unit">điểm</span></div></td>
-                    <td class="tnum" style="color:var(--warn);font-weight:600">48%</td>
-                    <td><span class="chip">Thấp</span></td></tr>
+                    </tr>
                 </tbody>
               </table>
             </div>
@@ -4714,8 +4883,6 @@ tbody tr:hover{background:var(--surface-2)}
               <div><div style="font-size:11.5px;color:var(--muted)">Điểm trung bình</div>
                 <div class="tnum" style="font-size:22px;font-weight:700;color:var(--accent)">3.5</div></div>
               <div class="spacer"></div>
-              <div><div style="font-size:11.5px;color:var(--muted)">Xếp loại</div>
-                <div style="font-size:15px;font-weight:650;margin-top:3px">B — Đạt</div></div>
             </div>
           </div>
 
@@ -4851,7 +5018,7 @@ tbody tr:hover{background:var(--surface-2)}
 
           <div class="alert i" style="margin-bottom:0">
             <span class="ic">◆</span>
-            <div><b>Điểm đề xuất = công thức từ tiến độ đầu việc</b>, điều chỉnh nhẹ theo mức độ tin cậy.
+            <div><b>Điểm đề xuất = công thức từ tiến độ đầu việc</b> (tự tính từ giá trị mới ÷ mục tiêu).
             Công thức minh bạch, manager kiểm tra được — nhưng <b>điểm quyết định vẫn là điểm bạn chấm</b>.</div>
           </div>
 
@@ -4880,7 +5047,7 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Tính năng</h4>
       <ul>
         <li><span class="tag p0">P0</span><b>Bảng tổng hợp OKR công ty — 9 trường</b>: tên · code · vị trí · <b>thời gian công tác (tự tính)</b> · phòng ban · tên QL · điểm công việc · điểm con người · điểm TB (+ note)</li>
-        <li><span class="tag p0">P0</span>4 widget: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · xếp loại</li>
+        <li><span class="tag p0">P0</span>4 widget: tiến độ nộp theo nhóm · danh sách chưa nộp · phân bố điểm · điểm TB theo nhóm</li>
         <li><span class="tag p0">P0</span>Export Excel đúng 9 trường theo mẫu HR</li>
         <li><span class="tag p0">P0</span>HR chốt &amp; khóa chu kỳ sau khi Giám đốc đánh giá xong</li>
         <li><span class="tag p0">P0</span>Tóm tắt báo cáo — dựng từ số liệu đã tính theo mẫu câu, kèm link tới widget nguồn</li>
@@ -4915,7 +5082,6 @@ tbody tr:hover{background:var(--surface-2)}
           </div>
           <div class="spacer"></div>
           <span class="chip on">Tự động từ số liệu</span>
-          <button class="btn">🌳 Cây phân tầng</button>
           <button class="btn p">🔒 Chốt &amp; khóa chu kỳ</button>
         </div>
         <div class="body" style="max-width:1000px">
@@ -4929,7 +5095,7 @@ tbody tr:hover{background:var(--surface-2)}
             <div class="card"><div class="card-b" style="text-align:center;padding:15px">
               <div style="font-size:11.5px;color:var(--muted)">Điểm TB toàn công ty</div>
               <div class="tnum" style="font-size:25px;font-weight:700">3.4</div>
-              <div style="font-size:11.5px;color:var(--muted)">Xếp loại B — Đạt</div>
+              <div style="font-size:11.5px;color:var(--muted)">Điểm TB 2 nhóm</div>
             </div></div>
             <div class="card"><div class="card-b" style="text-align:center;padding:15px">
               <div style="font-size:11.5px;color:var(--muted)">Chưa nộp</div>
@@ -5231,7 +5397,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">An toàn chấm công · Nhân viên &amp; HR · P0</div>
       <h2>Thiết bị đăng ký &amp; chống dùng chung tài khoản</h2>
-      <p class="desc">Nếu 2 nhân viên share tài khoản để chấm công hộ: <b>device registration đơn thuần không chặn được</b> (cả 2 máy đều hợp lệ). Giải pháp: giới hạn <b>1 check-in/ngày</b> để việc chia ca không còn lợi nhuận, SSO Google cá nhân, quota tính theo người, và phát hiện bằng rule.</p>
+      <p class="desc">Nếu 2 nhân viên share tài khoản để chấm công hộ: <b>device registration đơn thuần không chặn được</b> (cả 2 máy đều hợp lệ). Giải pháp: giới hạn <b>1 check-in/ngày</b> để việc chia ca không còn lợi nhuận, SSO Google công ty, quota tính theo người, và <b>xác thực khuôn mặt</b> ở mỗi lần chấm công.</p>
     </div>
   </div>
   <div class="spec">
@@ -5239,7 +5405,8 @@ tbody tr:hover{background:var(--surface-2)}
       <h4>Chặn ở gốc — làm share account không đáng</h4>
       <ul>
         <li><span class="tag p0">P0</span><b>1 check-in + 1 check-out/ngày/account</b> → 2 người share thì mỗi người chỉ công được nửa ngày</li>
-        <li><span class="tag p0">P0</span><b>SSO Google cá nhân</b> + cảnh báo đăng nhập lạ (lớp mạnh nhất)</li>
+        <li><span class="tag p0">P0</span><b>SSO Google công ty</b> + cảnh báo đăng nhập lạ</li>
+        <li><span class="tag p0">P0</span><b>Xác thực khuôn mặt</b> mỗi lần chấm — camera + liveness, khớp hồ sơ ≥ 85%; người khác cầm máy vẫn không qua được</li>
         <li><span class="tag p0">P0</span><b>Mặc định 2 thiết bị</b> — máy thứ 3 mới phải được HR duyệt</li>
         <li><span class="tag p0">P0</span>Unique <code>(user_id, work_date)</code> ở tầng DB</li>
         <li><span class="tag p0">P0</span>Quota tính <b>theo người</b>, không theo thiết bị</li>
@@ -5252,8 +5419,9 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span>HR duyệt đăng ký mới · thu hồi thiết bị mất hoặc bị trộm</li>
         <li><span class="tag p0">P0</span>Yêu cầu đăng ký mới <b>chỉ nhận được từ mạng nội bộ công ty</b></li>
         <li><span class="tag p0">P0</span>Thiết bị không dùng 90 ngày → tự thu hồi + nhắc nhân viên đăng ký lại</li>
-        <li><span class="tag p0">P0</span>Thấy ngay thiết bị nào đang chấm công hộ (nhiều máy cùng lúc) → <b>cảnh báo</b></li>
-        <li><span class="tag p0">P0</span>Mọi thao tác duyệt / thu hồi đều vào <b>nhật ký thay đổi</b></li>
+        <li><span class="tag p0">P0</span>Danh sách thiết bị + hồ sơ khuôn mặt <b>minh bạch</b> — nhân viên tự thấy, không cần suy đoán</li>
+        <li><span class="tag p0">P0</span>HR xem trạng thái hồ sơ khuôn mặt + <b>reset kèm lý do</b> (đổi diện mạo, nhận diện sai) → nhân viên đăng ký lại</li>
+        <li><span class="tag p0">P0</span>Mọi thao tác duyệt / thu hồi / reset khuôn mặt đều vào <b>nhật ký thay đổi</b></li>
       </ul>
     </div>
     <div>
@@ -5264,6 +5432,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li>Gỡ máy thứ 3 → hạn mức <b>tự về 2 máy</b>, không cần ai xử lý</li>
         <li>Thiết bị đang chờ duyệt → nhân viên <b>không tự xoá được</b></li>
         <li>Máy mất/bị trộm → HR thu hồi ngay, <b>lịch sử chấm công cũ vẫn còn</b></li>
+        <li>Trang hiển thị <b>trạng thái khuôn mặt</b> (đã đăng ký · ngày · lần khớp gần nhất) + nút đăng ký lại</li>
       </ul>
     </div>
   </div>
@@ -5271,6 +5440,7 @@ tbody tr:hover{background:var(--surface-2)}
   <div class="alert w" style="margin-bottom:20px">
     <span class="ic">⚠</span>
     <div><b>Thẳng thắn:</b> không có hệ thống nào chặn được gian lận cố ý tinh vi — A đứng cạnh B, B cầm điện thoại A check-in hộ; GPS không phân biệt được người cầm máy.
+      <b>Xác thực khuôn mặt + liveness</b> chặn được phần lớn trường hợp cầm máy hộ, nhưng không tuyệt đối (ánh sáng kém, cố tình lách).
       Mục tiêu thật là biến gian lận từ <b>không tốn công gì, không ai biết</b> → thành <b>tốn công, dễ bị phát hiện, và HR có bằng chứng</b>.
       Cộng với quyết định của HR (đi muộn không có đơn → trừ công theo đúng phút thực tế) → gian lận không mang lại lợi ích tài chính.</div>
   </div>
@@ -5289,7 +5459,7 @@ tbody tr:hover{background:var(--surface-2)}
           <div class="row-b" style="margin-bottom:14px">
             <div><h2 style="font-size:18px">Thiết bị đăng ký</h2>
               <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Chỉ thiết bị trong danh sách này mới chấm công được</div></div>
-            <span class="badge a">1 / 1 thiết bị</span>
+            <span class="badge a">1 / 2 thiết bị</span>
           </div>
 
           <div class="alert a" style="margin-bottom:14px">
@@ -5319,14 +5489,35 @@ tbody tr:hover{background:var(--surface-2)}
           </div>
 
           <div class="card" style="margin-bottom:14px">
+            <div class="card-h"><h3>Khuôn mặt đã đăng ký</h3><div class="spacer"></div>
+              <span class="badge g">● Đang hoạt động</span></div>
+            <div class="card-b">
+              <div class="row-b">
+                <div style="display:flex;gap:12px;align-items:center">
+                  <div class="facecam" style="width:66px;height:66px;border-radius:50%">
+                    <svg viewBox="0 0 100 100"><circle cx="50" cy="39" r="15" fill="#8fa39c"/><path d="M22 94c1-17 13-27 28-27s27 10 28 27" fill="#8fa39c"/></svg>
+                    <div class="ft" style="font-size:7.5px;padding:1px 0">98%</div>
+                  </div>
+                  <div>
+                    <div style="font-size:12.5px;font-weight:570">Hồ sơ khuôn mặt</div>
+                    <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Đăng ký 01/08/2026 · khớp gần nhất 12/11 09:41 (98%)</div>
+                    <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Chỉ lưu vector đặc trưng — <b>không lưu ảnh thô</b></div>
+                  </div>
+                </div>
+                <button class="btn s sm">Đăng ký lại</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
             <div class="card-b">
               <div class="row-b">
                 <div style="flex:1">
                   <div style="font-size:13px;font-weight:570">Thêm thiết bị mới</div>
-                  <div class="hint" style="margin-top:3px">Theo quy định, tài khoản chỉ đăng ký tối đa <b>1 thiết bị</b>.
-                    Thiết bị thứ 2 cần được <b>HR duyệt</b> — trong thời gian chờ, bạn không chấm công được trên thiết bị mới.</div>
+                  <div class="hint" style="margin-top:3px">Bạn đang dùng <b>1/2 thiết bị</b>. Thiết bị mới luôn cần <b>HR duyệt</b> —
+                    trong thời gian chờ, bạn không chấm công được trên thiết bị mới. Máy thứ 3 trở đi cần thêm lý do.</div>
                 </div>
-                <button class="btn s sm" disabled>+ Đăng ký thiết bị</button>
+                <button class="btn s sm">+ Đăng ký thiết bị</button>
               </div>
             </div>
           </div>
@@ -5392,7 +5583,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">An toàn chấm công · HR · P0</div>
       <h2>Quản lý thiết bị — duyệt đăng ký mới, thu hồi thiết bị mất</h2>
-      <p class="desc">Với <code>max_devices = 1</code>, đổi máy là việc thường xuyên. Nếu chỉ chặn mà không có duyệt, nhân viên sẽ mất công thật. Vì vậy HR cần một hộp thư duyệt thiết bị — và một danh sách để thu hồi khi máy mất/bị trộm.</p>
+      <p class="desc">Với <code>max_devices = 2</code>, đổi máy vẫn là việc thường xuyên. Nếu chỉ chặn mà không có duyệt, nhân viên sẽ mất công thật. Vì vậy HR cần một hộp thư duyệt thiết bị — và một danh sách để thu hồi khi máy mất/bị trộm.</p>
     </div>
   </div>
   <div class="spec">
@@ -5828,7 +6019,7 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <div class="eyebrow">Bài toán 1 · Nhân viên · P0</div>
       <h2>Xin nghỉ phép — 8 loại nghỉ, hạn gửi &amp; giấy tờ đều cấu hình được</h2>
-      <p class="desc">Mục 6.4: mỗi loại nghỉ có cấu hình riêng — hưởng lương, đơn vị (ngày/nửa ngày), giấy tờ. Form này <b>tự hiện</b> các quy tước đang áp dụng cho từng loại: hạn gửi đơn, ngày cần giấy tờ, giới hạn ngày liên tiếp — lấy từ rule trong DB, không hard-code.<br><br><b>Mỗi loại nghỉ là 1 bộ tham số độc lập</b>, ghi đè lên mặc định chung — nên "nghỉ tang gia được báo gấp" không ảnh hưởng "nghỉ phép năm báo trước 1 ngày". Xem S32.</p>
+      <p class="desc">Mục 6.4: mỗi loại nghỉ có cấu hình riêng — hưởng lương, đơn vị (ngày/nửa ngày), giấy tờ. Form này <b>tự hiện</b> các quy tước đang áp dụng cho từng loại: hạn gửi đơn, ngày cần giấy tờ, giới hạn ngày liên tiếp — lấy từ rule trong DB, không hard-code.<br><br><b>Mỗi loại nghỉ là 1 bộ tham số độc lập</b>, ghi đè lên mặc định chung — nên "nghỉ tang gia không cần giấy tờ" không ảnh hưởng "nghỉ ốm bắt buộc giấy khám". Xem S32.</p>
     </div>
   </div>
   <div class="spec">
@@ -5841,7 +6032,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span>Kiểm tra số dư phép <b>ngay khi chọn</b> — chặn nếu thiếu</li>
         <li><span class="tag p0">P0</span>Đơn gửi muộn → gắn cờ "gấp" (quản lý thấy)</li>
         <li><span class="tag p0">P0</span>Đủ ngày cần giấy tờ → hiện ô upload, bắt buộc</li>
-        <li><span class="tag p0">P0</span>Nghỉ ≥ 3 ngày hoặc thai sản → hiện cảnh báo "cần HR duyệt thêm"</li>
+        <li><span class="tag p0">P0</span>Mọi đơn nghỉ phép <b>chỉ 1 bước duyệt: quản lý</b> — không chuyển HR, hiện rõ ngay trên form</li>
         <li><span class="tag p0">P0</span><b>Gửi đơn từ bất kỳ đâu</b> — không cần GPS, không cần Wi-Fi công ty (chỉ chấm công mới cần)</li>
       </ul>
     </div>
@@ -5851,7 +6042,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li>Số dư không đủ → chặn ngay khi chọn ngày, hiện cụ thể còn bao nhiêu</li>
         <li>Số ngày tính đúng theo ngày làm việc (cuối tuần + lễ không tính)</li>
         <li>Loại nghỉ yêu cầu giấy tờ → không cho submit khi chưa upload</li>
-        <li>Đơn ngắn dưới hạn → quản lý duyệt 1 bước; đơn dài → tự chuyển HR</li>
+        <li>Đơn nghỉ phép — dù dài hay ngắn — <b>chỉ quản lý duyệt 1 bước</b>, không chuyển HR</li>
         <li>Đơn gửi muộn hơn hạn → vẫn tạo được nhưng có cờ đỏ cho quản lý</li>
         <li>Sau khi duyệt → trừ vào sổ phép, hiện ở bảng công đúng cột (có lương / BHXH / không lương)</li>
       </ul>
@@ -5878,7 +6069,7 @@ tbody tr:hover{background:var(--surface-2)}
                 <div style="border:2px solid var(--accent);border-radius:10px;padding:11px 12px;background:var(--accent-soft)">
                   <div style="font-size:12.5px;font-weight:620;color:var(--accent)">Phép năm</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:4px">Công ty trả · 8.5 ngày còn lại</div>
-                  <div style="font-size:10px;color:var(--accent);margin-top:5px;opacity:.8">Báo trước 1 ngày</div>
+                  <div style="font-size:10px;color:var(--accent);margin-top:5px;opacity:.8">Hạn nộp 3 ngày</div>
                 </div>
                 <div style="border:1px solid var(--line);border-radius:10px;padding:11px 12px">
                   <div style="font-size:12.5px;font-weight:620">Nghỉ ốm</div>
@@ -5943,8 +6134,8 @@ tbody tr:hover{background:var(--surface-2)}
               </div>
             </div>
             <div class="card-f">
-              <div class="note" style="flex:1"><b>Hạn gửi:</b> đơn phải gửi trước ít nhất <b>1 ngày làm việc</b>.
-                Đơn này gửi 12/11 cho ngày 16/11 ✓</div>
+              <div class="note" style="flex:1"><b>Hạn nộp:</b> trong vòng <b>3 ngày</b> kể từ ngày bắt đầu nghỉ.
+                Nghỉ từ 16/11 → hạn 19/11 · gửi 12/11 ✓</div>
               <button class="btn g">Hủy</button>
               <button class="btn p">Gửi quản lý duyệt</button>
             </div>
@@ -5954,7 +6145,7 @@ tbody tr:hover{background:var(--surface-2)}
     </div>
   </div>
 
-  <div class="mock-label" style="margin-top:22px">Mockup — Nghỉ ốm: cần giấy tờ + cảnh báo HR duyệt thêm</div>
+  <div class="mock-label" style="margin-top:22px">Mockup — Nghỉ ốm: cần giấy tờ · chỉ quản lý duyệt</div>
   <div class="browser">
     <div class="bbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
       <div class="url">act-hr.vn/leave/new · nghỉ ốm</div></div>
@@ -5969,8 +6160,8 @@ tbody tr:hover{background:var(--surface-2)}
             <div><b>Quy định đang áp dụng cho nghỉ ốm:</b>
               <div style="margin-top:5px;font-size:12px">
                 • Cần giấy tờ y tế từ <b>ngày thứ 2</b> trở đi<br>
-                • Hạn gửi đơn: trước <b>1 ngày làm việc</b><br>
-                • Nghỉ từ <b>3 ngày</b> trở lên sẽ chuyển thêm bước <b>HR duyệt</b></div>
+                • Hạn nộp: trong vòng <b>3 ngày</b> kể từ ngày bắt đầu nghỉ<br>
+                • Đơn được <b>quản lý trực tiếp duyệt</b> — không chuyển HR</div>
               <div style="margin-top:6px;font-size:11px;opacity:.85">
                 Dòng 1 là <b>tham số riêng của loại Nghỉ ốm</b> (ghi đè mặc định chung).<br>
                 Dòng 2–3 lấy từ <b>mặc định chung toàn công ty</b>.</div>
@@ -5989,7 +6180,7 @@ tbody tr:hover{background:var(--surface-2)}
             <span class="badge w" style="font-size:12px">5 ngày làm việc</span>
             <span style="font-size:12px;color:var(--muted)">Có giấy tờ y tế (từ ngày thứ 2)</span>
             <div class="spacer"></div>
-            <span class="badge w">⚠ Sẽ cần HR duyệt thêm</span>
+            <span class="badge g">✓ Chỉ quản lý duyệt</span>
           </div>
 
           <div class="field" style="margin-bottom:13px">
@@ -6190,7 +6381,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span><b>Tầng 3</b> — ghi đè của một đơn cụ thể</li>
         <li><span class="tag p0">P0</span>Đơn lưu <b>snapshot</b> tham số lúc gửi → đổi cấu hình sau không làm sai lịch sử</li>
         <li><span class="tag p0">P0</span>Ngoài 8 loại có cột riêng, còn có loại <b>chỉ dùng để ghi nhận đơn</b>: <b>hiếu hỉ</b> · <b>tang gia</b></li>
-        <li><span class="tag p0">P0</span><b>Thai sản tách nam / nữ</b> — nam 5 · 7 · 10 · 14 ngày theo chế độ · nữ 6 hoặc 7 tháng (BHXH chi trả, cần HR duyệt)</li>
+        <li><span class="tag p0">P0</span><b>Thai sản tách nam / nữ</b> — nam 5 · 7 · 10 · 14 ngày theo chế độ · nữ 6 hoặc 7 tháng (BHXH chi trả · chỉ quản lý duyệt)</li>
       </ul>
     </div>
     <div>
@@ -6238,7 +6429,7 @@ tbody tr:hover{background:var(--surface-2)}
                       <span style="font-size:13.5px;font-weight:620">Phép năm</span>
                       <span class="badge n">Loại chuẩn</span>
                     </div>
-                    <div style="font-size:12.5px;color:var(--ink-2)">Công ty trả · ngày/nửa ngày · báo trước 1 ngày · cộng 12 ngày/năm</div>
+                    <div style="font-size:12.5px;color:var(--ink-2)">Công ty trả · ngày/nửa ngày · hạn nộp 3 ngày · cộng 12 ngày/năm</div>
                     <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Ghi đè 3 tham số so với mặc định chung</div>
                   </div>
                   <div class="row" style="gap:7px">
@@ -6279,7 +6470,7 @@ tbody tr:hover{background:var(--surface-2)}
                       <span class="badge n">Loại chuẩn</span>
                       <span class="badge i">BHXH chi trả</span>
                     </div>
-                    <div style="font-size:12.5px;color:var(--ink-2)">BHXH chi trả · theo chế độ · cần giấy tờ · <b>cần HR duyệt</b></div>
+                    <div style="font-size:12.5px;color:var(--ink-2)">BHXH chi trả · theo chế độ · cần giấy tờ · <b>quản lý duyệt</b></div>
                     <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Ghi đè 5 tham số so với mặc định chung</div>
                   </div>
                   <div class="row" style="gap:7px">
@@ -6417,14 +6608,15 @@ tbody tr:hover{background:var(--surface-2)}
               font-weight:650;margin:14px 0 10px">Hạn &amp; duyệt</div>
             <div class="grid2" style="margin-bottom:11px">
               <div class="field" style="margin:0">
-                <label>Phải báo trước</label>
-                <div class="inp-wrap"><input class="inp" value="0"><span class="unit">ngày</span></div>
-                <div class="hint" style="color:var(--ok)">0 = được báo gấp</div>
+                <label>Hạn nộp sau ngày bắt đầu nghỉ</label>
+                <div class="inp-wrap"><input class="inp" value="3"><span class="unit">ngày</span></div>
+                <div class="hint">Mặc định 3 ngày · cấu hình 0–15 · không yêu cầu giờ</div>
               </div>
               <div class="field" style="margin:0">
-                <label>Cần bước duyệt thứ 2</label>
+                <label>Bước duyệt</label>
                 <div class="row" style="gap:8px">
-                  <div class="switch on"></div><span style="font-size:12px">Cần HR duyệt</span>
+                  <span class="badge g" style="font-size:11.5px">Quản lý trực tiếp</span>
+                  <span style="font-size:11.5px;color:var(--muted)">— không chuyển HR</span>
                 </div>
               </div>
             </div>
@@ -6842,16 +7034,7 @@ tbody tr:hover{background:var(--surface-2)}
   </div>
 
   <div class="card" style="margin-bottom:13px">
-    <div class="card-h"><h3>1. Có nên giữ màn hình "Đăng nhập nhanh" trong bản nộp không?</h3>
-      <span class="badge w">Chưa chốt</span></div>
-    <div class="card-b">
-      <p style="font-size:13px;color:var(--ink-2)">Nút 4 vai trò giúp judge vào được hệ thống trong 2 giây — nhưng trông giống hệ thống demo hơn là sản phẩm thật.
-        <b>Cách đã chọn trong mockup:</b> đặt ở trang login thật, ẩn được bằng biến môi trường <code>SHOW_DEMO_LOGIN</code>, mặc định tắt ở production.</p>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:13px">
-    <div class="card-h"><h3>2. Mức độ chi tiết của bảng công trên màn hình mobile</h3>
+    <div class="card-h"><h3>1. Mức độ chi tiết của bảng công trên màn hình mobile</h3>
       <span class="badge w">Chưa chốt</span></div>
     <div class="card-b">
       <p style="font-size:13px;color:var(--ink-2)">Bảng công có 12 cột — trên mobile không vừa.
@@ -6860,7 +7043,7 @@ tbody tr:hover{background:var(--surface-2)}
   </div>
 
   <div class="card" style="margin-bottom:13px">
-    <div class="card-h"><h3>3. Có cho phép quản lý sửa điểm hàng loạt cho cả nhóm không?</h3>
+    <div class="card-h"><h3>2. Có cho phép quản lý sửa điểm hàng loạt cho cả nhóm không?</h3>
       <span class="badge w">Chưa chốt</span></div>
     <div class="card-b">
       <p style="font-size:13px;color:var(--ink-2)">Có thể tiết kiệm nhiều thời gian cho manager 10 objective, nhưng rủi ro nhầm lẫn cao hơn.
@@ -6869,7 +7052,7 @@ tbody tr:hover{background:var(--surface-2)}
   </div>
 
   <div class="card" style="margin-bottom:13px">
-    <div class="card-h"><h3>4. Ngưỡng cảnh báo "xung đột lịch" trong lịch nhóm</h3>
+    <div class="card-h"><h3>3. Ngưỡng cảnh báo "xung đột lịch" trong lịch nhóm</h3>
       <span class="badge w">Chưa chốt</span></div>
     <div class="card-b">
       <p style="font-size:13px;color:var(--ink-2)">Hiện đang dùng: vắng quá 50% số người trong nhóm.
@@ -6878,7 +7061,7 @@ tbody tr:hover{background:var(--surface-2)}
   </div>
 
   <div class="card" style="margin-bottom:13px">
-    <div class="card-h"><h3>5. Chuỗi phản hồi khi nhân viên bị chặn ở màn hình chấm công</h3>
+    <div class="card-h"><h3>4. Chuỗi phản hồi khi nhân viên bị chặn ở màn hình chấm công</h3>
       <span class="badge w">Chưa chốt</span></div>
     <div class="card-b">
       <p style="font-size:13px;color:var(--ink-2)">Hiện đang gợi ý 2 lựa chọn: về văn phòng, hoặc đăng ký WFH hôm nay.
@@ -6887,7 +7070,7 @@ tbody tr:hover{background:var(--surface-2)}
   </div>
 
   <div class="card">
-    <div class="card-h"><h3>6. Độ bao phủ mobile</h3><span class="badge w">Chưa chốt</span></div>
+    <div class="card-h"><h3>5. Độ bao phủ mobile</h3><span class="badge w">Chưa chốt</span></div>
     <div class="card-b">
       <p style="font-size:13px;color:var(--ink-2)">Các màn hình được mockup ở đây là desktop-first vì tài liệu demo cho ban lãnh đạo.
         <b>Đề xuất:</b> ưu tiên mobile cho 3 màn hình hằng ngày (chấm công, todo inbox, đơn của tôi), còn lại chấp nhận desktop.
@@ -7827,8 +8010,8 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">44</div>
     <div>
       <div class="eyebrow">Bài toàn 2 · HR · P0</div>
-      <h2>Quản lý chu kỳ OKR — timeline 5 phase, thang điểm, xếp loại</h2>
-      <p class="desc">HR cấu hình chu kỳ: 5 phase với mốc tháng thật, thang điểm <b>1–5</b>, ngưỡng xếp loại A/B/C/D, tần suất check-in và bật/tắt phân tầng. Hạn chót là <b>ngày cụ thể</b>, không phải tháng.</p>
+      <h2>Quản lý chu kỳ OKR — timeline 5 phase, thang điểm 1–5</h2>
+      <p class="desc">HR cấu hình chu kỳ: 5 phase với mốc tháng thật, thang điểm <b>1–5</b>, tần suất check-in và bật/tắt phân tầng. <b>Chỉ dùng điểm — không xếp loại A/B/C/D.</b> Hạn chót là <b>ngày cụ thể</b>, không phải tháng.</p>
     </div>
   </div>
   <div class="spec">
@@ -7837,7 +8020,7 @@ tbody tr:hover{background:var(--surface-2)}
       <ul>
         <li><span class="tag p0">P0</span>Timeline 5 phase với mốc tháng mặc định theo Guidance PDF</li>
         <li><span class="tag p0">P0</span>Đặt <b>hạn chót cụ thể theo ngày</b> cho từng phase</li>
-        <li><span class="tag p0">P0</span>Thang điểm <b>1–5</b> + ngưỡng xếp loại A/B/C/D</li>
+        <li><span class="tag p0">P0</span>Thang điểm <b>1–5</b> — chỉ dùng điểm, không xếp loại</li>
         <li><span class="tag p0">P0</span>Tần suất check-in: hàng tuần · hàng tháng · hàng quý</li>
         <li><span class="tag p0">P0</span>Bật/tắt <b>phân tầng</b> theo cây nhóm</li>
         <li><span class="tag p0">P0</span>Nhắc trước hạn: còn ≤ 3 ngày thì job bắn notification + email</li>
@@ -7914,12 +8097,6 @@ tbody tr:hover{background:var(--surface-2)}
                   <div style="display:flex;gap:7px">
                     <span class="chip on">1</span><span class="chip on">2</span><span class="chip on">3</span>
                     <span class="chip on">4</span><span class="chip on">5</span>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>Ngưỡng xếp loại</label>
-                  <div style="display:flex;gap:7px;align-items:center">
-                    <span class="chip">A ≥ 4.5</span><span class="chip">B ≥ 3.5</span><span class="chip">C ≥ 2.5</span><span class="chip">D &lt; 2.5</span>
                   </div>
                 </div>
                 <div class="field">

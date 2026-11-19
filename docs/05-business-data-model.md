@@ -22,6 +22,7 @@
 | **Chức danh (`Position`)** | thuộc tính của **Người dùng** | Không phải đơn vị tổ chức |
 | **Phạm vi xem (`UserScope`)** | gán cho **Người dùng**, trỏ tới **Nhóm** / **Chức danh** / chính mình | Quyết định người đó thấy dữ liệu ai |
 | **Thiết bị chấm công (`DeviceRegistration`)** | thuộc **Người dùng** | Thiết bị đã đăng ký được chấm công |
+| **Hồ sơ khuôn mặt (`FaceProfile`)** | thuộc **Người dùng**, 1 hồ sơ active | Vector đặc trưng để đối chiếu khi chấm công; **không lưu ảnh thô** |
 | **Bản ghi chấm công (`TimeEntry`)** | của **Người dùng**, 1 dòng/ngày | Nguồn sự thật để tính bảng công |
 | **Bảng công (`Timesheet`)** | của **Người dùng** × 1 kỳ tháng, gồm nhiều **Ô công** (`TimesheetDay`) | Có vòng đời: tạm tính → công bố → khiếu nại → chốt & khóa |
 | **Ô công (`TimesheetDay`)** | thuộc **Bảng công**, 1 ô = 1 người × 1 ngày | Lưu **trạng thái nửa ngày**, không lưu chuỗi ký hiệu |
@@ -38,7 +39,7 @@
 | **Mục tiêu (`Objective`)** | của **Người dùng**, thuộc **Nhóm OKR**, có **Kết quả chính** | 2 mục tiêu/NV/kỳ: 1 Business + 1 People |
 | **Kết quả chính (`KeyResult`)** | thuộc **Mục tiêu**, có **Check-in** & **Điểm đạt** | 3 KR mỗi mục tiêu |
 | **Phân công OKR (`OkrAssignment`)** | gán **Mục tiêu** cho **Người dùng** / **Nhóm** | Quyền đọc & quyền trả lời check-in |
-| **Check-in OKR (`OkrCheckIn`)** | của **Kết quả chính** | Tiến độ + mức độ tin cậy |
+| **Check-in OKR (`OkrCheckIn`)** | của **Kết quả chính** | Giá trị + ghi chú (tiến độ tự tính) |
 | **Điểm đạt (`OkrAchievement`)** | của **Mục tiêu**, theo nhóm Business/People | Thang 1–5, **không số lẻ, không 0** |
 | **Đánh giá (`Review`)** | của **Người dùng** trong **Nhóm OKR** | Manager chấm & duyệt hàng loạt |
 | **Quy định (`RuleConfig`)** | nhiều **phiên bản** theo phạm vi & thời gian | Mỗi phạm vi chỉ **1 phiên bản đang áp dụng** |
@@ -329,7 +330,6 @@ Các phần này **chưa có trong ERD** nhưng cần cho D2. Bổ sung ở đâ
 | `reason` | Lý do nghỉ | Bắt buộc |
 | `attachments` | File đính kèm | Danh sách file |
 | `applied_parameters` | Ảnh chụp tham số đã áp dụng | Bắt buộc — đổi cấu hình sau không làm sai lịch sử báo cáo lương |
-| `requires_hr_approval` | Cần HR duyệt thêm | Có / không |
 | `submitted_at` | Thời điểm gửi | Ghi tự động |
 | `decided_at` | Thời điểm có quyết định | Bỏ trống = chưa quyết định |
 
@@ -506,7 +506,6 @@ Công ty (nhóm gốc, parent = None)
 | `key_result_id` | KR được check-in | Bắt buộc |
 | `cycle_id` | Chu kỳ | Bắt buộc |
 | `value` | Giá trị tại thời điểm check-in | Bắt buộc |
-| `confidence` | Mức độ tin cậy của người tự chấm | 0 → 1 |
 | `note` | Ghi chú giải thích | Tùy chọn |
 | `created_by` | Người check-in | Bắt buộc |
 | `created_at` | Thời điểm check-in | Ghi tự động |
@@ -558,7 +557,7 @@ Công ty (nhóm gốc, parent = None)
 `bhxh_days` · `ro_days` · `up_days` · `ml_days` · `pl_days` · `total_days` ·
 `remaining_leave_days` · `actual_work_days` · `paid_leave_days` · `unpaid_leave_days`.
 
-> Cột nào được sửa tay → ghi `is_manual_override` + lý do (C4).
+> 17 cột tổng hợp là **chỉ đọc** — luôn tự tính từ các ô ngày. HR sửa **ô ngày** (C4); ô đã sửa lưu trong `TimesheetEdit` + hiện màu đỏ trên lưới.
 
 ## 5. Dữ liệu mẫu (bắt buộc — demo không được rỗng)
 
@@ -598,9 +597,9 @@ Công ty (nhóm gốc, parent = None)
 
 **Yêu cầu chất lượng dữ liệu mẫu:**
 - Dữ liệu phải **có biến động thực tế**: đi muộn 1–25 phút (không ai đi muộn đều 30 phút), có ngày vắng, có người làm OT, có người dùng quota hết.
-- Phải có **case đặc biệt** để demo: 1 nhân viên chuyển phòng giữa năm, 1 nhân viên mới tháng 9, 1 đơn nghỉ >3 ngày cần HR duyệt, 1 đơn bị trả lại, 1 objective bị sửa điểm (có lý do).
+- Phải có **case đặc biệt** để demo: 1 nhân viên chuyển phòng giữa năm, 1 nhân viên mới tháng 9, 1 đơn nghỉ 5 ngày (quản lý duyệt là đủ), 1 đơn đi muộn của nhóm CA (2 bước: trưởng nhóm → HR), 1 đơn bị trả lại, 1 objective bị sửa điểm (có lý do).
 - **Todo inbox phải có việc thật**: dữ liệu mẫu phải tạo ra ít nhất 3 việc đang chờ cho user demo (quên chấm công, check-in OKR đến hạn, phép tồn sắp hết hạn) — nếu inbox trống thì demo tính năng C1 không có tác dụng.
-- **Quy định phải có lịch sử phiên bản**: ít nhất 2 rule có 3 phiên bản (để demo lịch sử + rollback), và 1 rule có ghi đè theo phòng ban (để demo ghi đè).
+- **Quy định phải có lịch sử phiên bản**: ít nhất 2 rule có 3 phiên bản (để demo lịch sử + rollback).
 - Mật khẩu tất cả tài khoản demo: `demo@123` — hiển thị trên trang đăng nhập để judge 1-click vào.
 
 ## 6. Khởi tạo dữ liệu & đặt lại môi trường phát triển
