@@ -142,6 +142,22 @@ check("lịch nhóm có scope + teamSize", "scope" in tdata and tdata.get("teamS
 check("mỗi ngày có present/wfh/leave/late", all(all(k in d for k in ("present", "wfh", "leave", "late")) for d in (tdata.get("days") or [])))
 check("có ngưỡng cảnh báo 60%", tdata.get("conflictThresholdPercent") == 60)
 
+# 8c. Bảng công (S15): dữ liệu thật + công bố + khoá
+status, data = call("GET", "/timesheets")
+sheet = data.get("data") or {}
+check("GET /timesheets", status == 200 and isinstance(sheet.get("rows"), list))
+check("bảng công có ngày trong tháng", sheet.get("daysInMonth") in (28, 29, 30, 31))
+check("ngày công bố mặc định 11", sheet.get("publishDay") == 11)
+if sheet.get("rows"):
+    r0 = sheet["rows"][0]
+    check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)
+status, data = call("POST", "/timesheets/publish")
+check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")
+status, data = call("POST", "/timesheets/lock")
+check("khoá kỳ công", status == 200 and (data.get("data") or {}).get("status") == "locked")
+status, data = call("GET", "/timesheets")
+check("trạng thái sau khoá = locked", (data.get("data") or {}).get("status") == "locked")
+
 # 9. Khiếu nại
 status, data = call("GET", "/disputes")
 check("GET /disputes", status == 200 and len(data.get("data") or []) >= 1)
