@@ -3,6 +3,7 @@ package com.act.pulse.modules.attendance.controller;
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.AttendanceLog;
+import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.repository.*;
@@ -33,8 +34,20 @@ public class TimesheetController {
     private final RequestRepository requestRepository;
     private final HolidayRepository holidayRepository;
     private final RuleService ruleService;
+    private final AuditLogRepository auditLogRepository;
 
     private static final Map<String, String> STATUS = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Ô đã sửa tay: key = month|employeeCode|day */
+    private static final Map<String, String> CELL_OVERRIDES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @lombok.Data
+    public static class EditCellRequest {
+        private String employeeCode;
+        private int day;
+        private String symbol;
+        private String reason;
+        private java.util.List<String> employeeCodes; // cho sửa hàng loạt
+    }
 
     @GetMapping
     @Operation(summary = "Bảng công tháng (S15)")
@@ -73,6 +86,12 @@ public class TimesheetController {
                 else if (!weekend) workingDays++;
             }
 
+            // Ô đã sửa tay (ưu tiên hơn dữ liệu gốc)
+            for (int d = 1; d <= ym.lengthOfMonth(); d++) {
+                String ov = CELL_OVERRIDES.get(ym + "|" + u.getEmployeeCode() + "|" + d);
+                if (ov != null) daySymbol.put(d, ov);
+            }
+
             Map<String, Object> row = new HashMap<>();
             row.put("employeeCode", u.getEmployeeCode());
             row.put("fullName", u.getFullName());
@@ -96,6 +115,57 @@ public class TimesheetController {
         out.put("publishDay", ruleService.getInt("payroll_period", "publish_day", 11));
         out.put("disputeWindowDays", ruleService.getInt("payroll_period", "dispute_window_days", 2));
         return ApiResponse.ok(out, "Bảng công " + ym);
+    }
+
+    @PostMapping("/cell")
+    @Operation(summary = "Sửa 1 ô ngày — bắt buộc lý do, ghi audit, ô hiện màu đỏ")
+    public ApiResponse<Map<String, Object>> editCell(@RequestBody EditCellRequest req,
+                                                     @RequestParam(required = false) String month) {
+        if (req.getReason() == null || req.getReason().isBlank()) {
+            throw new RuntimeException("Sửa ô bảng công phải nhập lý do");
+        }
+        if (req.getSymbol() == null || req.getSymbol().isBlank()) {
+            throw new RuntimeException("Thiếu ký hiệu công mới");
+        }
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        if ("locked".equals(STATUS.get(ym.toString()))) {
+            throw new RuntimeException("Kỳ công đã khoá — không sửa được ô");
+        }
+        String key = ym + "|" + req.getEmployeeCode() + "|" + req.getDay();
+        String oldVal = CELL_OVERRIDES.get(key);
+        CELL_OVERRIDES.put(key, req.getSymbol());
+        AuditLog log = AuditLog.builder().action("EDIT_TIMESHEET_CELL").entityName("TIMESHEET_CELL")
+                .entityId(key).userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
+                .oldValue(oldVal).newValue(req.getSymbol()).reason(req.getReason()).build();
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        auditLogRepository.save(log);
+        return ApiResponse.ok(Map.of("key", key, "symbol", req.getSymbol(), "edited", true), "Đã sửa ô — có ghi nhật ký");
+    }
+
+    @PostMapping("/bulk")
+    @Operation(summary = "Sửa hàng loạt nhiều nhân sự — 1 audit log cho cả lô")
+    public ApiResponse<Map<String, Object>> bulkEdit(@RequestBody EditCellRequest req,
+                                                     @RequestParam(required = false) String month) {
+        if (req.getReason() == null || req.getReason().isBlank()) {
+            throw new RuntimeException("Sửa hàng loạt phải nhập lý do");
+        }
+        if (req.getEmployeeCodes() == null || req.getEmployeeCodes().isEmpty()) {
+            throw new RuntimeException("Chưa chọn nhân sự nào");
+        }
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        if ("locked".equals(STATUS.get(ym.toString()))) {
+            throw new RuntimeException("Kỳ công đã khoá — không sửa được");
+        }
+        for (String code : req.getEmployeeCodes()) {
+            CELL_OVERRIDES.put(ym + "|" + code + "|" + req.getDay(), req.getSymbol());
+        }
+        AuditLog log = AuditLog.builder().action("BULK_EDIT_TIMESHEET").entityName("TIMESHEET_CELL")
+                .entityId(ym + "|" + req.getDay()).userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
+                .newValue(req.getSymbol()).reason(req.getReason() + " · " + req.getEmployeeCodes().size() + " nhân sự")
+                .build();
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        auditLogRepository.save(log);
+        return ApiResponse.ok(Map.of("updated", req.getEmployeeCodes().size(), "symbol", req.getSymbol()), "Đã sửa hàng loạt");
     }
 
     @PostMapping("/publish")
