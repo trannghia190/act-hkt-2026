@@ -50,7 +50,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         log.info("Processing {} punch request for requesterCode: {}", punchType, requesterCode);
 
-        // 1. If Face Image is present, call AI Face Recognition Service (OpenCV + 512D Vector)
+        // 1. If Face Image is present, call AI Face Recognition Service (OpenCV + 512D
+        // Vector)
         if (faceImage != null && !faceImage.trim().isEmpty()) {
             JsonNode aiResult = callAiFaceService(faceImage, requesterCode);
 
@@ -83,19 +84,20 @@ public class AttendanceServiceImpl implements AttendanceService {
                             .build();
                 }
 
-                // Case C: Face recognized by AI -> Compare with login requester (Proxy Punch Prevention)
+                // Case C: Face recognized by AI -> Compare with login requester (Proxy Punch
+                // Prevention)
                 JsonNode matchedEmp = aiResult.path("matched_employee");
                 String matchedCode = matchedEmp.path("employee_code").asText("");
                 String matchedName = matchedEmp.path("full_name").asText("");
 
-                log.info("AI recognized person in front of camera: {} ({}), requester is: {}", matchedName, matchedCode, requesterCode);
+                log.info("AI recognized person in front of camera: {} ({}), requester is: {}", matchedName, matchedCode,
+                        requesterCode);
 
                 if (!matchedCode.isEmpty() && !matchedCode.equalsIgnoreCase(requesterCode)) {
                     // FRAUD / PROXY PUNCH DETECTED!
                     String alertMsg = String.format(
                             "CẢNH BÁO CHẤM CÔNG HỘ: Người đứng trước camera là %s (Mã: %s), KHÔNG KHỚP với tài khoản đăng nhập là %s! Hệ thống đã từ chối chấm công.",
-                            matchedName, matchedCode, requesterCode
-                    );
+                            matchedName, matchedCode, requesterCode);
                     log.error(alertMsg);
 
                     return CheckInResponse.builder()
@@ -127,7 +129,8 @@ public class AttendanceServiceImpl implements AttendanceService {
                 return CheckInResponse.builder()
                         .status("VALID")
                         .serverTimestamp(logEntity.getServerTimestamp())
-                        .message(String.format("Xác thực khuôn mặt chính chủ thành công! Nhân viên: %s (%s). Độ tương đồng: %.1f%%",
+                        .message(String.format(
+                                "Xác thực khuôn mặt chính chủ thành công! Nhân viên: %s (%s). Độ tương đồng: %.1f%%",
                                 matchedName, matchedCode, similarity * 100))
                         .matchedEmployeeCode(matchedCode)
                         .matchedFullName(matchedName)
@@ -162,10 +165,11 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private JsonNode callAiFaceService(String base64Image, String expectedEmployeeCode) {
-        String[] targets = {AI_SERVICE_DOCKER_SERVICE_URL, AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL};
+        String[] targets = { AI_SERVICE_DOCKER_SERVICE_URL, AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL };
         Map<String, String> body = new HashMap<>();
         body.put("image", base64Image);
-        // Do not force expected_code so AI performs true unbiased 1:N search across all enrolled employees
+        // Do not force expected_code so AI performs true unbiased 1:N search across all
+        // enrolled employees
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);

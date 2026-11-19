@@ -417,8 +417,8 @@ export const CheckInPage: React.FC = () => {
           <button
             onClick={() => setCheckType('IN')}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'IN'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
+              ? 'bg-accent text-white shadow-xs'
+              : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
               }`}
           >
             Check-In Vào Ca (Sáng)
@@ -426,8 +426,8 @@ export const CheckInPage: React.FC = () => {
           <button
             onClick={() => setCheckType('OUT')}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'OUT'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
+              ? 'bg-accent text-white shadow-xs'
+              : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
               }`}
           >
             Check-Out Về (Chiều)
@@ -451,8 +451,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('SELF')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'SELF'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
               >
                 👤 Chính Chủ ({user?.employeeCode || '136ACT'})
@@ -461,8 +461,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('PROXY_FRAUD')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'PROXY_FRAUD'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
                 title="Mô phỏng nhân viên khác đứng trước camera để test tính năng phát hiện chấm công hộ"
               >
@@ -472,8 +472,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('POOR_QUALITY')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'POOR_QUALITY'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
                 title="Mô phỏng ảnh chụp quá tối hoặc quá mờ để test bộ kiểm tra chất lượng ảnh"
               >
@@ -596,8 +596,8 @@ export const CheckInPage: React.FC = () => {
             type="button"
             onClick={toggleRealCamera}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs border cursor-pointer ${useRealCamera && cameraStream
-                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
-                : 'bg-accent text-white border-transparent hover:bg-accent-hover'
+              ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
+              : 'bg-accent text-white border-transparent hover:bg-accent-hover'
               }`}
           >
             <span>{useRealCamera && cameraStream ? '🟢' : '📹'}</span>
