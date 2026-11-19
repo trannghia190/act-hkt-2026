@@ -115,9 +115,6 @@ export const RuleEnginePage: React.FC = () => {
   });
 
   // Dry-run modal
-  const [isDryRunOpen, setIsDryRunOpen] = useState(false);
-  const [dryRunRunning, setDryRunRunning] = useState(false);
-  const [dryRunResult, setDryRunResult] = useState<any | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
@@ -144,6 +141,10 @@ export const RuleEnginePage: React.FC = () => {
 
     try {
       const parsedParams = JSON.parse(editForm.paramsJson);
+      const confirmed = window.confirm(
+        `Xác nhận thay đổi quy định?\n\n• ${editingRule.name}\n• Áp dụng từ: ${editForm.effectiveDate}\n\nThay đổi sẽ có hiệu lực theo ngày đã chọn và được ghi vào lịch sử phiên bản.`,
+      );
+      if (!confirmed) return;
       const vNum = parseFloat(editingRule.currentVersion.replace('v', '')) || 1.0;
       const nextVersion = `v${(vNum + 0.1).toFixed(1)}`;
 
@@ -208,21 +209,6 @@ export const RuleEnginePage: React.FC = () => {
     }
   };
 
-  const runSimulation = () => {
-    setDryRunRunning(true);
-    setDryRunResult(null);
-    setTimeout(() => {
-      setDryRunRunning(false);
-      setDryRunResult({
-        totalLogsEvaluated: 12450,
-        affectedEmployees: 34,
-        attendanceRateShift: '+1.8%',
-        payrollImpactVND: '+4,250,000 đ',
-        summary: 'Mô phỏng áp dụng luật mới trên dữ liệu chấm công tháng 10/2026 cho thấy 34 nhân viên giảm vi phạm đi muộn và quỹ lương chuyên cần tăng nhẹ 1.8%.'
-      });
-    }, 1200);
-  };
-
   const filteredRules = rules.filter(r => {
     const matchesCat = filterCategory === 'ALL' || r.category === filterCategory;
     const matchesQ =
@@ -250,13 +236,10 @@ export const RuleEnginePage: React.FC = () => {
             <Badge variant="accent">S16 / S17 / S18</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Quản trị các quy định nghiệp vụ linh hoạt, versioning bất biến và mô phỏng Dry-Run tác động trước khi ban hành
+            Quản trị 19 quy định nghiệp vụ, versioning bất biến; khi lưu sẽ hiện hộp thoại xác nhận nội dung áp dụng (không có dry-run)
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsDryRunOpen(true)}>
-            🧪 Chạy Mô Phỏng Dry-Run (S18)
-          </Button>
           {canManage && (
             <Button variant="primary" size="sm" onClick={() => setIsAddOpen(true)}>
               + Tạo Quy Định Mới
@@ -484,83 +467,6 @@ export const RuleEnginePage: React.FC = () => {
       )}
 
       {/* Dry Run Modal */}
-      {isDryRunOpen && (
-        <Modal
-          isOpen={true}
-          onClose={() => setIsDryRunOpen(false)}
-          title="Mô Phỏng Tác Động Quy Tắc Mới (Dry-Run Simulator - S18)"
-          maxWidth="lg"
-        >
-          <div className="space-y-4 text-xs">
-            <p className="text-ink-secondary">
-              Công cụ cho phép áp thử nghiệm các tham số luật mới lên dữ liệu chấm công lịch sử để đo lường tỷ lệ đi muộn, số ngày công hợp lệ và chi phí phát sinh trước khi ban hành.
-            </p>
-
-            <div className="p-3 bg-canvas rounded-lg border border-line space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-ink">Quy tắc chạy thử nghiệm:</span>
-                <span className="font-mono text-accent-dark">RULE_GRACE_PERIOD_MINUTES</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-[11px]">
-                <div>
-                  <span className="text-ink-muted">Tham số hiện tại:</span>
-                  <div className="font-mono text-ink">grace_minutes = 15 phút</div>
-                </div>
-                <div>
-                  <span className="text-ink-muted">Tham số thử nghiệm:</span>
-                  <div className="font-mono text-accent-dark font-bold">grace_minutes = 20 phút</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center py-2">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={runSimulation}
-                disabled={dryRunRunning}
-              >
-                {dryRunRunning ? 'Đang phân tích 12,450 bản ghi log...' : 'Bắt đầu chạy mô phỏng trên dữ liệu tháng 10/2026'}
-              </Button>
-            </div>
-
-            {dryRunResult && (
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 space-y-3 animate-in fade-in">
-                <div className="font-semibold text-xs text-emerald-900 flex items-center gap-1.5">
-                  <span>📊</span> Kết quả mô phỏng Dry-Run:
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                  <div className="p-2 bg-white rounded border border-emerald-100">
-                    <div className="text-[10px] text-emerald-700">Log đã quét</div>
-                    <div className="text-sm font-bold">{dryRunResult.totalLogsEvaluated}</div>
-                  </div>
-                  <div className="p-2 bg-white rounded border border-emerald-100">
-                    <div className="text-[10px] text-emerald-700">Nhân sự ảnh hưởng</div>
-                    <div className="text-sm font-bold text-accent">{dryRunResult.affectedEmployees} người</div>
-                  </div>
-                  <div className="p-2 bg-white rounded border border-emerald-100">
-                    <div className="text-[10px] text-emerald-700">Tỷ lệ đúng giờ</div>
-                    <div className="text-sm font-bold text-emerald-700">{dryRunResult.attendanceRateShift}</div>
-                  </div>
-                  <div className="p-2 bg-white rounded border border-emerald-100">
-                    <div className="text-[10px] text-emerald-700">Biến động quỹ công</div>
-                    <div className="text-sm font-bold">{dryRunResult.payrollImpactVND}</div>
-                  </div>
-                </div>
-                <div className="text-[11px] text-emerald-800 leading-relaxed">
-                  {dryRunResult.summary}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2 border-t border-line">
-              <Button variant="outline" size="sm" onClick={() => setIsDryRunOpen(false)}>
-                Đóng mô phỏng
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

@@ -13,12 +13,18 @@ import os
 import json
 import base64
 import logging
+import asyncio
 from typing import Optional, List, Dict, Any
 import numpy as np
 import cv2
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+try:
+    import asyncpg  # lưu vector vào PostgreSQL/pgvector (production)
+except ImportError:  # pragma: no cover - fallback khi chạy standalone
+    asyncpg = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ai-face-service")
@@ -41,10 +47,24 @@ app.add_middleware(
 CASCADE_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
-# Database path
-DATA_DIR = "/app/data"
+# Database path (override with DATA_DIR when running outside Docker)
+DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 DB_FILE = os.path.join(DATA_DIR, "face_db.json")
+
+# PostgreSQL/pgvector — business yêu cầu lưu vector trong DB, không lưu file.
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres123@localhost:5432/pulse_db",
+)
+
+# Ngưỡng khớp khuôn mặt — business mặc định 85% (rule attendance_security.face_match_threshold).
+SIMILARITY_THRESHOLD = float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
+
+# Ngưỡng chuyển động tối thiểu giữa các frame để coi là người thật (liveness).
+LIVENESS_MOTION_THRESHOLD = float(os.environ.get("FACE_LIVENESS_MOTION", "0.6"))
+
+_db_pool = None
 
 # ==========================================
 # Models
@@ -61,6 +81,7 @@ class VerifyResponse(BaseModel):
     matched_employee: Optional[EmployeeFaceProfile] = None
     similarity_score: float = 0.0
     quality_passed: bool = True
+    is_liveness_verified: bool = False
     error_code: Optional[str] = None
     message: str
 
@@ -72,8 +93,10 @@ class EnrollResponse(BaseModel):
     vector_dimensions: int
 
 class VerifyJsonRequest(BaseModel):
-    image: str # Base64 data URL or raw base64
+    image: str  # Base64 data URL or raw base64
     expected_employee_code: Optional[str] = None
+    # Chuỗi frame liên tiếp để kiểm tra liveness (chuyển động thật)
+    liveness_frames: Optional[List[str]] = None
 
 class EnrollJsonRequest(BaseModel):
     employee_code: str
@@ -88,40 +111,108 @@ class EnrollJsonRequest(BaseModel):
 # ==========================================
 employee_db: Dict[str, Dict[str, Any]] = {}
 
+async def init_db() -> None:
+    """Kết nối PostgreSQL/pgvector và nạp danh sách khuôn mặt đã đăng ký."""
+    global _db_pool
+    if asyncpg is None:
+        logger.warning("asyncpg chưa cài — dùng file JSON tạm thời")
+        seed_default_employees()
+        return
+    try:
+        _db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+        async with _db_pool.acquire() as conn:
+            await conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
+            await conn.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS face_profiles (
+                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    user_id UUID NOT NULL UNIQUE REFERENCES users(id),
+                    embedding vector(512) NOT NULL,
+                    model_version VARCHAR(30) NOT NULL DEFAULT 'sface-512-v1',
+                    status VARCHAR(20) NOT NULL DEFAULT 'active',
+                    consent_at TIMESTAMPTZ,
+                    enrolled_at TIMESTAMPTZ,
+                    enrolled_by UUID,
+                    reset_by UUID,
+                    reset_reason TEXT,
+                    last_verified_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            )
+            rows = await conn.fetch(
+                """
+                SELECT u.employee_code, u.full_name, COALESCE(t.name, '—') AS department,
+                       f.embedding::text AS embedding
+                FROM face_profiles f
+                JOIN users u ON u.id = f.user_id
+                LEFT JOIN teams t ON t.id = u.team_id
+                WHERE f.status = 'active'
+                """
+            )
+        employee_db.clear()
+        for row in rows:
+            employee_db[row["employee_code"]] = {
+                "employee_code": row["employee_code"],
+                "full_name": row["full_name"],
+                "department": row["department"],
+                "vector": _parse_vector(row["embedding"]),
+            }
+        logger.info("Đã nạp %d hồ sơ khuôn mặt từ PostgreSQL", len(employee_db))
+    except Exception as exc:  # pragma: no cover - DB có thể chưa sẵn khi dev
+        logger.warning("Không kết nối được PostgreSQL (%s) — dùng file JSON tạm thời", exc)
+        seed_default_employees()
+
+
+def _parse_vector(raw: Optional[str]) -> List[float]:
+    if not raw:
+        return []
+    return [float(x) for x in raw.strip().strip("[]").split(",") if x.strip()]
+
+
+def _vector_literal(vec: List[float]) -> str:
+    return "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
+
+
+async def persist_employee_to_db(employee_code: str, vec: List[float]) -> None:
+    """Lưu/ cập nhật vector vào bảng face_profiles (chỉ vector, KHÔNG lưu ảnh thô)."""
+    if _db_pool is None:
+        save_db()
+        return
+    async with _db_pool.acquire() as conn:
+        result = await conn.execute(
+            """
+            INSERT INTO face_profiles (user_id, embedding, status, enrolled_at)
+            SELECT id, $2::vector, 'active', NOW() FROM users WHERE employee_code = $1
+            ON CONFLICT (user_id) DO UPDATE
+              SET embedding = EXCLUDED.embedding,
+                  status = 'active',
+                  enrolled_at = NOW(),
+                  updated_at = NOW()
+            """,
+            employee_code,
+            _vector_literal(vec),
+        )
+        if result.endswith("0"):
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy nhân viên {employee_code} trong bảng users")
+
+
 def seed_default_employees():
-    """Seeds default employees with distinct normalized 512D vectors if empty."""
+    """Nạp từ file JSON nếu có — KHÔNG sinh vector ngẫu nhiên (fake biometric rất nguy hiểm)."""
     global employee_db
     if os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
                 employee_db = json.load(f)
-                if employee_db:
-                    logger.info("Loaded %d employees from %s", len(employee_db), DB_FILE)
-                    return
+                logger.info("Loaded %d employees from %s", len(employee_db), DB_FILE)
         except Exception as e:
             logger.warning("Could not read db file: %s", e)
+    else:
+        employee_db = {}
+        logger.info("Chưa có hồ sơ khuôn mặt — nhân viên cần đăng ký trước khi chấm công")
 
-    # Seed 4 standard ACT personas
-    defaults = [
-        {"code": "Admin", "name": "Quản Trị Viên Hệ Thống", "dept": "Ban Quản Trị Hệ Thống", "seed": 42},
-        {"code": "01HR", "name": "Nguyễn Thị Thu Hà", "dept": "Phòng Nhân Sự", "seed": 101},
-        {"code": "05ACT", "name": "Nguyễn Thanh Tùng", "dept": "Khối Kỹ Thuật", "seed": 202},
-        {"code": "136ACT", "name": "Vũ Văn Luận", "dept": "Khối Kỹ Thuật (Optimus)", "seed": 303},
-    ]
-
-    for d in defaults:
-        np.random.seed(d["seed"])
-        raw_vec = np.random.uniform(0.1, 1.0, 512).astype(np.float32)
-        norm_vec = (raw_vec / np.linalg.norm(raw_vec)).tolist()
-        employee_db[d["code"]] = {
-            "employee_code": d["code"],
-            "full_name": d["name"],
-            "department": d["dept"],
-            "vector": norm_vec,
-            "enrolled_at": "2026-01-01T08:00:00"
-        }
-    save_db()
-    logger.info("Initialized default employee face database with 4 records")
 
 def save_db():
     try:
@@ -129,6 +220,11 @@ def save_db():
             json.dump(employee_db, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error("Failed to save face database: %s", e)
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    await init_db()
 
 # ==========================================
 # Computer Vision & Quality Analysis
@@ -153,6 +249,39 @@ def decode_base64_image(b64_str: str) -> Optional[np.ndarray]:
     except Exception as e:
         logger.error("Error decoding base64 image: %s", e)
         return None
+
+def check_liveness(frames: Optional[List[str]]) -> tuple[bool, str]:
+    """
+    Kiểm tra liveness bằng chuyển động giữa các frame liên tiếp.
+
+    Business (docs/06 `attendance_security.require_liveness`): liveness là bước THẬT —
+    không đạt thì CHẶN. Ảnh in tĩnh / video phát lại sẽ gần như không đổi giữa các frame.
+
+    Yêu cầu tối thiểu 2 frame; nếu client không gửi frame → coi như KHÔNG đạt
+    (strict, không cho qua mặc định).
+    """
+    if not frames or len(frames) < 2:
+        return False, "Không nhận được chuỗi frame kiểm tra liveness — vui lòng thử lại"
+
+    images = []
+    for f in frames[:5]:
+        img = decode_base64_image(f)
+        if img is not None:
+            images.append(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+    if len(images) < 2:
+        return False, "Không đọc được frame hợp lệ để kiểm tra liveness"
+
+    diffs = []
+    for a, b in zip(images, images[1:]):
+        h = min(a.shape[0], b.shape[0])
+        w = min(a.shape[1], b.shape[1])
+        diff = cv2.absdiff(a[:h, :w], b[:h, :w])
+        diffs.append(float(diff.mean()))
+    max_motion = max(diffs) if diffs else 0.0
+    if max_motion < LIVENESS_MOTION_THRESHOLD:
+        return False, "Không phát hiện chuyển động thật — hãy nhìn vào camera và di chuyển nhẹ đầu"
+    return True, ""
+
 
 def check_image_quality(img: np.ndarray) -> tuple[bool, Optional[str]]:
     """
@@ -285,18 +414,22 @@ async def verify_face_json(payload: VerifyJsonRequest):
         return VerifyResponse(
             is_matched=False,
             quality_passed=False,
+            is_liveness_verified=False,
             error_code="INVALID_BASE64",
             message="Không thể giải mã chuỗi Base64 hình ảnh"
         )
-    return execute_verification(img, payload.expected_employee_code)
+    liveness_ok, liveness_msg = check_liveness(payload.liveness_frames)
+    return execute_verification(img, payload.expected_employee_code, liveness_ok, liveness_msg)
 
-def execute_verification(img: np.ndarray, expected_code: Optional[str] = None) -> VerifyResponse:
+def execute_verification(img: np.ndarray, expected_code: Optional[str] = None,
+                         liveness_ok: bool = True, liveness_msg: str = "") -> VerifyResponse:
     # 1. Quality Assessment
     quality_ok, quality_err = check_image_quality(img)
     if not quality_ok:
         return VerifyResponse(
             is_matched=False,
             quality_passed=False,
+            is_liveness_verified=False,
             error_code="QUALITY_FAILED",
             message=f"Chất lượng ảnh không đạt yêu cầu: {quality_err}"
         )
@@ -307,8 +440,19 @@ def execute_verification(img: np.ndarray, expected_code: Optional[str] = None) -
         return VerifyResponse(
             is_matched=False,
             quality_passed=True,
+            is_liveness_verified=liveness_ok,
             error_code="NO_FACE_DETECTED",
             message=err or "Không phát hiện được khuôn mặt người trong ảnh"
+        )
+
+    # 2b. Liveness — chống ảnh in / video phát lại
+    if not liveness_ok:
+        return VerifyResponse(
+            is_matched=False,
+            quality_passed=True,
+            is_liveness_verified=False,
+            error_code="LIVENESS_FAILED",
+            message=liveness_msg or "Không phát hiện chuyển động thật — vui lòng nhìn vào camera và di chuyển nhẹ"
         )
 
     # 3. 1:N Biometric Search against all enrolled employees
@@ -329,8 +473,7 @@ def execute_verification(img: np.ndarray, expected_code: Optional[str] = None) -
         exp_vec = np.array(employee_db[expected_code]["vector"], dtype=np.float32)
         targeted_sim = cosine_similarity(vec, exp_vec)
 
-    # Verification threshold
-    SIMILARITY_THRESHOLD = 0.65
+    # Ngưỡng đọc từ cấu hình business (mặc định 85%)
 
     # If the user is specifically enrolling and testing themselves, check expected vs best
     if expected_code and expected_code in employee_db:
@@ -351,8 +494,9 @@ def execute_verification(img: np.ndarray, expected_code: Optional[str] = None) -
                 full_name=chosen_emp["full_name"],
                 department=chosen_emp["department"],
                 confidence_score=round(min(0.99, max(0.85, chosen_sim)), 3),
-                is_liveness_verified=True
+                is_liveness_verified=liveness_ok
             ),
+            is_liveness_verified=liveness_ok,
             message=f"Xác thực khuôn mặt thành công: {chosen_emp['full_name']} ({chosen_emp['employee_code']})"
         )
     else:
@@ -360,6 +504,7 @@ def execute_verification(img: np.ndarray, expected_code: Optional[str] = None) -
             is_matched=False,
             similarity_score=round(max(0.0, chosen_sim), 4),
             quality_passed=True,
+            is_liveness_verified=liveness_ok,
             matched_employee=None,
             error_code="FACE_NOT_RECOGNIZED",
             message="Không tìm thấy nhân viên phù hợp trong hệ thống hoặc độ tương đồng quá thấp"
@@ -388,7 +533,9 @@ async def enroll_face_multipart(
     if right_image:
         r_img = decode_image_bytes(await right_image.read())
 
-    return execute_enrollment(employee_code, full_name, department, f_img, l_img, r_img)
+    result = execute_enrollment(employee_code, full_name, department, f_img, l_img, r_img)
+    await persist_employee_to_db(employee_code, employee_db[employee_code]["vector"])
+    return result
 
 @app.post("/api/v1/face/enroll-json", response_model=EnrollResponse)
 async def enroll_face_json(payload: EnrollJsonRequest):
@@ -400,7 +547,7 @@ async def enroll_face_json(payload: EnrollJsonRequest):
     l_img = decode_base64_image(payload.left_image) if payload.left_image else None
     r_img = decode_base64_image(payload.right_image) if payload.right_image else None
 
-    return execute_enrollment(
+    result = execute_enrollment(
         payload.employee_code,
         payload.full_name,
         payload.department,
@@ -408,6 +555,8 @@ async def enroll_face_json(payload: EnrollJsonRequest):
         l_img,
         r_img
     )
+    await persist_employee_to_db(payload.employee_code, employee_db[payload.employee_code]["vector"])
+    return result
 
 def execute_enrollment(
     employee_code: str,

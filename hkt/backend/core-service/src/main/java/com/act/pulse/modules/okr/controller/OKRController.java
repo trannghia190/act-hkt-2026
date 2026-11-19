@@ -16,7 +16,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/okr")
 @RequiredArgsConstructor
-@Tag(name = "3. OKR & Performance Appraisal API", description = "Quản trị mục tiêu, form đánh giá 4 Box, chấm điểm 1-5 nguyên, báo cáo HR 9 trường và Calibration Board")
+@Tag(name = "3. OKR & Performance Appraisal API", description = "Quản trị mục tiêu, form đánh giá 4 Box, chấm điểm 1-5 nguyên ở tầng nhóm, báo cáo HR 9 trường (không xếp loại)")
 public class OKRController {
 
     private final OKRService okrService;
@@ -46,7 +46,6 @@ public class OKRController {
         private String title;
         private String category; // BUSINESS, PEOPLE
         private boolean isCompanyAligned;
-        private double weight;
         private double progress;
         private List<KeyResultDto> keyResults;
     }
@@ -93,14 +92,6 @@ public class OKRController {
     }
 
     @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CalibrationMoveCardRequest {
-        private String employeeCode;
-        private String targetGrade; // GRADE_A, GRADE_B, GRADE_C, GRADE_D
-    }
-
-    @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
@@ -110,28 +101,15 @@ public class OKRController {
         private String employeeCode;
         private String jobTitle;
         private String seniority; // Thời gian công tác
-        private String department;
         private String directManagerName;
         private int businessScore; // 1 - 5
         private int peopleScore; // 1 - 5
         private double averageScore; // (Business + People) / 2
         private String status; // CHUA_TU_DANH_GIA, CHO_QL_CHAM, DA_HOAN_TAT
-        private String finalGrade; // A, B, C, D
     }
 
     // In-Memory store for OKRs
     private static final Map<String, Form4BoxReviewRequest> REVIEWS_DB = Collections.synchronizedMap(new HashMap<>());
-    private static final Map<String, String> CALIBRATION_RANKS = Collections.synchronizedMap(new HashMap<>());
-    private static boolean IS_RATIFIED = false;
-
-    static {
-        // Seed default ratings
-        CALIBRATION_RANKS.put("136ACT", "GRADE_B");
-        CALIBRATION_RANKS.put("05ACT", "GRADE_A");
-        CALIBRATION_RANKS.put("01HR", "GRADE_B");
-        CALIBRATION_RANKS.put("Admin", "GRADE_A");
-    }
-
     // --- Endpoints ---
 
     @GetMapping("/my-dashboard")
@@ -159,7 +137,6 @@ public class OKRController {
                         .title("Đạt mốc 10,000 người dùng hoạt động hàng ngày (DAU)")
                         .category("BUSINESS")
                         .isCompanyAligned(true)
-                        .weight(10.0)
                         .progress(80.0)
                         .keyResults(List.of(
                                 KeyResultDto.builder().id("kr-c1").title("Tăng trưởng người dùng mới 30%").metricType("PERCENTAGE").startValue(0).targetValue(30).currentValue(24).unit("%").progress(80.0).build()
@@ -170,7 +147,6 @@ public class OKRController {
                         .title("Xây dựng văn hóa học tập liên tục và chuyển đổi số nội bộ")
                         .category("PEOPLE")
                         .isCompanyAligned(true)
-                        .weight(10.0)
                         .progress(90.0)
                         .keyResults(List.of(
                                 KeyResultDto.builder().id("kr-c2").title("100% nhân sự hoàn thành khóa đào tạo văn hóa bảo mật").metricType("PERCENTAGE").startValue(0).targetValue(100).currentValue(90).unit("%").progress(90.0).build()
@@ -205,20 +181,8 @@ public class OKRController {
     }
 
     @PostMapping("/submit-setup")
-    @Operation(summary = "Ràng buộc tổng trọng số 100% & Gửi Quản lý duyệt đầu năm (S21)")
-    public ResponseEntity<ApiResponse<Boolean>> submitSetup(@RequestBody Map<String, Object> payload) {
-        Object val = payload != null ? payload.getOrDefault("totalWeight", 100) : 100;
-        int totalWeight = 100;
-        if (val instanceof Number n) {
-            totalWeight = n.intValue();
-        } else if (val != null) {
-            try {
-                totalWeight = Integer.parseInt(val.toString().trim());
-            } catch (Exception ignored) {}
-        }
-        if (totalWeight != 100) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Tổng trọng số của bộ mục tiêu phải bằng đúng 100% (Hiện tại: " + totalWeight + "%)"));
-        }
+    @Operation(summary = "Gửi bộ mục tiêu OKR cho Quản lý duyệt đầu năm (S21)")
+    public ResponseEntity<ApiResponse<Boolean>> submitSetup(@RequestBody(required = false) Map<String, Object> payload) {
         return ResponseEntity.ok(ApiResponse.ok(true, "Đã gửi bộ mục tiêu OKR cho Quản lý trực tiếp phê duyệt thành công!"));
     }
 
@@ -320,85 +284,12 @@ public class OKRController {
     @Operation(summary = "Bảng tổng hợp đánh giá HR chuẩn 9 trường theo doc/OKR_doc.md Bước 5 (S25)")
     public ApiResponse<List<HRSummaryReportItem>> getHrSummaryReport(@RequestParam(defaultValue = "2026") Integer year) {
         List<HRSummaryReportItem> report = List.of(
-                HRSummaryReportItem.builder().stt(1).fullName("Quản Trị Viên Hệ Thống").employeeCode("Admin").jobTitle("System Admin").seniority("5 năm").department("Ban Quản Trị").directManagerName("Ban Giám Đốc").businessScore(5).peopleScore(5).averageScore(5.0).status("DA_HOAN_TAT").finalGrade("A").build(),
-                HRSummaryReportItem.builder().stt(2).fullName("Nguyễn Thị Thu Hà").employeeCode("01HR").jobTitle("Trưởng Phòng Nhân Sự").seniority("4 năm").department("Phòng Nhân Sự").directManagerName("Ban Giám Đốc").businessScore(4).peopleScore(4).averageScore(4.0).status("DA_HOAN_TAT").finalGrade("B").build(),
-                HRSummaryReportItem.builder().stt(3).fullName("Nguyễn Thanh Tùng").employeeCode("05ACT").jobTitle("Tech Lead").seniority("3.5 năm").department("Khối Kỹ Thuật (Sirius)").directManagerName("Ban Giám Đốc").businessScore(5).peopleScore(4).averageScore(4.5).status("DA_HOAN_TAT").finalGrade("A").build(),
-                HRSummaryReportItem.builder().stt(4).fullName("Vũ Văn Luận").employeeCode("136ACT").jobTitle("Senior Backend Dev").seniority("2.5 năm").department("Khối Kỹ Thuật (Optimus)").directManagerName("Nguyễn Thanh Tùng").businessScore(4).peopleScore(4).averageScore(4.0).status("DA_HOAN_TAT").finalGrade("B").build()
+                HRSummaryReportItem.builder().stt(1).fullName("Quản Trị Viên Hệ Thống").employeeCode("Admin").jobTitle("System Admin").seniority("5 năm").directManagerName("Ban Giám Đốc").businessScore(5).peopleScore(5).averageScore(5.0).status("DA_HOAN_TAT").build(),
+                HRSummaryReportItem.builder().stt(2).fullName("Nguyễn Thị Thu Hà").employeeCode("01HR").jobTitle("Trưởng Phòng Nhân Sự").seniority("4 năm").directManagerName("Ban Giám Đốc").businessScore(4).peopleScore(4).averageScore(4.0).status("DA_HOAN_TAT").build(),
+                HRSummaryReportItem.builder().stt(3).fullName("Nguyễn Thanh Tùng").employeeCode("05ACT").jobTitle("Tech Lead").seniority("3.5 năm").directManagerName("Ban Giám Đốc").businessScore(5).peopleScore(4).averageScore(4.5).status("DA_HOAN_TAT").build(),
+                HRSummaryReportItem.builder().stt(4).fullName("Vũ Văn Luận").employeeCode("136ACT").jobTitle("Senior Backend Dev").seniority("2.5 năm").directManagerName("Nguyễn Thanh Tùng").businessScore(4).peopleScore(4).averageScore(4.0).status("DA_HOAN_TAT").build()
         );
         return ApiResponse.ok(report, "Lấy bảng tổng hợp HR 9 trường thành công");
-    }
-
-    @GetMapping("/calibration/board")
-    @Operation(summary = "Hội đồng hiệu chuẩn phân phối chuẩn Bell Curve dạng Kanban (S26)")
-    public ApiResponse<Map<String, Object>> getCalibrationBoard(@RequestParam(defaultValue = "2026") Integer year) {
-        Map<String, Object> board = new HashMap<>();
-
-        Map<String, Object> gradeA = Map.of(
-                "title", "Xuất Sắc (Grade A)",
-                "quotaMaxPercent", 15.0,
-                "currentCount", 2,
-                "currentPercent", 14.3,
-                "isExceeded", false,
-                "members", List.of("Admin", "05ACT")
-        );
-        Map<String, Object> gradeB = Map.of(
-                "title", "Tốt (Grade B)",
-                "quotaRange", "60% - 70%",
-                "currentCount", 9,
-                "currentPercent", 64.3,
-                "members", List.of("01HR", "136ACT")
-        );
-        Map<String, Object> gradeC = Map.of(
-                "title", "Đạt (Grade C)",
-                "quotaRange", "15% - 20%",
-                "currentCount", 3,
-                "currentPercent", 21.4,
-                "members", List.of()
-        );
-        Map<String, Object> gradeD = Map.of(
-                "title", "Cần Cải Thiện (Grade D)",
-                "quotaMaxPercent", 5.0,
-                "currentCount", 0,
-                "currentPercent", 0.0,
-                "members", List.of()
-        );
-
-        board.put("gradeA", gradeA);
-        board.put("gradeB", gradeB);
-        board.put("gradeC", gradeC);
-        board.put("gradeD", gradeD);
-        board.put("isRatified", IS_RATIFIED);
-
-        return ApiResponse.ok(board, "Lấy dữ liệu Calibration Board thành công");
-    }
-
-    @PutMapping("/calibration/move-card")
-    @Operation(summary = "Kéo thả nhân viên giữa các cột xếp loại hiệu chuẩn (S26)")
-    public ApiResponse<Boolean> moveCard(@RequestBody CalibrationMoveCardRequest req) {
-        CALIBRATION_RANKS.put(req.getEmployeeCode(), req.getTargetGrade());
-        return ApiResponse.ok(true, "Đã di chuyển nhân sự sang " + req.getTargetGrade());
-    }
-
-    @PostMapping("/calibration/ratify")
-    @Operation(summary = "Ban Giám Đốc phê duyệt chốt xếp loại hiệu suất cuối cùng (S26)")
-    public ApiResponse<Boolean> ratifyCalibration() {
-        IS_RATIFIED = true;
-        return ApiResponse.ok(true, "Ban Giám Đốc đã phê duyệt chốt xếp loại hiệu suất thành công! Chu kỳ OKR 2026 chính thức hoàn tất.");
-    }
-
-    @GetMapping("/analytics/executive-summary")
-    @Operation(summary = "Báo cáo hiệu suất tổng thể doanh nghiệp (S44)")
-    public ApiResponse<Map<String, Object>> getAnalyticsSummary() {
-        Map<String, Object> data = Map.of(
-                "averageCompanyScore", 4.38,
-                "topDepartment", "Khối Kỹ Thuật (4.65)",
-                "highPerformersCount", 12,
-                "topPerformers", List.of(
-                        Map.of("code", "05ACT", "name", "Nguyễn Thanh Tùng", "score", 4.8),
-                        Map.of("code", "136ACT", "name", "Vũ Văn Luận", "score", 4.5)
-                )
-        );
-        return ApiResponse.ok(data, "Lấy báo cáo phân tích hiệu suất thành công");
     }
 
     @GetMapping("/my-review")
@@ -416,18 +307,6 @@ public class OKRController {
     ) {
         UUID userId = UUID.randomUUID();
         return ApiResponse.ok(okrService.submitAssessment(userId, year, request), "Nộp đánh giá OKR thành công");
-    }
-
-    @GetMapping("/alignment-tree")
-    @Operation(summary = "Cây phả hệ mục tiêu toàn doanh nghiệp (OKR Alignment Tree - OKR-TREE-01)")
-    public ApiResponse<Map<String, Object>> getAlignmentTree() {
-        return ApiResponse.ok(Map.of(
-                "companyGoal", "Đạt mốc 10,000 người dùng hoạt động hàng ngày (DAU)",
-                "departments", List.of(
-                        Map.of("name", "Khối Kỹ Thuật", "contributionPercent", 45, "lead", "05ACT"),
-                        Map.of("name", "Phòng Nhân Sự", "contributionPercent", 25, "lead", "01HR")
-                )
-        ), "Lấy cây liên kết mục tiêu toàn doanh nghiệp thành công");
     }
 
     @PostMapping("/check-in/submit")
@@ -482,7 +361,7 @@ public class OKRController {
     @Operation(summary = "Kế thừa mục tiêu từ quản lý trực tiếp (OKR-CONV-04)")
     public ApiResponse<List<Map<String, Object>>> getManagerObjectives() {
         return ApiResponse.ok(List.of(
-                Map.of("managerCode", "05ACT", "title", "Hoàn thành giai đoạn 1 dự án chuyển đổi số ACT", "weight", 30)
+                Map.of("managerCode", "05ACT", "title", "Hoàn thành giai đoạn 1 dự án chuyển đổi số ACT")
         ), "Lấy mục tiêu của Quản lý trực tiếp thành công");
     }
 

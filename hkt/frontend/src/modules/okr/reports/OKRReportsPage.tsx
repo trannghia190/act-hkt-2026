@@ -11,7 +11,6 @@ export interface HRSummaryRecord {
   jobTitle: string;
   avgOkrProgress: number; // percentage
   assessmentScore: number; // 1-5
-  performanceGrade: 'A+' | 'A' | 'B' | 'C' | 'D';
   bonusFactor: number; // e.g. 1.5x, 1.2x, 1.0x, 0.8x, 0.0x
   hrStatus: 'COMPLETED' | 'IN_REVIEW';
 }
@@ -24,7 +23,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Tổng Giám Đốc',
     avgOkrProgress: 95.5,
     assessmentScore: 4.8,
-    performanceGrade: 'A+',
     bonusFactor: 2.0,
     hrStatus: 'COMPLETED'
   },
@@ -35,7 +33,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Trưởng Phòng Nhân Sự',
     avgOkrProgress: 92.0,
     assessmentScore: 4.5,
-    performanceGrade: 'A',
     bonusFactor: 1.5,
     hrStatus: 'COMPLETED'
   },
@@ -46,7 +43,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Engineering Manager (Sirius)',
     avgOkrProgress: 91.2,
     assessmentScore: 4.5,
-    performanceGrade: 'A',
     bonusFactor: 1.5,
     hrStatus: 'COMPLETED'
   },
@@ -57,7 +53,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Senior Backend Engineer',
     avgOkrProgress: 88.5,
     assessmentScore: 4.2,
-    performanceGrade: 'A',
     bonusFactor: 1.4,
     hrStatus: 'COMPLETED'
   },
@@ -68,7 +63,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'AI Lead (Optimus)',
     avgOkrProgress: 84.0,
     assessmentScore: 3.8,
-    performanceGrade: 'B',
     bonusFactor: 1.0,
     hrStatus: 'COMPLETED'
   },
@@ -79,7 +73,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Product Specialist',
     avgOkrProgress: 79.5,
     assessmentScore: 3.6,
-    performanceGrade: 'B',
     bonusFactor: 1.0,
     hrStatus: 'COMPLETED'
   },
@@ -90,7 +83,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
     jobTitle: 'Junior Developer',
     avgOkrProgress: 65.0,
     assessmentScore: 2.9,
-    performanceGrade: 'C',
     bonusFactor: 0.7,
     hrStatus: 'IN_REVIEW'
   }
@@ -99,7 +91,6 @@ const INITIAL_RECORDS: HRSummaryRecord[] = [
 export const OKRReportsPage: React.FC = () => {
   const [records, setRecords] = useState<HRSummaryRecord[]>(INITIAL_RECORDS);
   const [searchTerm, setSearchTerm] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -112,7 +103,6 @@ export const OKRReportsPage: React.FC = () => {
     jobTitle: 'Software Engineer',
     avgOkrProgress: 85.0,
     assessmentScore: 4.0,
-    performanceGrade: 'B',
     bonusFactor: 1.0,
     hrStatus: 'IN_REVIEW'
   });
@@ -123,7 +113,7 @@ export const OKRReportsPage: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Mã NV', 'Họ và Tên', 'Phòng Ban', 'Vị Trí', 'OKR TB Năm (%)', 'Điểm Đánh Giá', 'Xếp Loại', 'Hệ Số Thưởng', 'Trạng Thái HR'];
+    const headers = ['Mã NV', 'Họ và Tên', 'Nhóm', 'Vị Trí', 'OKR TB Năm (%)', 'Điểm Đánh Giá', 'Hệ Số Thưởng', 'Trạng Thái HR'];
     const rows = records.map(r => [
       r.code,
       `"${r.fullName}"`,
@@ -131,7 +121,6 @@ export const OKRReportsPage: React.FC = () => {
       `"${r.jobTitle}"`,
       r.avgOkrProgress,
       r.assessmentScore,
-      r.performanceGrade,
       `${r.bonusFactor}x`,
       r.hrStatus
     ]);
@@ -140,12 +129,12 @@ export const OKRReportsPage: React.FC = () => {
     link.href = encodeURI(csvContent);
     link.download = `OKR_HR_Report_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
-    showToast('Đã xuất thành công file báo cáo OKR & Xếp loại HR (CSV)');
+    showToast('Đã xuất thành công file báo cáo OKR & điểm đánh giá (CSV)');
   };
 
   const handleSendToAccounting = () => {
-    if (confirm('Chuyển toàn bộ danh sách hệ số thưởng và kết quả xếp loại sang bộ phận Kế toán / C&B để tính thưởng Tết?')) {
-      showToast('Đã gửi dữ liệu xếp loại OKR sang cổng thông tin Kế toán & C&B thành công');
+    if (confirm('Chuyển toàn bộ danh sách hệ số thưởng và kết quả điểm sang bộ phận Kế toán / C&B để tính thưởng Tết?')) {
+      showToast('Đã gửi dữ liệu điểm OKR sang cổng thông tin Kế toán & C&B thành công');
     }
   };
 
@@ -166,7 +155,6 @@ export const OKRReportsPage: React.FC = () => {
   };
 
   const filteredRecords = records.filter(r => {
-    if (gradeFilter !== 'ALL' && r.performanceGrade !== gradeFilter) return false;
     if (statusFilter !== 'ALL' && r.hrStatus !== statusFilter) return false;
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
@@ -194,7 +182,7 @@ export const OKRReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR &amp; Xếp Loại HR (9 Trường Dữ Liệu)</h1>
+            <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR & Điểm Đánh Giá (9 Trường Dữ Liệu)</h1>
             <Badge variant="accent">S25</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
@@ -226,19 +214,6 @@ export const OKRReportsPage: React.FC = () => {
           />
 
           <select
-            value={gradeFilter}
-            onChange={e => setGradeFilter(e.target.value)}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
-          >
-            <option value="ALL">Tất cả xếp loại</option>
-            <option value="A+">Xếp loại A+</option>
-            <option value="A">Xếp loại A</option>
-            <option value="B">Xếp loại B</option>
-            <option value="C">Xếp loại C</option>
-            <option value="D">Xếp loại D</option>
-          </select>
-
-          <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
@@ -266,7 +241,6 @@ export const OKRReportsPage: React.FC = () => {
                 <th className="py-3 px-4">4. Vị Trí Chức Danh</th>
                 <th className="py-3 px-4 text-center">5. OKR TB Năm</th>
                 <th className="py-3 px-4 text-center">6. Điểm Cuối Năm</th>
-                <th className="py-3 px-4 text-center">7. Xếp Loại (Grade)</th>
                 <th className="py-3 px-4 text-center font-bold text-accent">8. Hệ Số Thưởng</th>
                 <th className="py-3 px-4 text-center">9. Trạng Thái HR</th>
                 <th className="py-3 px-4 text-right">Thao Tác</th>
@@ -291,22 +265,6 @@ export const OKRReportsPage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-ink">
                       {rec.assessmentScore.toFixed(1)} / 5.0
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block font-black px-2 py-0.5 rounded text-xs ${rec.performanceGrade === 'A+'
-                            ? 'bg-accent text-white'
-                            : rec.performanceGrade === 'A'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : rec.performanceGrade === 'B'
-                                ? 'bg-blue-100 text-blue-800'
-                                : rec.performanceGrade === 'C'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
-                          }`}
-                      >
-                        {rec.performanceGrade}
-                      </span>
                     </td>
                     <td className="py-3 px-4 text-center font-extrabold text-accent text-sm">
                       {rec.bonusFactor.toFixed(1)}x
@@ -340,7 +298,7 @@ export const OKRReportsPage: React.FC = () => {
         <Modal
           isOpen={true}
           onClose={() => setIsAddOpen(false)}
-          title="Thêm Bản Ghi Xếp Loại &amp; Thưởng OKR"
+          title="Thêm Bản Ghi Điểm &amp; Thưởng OKR"
           maxWidth="md"
         >
           <form onSubmit={handleAddRecord} className="space-y-4 text-xs">
@@ -403,20 +361,6 @@ export const OKRReportsPage: React.FC = () => {
                   onChange={e => setNewRec({ ...newRec, avgOkrProgress: parseFloat(e.target.value) || 0 })}
                   className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                 />
-              </div>
-              <div>
-                <label className="block font-medium text-ink mb-1">Xếp Loại</label>
-                <select
-                  value={newRec.performanceGrade}
-                  onChange={e => setNewRec({ ...newRec, performanceGrade: e.target.value as any })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-bold"
-                >
-                  <option value="A+">A+ (Xuất sắc)</option>
-                  <option value="A">A (Vượt trội)</option>
-                  <option value="B">B (Đạt yêu cầu)</option>
-                  <option value="C">C (Cần cố gắng)</option>
-                  <option value="D">D (Không đạt)</option>
-                </select>
               </div>
               <div>
                 <label className="block font-medium text-ink mb-1">Hệ Số Thưởng</label>

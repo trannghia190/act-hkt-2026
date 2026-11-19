@@ -337,7 +337,7 @@ HR đổi tất cả bằng form, có ngày hiệu lực + rollback:
 | # | Hạng mục | Màn hình |
 |---|---|---|
 | 1 | Chấm công trên điện thoại qua web responsive (1 chạm, **khuôn mặt**, rung, offline — không cần app) | S05m, S05 |
-| 2 | Đăng nhập Google công ty — vai trò tự xác định + phân quyền theo nhóm | S01 |
+| 2 | Đăng nhập tài khoản nội bộ (email + mật khẩu) — vai trò tự xác định + phân quyền theo nhóm | S01 |
 | 3 | Đơn từ 4 loại + quota chặn server + 2 trạng thái nháp/gửi | S07–S10, S31 |
 | 4 | Luồng duyệt theo nhóm (trưởng nhóm → HR) + rút đơn | S12, S13, S14 |
 | 5 | Bảng công 53 cột + ký hiệu gốc + sửa tại chỗ + chốt & khóa | S15 |
@@ -389,7 +389,7 @@ C10 báo cáo tự động · C11 import Excel · C9 onboarding tour
 | 23 | **Thêm màn hình danh sách khiếu nại + bảng phép cho HR?** | **CÓ — thêm 2 màn hình** | S45 **Danh sách khiếu nại** (HR xử lý nhanh ngay trên bảng) · S46 **Bảng phép** (xem 1 lần biết ai còn bao nhiêu). |
 | 24 | **Bảng công có bao nhiêu cột?** | **53 cột** | Khớp đúng file export thật của công ty — có ký hiệu gốc, không tự diễn giải. |
 | 25 | **Duyệt nghỉ phép có cần chuyển HR?** | **KHÔNG — chỉ quản lý trực tiếp duyệt** | Mọi loại nghỉ (kể cả nghỉ dài ngày, tang gia, thai sản) chỉ 1 bước duyệt. Bước HR chỉ còn cho đơn đi muộn / bổ sung công / WFH của nhóm CA + Mobile. |
-| 26 | **Đăng nhập & chọn vai trò** | **Đăng nhập bằng Google công ty — vai trò tự xác định, KHÔNG chọn vai trò** (quyết định 18/11/2026) | Chỉ chấp nhận email @act.vn. Sau khi xác thực, hệ thống đọc `role` + phạm vi của tài khoản và đưa thẳng vào "Cần làm" của vai trò đó. Không có màn hình/nút chọn vai trò. |
+| 26 | **Đăng nhập & chọn vai trò** | **Tài khoản nội bộ do HR cấp — vai trò tự xác định, KHÔNG chọn vai trò** (quyết định 18/11/2026, đổi sang non-SSO 19/11/2026) | Không dùng Google SSO/Keycloak. HR tạo tài khoản → gửi email kích hoạt (mật khẩu tạm) qua Gmail → lần đầu **bắt buộc đổi mật khẩu** → **bắt buộc đăng ký khuôn mặt** → vào thẳng "Cần làm". Hệ thống đọc `role` + phạm vi của tài khoản — không có màn hình/nút chọn vai trò. |
 | 27 | **Chấm công vào/ra dùng app riêng hay web?** | **Web responsive — không có mobile app riêng** (quyết định 18/11/2026) | Cùng 1 URL web, tự co giãn cho điện thoại/tablet/desktop; mở bằng Safari/Chrome. Không qua App Store/Google Play, không yêu cầu cài đặt. Chỉ "Thêm vào màn hình chính" tuỳ chọn của trình duyệt. |
 | 28 | **Chấm công có xác thực khuôn mặt không?** | **CÓ — bắt buộc mỗi lần chấm, chạy song song 4 tiêu chí cũ** (quyết định 19/11/2026) | Camera trước chụp ảnh + liveness, so khớp 1:1 với hồ sơ đã đăng ký (ngưỡng **85%**, cấu hình 70–99%). Không khớp/không đạt liveness → **CHẶN** (không có "HR xác minh sau"). Chưa đăng ký → chưa chấm được. Chỉ lưu **vector đặc trưng**, không lưu ảnh thô; HR reset hồ sơ kèm lý do + audit log. |
 
@@ -439,7 +439,8 @@ C10 báo cáo tự động · C11 import Excel · C9 onboarding tour
 - [ ] Đổi quản lý của 1 nhân viên → đơn đang chờ giao cho người mới
 
 **HR**
-- [ ] Đăng nhập bằng **Google công ty** → vào thẳng vai trò được phân; **không có bước chọn vai trò**
+- [ ] Đăng nhập bằng **email công ty + mật khẩu** → vào thẳng vai trò được phân; **không có bước chọn vai trò**
+- [ ] Lần đăng nhập đầu: **bắt buộc đổi mật khẩu** → **bắt buộc đăng ký khuôn mặt** → mới vào được "Cần làm"
 - [ ] Đổi quota đi muộn 2 → 3 lần/tháng bằng form, có ngày hiệu lực
 - [ ] Bấm "Lưu" → **hiện hộp thoại xác nhận** nội dung sẽ áp dụng; xác nhận mới lưu (không có màn hình dry-run riêng)
 - [ ] Rollback được về phiên bản cũ, có lý do

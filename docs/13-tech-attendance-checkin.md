@@ -6,7 +6,7 @@
 
 ## 1. Trải Nghiệm Người Dùng (UX 1 Chạm — Screen S05m)
 
-* **Thiết bị ưu tiên:** Chấm công được tối ưu hóa 100% trên thiết bị di động (**Mobile-First**). Máy tính (Web) chỉ hỗ trợ xem dữ liệu và tạo đơn (để ngăn ngừa giả mạo GPS và thiết bị).
+* **Thiết bị ưu tiên:** Chấm công được tối ưu hóa 100% trên thiết bị di động (**Mobile-First**). **Máy tính cũng chấm công được** qua cùng giao diện web responsive (S05) — dùng webcam + cùng 5 lớp xác thực.
 * **Bố cục màn hình S05m:**
   * Giờ hiện tại theo chuẩn thời gian máy chủ (đồng bộ động).
   * Trạng thái ngày hôm nay (Chưa check-in / Đã check-in lúc HH:mm / Đã đủ công).
@@ -37,7 +37,8 @@
 * **Vector Matching:** 
   * Client trích xuất vector khuôn mặt hiện tại (128D/512D) gửi lên server cùng ảnh chụp khoảnh khắc.
   * Server tính khoảng cách Cosine Distance với vector mẫu ban đầu của nhân viên (`face_embeddings`):
-    $$\text{Cosine Similarity} \ge 0.82 \implies \text{HỢP LỆ}$$
+    $$\text{Cosine Similarity} \ge 0.85 \implies \text{HỢP LỆ}$$
+  * Ngưỡng **85%** đọc từ rule `attendance_security.face_match_threshold` (cấu hình 70–99%), **không hard-code**.
   * Nếu không khớp: Lập tức từ chối và thông báo: *"Khuôn mặt không khớp với hồ sơ nhân viên"*.
 
 ### Lớp 2: Kiểm Tra Mạng Nội Bộ (Office WiFi / BSSID / Subnet IP)
@@ -46,17 +47,16 @@
   * Địa chỉ IP công cộng (Public IP) hoặc Dải IP mạng nội bộ (Subnet).
 * Đối chiếu với danh sách mạng văn phòng do HR cấu hình trong Rule Engine:
   * **Khớp WiFi công ty:** Đạt chuẩn hợp lệ.
-  * **Ngoài mạng:** Nếu không có đơn WFH được duyệt $\rightarrow$ Đánh dấu cờ cảnh báo `OUTSIDE_OFFICE_NETWORK`.
+  * **Ngoài mạng:** Nếu không có đơn WFH được duyệt $\rightarrow$ **CHẶN hoàn toàn** (không có cờ cảnh báo).
 
-### Lớp 3: Định Vị Văn Phòng (Geofencing 2 Vùng)
+### Lớp 3: Định Vị Văn Phòng (Geofencing — 1 vùng hợp lệ)
 * Tọa độ văn phòng ACT được cấu hình trong hệ thống (Kinh độ, Vĩ độ).
 * Hệ thống tính khoảng cách Euclidean/Haversine giữa vị trí GPS của điện thoại và tâm văn phòng:
   * **Vùng 1 ($\le 150m$):** Nằm hoàn toàn trong khuôn viên văn phòng $\rightarrow$ Hợp lệ.
-  * **Vùng 2 ($150m - 300m$):** Do nhiễu sóng tòa nhà hoặc đi bộ gần cửa $\rightarrow$ **Vẫn cho chấm công**, nhưng tự động gắn cờ `LOW_GPS_ACCURACY` để HR hậu kiểm khi cần.
-  * **Vùng 3 ($> 300m$):** Nằm ngoài phạm vi văn phòng $\rightarrow$ **Chặn hoàn toàn** (Báo lỗi: *"Bạn đang ở ngoài phạm vi văn phòng"*), trừ trường hợp hôm đó nhân viên có đơn **WFH đã được phê duyệt**.
+  * **Ngoài 150m hoặc sai số GPS > 100m:** $\rightarrow$ **CHẶN hoàn toàn** — hiện khoảng cách thật + hướng dẫn thử lại (trừ ngày WFH đã duyệt).
 
 ### Lớp 4: Khóa Thiết Bị Phần Cứng (Device Fingerprint Binding)
-* Mỗi nhân viên chỉ được liên kết với **1 thiết bị di động duy nhất** (`hardware_device_id` / `vendor_uuid`).
+* Mỗi nhân viên được liên kết tối đa **2 thiết bị** (điện thoại + laptop); máy thứ 3 phải được HR duyệt (`max_devices` = 2).
 * Nếu đăng nhập trên thiết bị lạ để chấm công hộ: Hệ thống chặn lại và yêu cầu gửi yêu cầu thay đổi thiết bị đến HR (Screen S28/S29).
 
 ### Lớp 5: Chuẩn Hóa Thời Gian Máy Chủ (Server Timestamp)

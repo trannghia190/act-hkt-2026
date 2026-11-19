@@ -16,10 +16,11 @@ export const RequestsPage: React.FC = () => {
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const [newReq, setNewReq] = useState({
-    type: 'LEAVE' as 'LEAVE' | 'WFH' | 'OT' | 'MISSED_PUNCH',
+    type: 'LEAVE' as 'LEAVE' | 'WFH' | 'LATE_EARLY' | 'ADJUST',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
     duration: '1.0 ngày',
+    leaveType: 'AL',
     reason: '',
   });
 
@@ -41,11 +42,12 @@ export const RequestsPage: React.FC = () => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
 
+    const leaveNames: Record<string, string> = { AL: 'Phép năm', S: 'Nghỉ ốm', NL: 'Nghỉ lễ tết', RO: 'Nghỉ bù', CL: 'Việc riêng có lương', ML: 'Thai sản', PL: 'Nghỉ khi có vợ sinh', UP: 'Không lương', HIEU: 'Hiếu hỉ', TANG: 'Tang gia' };
     const typeNames: Record<string, string> = {
-      LEAVE: 'Nghỉ Phép Năm',
+      LEAVE: 'Nghỉ Phép',
       WFH: 'Làm Việc Từ Xa (WFH)',
-      OT: 'Đăng Ký Làm Thêm Giờ (OT)',
-      MISSED_PUNCH: 'Giải Trình Quên Chấm Công'
+      LATE_EARLY: 'Đi Muộn / Về Sớm',
+      ADJUST: 'Bổ Sung Chấm Công'
     };
 
     // Routing rule: CA or Mobile team routes direct to HR
@@ -72,7 +74,7 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || 'luan.vu@act-corp.internal',
       team: user?.team || 'Sirius Core',
       type: newReq.type,
-      typeName: typeNames[newReq.type],
+      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'}` : typeNames[newReq.type],
       startDate: newReq.startDate,
       endDate: newReq.endDate,
       durationText: newReq.duration,
@@ -91,6 +93,7 @@ export const RequestsPage: React.FC = () => {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
       duration: '1.0 ngày',
+      leaveType: 'AL',
       reason: ''
     });
     showToast(`Đã gửi đơn ${newId} thành công tới cấp phê duyệt`);
@@ -109,20 +112,22 @@ export const RequestsPage: React.FC = () => {
   const handleAutoFillMissedPunch = (kind: 'OUT' | 'LATE') => {
     if (kind === 'OUT') {
       setNewReq({
-        type: 'MISSED_PUNCH',
+        type: 'ADJUST',
         startDate: '2026-11-17',
         endDate: '2026-11-17',
         duration: 'Ca chiều (17:30)',
+        leaveType: 'AL',
         reason: 'Tự động trích xuất từ log: Quên quẹt thẻ chấm công ra lúc 17:30 ngày 17/11 do bận họp với khách hàng'
       });
       setIsCreateOpen(true);
       showToast('⚡ C-cố: Đã tự động điền đơn bổ sung giờ ra ngày 17/11');
     } else {
       setNewReq({
-        type: 'MISSED_PUNCH',
+        type: 'ADJUST',
         startDate: '2026-11-05',
         endDate: '2026-11-05',
         duration: 'Muộn 22 phút (08:52)',
+        leaveType: 'AL',
         reason: 'Tự động trích xuất từ log: Đi muộn 22 phút ngày 05/11 do sự cố kẹt xe Nguyễn Trãi (Đăng ký trừ vào Quota 1/3 lần)'
       });
       setIsCreateOpen(true);
@@ -163,7 +168,7 @@ export const RequestsPage: React.FC = () => {
             <Badge variant="accent">S08 / S30 / S31</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Theo dõi tiến độ xét duyệt đơn xin nghỉ, đăng ký làm từ xa (WFH tối đa 3 ngày/tháng), làm thêm giờ (OT) và giải trình quên chấm công
+            Theo dõi tiến độ xét duyệt đơn xin nghỉ, đăng ký làm từ xa (WFH tối đa 2 ngày/tuần), làm thêm giờ (OT) và giải trình quên chấm công
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -226,8 +231,8 @@ export const RequestsPage: React.FC = () => {
             <option value="ALL">Tất cả loại đơn</option>
             <option value="LEAVE">Nghỉ phép năm / ốm</option>
             <option value="WFH">Làm việc từ xa (WFH)</option>
-            <option value="OT">Làm thêm giờ (OT)</option>
-            <option value="MISSED_PUNCH">Giải trình quên chấm công</option>
+            <option value="LATE_EARLY">Đi muộn / về sớm</option>
+            <option value="ADJUST">Bổ sung chấm công</option>
           </select>
 
           <span className="text-xs text-ink-muted ml-1">Trạng thái:</span>
@@ -332,22 +337,43 @@ export const RequestsPage: React.FC = () => {
               onChange={e => setNewReq({ ...newReq, type: e.target.value as any })}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"
             >
-              <option value="LEAVE">🌴 Nghỉ Phép Năm (Annual Leave)</option>
-              <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 3 ngày/tháng)</option>
-              <option value="OT">⚡ Đăng Ký Làm Thêm Giờ (Overtime)</option>
-              <option value="MISSED_PUNCH">⏱️ Giải Trình Quên Chấm Công (Trong 24h)</option>
+              <option value="LATE_EARLY">🕘 Đi Muộn / Về Sớm (≤ 60 phút)</option>
+              <option value="LEAVE">🌴 Nghỉ Phép (8 loại nghỉ)</option>
+              <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 2 ngày/tuần)</option>
+              <option value="ADJUST">⏱️ Bổ Sung Chấm Công (hạn 3 ngày)</option>
             </select>
+            {newReq.type === 'LEAVE' && (
+              <div className="mt-2">
+                <label className="block font-medium text-ink mb-1">Loại nghỉ</label>
+                <select
+                  value={newReq.leaveType}
+                  onChange={e => setNewReq({ ...newReq, leaveType: e.target.value })}
+                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                >
+                  <option value="AL">Phép năm (AL)</option>
+                  <option value="S">Nghỉ ốm (S)</option>
+                  <option value="NL">Nghỉ lễ tết (NL)</option>
+                  <option value="RO">Nghỉ bù (RO)</option>
+                  <option value="CL">Việc riêng có lương (CL)</option>
+                  <option value="ML">Thai sản (ML)</option>
+                  <option value="PL">Nghỉ khi có vợ sinh (PL)</option>
+                  <option value="UP">Không lương (UP)</option>
+                  <option value="HIEU">Hiếu hỉ</option>
+                  <option value="TANG">Tang gia</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {newReq.type === 'WFH' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed">
-              <strong>Quy chế WFH:</strong> Mỗi nhân sự được đăng ký tối đa <strong>3 ngày WFH / tháng</strong>. Đảm bảo cam kết trực tuyến qua kênh giao tiếp và hoàn thành KPI công việc.
+              <strong>Quy chế WFH:</strong> Mỗi nhân sự được đăng ký tối đa <strong>2 ngày WFH / tuần</strong>. Đảm bảo cam kết trực tuyến qua kênh giao tiếp và hoàn thành KPI công việc.
             </div>
           )}
 
-          {newReq.type === 'MISSED_PUNCH' && (
+          {newReq.type === 'ADJUST' && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[11px] leading-relaxed">
-              <strong>Thời hạn giải trình:</strong> Theo điều 18 Quy chế Chấm công, đơn giải trình quên chấm công bắt buộc phải gửi trong vòng <strong>24 giờ</strong> kể từ thời điểm ca làm việc kết thúc.
+              <strong>Hạn nộp:</strong> Bổ sung chấm công phải gửi trong vòng <strong>3 ngày</strong> kể từ ngày quên chấm (tính theo ngày, không theo giờ).
             </div>
           )}
 

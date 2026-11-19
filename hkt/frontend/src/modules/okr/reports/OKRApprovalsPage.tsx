@@ -38,7 +38,7 @@ export const OKRApprovalsPage: React.FC = () => {
       status: 'PENDING',
       keyResults: [
         { title: 'Tối ưu P99 API response time < 80ms trên toàn hệ thống', target: 'P99 < 80ms', weight: 40 },
-        { title: 'Hoàn thiện 45 cột Timesheet Master và công thức tính phép', target: '100% test pass', weight: 30 },
+        { title: 'Hoàn thiện 53 cột Timesheet Master và công thức tính phép', target: '100% test pass', weight: 30 },
         { title: 'Tích hợp nhận diện khuôn mặt AI Liveness 3 góc chuẩn xác', target: 'Độ chính xác > 98%', weight: 30 },
       ],
     },

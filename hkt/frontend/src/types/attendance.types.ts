@@ -67,7 +67,7 @@ export interface AttendanceRequestItem {
   requesterName: string;
   requesterEmail: string;
   team: string;
-  type: 'LEAVE' | 'WFH' | 'OT' | 'MISSED_PUNCH';
+  type: 'LEAVE' | 'WFH' | 'LATE_EARLY' | 'ADJUST';
   typeName: string;
   startDate: string;
   endDate: string;

@@ -30,7 +30,7 @@ Thay vì bắt người dùng phải lướt qua nhiều menu con để tìm xem
 ## 2. Hệ Thống Thông Báo Đa Kênh & Chống Spam (Notification Engine — S04/S04m)
 
 ### 2.1. 3 Kênh Truyền Tải Thông Báo
-1. **Push Notifications (Mobile App):** Bắn tức thì khi có sự kiện khẩn (quản lý duyệt/từ chối đơn, cảnh báo quên check-out, đơn quá hạn).
+1. **Push Notifications (Web responsive):** Bắn tức thì khi có sự kiện khẩn (quản lý duyệt/từ chối đơn, cảnh báo quên check-out, đơn quá hạn).
 2. **Email Digest (Bản tin tổng hợp 8:00 Sáng):** Thay vì gửi email lẻ tẻ làm ngập hộp thư (inbox fatigue), hệ thống gộp tất cả việc cần xử lý trong ngày thành **1 email duy nhất vào 08:00 sáng**.
 3. **In-App Badges & Notification Drawer:** Số đỏ hiển thị trên icon chuông và thanh điều hướng.
 
@@ -38,8 +38,8 @@ Thay vì bắt người dùng phải lướt qua nhiều menu con để tìm xem
 
 | Nhóm Nghiệp Vụ | Sự Kiện Phát Sinh | Người Nhận Thông Báo | Kênh Gửi Mặc Định |
 |---|---|---|---|
-| **Chấm công** | 1. Quên check-in sau 09:30 | Nhân viên | Mobile Push (09:45) |
-| | 2. Quên check-out sau 18:30 | Nhân viên | Mobile Push (19:00) |
+| **Chấm công** | 1. Quên check-in sau 09:30 | Nhân viên | Web Push (09:45) |
+| | 2. Quên check-out sau 18:30 | Nhân viên | Web Push (19:00) |
 | | 3. Check-in ngoài mạng (gắn cờ) | Quản lý / HR | Bảng tin hàng tuần |
 | **Đơn từ** | 4. Đơn mới được nộp | Quản lý trực tiếp | Push tức thì + Email 8h |
 | | 5. Đơn được duyệt / từ chối | Nhân viên gửi đơn | Push tức thì |
@@ -47,16 +47,24 @@ Thay vì bắt người dùng phải lướt qua nhiều menu con để tìm xem
 | | 7. Đơn quá hạn 48h (Auto-escalate)| Quản lý cấp trên + HR | Push + Email |
 | | 8. Nhân viên rút đơn | Quản lý trực tiếp | In-app notification |
 | **Nghỉ phép** | 9. Cộng phép định kỳ ngày 15 | Nhân viên | In-app notification |
-| | 10. Cảnh báo mất phép tồn trước 30 ngày| Nhân viên | Email + Push (01/03 & 01/06) |
+| | 10. Cảnh báo mất phép tồn trước 30 ngày| Nhân viên | Email + Web Push (01/03 & 01/06) |
 | | 11. Cảnh báo mất phép tồn trước 3 ngày | Nhân viên | Push khẩn cấp |
 | **Bảng công** | 12. Bảng công tháng đã sẵn sàng | Toàn thể nhân viên | Email + In-app |
-| | 13. Hết hạn khiếu nại bảng công (2 ngày)| Nhân viên | Mobile Push |
+| | 13. Hết hạn khiếu nại bảng công (2 ngày)| Nhân viên | Web Push |
 | | 14. Bảng công được khóa chính thức | Toàn công ty | In-app notification |
 | **OKR** | 15. Bắt đầu chu kỳ tạo OKR đầu năm | Toàn thể nhân viên | Email phát động + Push |
 | | 16. Nhắc check-in tiến độ giữa năm | Nhân viên + Quản lý| Email 8h sáng |
 | | 17. Mở kỳ đánh giá cuối năm (5 bước)| Toàn thể nhân viên | Push + Email có deadline |
 
-### 2.3. Thuật Toán Gộp Thông Báo (Anti-Spam Throttling)
+### 2.3. Thuật Toán Gộp Thông Báo & Chống Spam (Anti-Spam Throttling)
+
+**Quy tắc bắt buộc (rule `notification`):**
+* Tối đa **3 push/ngày/người** — vượt hạn mức thì dồn vào digest 08:00 hôm sau.
+* **Giờ yên lặng 21:00–07:00** — không gửi push; việc quá hạn vẫn hiện badge.
+* **Dedupe 12 giờ** — cùng một việc không nhắc lặp trong 12h.
+* Việc **quá hạn > 3 ngày** → báo thêm cho quản lý; nhân viên vẫn thấy việc.
+* Tắt một loại thông báo **không làm mất việc** khỏi trang "Cần làm".
+
 * Nếu Quản lý có 10 thành viên nộp đơn cùng lúc trong vòng 10 phút: Hệ thống tự động gộp thành **1 thông báo duy nhất**: *"Bạn có 10 đơn từ mới đang chờ duyệt từ nhóm của bạn"*, kèm link dẫn thẳng vào màn hình Duyệt hàng loạt (`S12`).
 
 ---
@@ -81,7 +89,7 @@ Lấy cảm hứng từ các công cụ hiện đại như Linear hay Slack, h�
 ```
 
 * **Khả năng tìm kiếm tức thì (< 50ms):**
-  * Tìm nhanh nhân viên theo Tên, Mã NV, Phòng ban.
+  * Tìm nhanh nhân viên theo Tên, Mã NV, Nhóm.
   * Mở nhanh các form tạo đơn hành chính trong 1 giây.
   * Tìm kiếm văn bản quy định trong Rule Engine.
   * Dành cho Quản lý & HR: Tìm nhanh nhân viên để chuyển hướng thẳng đến bảng công hoặc hồ sơ OKR của người đó.

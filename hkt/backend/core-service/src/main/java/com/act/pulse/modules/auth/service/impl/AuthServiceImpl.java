@@ -1,9 +1,15 @@
 package com.act.pulse.modules.auth.service.impl;
 
+import com.act.pulse.common.security.JwtService;
 import com.act.pulse.common.service.EmailService;
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
+import com.act.pulse.modules.auth.entity.LoginAttempt;
+import com.act.pulse.modules.auth.entity.RefreshToken;
 import com.act.pulse.modules.auth.entity.User;
+import com.act.pulse.modules.auth.repository.FaceProfileRepository;
+import com.act.pulse.modules.auth.repository.LoginAttemptRepository;
+import com.act.pulse.modules.auth.repository.RefreshTokenRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.act.pulse.modules.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -12,44 +18,102 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Đăng nhập tài khoản nội bộ (Non-SSO) — theo docs/01 §3:
+ * HR cấp tài khoản → email kích hoạt → lần đầu **bắt buộc đổi mật khẩu** →
+ * **bắt buộc đăng ký khuôn mặt** → vào thẳng "Cần làm".
+ *
+ * <p>Không dùng Google/Keycloak/OAuth. Vai trò **tự xác định** từ tài khoản — không có màn hình chọn vai trò.</p>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    /** Sai 5 lần → khoá 10 phút. Sai 10 lần → khoá vĩnh viễn (HR mở khóa). */
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int MAX_FAILED_ATTEMPTS_PERMANENT = 10;
+    private static final int LOCK_MINUTES = 10;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final JwtService jwtService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final LoginAttemptRepository loginAttemptRepository;
+    private final FaceProfileRepository faceProfileRepository;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String identifier = request.getEmployeeCodeOrEmail().trim();
 
-        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
-                .orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu không chính xác"));
-
-        boolean isDirectAdminPass = "Admin".equalsIgnoreCase(user.getEmployeeCode()) && "Admin".equals(request.getPassword());
-        boolean isDefaultStandardPass = "Act@2026".equals(request.getPassword());
-        boolean isBcryptMatched = false;
-        try {
-            isBcryptMatched = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
-        } catch (Exception ignored) {}
-
-        if (!isDirectAdminPass && !isDefaultStandardPass && !isBcryptMatched) {
-            throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
+        // 1) Kiểm tra trạng thái khoá trước khi xác thực
+        LoginAttempt attempt = loginAttemptRepository.findByIdentifier(identifier.toLowerCase())
+                .orElseGet(() -> LoginAttempt.builder()
+                        .identifier(identifier.toLowerCase())
+                        .failedCount(0)
+                        .permanentlyLocked(false)
+                        .build());
+        LocalDateTime now = LocalDateTime.now();
+        if (attempt.getPermanentlyLocked()) {
+            throw new RuntimeException("Tài khoản đã bị khoá vĩnh viễn — vui lòng liên hệ HR để mở khoá");
         }
+        if (attempt.getLockedUntil() != null && attempt.getLockedUntil().isAfter(now)) {
+            throw new RuntimeException("Tài khoản đang bị tạm khoá. Vui lòng thử lại sau "
+                    + Math.max(1, (int) java.time.Duration.between(now, attempt.getLockedUntil()).toMinutes()) + " phút");
+        }
+
+        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
+                .orElseThrow(() -> {
+                    registerFailure(attempt, now);
+                    return new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
+                });
 
         if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
             throw new RuntimeException("Tài khoản đã bị tạm khóa, vui lòng liên hệ HR hoặc Quản trị viên");
         }
+        if ("INACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new RuntimeException("Tài khoản đã ngừng hoạt động — vui lòng liên hệ HR");
+        }
 
-        String accessToken = "pulse-jwt-" + UUID.randomUUID();
-        String refreshToken = "pulse-refresh-" + UUID.randomUUID();
+        boolean passwordMatched = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
+        if (!passwordMatched) {
+            registerFailure(attempt, now);
+            throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
+        }
+
+        // 2) Đăng nhập thành công → xoá bộ đếm lần sai
+        attempt.setFailedCount(0);
+        attempt.setLockedUntil(null);
+        attempt.setLastFailedAt(null);
+        loginAttemptRepository.save(attempt);
+
+        // 3) Phát hành token thật (JWT) + lưu phiên để thu hồi được
+        boolean forceChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
+        String accessToken = jwtService.issueAccessToken(
+                user.getId(), user.getEmployeeCode(), user.getRole(), forceChangePassword);
+        String refreshToken = jwtService.issueRefreshToken(user.getId());
+
+        RefreshToken session = RefreshToken.builder()
+                .userId(user.getId())
+                .jti(UUID.fromString(jwtService.parse(refreshToken).getId()))
+                .tokenHash(jwtService.hashToken(refreshToken))
+                .issuedAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plus(jwtService.getRefreshTtl()))
+                .build();
+        refreshTokenRepository.save(session);
+
+        if (user.getActivatedAt() == null) {
+            user.setActivatedAt(LocalDateTime.now());
+            user.setStatus("ACTIVE");
+            userRepository.save(user);
+        }
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -57,15 +121,77 @@ public class AuthServiceImpl implements AuthService {
                 .employeeCode(user.getEmployeeCode())
                 .fullName(user.getFullName())
                 .role(user.getRole())
-                .mustChangePassword(user.getMustChangePassword())
-                .faceEnrolled(user.getFaceEnrolled())
+                .mustChangePassword(forceChangePassword)
+                .faceEnrolled(Boolean.TRUE.equals(user.getFaceEnrolled())
+                        && faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
                 .build();
     }
 
     @Override
     @Transactional
+    public AuthResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new RuntimeException("Thiếu refresh token");
+        }
+        String hash = jwtService.hashToken(refreshToken);
+        RefreshToken session = refreshTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new RuntimeException("Phiên đăng nhập không hợp lệ — vui lòng đăng nhập lại"));
+
+        LocalDateTime now = LocalDateTime.now();
+        if (!session.isActive(now)) {
+            throw new RuntimeException("Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại");
+        }
+
+        User user = userRepository.findById(session.getUserId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // Xoay vòng phiên: thu hồi phiên cũ, cấp phiên mới
+        session.setRevokedAt(now);
+        session.setRevokedReason("ROTATED");
+        refreshTokenRepository.save(session);
+
+        boolean forceChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
+        String newAccess = jwtService.issueAccessToken(
+                user.getId(), user.getEmployeeCode(), user.getRole(), forceChangePassword);
+        String newRefresh = jwtService.issueRefreshToken(user.getId());
+        RefreshToken newSession = RefreshToken.builder()
+                .userId(user.getId())
+                .jti(UUID.fromString(jwtService.parse(newRefresh).getId()))
+                .tokenHash(jwtService.hashToken(newRefresh))
+                .issuedAt(now)
+                .expiresAt(now.plus(jwtService.getRefreshTtl()))
+                .build();
+        refreshTokenRepository.save(newSession);
+
+        return AuthResponse.builder()
+                .accessToken(newAccess)
+                .refreshToken(newRefresh)
+                .employeeCode(user.getEmployeeCode())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .mustChangePassword(forceChangePassword)
+                .faceEnrolled(Boolean.TRUE.equals(user.getFaceEnrolled())
+                        && faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
+                .build();
+    }
+
+    private void registerFailure(LoginAttempt attempt, LocalDateTime now) {        int failed = (attempt.getFailedCount() == null ? 0 : attempt.getFailedCount()) + 1;
+        attempt.setFailedCount(failed);
+        attempt.setLastFailedAt(now);
+        if (failed >= MAX_FAILED_ATTEMPTS_PERMANENT) {
+            attempt.setPermanentlyLocked(true);
+            attempt.setLockedUntil(null);
+        } else if (failed >= MAX_FAILED_ATTEMPTS) {
+            attempt.setLockedUntil(now.plusMinutes(LOCK_MINUTES));
+        }
+        loginAttemptRepository.save(attempt);
+        log.warn("Đăng nhập sai lần {} cho tài khoản {}", failed, attempt.getIdentifier());
+    }
+
+    @Override
+    @Transactional
     public void changePassword(String currentPassword, String newPassword) {
-        // Password change logic
+        throw new UnsupportedOperationException("Dùng changePasswordForUser");
     }
 
     @Override
@@ -74,22 +200,35 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
 
-        boolean isDirectAdminPass = "Admin".equalsIgnoreCase(user.getEmployeeCode()) && "Admin".equals(oldPassword);
-        boolean isStandardDefaultPass = "Act@2026".equals(oldPassword);
-        boolean isBcryptMatched = false;
-        try {
-            isBcryptMatched = passwordEncoder.matches(oldPassword, user.getPasswordHash());
-        } catch (Exception ignored) {}
-
-        if (!isDirectAdminPass && !isStandardDefaultPass && !isBcryptMatched) {
+        boolean isBcryptMatched = passwordEncoder.matches(oldPassword, user.getPasswordHash());
+        if (!isBcryptMatched) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác");
         }
+        validatePasswordPolicy(newPassword);
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setMustChangePassword(false);
         userRepository.save(user);
+
+        // Đổi mật khẩu → thu hồi TOÀN BỘ phiên đang có
+        revokeAllSessions(user.getId(), "PASSWORD_CHANGED");
+
         log.info("Đã đổi mật khẩu thành công cho nhân viên: {}", employeeCode);
         return true;
+    }
+
+    /** Chính sách mật khẩu (docs/01 §3.2): ≥ 8 ký tự, hoa + thường + số + ký tự đặc biệt, không trùng mật khẩu cũ. */
+    private void validatePasswordPolicy(String newPassword) {
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new RuntimeException("Mật khẩu phải có tối thiểu 8 ký tự");
+        }
+        boolean hasUpper = newPassword.chars().anyMatch(Character::isUpperCase);
+        boolean hasLower = newPassword.chars().anyMatch(Character::isLowerCase);
+        boolean hasDigit = newPassword.chars().anyMatch(Character::isDigit);
+        boolean hasSpecial = newPassword.chars().anyMatch(c -> !Character.isLetterOrDigit(c));
+        if (!(hasUpper && hasLower && hasDigit && hasSpecial)) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt");
+        }
     }
 
     @Override
@@ -100,28 +239,29 @@ public class AuthServiceImpl implements AuthService {
 
         user.setFaceEnrolled(true);
         user.setStatus("ACTIVE");
+        if (user.getActivatedAt() == null) {
+            user.setActivatedAt(LocalDateTime.now());
+        }
         userRepository.save(user);
-        log.info("Đã hoàn tất đăng ký khuôn mặt cho nhân viên: {} với độ tin cậy: {}", employeeCode, confidenceScore);
+        log.info("Đã hoàn tất đăng ký khuôn mặt cho nhân viên: {}", employeeCode);
         return true;
+    }
+
+    @Override
+    @Transactional
+    public void revokeAllSessions(UUID userId, String reason) {
+        long revoked = refreshTokenRepository.deleteByUserIdAndRevokedAtIsNull(userId);
+        log.info("Đã thu hồi {} phiên của người dùng {} (lý do: {})", revoked, userId, reason);
     }
 
     @Override
     @Transactional(readOnly = true)
     public void sendPasswordResetOtp(String email) {
-        String query = email != null ? email.trim() : "";
-        User user = userRepository.findByEmail(query)
-                .or(() -> userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(query, query))
-                .orElse(null);
+        User user = userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên với email: " + email));
 
         String otp = String.format("%06d", (int) (Math.random() * 900000) + 100000);
-        String targetEmail = user != null ? user.getEmail() : query;
-        String targetName = user != null ? user.getFullName() : "Người dùng ACT";
-
-        try {
-            emailService.sendPasswordResetEmail(targetEmail, targetName, otp);
-        } catch (Exception ex) {
-            log.warn("Lỗi khi gửi email qua SMTP: {}", ex.getMessage());
-        }
+        emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), otp);
     }
 
     @Override

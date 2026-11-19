@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
-@Tag(name = "1. Organization Structure & Administration API", description = "Quản lý cơ cấu phòng ban, cây tổ chức, nhân viên, phân quyền RBAC và Audit Trail")
+@Tag(name = "1. Organization Structure & Administration API", description = "Quản lý cơ cấu nhóm lồng nhau, cây tổ chức, nhân viên, phân quyền RBAC và Audit Trail")
 public class OrgStructureController {
 
     @Data
@@ -30,7 +30,7 @@ public class OrgStructureController {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class DepartmentNode {
+    public static class TeamGroupNode {
         private String id;
         private String code;
         private String name;
@@ -49,7 +49,7 @@ public class OrgStructureController {
         private String fullName;
         private String email;
         private String phone;
-        private String department;
+        private String team;
         private String role;
         private String status; // ACTIVE, LOCKED, PENDING
         private boolean mustChangePassword;
@@ -64,7 +64,7 @@ public class OrgStructureController {
         private String fullName;
         private String email;
         private String phone;
-        private String department;
+        private String team;
         private String role;
         private boolean generateRandomPassword;
     }
@@ -88,10 +88,10 @@ public class OrgStructureController {
     private static final List<AuditLogDto> AUDIT_LOGS = Collections.synchronizedList(new ArrayList<>());
 
     static {
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("1").employeeCode("Admin").fullName("Quản Trị Viên Hệ Thống").email("admin@act.vn").phone("0901234567").department("Ban Quản Trị").role("ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("2").employeeCode("01HR").fullName("Nguyễn Thị Thu Hà").email("ha.ntt@act.vn").phone("0902345678").department("Phòng Nhân Sự").role("HR_ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("3").employeeCode("05ACT").fullName("Nguyễn Thanh Tùng").email("tung.nt@act.vn").phone("0903456789").department("Khối Kỹ Thuật (Sirius)").role("MANAGER").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("4").employeeCode("136ACT").fullName("Vũ Văn Luận").email("luan.vv@act.vn").phone("0904567890").department("Khối Kỹ Thuật (Optimus)").role("EMPLOYEE").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
+        EMPLOYEES_DB.add(EmployeeDto.builder().id("1").employeeCode("Admin").fullName("Quản Trị Viên Hệ Thống").email("admin@act.vn").phone("0901234567").team("Ban Quản Trị").role("ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
+        EMPLOYEES_DB.add(EmployeeDto.builder().id("2").employeeCode("01HR").fullName("Nguyễn Thị Thu Hà").email("ha.ntt@act.vn").phone("0902345678").team("Phòng Nhân Sự").role("HR_ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
+        EMPLOYEES_DB.add(EmployeeDto.builder().id("3").employeeCode("05ACT").fullName("Nguyễn Thanh Tùng").email("tung.nt@act.vn").phone("0903456789").team("Khối Kỹ Thuật (Sirius)").role("MANAGER").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
+        EMPLOYEES_DB.add(EmployeeDto.builder().id("4").employeeCode("136ACT").fullName("Vũ Văn Luận").email("luan.vv@act.vn").phone("0904567890").team("Khối Kỹ Thuật (Optimus)").role("EMPLOYEE").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
 
         AUDIT_LOGS.add(AuditLogDto.builder().id("aud-1").timestamp(LocalDateTime.now().minusHours(2).toString()).actorCode("Admin").actorName("Quản Trị Viên").action("LOGIN").entity("AUTH").details("Đăng nhập thành công từ IP 14.161.22.45").ipAddress("14.161.22.45").build());
         AUDIT_LOGS.add(AuditLogDto.builder().id("aud-2").timestamp(LocalDateTime.now().minusHours(1).toString()).actorCode("01HR").actorName("Nguyễn Thị Thu Hà").action("UPDATE_RULE").entity("RULE_ENGINE").details("Cập nhật quy định ATTENDANCE_GEOFENCE_RADIUS: 150m -> 200m").ipAddress("14.161.22.45").build());
@@ -100,15 +100,15 @@ public class OrgStructureController {
 
     @GetMapping("/org/tree")
     @Operation(summary = "Lấy cây sơ đồ tổ chức công ty (Org Tree S41)")
-    public ApiResponse<List<DepartmentNode>> getOrgTree() {
-        return getDepartmentsTree();
+    public ApiResponse<List<TeamGroupNode>> getOrgTree() {
+        return getTeamsTree();
     }
 
-    @GetMapping("/admin/departments/tree")
-    @Operation(summary = "Lấy cây phòng ban quản trị (S16)")
-    public ApiResponse<List<DepartmentNode>> getDepartmentsTree() {
-        List<DepartmentNode> departments = List.of(
-                DepartmentNode.builder()
+    @GetMapping("/admin/teams/tree")
+    @Operation(summary = "Lấy cây nhóm quản trị (S16)")
+    public ApiResponse<List<TeamGroupNode>> getTeamsTree() {
+        List<TeamGroupNode> departments = List.of(
+                TeamGroupNode.builder()
                         .id("a0000000-0000-0000-0000-000000000001")
                         .code("DEV")
                         .name("Khối Kỹ Thuật & Phát Triển Phần Mềm")
@@ -120,7 +120,7 @@ public class OrgStructureController {
                                 TeamNode.builder().id("b3").name("Mobile (Special Approval)").leaderName("Tim").memberCount(7).isSpecialApproval(true).members(List.of("Tim", "Hoàng Văn E")).build()
                         ))
                         .build(),
-                DepartmentNode.builder()
+                TeamGroupNode.builder()
                         .id("a0000000-0000-0000-0000-000000000003")
                         .code("HR")
                         .name("Phòng Nhân Sự & Chính Sách")
@@ -140,17 +140,17 @@ public class OrgStructureController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String department
+            @RequestParam(required = false) String team
     ) {
         List<EmployeeDto> filtered = new ArrayList<>();
         for (EmployeeDto emp : EMPLOYEES_DB) {
             boolean matchKey = (keyword == null || keyword.isEmpty()) ||
                     emp.getFullName().toLowerCase().contains(keyword.toLowerCase()) ||
                     emp.getEmployeeCode().toLowerCase().contains(keyword.toLowerCase());
-            boolean matchDept = (department == null || department.isEmpty()) ||
-                    emp.getDepartment().toLowerCase().contains(department.toLowerCase());
+            boolean matchTeam = (team == null || team.isEmpty()) ||
+                    emp.getTeam().toLowerCase().contains(team.toLowerCase());
 
-            if (matchKey && matchDept) {
+            if (matchKey && matchTeam) {
                 filtered.add(emp);
             }
         }
@@ -176,7 +176,7 @@ public class OrgStructureController {
                 .fullName(req.getFullName())
                 .email(req.getEmail())
                 .phone(req.getPhone() != null ? req.getPhone() : "090" + System.currentTimeMillis() % 10000000)
-                .department(req.getDepartment() != null ? req.getDepartment() : "Khối Kỹ Thuật")
+                .team(req.getTeam() != null ? req.getTeam() : "Khối Kỹ Thuật")
                 .role(req.getRole() != null ? req.getRole() : "EMPLOYEE")
                 .status("ACTIVE")
                 .mustChangePassword(true)
@@ -281,12 +281,12 @@ public class OrgStructureController {
         return ApiResponse.ok(Map.of("importedCount", 15), "Import thành công 15 nhân viên mới");
     }
 
-    @PostMapping("/admin/departments")
-    @Operation(summary = "Thêm mới / cập nhật thông tin phòng ban (CORE-ORG-02)")
-    public ApiResponse<Map<String, Object>> createDepartment(@RequestBody Map<String, Object> payload) {
+    @PostMapping("/admin/teams")
+    @Operation(summary = "Thêm mới / cập nhật thông tin nhóm (CORE-ORG-02)")
+    public ApiResponse<Map<String, Object>> createTeam(@RequestBody Map<String, Object> payload) {
         Map<String, Object> dept = new HashMap<>(payload);
         dept.put("id", "dept-" + System.currentTimeMillis());
-        return ApiResponse.ok(dept, "Tạo phòng ban mới thành công");
+        return ApiResponse.ok(dept, "Tạo nhóm mới thành công");
     }
 
     @PostMapping("/admin/leave-adjust")
