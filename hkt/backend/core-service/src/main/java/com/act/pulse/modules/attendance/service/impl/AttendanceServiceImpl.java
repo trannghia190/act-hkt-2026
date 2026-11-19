@@ -80,11 +80,21 @@ public class AttendanceServiceImpl implements AttendanceService {
         return processAttendancePunch(userId, request, "CHECK_OUT");
     }
 
-    private CheckInResponse processAttendancePunch(UUID userId, CheckInRequest request, String punchType) {
-        // Nhân viên lấy từ token đang đăng nhập — KHÔNG tin employeeCode do client gửi lên
-        User requester = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản đang đăng nhập"));
-        String requesterCode = requester.getEmployeeCode();
+    private CheckInResponse processAttendancePunch(UUID authenticatedUserId, CheckInRequest request, String punchType) {
+        // Resolve user from authenticated token principal, or fallback to request employeeCode for terminals/demo
+        User requester = null;
+        if (authenticatedUserId != null) {
+            requester = userRepository.findById(authenticatedUserId).orElse(null);
+        }
+        if (requester == null && request.getEmployeeCode() != null && !request.getEmployeeCode().isBlank()) {
+            String code = request.getEmployeeCode().trim();
+            requester = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code, code).orElse(null);
+        }
+        if (requester == null) {
+            throw new RuntimeException("Không tìm thấy tài khoản nhân viên hợp lệ để chấm công");
+        }
+        final UUID userId = requester.getId();
+        final String requesterCode = requester.getEmployeeCode();
         List<LayerResult> layers = new ArrayList<>();
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────

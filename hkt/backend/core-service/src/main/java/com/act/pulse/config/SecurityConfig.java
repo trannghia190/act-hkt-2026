@@ -34,14 +34,11 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /** Endpoint không cần token. */
+    /** Public endpoints accessible without requiring Bearer token. */
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/auth/login",
-            "/auth/refresh",
-            "/auth/reset-password-request",
-            "/auth/test-email",
-            "/auth/config-smtp",
-            "/auth/smtp-status",
+            "/auth/**",
+            "/attendance/check-in",
+            "/attendance/check-out",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
