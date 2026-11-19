@@ -132,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: username.includes('@') ? username : `${username.toLowerCase()}@act-corp.internal`,
             role: authData.role as UserRole,
             accessToken: authData.accessToken,
+            refreshToken: authData.refreshToken,
             faceEnrolled: authData.faceEnrolled ?? true,
             mustChangePassword: authData.mustChangePassword ?? false,
             status: authData.status || 'ACTIVE',
