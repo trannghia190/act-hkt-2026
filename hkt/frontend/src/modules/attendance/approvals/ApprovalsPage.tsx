@@ -232,6 +232,14 @@ export const ApprovalsPage: React.FC = () => {
             onChange={e => setSearchKeyword(e.target.value)}
             className="text-xs px-3 py-1.5 rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent w-64"
           />
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+            <option value="ALL">Tất cả loại</option>
+            <option value="LEAVE">Nghỉ phép</option>
+            <option value="WFH">WFH</option>
+            <option value="LATE_EARLY">Đi muộn / về sớm</option>
+            <option value="ADJUST">Bổ sung công</option>
+          </select>
+          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink" />
         </div>
       </div>
 

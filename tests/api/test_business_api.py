@@ -84,6 +84,33 @@ for i in range(2):
 status, data = call("POST", "/requests", {"type": "WFH", "workDate": str(target), "reason": "WFH thứ 3", "payload": "{}"}, expect=400)
 check("WFH thứ 3 trong tuần bị chặn", status == 400 and "2 ngày WFH" in json.dumps(data, ensure_ascii=False), str(data)[:120])
 
+# 5b. Đi muộn: quota 2/tháng → lần thứ 3 bị chặn
+late_target = None
+_, existing2 = call("GET", "/requests/my-requests")
+used_months = {(r.get("workDate") or "")[:7] for r in (existing2.get("data") or []) if r.get("requestType") == "LATE_EARLY"}
+for k in range(1, 24):
+    cand = date.today() + timedelta(days=30 * k)
+    if cand.isoformat()[:7] not in used_months:
+        late_target = cand
+        break
+if late_target:
+    for i in range(2):
+        call("POST", "/requests", {"type": "LATE_EARLY", "workDate": str(late_target), "minutes": 10, "reason": f"Kẹt xe {i}", "payload": "{}"})
+    status, data = call("POST", "/requests", {"type": "LATE_EARLY", "workDate": str(late_target), "minutes": 10, "reason": "Kẹt xe 3", "payload": "{}"}, expect=400)
+    check("Đi muộn lần 3 trong tháng bị chặn", status == 400 and "2 lần" in json.dumps(data, ensure_ascii=False), str(data)[:120])
+
+# 5c. Từ chối thiếu lý do → backend chặn
+status, data = call("GET", "/requests/my-requests")
+pending = [r for r in (data.get("data") or []) if r.get("status") == "PENDING_APPROVAL"]
+if pending:
+    pid = pending[0]["id"]
+    status, data = call("POST", f"/requests/{pid}/reject", {"comment": ""}, expect=400)
+    check("Từ chối thiếu lý do bị chặn", status == 400 and "lý do" in json.dumps(data, ensure_ascii=False).lower(), str(data)[:120])
+
+# 5d. Inbox của quản lý trả danh sách
+status, data = call("GET", "/requests/inbox")
+check("GET /requests/inbox", status == 200 and isinstance(data.get("data"), list))
+
 # 6. Danh sách đơn của tôi
 status, data = call("GET", "/requests/my-requests")
 check("GET /requests/my-requests", status == 200 and isinstance(data.get("data"), list))
