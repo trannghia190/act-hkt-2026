@@ -28,10 +28,10 @@ erDiagram
   * `full_name`: VARCHAR(150) NOT NULL
   * `email`: VARCHAR(150) UNIQUE NOT NULL
   * `password_hash`: VARCHAR(255) NOT NULL
-  * `role`: VARCHAR(30) NOT NULL (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`, `EXECUTIVE`)
-  * `department`: VARCHAR(100) NOT NULL
+  * `role`: VARCHAR(30) NOT NULL (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`, `ADMIN`)
   * `team_id`: UUID REFERENCES `teams(id)`
-  * `line_manager_id`: UUID REFERENCES `users(id)`
+  * `team_id`: UUID REFERENCES `teams(id)`
+  * `manager_id`: UUID REFERENCES `users(id)`
   * `shift_id`: UUID REFERENCES `shifts(id)`
   * `joined_date`: DATE NOT NULL
   * `status`: VARCHAR(30) DEFAULT 'PENDING_ACTIVATION'
@@ -64,7 +64,7 @@ erDiagram
   * `distance_meters`: DECIMAL(10, 2)
   * `liveness_score`: DECIMAL(5, 4)
   * `face_match_distance`: DECIMAL(5, 4)
-  * `status`: VARCHAR(30) NOT NULL (`VALID`, `FLAGGED_LOW_GPS`, `FLAGGED_OUTSIDE_WIFI`, `REJECTED`)
+  * `status`: VARCHAR(30) NOT NULL (`VALID`, `REJECTED`) — không có cờ 'vẫn tính công'
   * `snapshot_url`: VARCHAR(255)
 
 ### 1.3. Bảng Đơn Từ (`requests`)
@@ -107,26 +107,25 @@ erDiagram
   * `reference_request_id`: UUID REFERENCES `requests(id)`
   * `created_at`: TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 
-### 1.5. Bảng Chấm Công 45 Cột (`timesheets`, `timesheet_cells`, `timesheet_audit_logs`)
+### 1.5. Bảng Chấm Công 53 cột (`timesheets`, `timesheet_cells`, `timesheet_audit_logs`)
 * **`timesheets`**:
   * `id`: UUID PRIMARY KEY
-  * `month`: INTEGER NOT NULL
-  * `year`: INTEGER NOT NULL
-  * `status`: VARCHAR(30) DEFAULT 'DRAFT' (`DRAFT`, `DISPUTE_PERIOD`, `LOCKED`)
-  * `locked_at`: TIMESTAMP WITH TIME ZONE
+  * `period_month`: INTEGER NOT NULL
+  * `period_year`: INTEGER NOT NULL
+  * `status`: VARCHAR(20) DEFAULT 'draft' (`draft`, `published`, `reviewing`, `locked`)
+  * `published_at`, `dispute_deadline`, `locked_at`: TIMESTAMP WITH TIME ZONE
   * `locked_by`: UUID REFERENCES `users(id)`
 * **`timesheet_cells`**:
   * `id`: UUID PRIMARY KEY
   * `timesheet_id`: UUID REFERENCES `timesheets(id)`
   * `user_id`: UUID REFERENCES `users(id)`
-  * `day_of_month`: INTEGER NOT NULL (1 đến 31)
-  * `system_code`: VARCHAR(20) (`1.00`, `0.50`, `R`, `AL`, `S`...)
-  * `override_code`: VARCHAR(20)
-  * `actual_work_hours`: DECIMAL(4, 2)
-  * `is_manual_override`: BOOLEAN DEFAULT FALSE
+  * `work_date`: DATE NOT NULL
+  * `symbol`: VARCHAR(20) (`1.00`, `0.50`, `R`, `AL`, `S`...)
+  * `work_minutes`: INTEGER DEFAULT 0
+  * `is_manual`: BOOLEAN DEFAULT FALSE
 * **`timesheet_audit_logs`**:
   * `id`: UUID PRIMARY KEY
-  * `cell_id`: UUID REFERENCES `timesheet_cells(id)`
+  * `timesheet_cell_id`: UUID REFERENCES `timesheet_cells(id)`
   * `old_value`: VARCHAR(20)
   * `new_value`: VARCHAR(20)
   * `reason`: TEXT NOT NULL
@@ -153,7 +152,6 @@ erDiagram
   * `box3_manager_score`: INTEGER (1-5)
   * `box4_proposal_next_year`: TEXT
   * `final_average_score`: DECIMAL(3, 2)
-  * `final_ranking`: VARCHAR(10) (`A`, `B`, `C`, `D`)
   * `current_step`: INTEGER DEFAULT 1 (1 đến 5)
   * `status`: VARCHAR(30) DEFAULT 'DRAFT'
 
@@ -189,7 +187,7 @@ erDiagram
 * `POST /api/v1/auth/face-enroll`
   * Body: `{ "face_embedding": [0.12, -0.45, ...], "snapshot_image": "base64/binary" }`
 * `POST /api/v1/admin/users` (HR tạo nhân viên & tự động gửi Gmail kích hoạt)
-  * Body: `{ "employee_code": "151ACT", "full_name": "...", "email": "...", "team_id": "...", "line_manager_id": "...", "joined_date": "2026-11-01" }`
+  * Body: `{ "employee_code": "151ACT", "full_name": "...", "email": "...", "team_id": "...", "manager_id": "...", "joined_date": "2026-11-01" }`
 * `POST /api/v1/admin/users/import-excel` (Import danh sách hàng loạt)
 * `POST /api/v1/admin/users/{id}/reset-password` (HR reset mật khẩu & bắn email)
 
@@ -212,7 +210,7 @@ erDiagram
 * `POST /api/v1/requests/{id}/withdraw` (Rút đơn khi chưa duyệt)
 
 ### 2.4. Phân Hệ Bảng Công & Sổ Phép (Timesheet & Leaves)
-* `GET /api/v1/timesheets/monthly?month=10&year=2026` (Lưới bảng công 45 cột S15)
+* `GET /api/v1/timesheets/monthly?month=10&year=2026` (Lưới bảng công 53 cột S15)
 * `PUT /api/v1/timesheets/cells/{id}` (Sửa ô tại chỗ kèm audit reason)
   * Body: `{ "new_value": "1.00", "reason": "Bổ sung theo giải trình quản lý" }`
 * `POST /api/v1/timesheets/{id}/lock` (HR khóa bảng công)
@@ -224,14 +222,13 @@ erDiagram
 * `GET /api/v1/okr/my-review?cycle_year=2026` (Xem form OKR 4 Box cá nhân)
 * `PUT /api/v1/okr/my-review/self-assessment` (Nhân viên tự chấm & nộp Bước 1)
 * `PUT /api/v1/okr/reviews/{id}/manager-assessment` (Quản lý chấm 1-5 Bước 2)
-* `GET /api/v1/okr/team-calibration` (Bảng so sánh review cả nhóm & Bell Curve S24)
+* `GET /api/v1/okr/team-review` (Bảng so sánh review cả nhóm & điểm S24)
 * `GET /api/v1/okr/summary-report?year=2026` (Bảng tổng hợp 9 trường chuẩn HR S25)
 * `GET /api/v1/okr/summary-report/export-excel` (Xuất file Excel tổng hợp OKR)
 
 ### 2.6. Phân Hệ Rule Engine (Configuration)
 * `GET /api/v1/rules` (Danh sách 19 quy định S16)
 * `PUT /api/v1/rules/{rule_key}` (Cập nhật quy định mới có versioning & effective date)
-* `POST /api/v1/rules/dry-run` (Chạy thử nghiệm giả lập trên dữ liệu tháng trước S18)
 * `POST /api/v1/rules/{rule_key}/rollback` (Hoàn tác về phiên bản cũ)
 * `GET /api/v1/rules/public-policy-doc` (Sinh nội dung Markdown trang tra cứu nội quy S19)
 
@@ -239,3 +236,56 @@ erDiagram
 * `GET /api/v1/todos/my-inbox` (Lấy danh sách việc cần làm phân theo 3 mức ưu tiên S02)
 * `GET /api/v1/search/command-palette?q=Vinh` (Tìm kiếm tức thì Ctrl+K S03)
 * `GET /api/v1/notifications/unread-count` (Lấy số đỏ badge thông báo)
+
+---
+
+## 3. Bảng Còn Thiếu Trong DDL — Bổ Sung Theo Business
+
+> Các bảng dưới đây có trong nghiệp vụ (docs/05) và đã được thêm ở migration `V2__align_with_business.sql`.
+
+| Bảng | Mục đích |
+|---|---|
+| `face_profiles` | Hồ sơ khuôn mặt (vector 512D, **không lưu ảnh thô**) |
+| `attendance_logs` | 1 dòng/người/ngày: `check_in_at`, `check_out_at`, unique `(user_id, work_date)` |
+| `refresh_tokens` | Phiên làm mới (lưu mã băm) để **thu hồi** khi đổi mật khẩu/đăng xuất |
+| `login_attempts` | Đếm lần đăng nhập sai → khoá 10′ / khoá vĩnh viễn |
+| `timesheets` · `timesheet_cells` · `timesheet_audit_logs` | Bảng công 53 cột + audit sửa ô |
+| `okr_cycles` · `okr_reviews` · `okr_items` | Chu kỳ 5 phase, review/đánh giá, đầu việc 2 nhóm |
+| `requests` | 4 loại đơn + `applied_parameters` (snapshot tham số lúc gửi) |
+| `leave_ledger` | Sổ phép append-only |
+| `teams.parent_id` | Nhóm lồng nhau, số tầng tự do (đã thêm cột) |
+| `users.activated_at` | Thời điểm kích hoạt tài khoản |
+
+> Đã gỡ `departments` (business không có phòng ban) và `delegations` (đã bỏ ủy quyền).
+
+## 4. Endpoint Còn Thiếu — Bổ Sung Theo Màn Hình Business
+
+| Màn | Endpoint |
+|---|---|
+| S01 | `POST /api/v1/auth/refresh` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` |
+| S11 | `GET /api/v1/attendance/my-timesheet` |
+| S13 | `GET /api/v1/requests/{id}` |
+| S14 | `GET /api/v1/attendance/team-schedule` |
+| S20 | `GET /api/v1/okr/dashboard` |
+| S21 | `POST /api/v1/okr/objectives` |
+| S22 | `POST /api/v1/okr/check-ins` |
+| S23 | `PUT /api/v1/okr/reviews/{id}/self-assessment` |
+| S24 | `GET /api/v1/okr/team-review` |
+| S26 | `GET /api/v1/admin/shifts` |
+| S27 | `GET /api/v1/devices` |
+| S28 | `GET /api/v1/admin/devices` |
+| S29 | `POST /api/v1/devices/request` |
+| S30 | `GET /api/v1/leave-types` |
+| S32 | `GET /api/v1/admin/leave-types` |
+| S33 | `GET /api/v1/disputes/{id}` |
+| S35 | `GET /api/v1/audit-logs` |
+| S36 | `GET /api/v1/notifications/preferences` |
+| S40 | `GET /api/v1/admin/users` |
+| S41 | `GET /api/v1/admin/org-tree` |
+| S42 | `POST /api/v1/okr/objectives/{id}/approve` |
+| S43 | `GET /api/v1/okr/mid-year-reviews` |
+| S44 | `GET /api/v1/okr/cycles` |
+| S45 | `GET /api/v1/disputes` |
+| S46 | `GET /api/v1/leaves/table` |
+
+> `PUT /api/v1/rules/{ruleKey}` + `GET /api/v1/rules/{ruleKey}/versions` + rollback đã thay cho `/rules/dry-run`.

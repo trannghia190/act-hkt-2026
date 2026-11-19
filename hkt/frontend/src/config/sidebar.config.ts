@@ -36,7 +36,9 @@ export const SIDEBAR_CONFIG: ModuleNavigation[] = [
           { id: 'calendar', label: 'Lịch công cá nhân', path: '/attendance/calendar', icon: 'Calendar', screenId: 'S06' },
           { id: 'my-timesheet', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
           { id: 'my-requests', label: 'Đơn từ của tôi', path: '/attendance/requests', icon: 'FilePlus', screenId: 'S08' },
+          { id: 'wfh', label: 'Đăng ký WFH', path: '/attendance/requests?type=WFH', icon: 'Home', screenId: 'S10' },
           { id: 'my-leaves', label: 'Số dư phép năm', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
+          { id: 'my-devices', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
         ],
       },
       {
@@ -51,6 +53,8 @@ export const SIDEBAR_CONFIG: ModuleNavigation[] = [
         items: [
           { id: 'master-timesheet', label: 'Bảng công & Chốt lương', path: '/attendance/timesheet', icon: 'Table', screenId: 'S15', roles: ['HR_ADMIN', 'ADMIN'] },
           { id: 'leave-ledger', label: 'Sổ cái biến động phép', path: '/attendance/leave-ledger', icon: 'Book', screenId: 'S34', roles: ['HR_ADMIN', 'ADMIN'] },
+          { id: 'leave-table', label: 'Bảng phép tất cả mọi người', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46', roles: ['HR_ADMIN', 'ADMIN'] },
+          { id: 'disputes', label: 'Danh sách khiếu nại', path: '/attendance/disputes', icon: 'AlertTriangle', badge: '5', badgeColor: 'danger', screenId: 'S45', roles: ['HR_ADMIN', 'ADMIN'] },
         ],
       },
     ],
@@ -76,14 +80,14 @@ export const SIDEBAR_CONFIG: ModuleNavigation[] = [
         items: [
           { id: 'okr-approvals', label: 'Duyệt mục tiêu OKR', path: '/okr/team-approvals', icon: 'CheckCircle', screenId: 'S42', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
           { id: 'mid-year-review', label: 'Review & Coaching giữa năm', path: '/okr/mid-year-review', icon: 'MessageSquare', screenId: 'S43', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-          { id: 'team-board', label: 'Team OKR Board', path: '/okr/team-board', icon: 'Layout', screenId: 'S46', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-          { id: 'calibration', label: 'Cân chuẩn điểm (Calibration)', path: '/okr/calibration', icon: 'BarChart2', screenId: 'S24', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
+          { id: 'team-review', label: 'Review OKR cả nhóm', path: '/okr/team-review', icon: 'ClipboardList', screenId: 'S24', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
         ],
       },
       {
         groupName: 'BÁO CÁO TOÀN CÔNG TY',
         items: [
           { id: 'okr-summary', label: 'Bảng tổng hợp HR 9 trường', path: '/okr/summary-report', icon: 'FileSpreadsheet', screenId: 'S25', roles: ['HR_ADMIN', 'ADMIN'] },
+          { id: 'okr-cycles', label: 'Quản lý chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44', roles: ['HR_ADMIN', 'ADMIN'] },
         ],
       },
     ],
@@ -100,9 +104,12 @@ export const SIDEBAR_CONFIG: ModuleNavigation[] = [
         groupName: 'CƠ CẤU TỔ CHỨC & NHÂN SỰ',
         items: [
           { id: 'users', label: 'Quản lý nhân viên & tài khoản', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'org-tree', label: 'Sơ đồ tổ chức & phòng ban', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
+          { id: 'org-tree', label: 'Sơ đồ tổ chức (nhóm lồng nhau)', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
+          { id: 'admin-devices', label: 'Quản lý thiết bị (HR)', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28', roles: ['HR_ADMIN', 'ADMIN'] },
+          { id: 'leave-types', label: 'Quản lý loại nghỉ', path: '/admin/leave-types', icon: 'ListTree', screenId: 'S32', roles: ['HR_ADMIN', 'ADMIN'] },
+          { id: 'notif-prefs', label: 'Tuỳ chỉnh thông báo', path: '/settings/notifications', icon: 'Bell', screenId: 'S36' },
+          { id: 'notifications-mobile', label: 'Thông báo (mobile)', path: '/notifications', icon: 'BellRing', screenId: 'S04M' },
           { id: 'shifts', label: 'Ca làm việc & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'delegations', label: 'Ủy quyền phê duyệt', path: '/admin/delegations', icon: 'Repeat', screenId: 'S37', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
           { id: 'enroll-face-shared', label: 'Đăng ký mẫu khuôn mặt (S01-B)', path: '/auth/enroll-face', icon: 'Fingerprint', screenId: 'S01-B' },
         ],
       },

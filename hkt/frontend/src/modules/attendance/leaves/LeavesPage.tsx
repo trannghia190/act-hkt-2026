@@ -58,6 +58,16 @@ export const LeavesPage: React.FC = () => {
     }
   ]);
 
+  const [filterType, setFilterType] = useState('Tất cả');
+  const filteredLedger = ledger.filter(entry => {
+    if (filterType === 'Tất cả') return true;
+    if (filterType === 'Phép năm') return entry.description.toLowerCase().includes('phép năm') || entry.type === 'GRANT';
+    if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
+    if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
+    if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -111,6 +121,20 @@ export const LeavesPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Bộ lọc lịch sử phép (S09) */}
+      <div className="flex flex-wrap items-center gap-2">
+        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù'].map(f => (
+          <button key={f} onClick={() => setFilterType(f)}
+            className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            {f}
+          </button>
+        ))}
+        <select className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+          <option>Năm: 2026</option>
+          <option>Năm: 2025</option>
+        </select>
+      </div>
+
       {/* Ledger Table */}
       <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động - S34)">
         <div className="overflow-x-auto">
@@ -125,7 +149,7 @@ export const LeavesPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {ledger.map(entry => (
+              {filteredLedger.map(entry => (
                 <tr key={entry.id} className="hover:bg-canvas/40 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{entry.date}</td>
                   <td className="py-2.5 px-3">

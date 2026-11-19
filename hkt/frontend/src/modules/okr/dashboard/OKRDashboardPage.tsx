@@ -32,6 +32,15 @@ export const OKRDashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* S20 · Self proposal năm sau */}
+      <div className="p-4 rounded-xl border border-accent/40 bg-accent-soft/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold text-accent-dark">Self proposal năm 2027 — Đang viết</div>
+          <div className="text-xs text-ink-secondary mt-1">Tự đề xuất mục tiêu định hướng năm sau · lưu nháp 12/11 · hạn nộp 30/11/2026</div>
+        </div>
+        <a href="/okr/my-okr" className="text-xs px-3 py-1.5 rounded bg-accent text-white self-start sm:self-center">Tiếp tục viết đề xuất</a>
+      </div>
+
       {/* High-level Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-4 bg-surface rounded-xl border border-line">

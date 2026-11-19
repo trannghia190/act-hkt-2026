@@ -9,7 +9,7 @@ export const MidYearReviewPage: React.FC = () => {
     'Trong 6 tháng đầu năm, nhóm Sirius đã hoàn thành việc tách module và ổn định kiến trúc. Tuy nhiên phần tích hợp AI nhận diện khuôn mặt cần hỗ trợ thêm tài nguyên hạ tầng GPU.'
   );
   const [managerCoachingNotes, setManagerCoachingNotes] = useState(
-    'Minh cần chủ động hơn trong việc phối hợp với team Optimus AI. Trong H2 sẽ cần tăng tốc hoàn thành các module chốt công 45 cột và rule engine.'
+    'Minh cần chủ động hơn trong việc phối hợp với team Optimus AI. Trong H2 sẽ cần tăng tốc hoàn thành các module chốt công 53 cột và rule engine.'
   );
   const [h2Commitment, setH2Commitment] = useState(
     'Cam kết đạt 100% các KR trong Quý 3 và Quý 4, sẵn sàng kèm cặp 1 Junior Dev mới gia nhập.'

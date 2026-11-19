@@ -1,6 +1,6 @@
 # 11 — Cấu Trúc Dự Án, Phân Rã Module & Quy Ước Tổ Chức Mã Nguồn (Project Structure & Code Conventions)
 
-> **Mục tiêu:** Cung cấp tài liệu cẩm nang kỹ thuật chi tiết về cấu trúc mã nguồn toàn bộ dự án (`hkt/`), ý nghĩa của từng thư mục, module, luồng kiến trúc (Architectural Flow), cách thức tổ chức mã nguồn và mô hình tích hợp **Keycloak** cho xác thực & phân quyền (kết hợp quản lý tổ chức/nhân sự linh hoạt từ phía ứng dụng cho HR & Admin).
+> **Mục tiêu:** Cung cấp tài liệu cẩm nang kỹ thuật chi tiết về cấu trúc mã nguồn toàn bộ dự án (`hkt/`), ý nghĩa của từng thư mục, module, luồng kiến trúc (Architectural Flow), cách thức tổ chức mã nguồn và mô hình **xác thực tài khoản nội bộ (Non-SSO)** kết hợp quản lý tổ chức/nhân sự trên ứng dụng.
 
 ---
 
@@ -23,31 +23,27 @@ hkt/
 
 ---
 
-## 2. Kiến Trúc Xác Thực Keycloak & Quản Trị Nhân Sự Ứng Dụng
+## 2. Xác Thực Tài Khoản Nội Bộ (Non-SSO)
 
-Hệ thống áp dụng mô hình **Decoupled Identity & Organization Architecture** (Tách biệt giữa Xác thực định danh và Quản lý cơ cấu nhân sự):
+Hệ thống **không dùng Keycloak/Google SSO**. Luồng xác thực:
 
 ```mermaid
 flowchart TD
-    User["Người dùng (Web / Mobile)"] --> Login["1. Đăng nhập qua Keycloak (OIDC / OAuth2)\nHoặc Local App Credentials"]
-    Login --> KC["Keycloak IAM Server (Port 8180)\n• Quản lý Client, Realm 'act-pulse'\n• Cấp JWT Access Token & Refresh Token\n• Quản lý Realm Roles & Client Scopes"]
-    KC --> Gateway["2. Gửi Bearer JWT Token vào Backend"]
-    Gateway --> Security["Spring Security Resource Server\n(Giải mã JWT, trích xuất roles)"]
-    
-    subgraph AppDB ["Hệ Thống Ứng Dụng ACT PULSE (pulse-core-service)"]
-        Security --> OrgMgmt["Module Quản Trị Tổ Chức & Nhân Sự\n• HR / Admin quản lý trực tiếp trên Web UI\n• Tạo phòng ban, nhóm (Teams), gán Leader\n• Gán ca làm việc, quota, ngày vào làm\n• Quản lý ma trận phân quyền: Admin, HR, Manager, Employee"]
-        OrgMgmt --> Sync["Tự động đồng bộ sang Keycloak User qua Admin API"]
-    end
+    HR["HR tạo tài khoản (S40)"] --> Mail["Gmail gửi mật khẩu tạm + link đăng nhập"]
+    Mail --> Login["Đăng nhập email + mật khẩu (S01)"]
+    Login --> Jwt["JwtService phát hành JWT HS512\naccess 15' + refresh 7 ngày"]
+    Jwt --> Filter["JwtAuthenticationFilter xác thực mọi request"]
+    Filter --> Role["Vai trò tự xác định từ User.role + UserScope"]
+    Login --> Force["must_change_password → S01-A đổi mật khẩu"]
+    Force --> Face["Chưa có khuôn mặt → S01-B đăng ký 3 góc"]
+    Face --> Todo["Vào thẳng 'Cần làm'"]
 ```
 
-### Điểm Sáng Trong Mô Hình Này:
-1. **Keycloak chịu trách nhiệm:** Xác thực an toàn, cấp phát & xác thực chữ ký JWT, hỗ trợ SSO tương lai, quản lý phiên làm việc tập trung (Session management), ngăn chặn Brute-force.
-2. **Hệ thống ứng dụng chịu trách nhiệm:** 
-   * Quản lý hồ sơ nhân viên, phòng ban, nhóm làm việc đa tầng (Teams), cây phê duyệt (Manager $\rightarrow$ Employee).
-   * Phân quyền nghiệp vụ chi tiết (Admin, HR_Admin, Line_Manager, Employee).
-   * Khi HR thêm nhân viên mới trên ứng dụng: Backend vừa lưu vào CSDL nội bộ, vừa tự động gọi Keycloak Admin REST API để tạo tài khoản đồng bộ. HR và Admin hoàn toàn thao tác trên giao diện thân thiện của ứng dụng mà không cần phải truy cập vào trang Admin Console phức tạp của Keycloak.
-
----
+* **Mật khẩu:** bcrypt cost 12; policy ≥ 8 ký tự, hoa + thường + số + ký tự đặc biệt.
+* **Khoá đăng nhập:** sai 5 lần → khoá 10 phút; sai 10 lần → khoá vĩnh viễn (HR mở).
+* **Phiên:** bảng `refresh_tokens` lưu **mã băm**; đổi mật khẩu/đăng xuất → thu hồi toàn bộ phiên.
+* **Phân quyền:** `@EnableMethodSecurity` + `JwtAuthenticationFilter`; mọi endpoint (trừ login/refresh) yêu cầu token.
+* **Không có** `KeycloakAdminConfig` / `KeycloakSyncService` — các class này chỉ từng có trong tài liệu cũ.
 
 ## 3. Chi Tiết Cấu Trúc Backend 1: Core Service (`hkt/backend/core-service/`)
 
@@ -65,12 +61,11 @@ hkt/backend/core-service/src/main/java/com/act/pulse/
 │   └── util/                       # DateUtils, SecurityContextUtils, FormulaEngineUtils
 │
 ├── config/                         # CẤU HÌNH HẠ TẦNG KỸ THUẬT
-│   ├── SecurityConfig.java         # Tích hợp OAuth2 Resource Server (Keycloak JWT) & Local RBAC
-│   ├── KeycloakAdminConfig.java    # Cấu hình Keycloak Admin Client để tạo/đồng bộ user tự động
-│   ├── RedisConfig.java            # Cấu hình Redis Cache & Rate-limiter
-│   ├── MailConfig.java             # Cấu hình dịch vụ gửi email kích hoạt qua Gmail/Mailpit
-│   ├── CorsConfig.java             # Cấu hình CORS cho Frontend React
-│   └── SwaggerConfig.java          # Cấu hình tài liệu API SpringDoc OpenAPI v3
+│   ├── SecurityConfig.java         # JWT stateless + CORS + BCrypt(12)
+│   ├── RedisConfig.java            # Redis cache & rate-limiter
+│   ├── MailConfig.java             # Gmail SMTP
+│   ├── CorsConfig.java             # CORS cho React
+│   └── SwaggerConfig.java          # SpringDoc OpenAPI
 │
 └── modules/                        # 3 PHÂN HỆ NGHIỆP VỤ CHÍNH:
     │
@@ -79,10 +74,10 @@ hkt/backend/core-service/src/main/java/com/act/pulse/
     │   ├── dto/
     │   │   ├── request/            # LoginRequest, ChangePasswordRequest, CreateUserRequest, TeamRequest
     │   │   └── response/           # AuthResponse, UserProfileResponse, OrgTreeResponse
-    │   ├── entity/                 # User.java, Department.java, Team.java, Device.java, Role.java
-    │   ├── repository/             # UserRepository, TeamRepository, DepartmentRepository, DeviceRepository
-    │   └── service/                # AuthService, UserService, KeycloakSyncService, OrgService
-    │       └── impl/               # AuthServiceImpl, UserServiceImpl, KeycloakSyncServiceImpl
+    │   ├── entity/                 # User.java, Team.java, Device.java, FaceProfile.java, Role.java
+    │   ├── repository/             # UserRepository, TeamRepository, DeviceRepository, FaceProfileRepository
+    │   └── service/                # AuthService, UserService, OrgService
+    │       └── impl/               # AuthServiceImpl, UserServiceImpl
     │
     ├── 2. attendance/              # PHÂN HỆ 2: CHẤM CÔNG, ĐƠN TỪ, SỔ PHÉP & BẢNG CÔNG
     │   ├── controller/             # AttendanceController, RequestController, TimesheetController, LeaveController
@@ -95,13 +90,13 @@ hkt/backend/core-service/src/main/java/com/act/pulse/
     │       └── impl/               # AttendanceServiceImpl, RequestWorkflowServiceImpl, TimesheetServiceImpl
     │
     └── 3. okr/                     # PHÂN HỆ 3: QUẢN TRỊ MỤC TIÊU & ĐÁNH GIÁ HIỆU SUẤT
-        ├── controller/             # OKRController, OKRAssessmentController, OKRCalibrationController, OKRReportController
+        ├── controller/             # OKRController, OKRAssessmentController, OKRbáo cáo điểmController, OKRReportController
         ├── dto/
-        │   ├── request/            # OKRSetupRequest, OKRCheckInRequest, OKRAssessmentSubmitRequest, CalibrationAdjustRequest
-        │   └── response/           # OKRDashboardResponse, OKRReviewResponse, OKRSummaryReportResponse, CalibrationBoardResponse
+        │   ├── request/            # OKRSetupRequest, OKRCheckInRequest, OKRAssessmentSubmitRequest, báo cáo điểmAdjustRequest
+        │   └── response/           # OKRDashboardResponse, OKRReviewResponse, OKRSummaryReportResponse, báo cáo điểmBoardResponse
         ├── entity/                 # OKRCycle.java, OKRReview.java (Form 4 Box), OKRItem.java
         ├── repository/             # OKRReviewRepository, OKRCycleRepository, OKRItemRepository
-        └── service/                # OKRService, OKRAssessmentService, OKRCalibrationService, OKRReportService
+        └── service/                # OKRService, OKRAssessmentService, OKRbáo cáo điểmService, OKRReportService
             └── impl/               # OKRServiceImpl, OKRAssessmentServiceImpl
 ```
 
@@ -190,20 +185,20 @@ hkt/frontend/src/
 │   │   ├── requests/               # Đơn của tôi, WFH cap 3 ngày, OT, Quên chấm công (S08/S30/S31)
 │   │   ├── approvals/              # Phê duyệt đơn nhóm của Quản lý & HR (S12/S13)
 │   │   ├── leaves/                 # Số dư phép & Sổ cái phép cá nhân (S09/S34)
-│   │   ├── timesheet/              # Lưới tổng hợp bảng công 45 cột & chốt lương (S15)
-│   │   └── rules/                  # Rule Engine 19 luật linh hoạt (S16) & Dry-Run Simulator (S18)
+│   │   ├── timesheet/              # Lưới tổng hợp bảng công 53 cột & chốt lương (S15)
+│   │   └── rules/                  # Rule Engine 19 luật linh hoạt (S16/S17)
 │   │
 │   ├── okr/                        # 2. PHÂN HỆ MỤC TIÊU & ĐÁNH GIÁ HIỆU SUẤT:
 │   │   ├── dashboard/              # Tổng quan Dashboard OKR toàn công ty (S20)
 │   │   ├── my-okr/                 # Biểu mẫu 4 Box thiết lập OKR & Check-in tuần (S21/S22)
 │   │   ├── assessment/             # Đánh giá hiệu suất cuối năm 4 Box (S23)
-│   │   ├── calibration/            # Cân chuẩn điểm Bell Curve toàn công ty (S24)
+│   │   ├── cycle/                  # Quản lý chu kỳ OKR 5 phase (S44)
 │   │   └── reports/                # Báo cáo tổng hợp OKR 9 trường (S25) & Team Board (S46)
 │   │
 │   ├── shared/                     # 3. NỀN TẢNG DÙNG CHUNG & QUẢN TRỊ DOANH NGHIỆP:
 │   │   ├── admin/                  # Quản lý nhân viên (S40), Sơ đồ tổ chức (S41), Ca làm (S26), Audit Log (S35)
 │   │   ├── todo/                   # Hộp thư Todo Inbox tập trung (S02)
-│   │   └── notifications/          # Ủy quyền phê duyệt tạm thời (S37)
+│   │   └── notifications/          # Thông báo & tuỳ chỉnh nhận thông báo
 │   │
 │   └── auth/                       # 4. ĐĂNG NHẬP & PHÂN QUYỀN:
 │       └── LoginPage.tsx           # Màn hình đăng nhập & Quên mật khẩu gửi OTP Gmail thật (S01)
@@ -215,11 +210,10 @@ hkt/frontend/src/
 
 ---
 
-## 6. Môi Trường Triển Khai Container & Keycloak (`hkt/deploy/`)
+## 6. Môi Trường Triển Khai Container (`hkt/deploy/`)
 
 ### Docker Compose (`hkt/deploy/docker/docker-compose.yml`)
-Khởi chạy đồng bộ 6 dịch vụ cốt lõi với 1 lệnh `docker compose up -d`:
-1. `pulse-keycloak`: Keycloak IAM Server (Port 8180) quản lý xác thực OAuth2/OIDC.
+Khởi chạy đồng bộ 5 dịch vụ cốt lõi với 1 lệnh `docker compose up -d`:
 2. `pulse-postgres`: PostgreSQL 16 tích hợp extension `pgvector` (Port 5432).
 3. `pulse-redis`: Redis 7 Alpine làm cache và rate-limiter chống tấn công (Port 16379:6379).
 4. `pulse-core-service`: Java Spring Boot 3 Core Service (Port 8080) kết nối trực tiếp máy chủ Gmail Doanh Nghiệp thật qua SMTP TLS `smtp.gmail.com:587`.

@@ -7,7 +7,7 @@
 > 1. Hợp nhất Chấm công, Đơn từ & OKR trên một nền tảng duy nhất (ACT-HKT 2026).
 > 2. 100% quy tắc nghiệp vụ cấu hình động qua Rule Engine (19 quy tắc, Versioning, Rollback, hộp thoại xác nhận khi lưu — không có dry-run).
 > 3. Chấm công 5 lớp xác thực song song: nhận diện khuôn mặt + liveness, thiết bị đã đăng ký, WiFi nội bộ, Geofence 150m, đúng ca.
-> 4. Đăng nhập bằng tài khoản Google công ty (SSO); vai trò tự xác định từ tài khoản — không chọn vai trò.
+> 4. Đăng nhập bằng **tài khoản nội bộ** (HR cấp → email kích hoạt → bắt buộc đổi mật khẩu → đăng ký khuôn mặt); vai trò tự xác định từ tài khoản — không chọn vai trò.
 > 5. Gửi email thông báo thật qua Gmail SMTP doanh nghiệp.
 
 ---
@@ -20,7 +20,7 @@ Danh mục toàn bộ 22 tài liệu kỹ thuật và đặc tả nghiệp vụ 
 
 | Index | Tên Tệp Tài Liệu | Nội Dung Trọng Tâm & Nghiệp Vụ |
 |:---:|---|---|
-| **01** | [01-business-shared-core.md](01-business-shared-core.md) | Nền tảng dùng chung: đăng nhập Google công ty + vai trò tự xác định, FaceProfile (không lưu ảnh thô), 2 thiết bị, Todo Inbox (S02), thông báo đa kênh & Command Palette Ctrl+K (S03). |
+| **01** | [01-business-shared-core.md](01-business-shared-core.md) | Nền tảng dùng chung: đăng nhập tài khoản nội bộ (Non-SSO) + vai trò tự xác định, FaceProfile (không lưu ảnh thô), 2 thiết bị, Todo Inbox (S02), thông báo đa kênh & Command Palette Ctrl+K (S03). |
 | **02** | [02-business-attendance-time-tracking.md](02-business-attendance-time-tracking.md) | Bài toán 1 Chấm công: 5 lớp xác thực song song (khuôn mặt + liveness · thiết bị · mạng · GPS · ca), 8 loại nghỉ, Quota Engine, số dư phép & sổ cái phép, lưới bảng công 53 cột chuẩn Excel ACT. |
 | **03** | [03-business-okr-performance.md](03-business-okr-performance.md) | Bài toán 2 Quản trị OKR & Đánh giá hiệu suất: Chu kỳ 4 giai đoạn, Form 4 Box (20% Company + 80% Individual), Thang điểm 1-5 nguyên ở tầng nhóm, Báo cáo 9 trường chuẩn HR và Calibration Board. |
 | **04** | [04-business-convenience-features.md](04-business-convenience-features.md) | 15 tính năng tiện ích theo vai trò (C1–C15): Todo Inbox, nhắc việc theo actor, Ctrl+K, sửa bảng công tại chỗ, duyệt hàng loạt, cấu hình quy định, chấm công 1 chạm + khuôn mặt… |
@@ -44,13 +44,16 @@ Danh mục toàn bộ 22 tài liệu kỹ thuật và đặc tả nghiệp vụ 
 | **13** | [13-tech-attendance-checkin.md](13-tech-attendance-checkin.md) | Thuật toán chấm công bảo mật 5 lớp: AI Face Embedding 512D + Liveness detection, Công thức khoảng cách Haversine Geofence, Xác thực WiFi BSSID/IP, Đồng bộ NTP Server Time. |
 | **14** | [14-tech-requests-approval-workflow.md](14-tech-requests-approval-workflow.md) | Kỹ thuật workflow duyệt đơn: State machine 4 loại đơn, Bộ kiểm tra hạn ngạch (Quota Engine), Ma trận duyệt động (Default vs Custom), Cơ chế Auto-escalation SLA 48h. |
 | **15** | [15-tech-leave-balance-accrual.md](15-tech-leave-balance-accrual.md) | Thuật toán tích lũy phép tự động: Tích lũy +1 ngày vào ngày 15 hàng tháng, Phép chức vụ (+3) & thâm niên (+1/2 năm), Ứng trước phép (Advance), Cronjob dọn phép tồn 01/04 & 01/07. |
-| **16** | [16-tech-timesheet-payroll-export.md](16-tech-timesheet-payroll-export.md) | Kỹ thuật bảng công 53 cột chuẩn Excel ACT: thuật toán aggregate giờ công thực tế, sửa ô có audit trail, khiếu nại 2 ngày, khóa kỳ công & xuất file bảng lương. |
-| **17** | [17-tech-okr-performance-appraisal.md](17-tech-okr-performance-appraisal.md) | Kỹ thuật phân hệ OKR & Đánh giá hiệu suất: Cấu trúc Form 4 Box, Công thức tính điểm trung bình trọng số, Pipeline phê duyệt 5 bước, Báo cáo HR 9 trường và Calibration Board phân phối chuẩn (Bell Curve). |
+| **16** | [16-tech-timesheet-payroll-export.md](16-tech-timesheet-payroll-export.md) | Kỹ thuật bảng công + sửa ô có audit trail + khiếu nại 2 ngày + khóa kỳ công & xuất Excel. **Cần đồng bộ: doc ghi 45 cột, nghiệp vụ chốt 53 cột — xem `23-tech-gap-map` C-02.** |
+| **17** | [17-tech-okr-performance-appraisal.md](17-tech-okr-performance-appraisal.md) | Kỹ thuật phân hệ OKR: Form 4 Box, pipeline phê duyệt 5 bước, báo cáo HR 9 trường. **Cần đồng bộ: doc còn xếp loại A/B/C/D + Calibration Board, nghiệp vụ đã bỏ — xem `23-tech-gap-map` C-03.** |
 | **18** | [18-tech-rule-engine-configuration.md](18-tech-rule-engine-configuration.md) | Kiến trúc Rule Engine: phân tích cú pháp AST, quản lý phiên bản (version hash), rollback trong 1 click và cache Redis. |
 | **19** | [19-tech-notifications-todo-inbox.md](19-tech-notifications-todo-inbox.md) | Kỹ thuật Notification Engine & Todo Inbox S02: WebSocket thời gian thực, Ma trận 17 sự kiện thông báo, Digest email 8h00 sáng, Thuật toán Command Palette Ctrl+K (S03) fuzzy search. |
 | **20** | [20-tech-api-spec-and-db-schema.md](20-tech-api-spec-and-db-schema.md) | Toàn văn DDL Cơ sở dữ liệu vật lý (PostgreSQL 16 + pgvector) và Danh mục toàn bộ hơn 60+ RESTful API Endpoints cho các phân hệ Core, Attendance, Leave, OKR, Admin. |
 | **21** | [21-tech-code-conventions.md](21-tech-code-conventions.md) | Quy ước mã nguồn doanh nghiệp: Cấu trúc thư mục repository (`hkt/`), Chuẩn đặt tên Clean Architecture, Exception handling, Cấu hình bảo mật Spring Security và UI Theme tokens. |
 | **22** | [22-system-changelog-and-status-tracker.md](22-system-changelog-and-status-tracker.md) | **Tài liệu quản trị trạng thái & nhật ký thay đổi dự án (Living Changelog)**: Cập nhật liên tục toàn bộ các thay đổi Business, Technical, Features, API và Ma trận tiến độ thực tế. |
+| **23** | [23-tech-gap-map.md](23-tech-gap-map.md) | **Bản đồ chênh lệch giữa tài liệu kỹ thuật (11–22) + mã nguồn `hkt/` và nghiệp vụ đã chốt (01–09)**: 19 mâu thuẫn trực tiếp · 8 nhóm nghiệp vụ còn thiếu · 14 chỗ code đang theo bản cũ · thứ tự ưu tiên xử lý. |
+
+> ⚠️ **Đọc `23-tech-gap-map.md` trước khi code.** Nhóm 2 đang mô tả một hệ thống khác với hệ thống đã chốt (45 cột, xếp loại A/B/C/D, dry-run, ủy quyền, 1 thiết bị, Keycloak…). Khi có mâu thuẫn, **Nhóm 1 (01–09) là nguồn sự thật**. *Phần đăng nhập đã đồng thuận: cả hai đều là Non-SSO — chỉ còn gỡ Keycloak + đồng bộ TTL token.*
 
 ---
 
@@ -59,7 +62,7 @@ Danh mục toàn bộ 22 tài liệu kỹ thuật và đặc tả nghiệp vụ 
 2. **Khởi động môi trường phát triển cục bộ:** Chạy script `./start-dev.sh` tại thư mục gốc để khởi chạy toàn bộ 6 dịch vụ hệ thống (PostgreSQL, Redis, Keycloak, Spring Boot Core, FastAPI AI Face, React Frontend).
 3. **Khởi tạo cơ sở dữ liệu:** Đọc kỹ [20-tech-api-spec-and-db-schema.md](20-tech-api-spec-and-db-schema.md) để chạy các câu lệnh DDL tạo bảng và quan hệ Foreign Key.
 4. **Theo dõi tiến độ dự án (3 Tabs chuyên biệt):** Tệp Excel [`ACT_HR_2026_Project_Tracking.xlsx`](../ACT_HR_2026_Project_Tracking.xlsx) được chia thành 3 tab độc lập:
-   * **Tab 1 — Nền Tảng Dùng Chung:** Đăng nhập Google công ty + vai trò tự xác định, FaceProfile, Todo Inbox, Command Palette Ctrl+K, thông báo, Rule Engine (19 luật, Versioning, Rollback, xác nhận khi lưu), tổ chức linh hoạt và audit log.
+   * **Tab 1 — Nền Tảng Dùng Chung:** Đăng nhập tài khoản nội bộ (HR cấp → email kích hoạt → đổi mật khẩu → đăng ký khuôn mặt) + vai trò tự xác định, FaceProfile, Todo Inbox, Command Palette Ctrl+K, thông báo, Rule Engine (19 luật, Versioning, Rollback, xác nhận khi lưu), tổ chức linh hoạt và audit log.
    * **Tab 2 — Chấm Công & Đơn Từ:** Chấm công 1 chạm trên web responsive + khuôn mặt/liveness, WiFi/Geofence, 4 loại đơn từ, Quota engine, ma trận duyệt động, Auto-escalation SLA 48h, phép năm & luật phép tồn, bảng công 53 cột, sửa ô tại chỗ, khiếu nại 2 ngày và khóa kỳ công.
    * **Tab 3 — Quản Trị & Đánh Giá OKR:** Thiết lập OKR đầu năm (20% Company + 80% Individual), Form 4 Box, chấm điểm 1–5 ở tầng nhóm, chu kỳ cấu hình được, quy trình 5 bước, báo cáo 9 trường; không xếp loại A/B/C/D.
 

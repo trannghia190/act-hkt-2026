@@ -31,7 +31,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { label: 'Hộp thư duyệt đơn từ cấp dưới (S12)', path: '/attendance/approvals', group: 'Duyệt đơn' },
     { label: 'Bảng công cá nhân của tôi (S11)', path: '/attendance/my-timesheet', group: 'Bảng công' },
     { label: 'Lịch trực quan nhóm Team Schedule (S14)', path: '/attendance/team-schedule', group: 'Quản lý nhóm' },
-    { label: 'Bảng công & Chốt lương 45 cột (S15)', path: '/attendance/timesheet', group: 'Bảng công' },
+    { label: 'Bảng công & Chốt lương 53 cột (S15)', path: '/attendance/timesheet', group: 'Bảng công' },
     { label: 'Số dư phép năm cá nhân (S09)', path: '/attendance/leaves', group: 'Phép năm' },
     { label: 'Sổ cái biến động phép toàn công ty (S34)', path: '/attendance/leave-ledger', group: 'Quản trị' },
     { label: 'Dashboard OKR cá nhân (S20)', path: '/okr/dashboard', group: 'OKR' },

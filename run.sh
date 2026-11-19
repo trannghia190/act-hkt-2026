@@ -37,7 +37,12 @@ case "$MODE" in
     echo " URL:  http://localhost:8000"
     echo " Dir:  ${SCRIPT_DIR}/hkt/backend/ai-face-service"
     echo "=========================================="
-    exec "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh"
+    if [ -f "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" ]; then
+      exec "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh"
+    else
+      cd "${SCRIPT_DIR}/hkt/backend/ai-face-service"
+      exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+    fi
     ;;
 
   all|dev)
@@ -51,7 +56,11 @@ case "$MODE" in
     echo " AI:   http://localhost:8000"
     echo " UI:   http://localhost:${PORT}"
     echo "=========================================="
-    "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" 8000 &
+    if [ -f "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" ]; then
+      "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" 8000 &
+    else
+      (cd "${SCRIPT_DIR}/hkt/backend/ai-face-service" && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000) &
+    fi
     AI_PID=$!
 
     echo "Waiting for AI Face Service at http://localhost:8000/health ..."

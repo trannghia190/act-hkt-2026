@@ -93,6 +93,37 @@ export const MyTimesheetPage: React.FC = () => {
         </div>
       </div>
 
+      {/* S11 · Chi tiết từng ngày dạng lịch (ô vuông) */}
+      <Card title="Chi tiết từng ngày — dạng lịch tháng 11/2026">
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[11px]">
+          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
+            <div key={d} className="font-semibold text-ink-muted py-1">{d}</div>
+          ))}
+          {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
+            const iso = `2026-11-${String(day).padStart(2, '0')}`;
+            const rec = records.find(r => r.date === `${String(day).padStart(2, '0')}/11/2026`);
+            const weekday = new Date(2026, 10, day).getDay();
+            const weekend = weekday === 0 || weekday === 6;
+            const cls = weekend
+              ? 'bg-canvas text-ink-muted'
+              : rec?.status === 'LEAVE' ? 'bg-sky-50 border-sky-200 text-sky-700'
+              : rec?.status === 'WFH' ? 'bg-violet-50 border-violet-200 text-violet-700'
+              : rec && rec.lateMinutes > 0 ? 'bg-amber-50 border-amber-200 text-amber-700'
+              : rec ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-canvas border-line text-ink-muted';
+            return (
+              <div key={iso} title={rec?.note || (weekend ? 'Cuối tuần' : 'Chưa có dữ liệu')}
+                className={`rounded-lg border p-1.5 min-h-[52px] flex flex-col items-center justify-center ${cls}`}>
+                <span className="font-bold text-xs">{day}</span>
+                <span className="text-[9px]">
+                  {weekend ? '' : rec?.status === 'LEAVE' ? 'AL' : rec?.status === 'WFH' ? 'R' : rec ? (rec.lateMinutes > 0 ? `Trễ ${rec.lateMinutes}′` : '1.00') : '—'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
       {/* Timesheet Details Table */}
       <Card title={`Bảng Chi Tiết Ngày Công Của ${user?.fullName || 'Nhân Viên'} (${user?.employeeCode || 'ACT0142'})`}>
         <div className="overflow-x-auto">
