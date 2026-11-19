@@ -13,10 +13,10 @@ Hệ thống quản lý hồ sơ nhân viên phục vụ đồng thời cho Ch�
 * `full_name`: Họ và tên đầy đủ
 * `email`: Email công việc / Gmail cá nhân nhận thông báo
 * `position`: Chức danh công việc (ví dụ: Senior Software Engineer, QA Specialist)
-* `department`: Phòng ban lớn (ví dụ: Phần mềm, QA, HR)
+* `team`: Nhóm trực tiếp (Sirius, Optimus, CA, Mobile…) — **không có phòng ban**
 * `team`: Nhóm trực tiếp (ví dụ: `Sirius`, `Minion`, `Optimus`, `Zeus`, `Avenger`, `CA`, `Mobile`)
-* `line_manager_id`: ID của Quản lý trực tiếp (Người duyệt đơn và review OKR)
-* `role`: Vai trò hệ thống (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`, `EXECUTIVE`)
+* `manager_id`: ID của Quản lý trực tiếp (Người duyệt đơn và review OKR)
+* `role`: Vai trò hệ thống (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`, `ADMIN`)
 * `shift_id`: Ca làm việc được gán (Mặc định: 08:00 - 17:30)
 * `joined_date`: Ngày vào công ty (Dùng để tính thời gian công tác và thâm niên)
 * `status`: Trạng thái (`PENDING_ACTIVATION`, `ACTIVE`, `SUSPENDED`, `RESIGNED`)
@@ -27,7 +27,7 @@ Hệ thống quản lý hồ sơ nhân viên phục vụ đồng thời cho Ch�
 * **EMPLOYEE:** Xem thông tin cá nhân, chấm công, gửi 4 loại đơn, xem bảng công cá nhân, khai báo và tự đánh giá OKR cá nhân.
 * **MANAGER:** Mọi quyền của Employee + Xem danh sách nhóm trực thuộc, duyệt đơn của nhóm (duyệt lẻ / hàng loạt), xem lịch nhóm vắng mặt/WFH, duyệt OKR đầu năm, review giữa năm và chấm điểm OKR cuối năm của nhóm.
 * **HR_ADMIN:** Quản lý toàn bộ nhân viên, cấu hình ca, quản lý 19 rule, sửa bảng công tại chỗ (in-place edit), chốt khóa bảng công, tổng hợp báo cáo OKR toàn công ty, xuất Excel.
-* **EXECUTIVE (Ban Điều Hành / Giám đốc):** Xem báo cáo tổng thể, đánh giá chung vào bảng tổng hợp OKR, xem Calibration board.
+* **ADMIN (Ban Điều Hành / Giám đốc):** Xem báo cáo tổng thể, đánh giá chung vào bảng tổng hợp OKR, xem báo cáo điểm board.
 
 ---
 
@@ -35,7 +35,7 @@ Hệ thống quản lý hồ sơ nhân viên phục vụ đồng thời cho Ch�
 
 ### 2.1. HR Tạo Tài Khoản
 HR truy cập màn hình `S40 - Quản lý nhân viên`:
-1. **Tạo đơn lẻ:** HR điền form với các trường bắt buộc (`employee_code`, `full_name`, `email`, `team`, `line_manager_id`, `joined_date`).
+1. **Tạo đơn lẻ:** HR điền form với các trường bắt buộc (`employee_code`, `full_name`, `email`, `team`, `manager_id`, `joined_date`).
    * HR có thể tích chọn *"Hệ thống tự sinh mật khẩu"* hoặc nhập mật khẩu thủ công.
 2. **Import hàng loạt:** HR upload file Excel danh sách nhân sự $\rightarrow$ Hệ thống kiểm tra trùng lặp email/mã nhân viên $\rightarrow$ Báo cáo kết quả và số lượng tài khoản tạo mới.
 
@@ -90,10 +90,11 @@ Sau khi đổi mật khẩu, nếu `face_enrolled == false`, ứng dụng chuy�
    * Quay nhẹ sang trái (Left turn).
    * Quay nhẹ sang phải (Right turn).
 3. Ứng dụng trích xuất bộ vector đặc trưng (Face Embeddings - 128 hoặc 512 chiều) từ các khung hình đạt chuẩn liveness.
-4. Gửi vector và ảnh chân dung chuẩn về server:
-   * Vector được lưu vào `face_embeddings` (sử dụng PostgreSQL `pgvector`).
-   * Ảnh chuẩn được lưu làm ảnh đại diện đại diện (Profile Photo).
-   * Cập nhật `face_enrolled = true`.
+4. Gửi **vector đặc trưng** về server:
+   * Vector 512 chiều được lưu vào bảng `face_profiles` (PostgreSQL `pgvector`).
+   * **Không lưu ảnh thô** — ảnh chỉ dùng tạm để trích vector rồi bỏ.
+   * Cập nhật `users.face_enrolled = true` + `face_profiles.status = 'active'`.
+   * HR có thể **reset hồ sơ** (kèm lý do + audit) khi nhận diện sai kéo dài.
 5. Điều hướng người dùng về **Màn hình chính Todo Inbox (S02)**.
 
 ---
@@ -104,8 +105,8 @@ Sau khi đổi mật khẩu, nếu `face_enrolled == false`, ứng dụng chuy�
    * HR vào `S40`, bấm nút *"Reset Mật khẩu & Gửi Email"*.
    * Hệ thống tự sinh mật khẩu tạm mới, đặt `must_change_password = true` và kích hoạt email gửi về hòm thư của nhân viên.
 2. **Khóa Tài Khoản Khi Đăng Nhập Sai Nhiều Lần:**
-   * Nhập sai mật khẩu liên tiếp **5 lần** $\rightarrow$ Khóa tài khoản tạm thời trong **15 phút**.
+   * Nhập sai mật khẩu liên tiếp **5 lần** $\rightarrow$ Khóa tài khoản tạm thời trong **10 phút**.
    * Nhập sai liên tiếp **10 lần** $\rightarrow$ Khóa vĩnh viễn, yêu cầu HR mở khóa.
 3. **Cơ Chế Phiên Làm Việc (Session Management):**
-   * Access Token có thời hạn 60 phút.
-   * Refresh Token có thời hạn 30 ngày (lưu an toàn trên HttpOnly Cookie hoặc Secure Storage Mobile).
+   * Access Token có thời hạn 15 phút.
+   * Refresh Token có thời hạn 7 ngày (lưu an toàn trên HttpOnly Cookie hoặc Secure Storage Mobile).

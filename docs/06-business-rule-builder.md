@@ -238,7 +238,7 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | Trường | Nhãn hiển thị | Kiểu | Giá trị mặc định | Ràng buộc | Mô tả |
 |---|---|---|---|---|---|
 | `max_checkin_per_day` | Số lần check-in tối đa mỗi ngày | Số nguyên | 1 lần | 1 – 4 | Đặt 1 để chặn kiểu "chia ca": 2 người dùng chung 1 tài khoản chỉ công được 1 người 1 ngày. |
-| `require_sso` | Bắt buộc đăng nhập bằng tài khoản công ty (SSO) | Công tắc | Bật | — | Tài khoản Google cá nhân của mỗi người là lớp phòng ngừa mạnh nhất. |
+| `require_password_change` | Bắt buộc đổi mật khẩu ở lần đăng nhập đầu | Công tắc | Bật | — | Tài khoản nội bộ do HR cấp — mật khẩu tạm chỉ dùng được 1 lần rồi phải đổi. |
 | `require_2fa` | Bắt buộc xác thực 2 bước | Công tắc | Tắt | — | Yêu cầu thêm một lớp xác thực ngoài mật khẩu. |
 | `device_confirm_required` | Thêm thiết bị mới phải được HR duyệt | Công tắc | Bật | — | Nhân viên không tự đăng ký được thiết bị mới. |
 | `alert_on_new_device` | Cảnh báo khi đăng nhập từ thiết bị mới | Công tắc | Bật | — | Gửi cảnh báo cho cả người dùng lẫn quản lý khi có đăng nhập lạ. |
@@ -250,7 +250,7 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `max_checkin_per_day` = 1 · `require_sso` = Bật · `require_2fa` = Tắt · `device_confirm_required` = Bật · `alert_on_new_device` = Bật · `device_request_from_office_only` = Bật · `device_expiry_days` = 90 |
+| Giá trị mặc định (`default_value`) | `max_checkin_per_day` = 1 · `require_password_change` = Bật · `require_2fa` = Tắt · `device_confirm_required` = Bật · `alert_on_new_device` = Bật · `device_request_from_office_only` = Bật · `device_expiry_days` = 90 |
 | Câu thông báo (`policy_template`) | "Mỗi tài khoản chỉ được chấm công **1 lần vào và 1 lần ra mỗi ngày** trên **thiết bị đã đăng ký**. Bạn đăng ký **2 thiết bị**; muốn dùng máy thứ 3 thì gửi yêu cầu kèm lý do để HR duyệt." |
 
 ##### 3.1.8 · Giờ làm việc — `shift_times`
@@ -599,7 +599,7 @@ Mọi giá trị mặc định trong catalog **khớp đúng** với cột "Quy�
 | `approval_flow` | Approval engine — cấu hình luồng duyệt theo nhóm | **Approver (bắt buộc)** + **viewer (tùy chọn — để phối hợp)** + SLA. Không hardcode tên trưởng nhóm |
 | `hr_approval` | Approval engine khi tạo task bước 2 | Phòng ban nào mọi đơn đều qua HR (CA + Mobile) |
 | `attendance_security` | Punch service khi check-in | Mạng nội bộ + geofence + **khuôn mặt (khớp + liveness)** + số thiết bị + phút miễn trễ |
-| `share_account` | Punch service + trang "Thiết bị đăng ký" | 1 check-in/ngày + 2 thiết bị + SSO + chính sách thiết bị mới |
+| `share_account` | Punch service + trang "Thiết bị đăng ký" | 1 check-in/ngày + 2 thiết bị + bắt buộc đổi mật khẩu + chính sách thiết bị mới |
 | `late_without_request` | Job tổng hợp bảng công | Trừ đúng phút thực tế (theo quyết định HR) |
 | `payroll_period` | Job tổng hợp + màn hình bảng công | Kỳ công 01→cuối tháng · **công bố ngày 11** + hạn khiếu nại 2 ngày + khóa sau 3 ngày |
 | `leave_type_defaults` | Form xin nghỉ phép (tầng 1) | Mặc định chung cho mọi loại nghỉ |
@@ -866,7 +866,7 @@ Cộng với quyết định đã có của HR: **đi muộn không có đơn �
 
 | Cơ chế | Chặn được gì | Mức hiệu quả |
 |---|---|---|
-| **SSO Google cá nhân + cảnh báo đăng nhập lạ** | Không share được account Google công ty — Google tự phát hiện và cảnh báo đăng nhập từ thiết bị lạ | ⭐⭐⭐⭐⭐ Mạnh nhất. Đây là lý do quyết định SSO của HR có giá trị chống gian lận, không chỉ tiện |
+| **Đổi mật khẩu bắt buộc + cảnh báo đăng nhập lạ** | Mật khẩu tạm chỉ dùng 1 lần → không có mật khẩu dùng chung lâu dài; mỗi lần đăng nhập từ thiết bị mới đều gửi cảnh báo cho người dùng và quản lý | ⭐⭐⭐⭐ Mạnh — cộng với khuôn mặt + thiết bị đã đăng ký |
 | **`max_checkin_per_day = 1`** | Chặn vector **"chia ca"**: 2 người share 1 account → chỉ 1 người được công 1 ngày | ⭐⭐⭐⭐ Chặn trực tiếp lỗ hổng |
 | **`max_devices = 2`** | Mỗi tài khoản chỉ có 2 máy được đăng ký; muốn dùng máy thứ 3 phải xin HR duyệt → có dấu vết | ⭐⭐⭐⭐ |
 | **Unique `(user_id, work_date)`** | Chặn 2 entry cùng ngày 1 account | ⭐⭐⭐⭐ Chặn ở tầng DB |
@@ -924,7 +924,7 @@ và báo cho HR.
 >
 > *Một — tài khoản chỉ được **check-in 1 lần/ngày** và **2 thiết bị**. Nên 2 người share 1 tài khoản thì mỗi người chỉ công được nửa ngày — chia ca không còn lợi nhuận.*
 >
-> *Hai — đăng nhập bằng **Google cá nhân của công ty** kèm cảnh báo đăng nhập lạ. Không share được account Google.*
+> *Hai — đăng nhập bằng **tài khoản nội bộ do HR cấp**: mật khẩu tạm chỉ dùng 1 lần, bắt buộc đổi khi đăng nhập đầu, kèm cảnh báo đăng nhập lạ. Không có mật khẩu dùng chung lâu dài.*
 >
 > *Ba — **quota tính theo người** chứ không theo thiết bị.*
 >

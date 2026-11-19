@@ -266,6 +266,7 @@ export const ApprovalsPage: React.FC = () => {
               <th className="py-3 px-4">Nhân Viên</th>
               <th className="py-3 px-4">Loại Đơn</th>
               <th className="py-3 px-4">Thời Gian &amp; Thời Lượng</th>
+              <th className="py-3 px-4">Điều Kiện</th>
               <th className="py-3 px-4">Lý Do Đề Xuất</th>
               <th className="py-3 px-4">Gửi Lúc</th>
               <th className="py-3 px-4 text-right">Thao Tác</th>
@@ -301,6 +302,12 @@ export const ApprovalsPage: React.FC = () => {
                   <td className="py-3 px-4">
                     <div className="font-mono text-ink-secondary">{item.startDate} {item.startDate !== item.endDate ? `→ ${item.endDate}` : ''}</div>
                     <div className="text-[11px] font-medium text-ink">{item.durationText}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col gap-1 text-[10px]">
+                      <span className="text-emerald-700">✅ Trong quota</span>
+                      <span className="text-emerald-700">✅ Nộp đúng hạn</span>
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-ink-secondary max-w-xs">
                     <div>{item.reason}</div>

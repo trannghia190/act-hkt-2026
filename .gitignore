@@ -36,3 +36,8 @@ venv/
 *.log
 .env
 .env.local
+tests/robot/reports/
+
+# Local run artifacts (run-local.sh)
+.run-local/
+hkt/backend/ai-face-service/data/

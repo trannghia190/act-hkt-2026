@@ -35,6 +35,32 @@ export const TimesheetPage: React.FC = () => {
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [dayOverrides, setDayOverrides] = useState<Record<string, string>>({});
+
+  // 31 cột ngày + 17 cột tổng hợp = 53 cột dữ liệu (đúng file Pine thật)
+  const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const daySymbol = (row: TimesheetRow, day: number): string => {
+    const override = dayOverrides[`${row.id}-${day}`];
+    if (override) return override;
+    if (row.paidLeaveDays > 0 && day === 12) return 'AL';
+    if (row.wfhDays > 0 && day === 11) return 'R';
+    if (row.lateCount > 0 && day === 5) return '1.00*';
+    const weekday = new Date(2026, 10, day).getDay();
+    if (weekday === 0 || weekday === 6) return '';
+    return '1.00';
+  };
+
+  const editDayCell = (row: TimesheetRow, day: number) => {
+    const current = daySymbol(row, day) || '(trống)';
+    const next = window.prompt(
+      `Sửa ô ngày ${day}/11 — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`,
+      daySymbol(row, day),
+    );
+    if (next === null) return;
+    setDayOverrides((prev) => ({ ...prev, [`${row.id}-${day}`]: next }));
+    showToast(`Đã sửa ô ngày ${day}/11 của ${row.fullName} — có ghi nhật ký thay đổi`);
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -198,31 +224,26 @@ export const TimesheetPage: React.FC = () => {
 
   const handleExportExcel = () => {
     const headers = [
-      'Mã NV', 'Họ Và Tên', 'Phòng Ban', 'Nhóm', 'Công Chuẩn', 'Công Đi Làm',
-      'Nghỉ Phép Hưởng Lương', 'Nghỉ Lễ', 'Số Ngày WFH', 'Số Lần Đi Muộn',
-      'Phạt Chuyên Cần (%)', 'Giờ OT Ngày Thường', 'Giờ OT Cuối Tuần', 'Tổng Ngày Công Tính Lương', 'Trạng Thái'
+      'STT', 'Mã NV', 'Họ Tên', 'Chức vụ', 'Nhóm',
+      ...monthDays.map(d => `Ngày ${d}`),
+      'Công chuẩn', 'Công thực tế', 'Nghỉ phép (AL)', 'WFH (R)', 'Đi muộn', 'Trừ đi muộn',
+      'OT ngày thường', 'OT cuối tuần', 'Tổng công QĐ lương', 'Trạng thái',
+      'Nghỉ lễ (NL)', 'Nghỉ không lương (UP)', 'Nghỉ ốm (S)', 'Nghỉ bù (RO)', 'Thai sản (ML)',
+      'Tổng ngày nghỉ', 'Phép còn lại',
     ];
-    const exportRows = rows.map(r => [
-      r.code,
-      `"${r.fullName}"`,
-      `"${r.department}"`,
-      `"${r.team}"`,
-      r.standardDays,
-      r.actualWorkDays,
-      r.paidLeaveDays,
-      r.holidayDays,
-      r.wfhDays,
-      r.lateCount,
-      `${r.penaltyLatePercent}%`,
-      r.otWeekdayHours,
-      r.otWeekendHours,
-      r.totalPayrollDays,
-      r.status
+    const exportRows = rows.map((r, idx) => [
+      idx + 1, r.code, `"${r.fullName}"`, `"Nhân viên"`, `"${r.team}"`,
+      ...monthDays.map(d => `"${daySymbol(r, d)}"`),
+      r.standardDays, r.actualWorkDays, r.paidLeaveDays, r.wfhDays, r.lateCount,
+      `${r.penaltyLatePercent}%`, r.otWeekdayHours, r.otWeekendHours, r.totalPayrollDays,
+      r.status === 'HR_LOCKED' ? 'Đã khóa' : 'Đang mở',
+      r.holidayDays, 0, 0, 0, 0,
+      r.paidLeaveDays + r.holidayDays, (12 - r.paidLeaveDays).toFixed(1),
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...exportRows.map(r => r.join(','))].join('\n');
     const link = document.createElement('a');
     link.href = encodeURI(csvContent);
-    link.download = `Master_Timesheet_45Cols_${selectedMonth.replace('/', '_')}.csv`;
+    link.download = `Master_Timesheet_53Cols_${selectedMonth.replace('/', '_')}.csv`;
     link.click();
   };
 
@@ -241,7 +262,7 @@ export const TimesheetPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportExcel}>
-            📥 Xuất Excel (45 Cột)
+            📥 Xuất Excel (53 Cột)
           </Button>
           <Button
             variant={isLocked ? 'secondary' : 'primary'}
@@ -360,13 +381,13 @@ export const TimesheetPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* 45-Column Master Table */}
+      {/* Bảng công 53 cột: 5 thông tin + 31 cột ngày + 17 cột tổng hợp */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
               <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-3 px-3 text-center sticky left-0 bg-canvas z-20 border-r border-line">
+                <th className="py-3 px-2 text-center sticky left-0 bg-canvas z-20 border-r border-line">
                   <input
                     type="checkbox"
                     checked={selectedIds.length === displayedRows.length && displayedRows.length > 0}
@@ -374,27 +395,37 @@ export const TimesheetPage: React.FC = () => {
                     className="rounded cursor-pointer"
                   />
                 </th>
-                <th className="py-3 px-3 sticky left-[36px] bg-canvas z-10 border-r border-line">Mã NV</th>
-                <th className="py-3 px-3 sticky left-[116px] bg-canvas z-10 border-r border-line">Họ Tên</th>
-                <th className="py-3 px-3">Phòng Ban / Nhóm</th>
-                <th className="py-3 px-3 text-center bg-gray-50 border-x border-line">Công Chuẩn</th>
-                <th className="py-3 px-3 text-center">Công Thực Tế</th>
-                <th className="py-3 px-3 text-center">Nghỉ Phép (P)</th>
-                <th className="py-3 px-3 text-center">Làm Từ Xa (WFH)</th>
-                <th className="py-3 px-3 text-center">Đi Muộn</th>
-                <th className="py-3 px-3 text-center text-rose-700">Trừ Đi Muộn</th>
-                <th className="py-3 px-3 text-center">OT Ngày Thường</th>
-                <th className="py-3 px-3 text-center">OT Cuối Tuần</th>
-                <th className="py-3 px-3 text-center font-bold text-accent-dark bg-accent-soft/30 border-l border-line">
-                  Tổng Công QĐ Lương
-                </th>
-                <th className="py-3 px-3 text-center">Trạng Thái</th>
+                <th className="py-3 px-2 text-center sticky left-[32px] bg-canvas z-10 border-r border-line">STT</th>
+                <th className="py-3 px-2 sticky left-[64px] bg-canvas z-10 border-r border-line">Mã NV</th>
+                <th className="py-3 px-2 sticky left-[136px] bg-canvas z-10 border-r border-line">Họ Tên</th>
+                <th className="py-3 px-2">Chức vụ</th>
+                <th className="py-3 px-2 border-r border-line">Nhóm</th>
+                {monthDays.map((d) => (
+                  <th key={d} className="py-3 px-1.5 text-center border-r border-line bg-gray-50/60">{d}</th>
+                ))}
+                <th className="py-3 px-2 text-center bg-gray-50 border-x border-line">Công chuẩn</th>
+                <th className="py-3 px-2 text-center">Công thực tế</th>
+                <th className="py-3 px-2 text-center">Nghỉ phép (AL)</th>
+                <th className="py-3 px-2 text-center">WFH (R)</th>
+                <th className="py-3 px-2 text-center">Đi muộn</th>
+                <th className="py-3 px-2 text-center text-rose-700">Trừ đi muộn</th>
+                <th className="py-3 px-2 text-center">OT ngày thường</th>
+                <th className="py-3 px-2 text-center">OT cuối tuần</th>
+                <th className="py-3 px-2 text-center">Tổng công QĐ lương</th>
+                <th className="py-3 px-2 text-center">Trạng thái</th>
+                <th className="py-3 px-2 text-center">Nghỉ lễ (NL)</th>
+                <th className="py-3 px-2 text-center">Nghỉ không lương (UP)</th>
+                <th className="py-3 px-2 text-center">Nghỉ ốm (S)</th>
+                <th className="py-3 px-2 text-center">Nghỉ bù (RO)</th>
+                <th className="py-3 px-2 text-center">Thai sản (ML)</th>
+                <th className="py-3 px-2 text-center">Tổng ngày nghỉ</th>
+                <th className="py-3 px-2 text-center">Phép còn lại</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {displayedRows.map(r => (
+              {displayedRows.map((r, idx) => (
                 <tr key={r.id} className="hover:bg-canvas/40 transition-colors">
-                  <td className="py-2.5 px-3 text-center sticky left-0 bg-surface z-10 border-r border-line">
+                  <td className="py-2 px-2 text-center sticky left-0 bg-surface z-10 border-r border-line">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(r.id)}
@@ -402,57 +433,50 @@ export const TimesheetPage: React.FC = () => {
                       className="rounded cursor-pointer"
                     />
                   </td>
-                  <td className="py-2.5 px-3 font-mono font-medium text-ink sticky left-[36px] bg-surface z-10 border-r border-line">
+                  <td className="py-2 px-2 text-center sticky left-[32px] bg-surface z-10 border-r border-line">{idx + 1}</td>
+                  <td className="py-2 px-2 font-mono font-medium text-ink sticky left-[64px] bg-surface z-10 border-r border-line">
                     {r.code}
                   </td>
-                  <td className="py-2.5 px-3 font-medium text-ink sticky left-[116px] bg-surface z-10 border-r border-line">
+                  <td className="py-2 px-2 font-medium text-ink sticky left-[136px] bg-surface z-10 border-r border-line">
                     {r.fullName}
                   </td>
-                  <td className="py-2.5 px-3 text-ink-secondary">
-                    {r.department} · {r.team}
+                  <td className="py-2 px-2 text-ink-secondary">Nhân viên</td>
+                  <td className="py-2 px-2 text-ink-secondary border-r border-line">{r.team}</td>
+                  {monthDays.map((d) => {
+                    const symbol = daySymbol(r, d);
+                    const edited = Boolean(dayOverrides[`${r.id}-${d}`]);
+                    return (
+                      <td
+                        key={d}
+                        title={`Ngày ${d}/11 — nhấp đúp để sửa`}
+                        onDoubleClick={() => editDayCell(r, d)}
+                        className={`py-2 px-1.5 text-center font-mono border-r border-line cursor-pointer hover:bg-accent-soft/60 ${
+                          edited ? 'text-rose-700 font-bold' : ''
+                        }`}
+                      >
+                        {symbol}
+                      </td>
+                    );
+                  })}
+                  <td className="py-2 px-2 text-center font-bold text-ink bg-gray-50/50 border-x border-line">{r.standardDays}</td>
+                  <td className="py-2 px-2 text-center font-medium">{r.actualWorkDays}</td>
+                  <td className="py-2 px-2 text-center">{r.paidLeaveDays}</td>
+                  <td className="py-2 px-2 text-center">{r.wfhDays}</td>
+                  <td className="py-2 px-2 text-center font-mono">{r.lateCount}</td>
+                  <td className="py-2 px-2 text-center text-rose-700">{r.penaltyLatePercent}%</td>
+                  <td className="py-2 px-2 text-center">{r.otWeekdayHours}</td>
+                  <td className="py-2 px-2 text-center">{r.otWeekendHours}</td>
+                  <td className="py-2 px-2 text-center font-bold text-accent-dark bg-accent-soft/30 border-l border-line">{r.totalPayrollDays}</td>
+                  <td className="py-2 px-2 text-center">
+                    <Badge variant={r.status === 'HR_LOCKED' ? 'gray' : 'ok'}>{r.status === 'HR_LOCKED' ? 'Đã khóa' : 'Đang mở'}</Badge>
                   </td>
-                  <td className="py-2.5 px-3 text-center font-bold text-ink bg-gray-50/50 border-x border-line">
-                    {r.standardDays}
-                  </td>
-                  <td
-                    className="py-2.5 px-3 text-center font-medium cursor-pointer hover:bg-accent-soft"
-                    onDoubleClick={() => setEditingCell({ row: r, field: 'actualWorkDays', val: r.actualWorkDays })}
-                    title="Nhấp đúp để chỉnh sửa ô này"
-                  >
-                    {r.actualWorkDays}
-                  </td>
-                  <td
-                    className="py-2.5 px-3 text-center cursor-pointer hover:bg-accent-soft"
-                    onDoubleClick={() => setEditingCell({ row: r, field: 'paidLeaveDays', val: r.paidLeaveDays })}
-                    title="Nhấp đúp để chỉnh sửa ô này"
-                  >
-                    {r.paidLeaveDays}
-                  </td>
-                  <td className="py-2.5 px-3 text-center">{r.wfhDays}</td>
-                  <td className="py-2.5 px-3 text-center font-mono">
-                    {r.lateCount > 0 ? (
-                      <span className={r.lateCount > 3 ? 'text-rose-700 font-bold' : 'text-amber-700'}>
-                        {r.lateCount} lần
-                      </span>
-                    ) : (
-                      '0'
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3 text-center text-rose-700 font-medium">
-                    {r.penaltyLatePercent > 0 ? `-${r.penaltyLatePercent}%` : '0%'}
-                  </td>
-                  <td className="py-2.5 px-3 text-center font-mono">{r.otWeekdayHours}h</td>
-                  <td className="py-2.5 px-3 text-center font-mono">{r.otWeekendHours}h</td>
-                  <td className="py-2.5 px-3 text-center font-extrabold text-accent-dark bg-accent-soft/30 border-l border-line">
-                    {r.totalPayrollDays} công
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    {r.status === 'HR_LOCKED' ? (
-                      <Badge variant="gray">Đã Khóa</Badge>
-                    ) : (
-                      <Badge variant="ok">Đang Mở</Badge>
-                    )}
-                  </td>
+                  <td className="py-2 px-2 text-center">{r.holidayDays}</td>
+                  <td className="py-2 px-2 text-center">0</td>
+                  <td className="py-2 px-2 text-center">0</td>
+                  <td className="py-2 px-2 text-center">0</td>
+                  <td className="py-2 px-2 text-center">0</td>
+                  <td className="py-2 px-2 text-center">{r.paidLeaveDays + r.holidayDays}</td>
+                  <td className="py-2 px-2 text-center font-semibold">{(12 - r.paidLeaveDays).toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>

@@ -209,14 +209,14 @@ export const OrgTreePage: React.FC = () => {
       setDepartments(prev =>
         prev.map(d => (d.id === editingDept.id ? { ...d, ...deptForm } : d))
       );
-      showToast(`Đã cập nhật thông tin phòng ban "${deptForm.name}" thành công`);
+      showToast(`Đã cập nhật thông tin nhóm "${deptForm.name}" thành công`);
     } else {
       const newDept: DeptNode = {
         ...deptForm,
         teams: []
       };
       setDepartments(prev => [...prev, newDept]);
-      showToast(`Đã thêm phòng ban "${deptForm.name}" thành công`);
+      showToast(`Đã thêm nhóm "${deptForm.name}" thành công`);
     }
     setIsDeptModalOpen(false);
   };
@@ -224,12 +224,12 @@ export const OrgTreePage: React.FC = () => {
   const handleDeleteDept = (deptId: string, deptName: string) => {
     const target = departments.find(d => d.id === deptId);
     if (target && target.teams.length > 0) {
-      alert(`Không thể xóa phòng ban "${deptName}" vì đang có ${target.teams.length} nhóm trực thuộc. Hãy chuyển hoặc xóa các nhóm trước.`);
+      alert(`Không thể xóa nhóm "${deptName}" vì đang có ${target.teams.length} nhóm trực thuộc. Hãy chuyển hoặc xóa các nhóm trước.`);
       return;
     }
-    if (confirm(`Bạn có chắc chắn muốn xóa phòng ban "${deptName}"?`)) {
+    if (confirm(`Bạn có chắc chắn muốn xóa nhóm "${deptName}"?`)) {
       setDepartments(prev => prev.filter(d => d.id !== deptId));
-      showToast(`Đã xóa phòng ban "${deptName}"`);
+      showToast(`Đã xóa nhóm "${deptName}"`);
     }
   };
 
@@ -298,7 +298,7 @@ export const OrgTreePage: React.FC = () => {
           return d;
         })
       );
-      showToast(`Đã thêm nhóm "${teamForm.name}" vào phòng ban`);
+      showToast(`Đã thêm nhóm "${teamForm.name}" vào nhóm`);
     }
     setIsTeamModalOpen(false);
   };
@@ -374,7 +374,7 @@ export const OrgTreePage: React.FC = () => {
             )}
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Hiển thị cây phòng ban, phân bổ nhóm chức năng, Trưởng nhóm và cấu hình ngoại lệ phê duyệt (CA, Mobile App)
+            Hiển thị cây nhóm, phân bổ nhóm chức năng, Trưởng nhóm và cấu hình ngoại lệ phê duyệt (CA, Mobile App)
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -451,14 +451,14 @@ export const OrgTreePage: React.FC = () => {
                     <button
                       onClick={() => handleOpenEditDept(dept)}
                       className="p-1 text-xs text-ink-muted hover:text-ink hover:bg-canvas rounded"
-                      title="Sửa phòng ban"
+                      title="Sửa nhóm"
                     >
                       ✏️
                     </button>
                     <button
                       onClick={() => handleDeleteDept(dept.id, dept.name)}
                       className="p-1 text-xs text-status-danger hover:bg-status-danger/10 rounded"
-                      title="Xóa phòng ban"
+                      title="Xóa nhóm"
                     >
                       🗑️
                     </button>
@@ -470,7 +470,7 @@ export const OrgTreePage: React.FC = () => {
             {/* Teams Grid */}
             {dept.teams.length === 0 ? (
               <div className="p-6 text-center text-xs text-ink-muted">
-                Chưa có nhóm nào trực thuộc phòng ban này.
+                Chưa có nhóm nào trực thuộc nhóm này.
                 {canManage && (
                   <button
                     onClick={() => handleOpenAddTeam(dept.id)}

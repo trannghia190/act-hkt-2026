@@ -146,7 +146,7 @@ export const CheckInPage: React.FC = () => {
     }
   };
 
-  const captureFrameOrGetTestImage = (): string => {
+  const captureFrameOrGetTestImage = (offset = 0): string => {
     // 1. If poor quality test scenario is selected
     if (faceTestScenario === 'POOR_QUALITY') {
       // Extremely dark dummy 100x100 black canvas
@@ -185,7 +185,7 @@ export const CheckInPage: React.FC = () => {
       // Draw head circle
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
-      ctx.arc(75, 75, 45, 0, Math.PI * 2);
+      ctx.arc(75 + offset, 75, 45, 0, Math.PI * 2);
       ctx.fill();
 
       // If testing proxy punch, draw slightly different color/seed
@@ -197,169 +197,139 @@ export const CheckInPage: React.FC = () => {
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
+  const getDeviceFingerprint = (): string => {
+    const raw = [
+      navigator.userAgent,
+      screen.width,
+      screen.height,
+      screen.colorDepth,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ].join('|');
+    let hash = 0;
+    for (let i = 0; i < raw.length; i += 1) {
+      hash = (hash * 31 + raw.charCodeAt(i)) | 0;
+    }
+    return `web-${Math.abs(hash).toString(16)}`;
+  };
+
+  const captureFrames = async (count = 3): Promise<string[]> => {
+    const frames: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      frames.push(captureFrameOrGetTestImage(i * 4));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 140));
+    }
+    return frames;
+  };
+
   const handleStartCheckIn = async () => {
     setIsScanning(true);
     setErrorMessage(null);
     setCheckInStep('detecting');
 
-    // Step 1: Geofence check
     if (simZone === 'RED') {
-      setTimeout(() => {
-        setCheckInStep('error');
-        setErrorMessage('❌ TỪ CHỐI CHẤM CÔNG: Bạn đang ở ngoài bán kính định vị cho phép (>300m - Vùng Đỏ). Vui lòng tạo đơn WFH hoặc Công tác!');
-        setIsScanning(false);
-      }, 800);
+      setCheckInStep('error');
+      setErrorMessage('❌ Bạn đang ở ngoài bán kính văn phòng (>300m). Hãy về văn phòng hoặc tạo đơn WFH — ngoài bán kính là CHẶN, không phải cảnh báo.');
+      setIsScanning(false);
       return;
     }
 
-    // Step 2: Liveness check
-    setTimeout(async () => {
+    try {
       setCheckInStep('liveness');
+      const frames = await captureFrames(3);
+      const imageBase64 = frames[frames.length - 1];
 
-      // Step 3: Verifying with Core & AI Face Service
-      setTimeout(async () => {
-        setCheckInStep('verifying');
+      setCheckInStep('verifying');
 
-        const imageBase64 = captureFrameOrGetTestImage();
-        // If testing proxy punch, we report the user code as "136ACT", but the AI will see "05ACT"
-        const requesterCode = faceTestScenario === 'PROXY_FRAUD'
-          ? (user?.employeeCode === '05ACT' ? '136ACT' : user?.employeeCode || '136ACT')
-          : (user?.employeeCode || '136ACT');
+      // 1) Gọi AI Face Service — KHÔNG có fallback: không nhận diện được là chặn
+      const faceResponse = await fetch('/ai-face/api/v1/face/verify-json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageBase64, liveness_frames: frames }),
+      });
+      if (!faceResponse.ok) {
+        throw new Error(`AI Face Service trả lỗi ${faceResponse.status}`);
+      }
+      const faceData = await faceResponse.json();
 
-        try {
-          // 1. Simulation edge case: Poor quality
-          if (faceTestScenario === 'POOR_QUALITY') {
-            setCheckInStep('error');
-            setErrorMessage('⚠️ CHẤT LƯỢNG ẢNH KHÔNG ĐẠT: Ảnh quá tối hoặc bị mờ. Vui lòng căn chỉnh lại ánh sáng và đưa mặt vào giữa khung tròn!');
-            setIsScanning(false);
-            return;
-          }
+      if (!faceData.is_liveness_verified) {
+        setCheckInStep('error');
+        setErrorMessage(faceData.message || 'Không phát hiện chuyển động thật — hãy nhìn vào camera và di chuyển nhẹ đầu.');
+        setIsScanning(false);
+        return;
+      }
+      if (!faceData.is_matched) {
+        setCheckInStep('error');
+        setErrorMessage(faceData.message || 'Khuôn mặt không khớp hồ sơ đã đăng ký.');
+        setIsScanning(false);
+        return;
+      }
 
-          // 2. Real AI Biometric Identification (No ID required, purely detects employee from face image)
-          let faceData: any = null;
-          try {
-            const faceResponse = await fetch('/ai-face/api/v1/face/verify-json', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                image: imageBase64,
-              }),
-            });
-            if (faceResponse.ok) {
-              faceData = await faceResponse.json();
-            }
-          } catch (aiErr) {
-            console.warn('AI Face Service call failed, falling back:', aiErr);
-          }
+      const detectedCode = faceData.matched_employee?.employee_code as string | undefined;
+      const detectedName = faceData.matched_employee?.full_name as string | undefined;
+      const loggedInCode = user?.employeeCode;
+      if (loggedInCode && detectedCode && detectedCode !== loggedInCode) {
+        setCheckInStep('error');
+        setErrorMessage(
+          `🚨 CHẤM CÔNG HỘ: Người trước camera là ${detectedName} (${detectedCode}), KHÔNG KHỚP tài khoản đang đăng nhập ${loggedInCode}. Đã từ chối.`,
+        );
+        setIsScanning(false);
+        return;
+      }
 
-          // Check AI Face detection & identification results
-          if (faceData) {
-            if (!faceData.is_matched) {
-              setCheckInStep('error');
-              if (faceData.error_code === 'NO_FACE_DETECTED') {
-                setErrorMessage('⚠️ KHÔNG PHÁT HIỆN ĐƯỢC KHUÔN MẶT: Vui lòng căn chỉnh lại góc máy hoặc đưa mặt vào chính giữa camera.');
-              } else if (faceData.error_code === 'NO_REGISTERED_USERS' || faceData.error_code === 'FACE_NOT_RECOGNIZED') {
-                setErrorMessage(`❌ KHÔNG NHẬN DIỆN ĐƯỢC: ${faceData.message || 'Khuôn mặt chưa được đăng ký trong hệ thống.'} Vui lòng vào mục "Đăng ký khuôn mặt (S01-B)" để đăng ký.`);
-              } else {
-                setErrorMessage(faceData.message || 'Xác thực khuôn mặt thất bại.');
-              }
-              setIsScanning(false);
-              return;
-            }
+      // 2) Gọi Core Service — SERVER quyết định chấm được hay không
+      const coreResponse = await fetch('/api/v1/attendance/check-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeCode: loggedInCode,
+          faceImageBase64: imageBase64,
+          livenessFrames: frames,
+          deviceFingerprint: getDeviceFingerprint(),
+          wifiBssid: simWifi === 'INTERNAL' ? 'ACT_OFFICE_5G' : 'Mạng 4G di động ngoài văn phòng',
+          latitude: simZone === 'GREEN' ? 21.0285 : 21.0298,
+          longitude: simZone === 'GREEN' ? 105.8542 : 105.8570,
+          type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
+        }),
+      });
+      const coreJson = await coreResponse.json().catch(() => ({}));
+      const serverResult = coreJson?.data;
+      if (!coreResponse.ok || !serverResult || serverResult.status !== 'VALID') {
+        setCheckInStep('error');
+        setErrorMessage(
+          serverResult?.message
+            || coreJson?.message
+            || `Máy chủ từ chối chấm công (HTTP ${coreResponse.status}).`,
+        );
+        setIsScanning(false);
+        return;
+      }
 
-            // AI Service identified an employee from the face:
-            const detectedCode = faceData.matched_employee?.employee_code;
-            const detectedName = faceData.matched_employee?.full_name;
+      const now = new Date();
+      const record: AttendancePunchRecord = {
+        id: `PUNCH-${Date.now()}`,
+        employeeCode: serverResult.matchedEmployeeCode || loggedInCode || '—',
+        fullName: serverResult.matchedFullName || user?.fullName || 'Nhân viên',
+        timestamp: new Date(serverResult.serverTimestamp || now).toLocaleTimeString('vi-VN', { hour12: false }),
+        date: now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        type: checkType,
+        similarity: serverResult.similarityScore ?? faceData.similarity_score ?? 0,
+        livenessScore: 1,
+        status: checkType === 'IN' ? 'HỢP LỆ (VÀO CA)' : 'HỢP LỆ (RA CA)',
+        bssid: simWifi === 'INTERNAL' ? 'ACT_OFFICE_5G' : 'Mạng 4G di động',
+        coordinates: simZone === 'GREEN' ? '21.0285° N, 105.8542° E (Vùng Xanh)' : '21.0298° N, 105.8570° E (Vùng Vàng)',
+      };
 
-            // Only trigger proxy punch alert if explicitly running the PROXY_FRAUD test scenario or backend flagged it
-            const isProxyPunch = faceTestScenario === 'PROXY_FRAUD' || faceData.is_proxy_punch_detected;
-            if (isProxyPunch) {
-              setCheckInStep('error');
-              const displayRecognizedName = faceTestScenario === 'PROXY_FRAUD' ? 'Nguyễn Thanh Tùng (Quản Lý)' : detectedName;
-              const displayRecognizedCode = faceTestScenario === 'PROXY_FRAUD' ? '05ACT' : detectedCode;
-              const alertText = `🚨 CẢNH BÁO GIAN LẬN (CHẤM CÔNG HỘ): Người đang đứng trước camera là ${displayRecognizedName} (${displayRecognizedCode}), KHÔNG KHỚP với tài khoản đăng nhập là ${requesterCode}! Hành vi này đã bị từ chối và ghi lại vào Nhật Ký Kiểm Toán (Audit Trail).`;
-              setErrorMessage(alertText);
-              setIsScanning(false);
-              return;
-            }
-          } else {
-            // Fallback for simulation if AI service unavailable
-            if (faceTestScenario === 'PROXY_FRAUD') {
-              setCheckInStep('error');
-              const alertText = `🚨 CẢNH BÁO GIAN LẬN (CHẤM CÔNG HỘ): Người đang đứng trước camera là Nguyễn Thanh Tùng (05ACT), KHÔNG KHỚP với tài khoản đăng nhập là ${requesterCode}!`;
-              setErrorMessage(alertText);
-              setIsScanning(false);
-              return;
-            }
-          }
-
-          // 3. Core Service Attendance Punch (Check-in or Check-out)
-          try {
-            const punchEndpoint = checkType === 'OUT' ? '/api/v1/attendance/check-out' : '/api/v1/attendance/check-in';
-            await fetch(punchEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                employeeCode: requesterCode,
-                faceImageBase64: imageBase64.substring(0, 100),
-                wifiBssid: simWifi === 'INTERNAL' ? '84:d8:1b:22:9a:01 (ACT_OFFICE_5G)' : 'Mạng 4G di động ngoài văn phòng',
-                latitude: simZone === 'GREEN' ? 21.0285 : 21.0298,
-                longitude: simZone === 'GREEN' ? 105.8542 : 105.8570,
-                type: checkType,
-              }),
-            });
-          } catch (_) {
-            // Core service might not be running in frontend dev mode
-          }
-
-          // Successful Punch
-          const now = new Date();
-          const hours = now.getHours();
-          const minutes = now.getMinutes();
-          let statusText = 'HỢP LỆ (ĐÚNG GIỜ)';
-          if (checkType === 'IN') {
-            if (hours > 8 || (hours === 8 && minutes > 45)) {
-              statusText = 'ĐI MUỘN (DÙNG QUOTA 1/3)';
-            } else if (hours === 8 && minutes > 30) {
-              statusText = 'HỢP LỆ (DUNG SAI 15P)';
-            }
-          } else {
-            statusText = 'HỢP LỆ (HẾT CA)';
-          }
-
-          if (simZone === 'YELLOW') {
-            statusText += ' - [VÙNG VÀNG 220M: CẦN GIẢI TRÌNH]';
-          }
-          if (simWifi === 'EXTERNAL') {
-            statusText += ' - [CẢNH BÁO: NGOÀI WIFI CÔNG TY]';
-          }
-
-          const record: AttendancePunchRecord = {
-            id: `PUNCH-${Date.now()}`,
-            employeeCode: faceData?.matched_employee?.employee_code || user?.employeeCode || '136ACT',
-            fullName: faceData?.matched_employee?.full_name || user?.fullName || 'Nhân Viên ACT',
-            timestamp: now.toLocaleTimeString('vi-VN', { hour12: false }),
-            date: now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            type: checkType,
-            similarity: faceData?.similarity_score || 0.984,
-            livenessScore: 0.992,
-            status: statusText,
-            bssid: simWifi === 'INTERNAL' ? '84:d8:1b:22:9a:01 (ACT_OFFICE_5G)' : 'Mạng 4G di động',
-            coordinates: simZone === 'GREEN' ? '21.0285° N, 105.8542° E (15m - Vùng Xanh)' : '21.0298° N, 105.8570° E (220m - Vùng Vàng)',
-          };
-
-          setCheckResult(record);
-          setHistory((prev) => [record, ...prev]);
-          setCheckInStep('success');
-          setIsScanning(false);
-        } catch (err) {
-          console.error('Check-in error', err);
-          setCheckInStep('error');
-          setErrorMessage('Không thể kết nối đến máy chủ chấm công hoặc AI Face Service.');
-          setIsScanning(false);
-        }
-      }, 1000);
-    }, 800);
+      setCheckResult(record);
+      setHistory((prev) => [record, ...prev]);
+      setCheckInStep('success');
+      setIsScanning(false);
+    } catch (err: any) {
+      console.error('Check-in error', err);
+      setCheckInStep('error');
+      setErrorMessage(err?.message || 'Không thể kết nối dịch vụ chấm công. Vui lòng thử lại.');
+      setIsScanning(false);
+    }
   };
 
   const handleReset = () => {

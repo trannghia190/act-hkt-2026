@@ -1,6 +1,6 @@
 # 07 — Hệ Thống Cấu Hình Quy Định Động (Dynamic Rule Engine)
 
-> **Mục tiêu:** Mô tả chi tiết trái tim công nghệ của hệ thống — Bộ máy cấu hình quy định (Rule Engine) quản lý toàn bộ 19 quy định nghiệp vụ thông qua dữ liệu (Data-driven Configuration), cơ chế Quản lý phiên bản (Versioning), Hoàn tác (Rollback), Chạy thử nghiệm (Dry-Run Simulator) và Trang tra cứu nội quy tự động (Screen S19).
+> **Mục tiêu:** Mô tả chi tiết trái tim công nghệ của hệ thống — Bộ máy cấu hình quy định (Rule Engine) quản lý toàn bộ 19 quy định nghiệp vụ thông qua dữ liệu (Data-driven Configuration), cơ chế Quản lý phiên bản (Versioning), Hoàn tác (Rollback), Chạy thử nghiệm (xác nhận khi lưu) và Trang tra cứu nội quy tự động (Screen S19).
 
 ---
 
@@ -15,45 +15,49 @@ Trong hầu hết các phần mềm HR truyền thống, khi ban giám đốc đ
 
 ```mermaid
 flowchart TD
-    HR["HR Admin (Giao diện S16/S17)"] --> Form["Form Builder Tùy Biến Luật"]
-    Form --> DryRun{"Bấm [Chạy Thử Dry-Run]?"}
-    DryRun -- Có --> Sim["Chạy thử trên dữ liệu tháng trước\nXuất báo cáo tác động nhân sự"]
-    DryRun -- Không --> Save["Lưu Phiên Bản Mới (rule_versions)"]
-    Save --> Activate["Kích hoạt theo ngày hiệu lực (effective_date)"]
+    HR["HR Admin (Giao diện S16/S17)"] --> Form["Form sinh từ catalog 19 rule"]
+    Form --> Save{"Bấm [Lưu]"}
+    Save --> Confirm["Hộp thoại XÁC NHẬN nội dung sẽ áp dụng\n+ ngày hiệu lực + ai bị ảnh hưởng"]
+    Confirm -- Huỷ --> Form
+    Confirm -- Xác nhận --> NewVer["Tạo phiên bản mới (rule_versions)"]
+    NewVer --> Activate["Kích hoạt theo ngày hiệu lực"]
     Activate --> AppLogic["Core Engine thực thi nghiệp vụ"]
-    Save -.-> Rollback["Bấm [Rollback]\nKhôi phục bản cũ tức thì"]
-    Activate --> DocPage["Trang Tra Cứu Nội Quy S19\nTự động sinh nội dung Markdown cho NV"]
+    NewVer -.-> Rollback["Rollback = tạo phiên bản mới từ bản cũ"]
+    Activate --> DocPage["Trang Tra Cứu Nội Quy S19\nTự sinh từ cùng catalog"]
 ```
+
+> **Không có dry-run / màn S18.** Business chốt: khi lưu hiện **hộp thoại xác nhận**;
+> lịch sử phiên bản + rollback nằm ngay trong màn cấu hình S17.
 
 ---
 
 ## 2. Danh Mục 19 Quy Định Cấu Hình Động (Rule Catalog)
 
-| Nhóm Quy Định | Mã Tham Số (Rule Key) | Kiểu Dữ Liệu | Giá Trị Mặc Định | Mô Tả Ý Nghĩa Vận Hành |
+> **Nguồn sự thật:** `docs/06-business-rule-builder.md` §3.1. Mỗi rule có `rule_id` (snake_case),
+> một bộ **field** (kiểu, mặc định, khoảng giá trị, mô tả) và được lưu trong `rules.current_value`
+> dưới dạng **JSON object**. Tổng cộng **121 field**. Hệ thống đọc rule qua `RuleService` — **không hard-code**.
+
+| # | `rule_id` | Tên | Nhóm | Field chính (mặc định) |
 |---|---|---|---|---|
-| **1. Đơn từ** | `REQ_LATE_MONTHLY_QUOTA` | Integer | `2` | Số lần đi muộn/về sớm tối đa trong 1 tháng |
-| | `REQ_LATE_MAX_MINUTES` | Integer | `60` | Số phút tối đa cho mỗi lần đi muộn/về sớm |
-| | `REQ_LATE_SUBMIT_MODE` | String | `FLEXIBLE_SAME_DAY` | Chế độ nộp: `BEFORE_8AM` hoặc `FLEXIBLE_SAME_DAY` |
-| | `REQ_ADJUST_MONTHLY_QUOTA` | Integer | `5` | Số lần tối đa bổ sung chấm công mỗi tháng |
-| | `REQ_ADJUST_DEADLINE_DAYS` | Integer | `3` | Số ngày làm việc tối đa để gửi đơn bổ sung công |
-| | `REQ_WFH_WEEKLY_QUOTA` | Integer | `2` | Số ngày làm việc từ xa (WFH) tối đa trong 1 tuần |
-| | `REQ_WFH_MIN_DURATION` | Decimal | `0.5` | Thời lượng tối thiểu cho 1 lần xin WFH (0.5 ngày) |
-| | `APPROVAL_SPECIAL_TEAMS` | JSON Array | `["CA", "Mobile"]`| Danh sách nhóm bắt buộc quy trình duyệt 2 cấp (Lead -> HR) |
-| | `APPROVAL_SLA_HOURS` | Integer | `48` | Thời hạn tối đa Quản lý duyệt trước khi Auto-escalate |
-| **2. Chấm công** | `ATTENDANCE_GEOFENCE_RADIUS` | Integer | `150` | Bán kính hợp lệ quanh tọa độ văn phòng (mét) |
-| | `ATTENDANCE_GEOFENCE_WARN` | Integer | `300` | Bán kính gắn cờ cảnh báo (150m - 300m) |
-| | `ATTENDANCE_OFFLINE_WINDOW_H`| Integer | `24` | Giới hạn thời gian tối đa cho phép đồng bộ offline (giờ) |
-| | `ATTENDANCE_DEVICE_LIMIT` | Integer | `1` | Số lượng thiết bị di động được phép gán cho 1 nhân viên |
-| | `TIMESHEET_DISPUTE_DAYS` | Integer | `2` | Số ngày làm việc cho phép nhân viên khiếu nại bảng công |
-| **3. Nghỉ phép** | `LEAVE_ACCRUAL_DAY_OF_MONTH` | Integer | `15` | Ngày cộng phép năm định kỳ hàng tháng (ngày 15) |
-| | `LEAVE_MANAGER_BONUS_DAYS` | Integer | `3` | Số ngày phép cộng thêm hàng năm cho cấp Quản lý |
-| | `LEAVE_SENIORITY_INTERVAL_Y` | Integer | `2` | Chu kỳ thâm niên được cộng +1 ngày phép (mỗi 2 năm) |
-| | `LEAVE_CARRYOVER_CAP_JULY` | Integer | `5` | Giới hạn tối đa ngày phép tồn được giữ lại từ 01/04 - 30/06 |
-| | `LEAVE_ADVANCE_ALLOWED_DAYS`| Integer | `3` | Số ngày phép năm tối đa cho phép nhân viên xin ứng trước |
-
----
-
-## 3. Tính Năng An Toàn: Versioning, Rollback & Dry-Run Simulator
+| 1 | `late_early` | Đi muộn / về sớm | Đơn từ | `max_count`=2 · `max_minutes`=60 · `submit_within_days`=3 · `allow_late_request`=true |
+| 2 | `makeup` | Bổ sung chấm công | Đơn từ | `max_count`=5 · `deadline_working_days`=3 · `allow_overdue_with_approval`=false |
+| 3 | `wfh` | Làm việc từ xa | Đơn từ | `max_count`=2/tuần · `min_duration_days`=0.5 · `block_third_day`=true |
+| 4 | `hr_approval` | Nhóm có bước HR duyệt thêm | Đơn từ | `teams`=["CA","Mobile"] · chỉ `LATE_EARLY/ADJUST/WFH` — **nghỉ phép không chuyển HR** |
+| 5 | `approval_flow` | Luồng duyệt đơn | Đơn từ | 1 bước quản lý trực tiếp · `sla_hours`=48 · `allow_withdraw`=true |
+| 6 | `attendance_security` | Kiểm tra khi chấm công | Chấm công | `require_internal_network`=Bật · `geofence_radius_m`=150 · `gps_accuracy_tolerance_m`=100 · `allow_offline_punch`=Bật · `offline_max_hours`=24 · `max_devices`=**2** · `require_face_verification`=Bật · `face_match_threshold`=**85** · `require_liveness`=Bật · `face_max_attempts`=3 · `grace_minutes`=0 |
+| 7 | `share_account` | Chống dùng chung tài khoản | Chấm công | `max_checkin_per_day`=1 · `require_password_change`=Bật · `device_confirm_required`=Bật · `max_additional_devices`=1 · `device_expiry_days`=90 |
+| 8 | `shift_times` | Giờ làm việc | Chấm công | khung 08:00–09:30 / 17:00–18:30 · nghỉ trưa 12:00–13:00 · `required_work_hours`=8 · `is_flexible`=false · khung linh hoạt 08–10 / 17–19 |
+| 9 | `shift` | Ca & bộ gán ca | Chấm công | ca mặc định 08:30–17:30 · ca ngoại lệ theo nhóm/chức vụ |
+| 10 | `late_without_request` | Đi muộn không có đơn | Bảng công | `deduct_actual_minutes`=true · `count_as_absent`=false |
+| 11 | `payroll_period` | Kỳ công & khiếu nại | Bảng công | `publish_day`=**11** · `dispute_window_days`=2 · `lock_delay_days`=3 · `allow_adjust_after_lock`=false |
+| 12 | `leave_type_defaults` | Mặc định chung cho loại nghỉ | Nghỉ phép | `submit_within_days`=3 · `require_attachment`=false · `allow_negative_balance`=false |
+| 13 | `leave_request` | Thời hạn & điều kiện xin nghỉ | Nghỉ phép | `submit_within_days`=3 (theo ngày, không theo giờ) |
+| 14 | `leave_accrual` | Cách cộng phép | Nghỉ phép | `base_days_per_year`=12 · `accrual_on`=15 · `probation_days`=2 · `advance_max_days`=3 |
+| 15 | `leave_seniority` | Phép thâm niên | Nghỉ phép | `interval_years`=2 · `days_per_interval`=1 · cộng đúng ngày tròn |
+| 16 | `leave_position_bonus` | Phép theo chức vụ | Nghỉ phép | `manager_bonus_days`=3 |
+| 17 | `leave_carryover` | Phép tồn | Nghỉ phép | giữ toàn bộ trước 01/04 · tối đa 5 ngày 01/04–01/07 · từ 01/07 = 0 |
+| 18 | `okr_evaluation` | Cách đánh giá | OKR | `scale_min`=1 · `scale_max`=5 · `score_categories`=2 · `checkin_interval`=MONTHLY · **không xếp loại A/B/C/D** |
+| 19 | `notification` | Chính sách nhắc việc | Dùng chung | `max_push_per_day`=3 · quiet hours 21:00–07:00 · `dedupe_window_hours`=12 · `escalate_after_days`=3 |
 
 ### 3.1. Cơ Chế Quản Lý Phiên Bản & Ngày Hiệu Lực
 * Mỗi khi HR lưu chỉnh sửa quy định tại `S16/S17`:
@@ -62,18 +66,17 @@ flowchart TD
   * HR bắt buộc chọn trường `effective_from` (Ngày bắt đầu áp dụng) và nhập `change_reason` (Lý do thay đổi).
   * Lịch sử được lưu trữ vĩnh viễn phục vụ thanh tra lao động.
 
-### 3.2. Tính Năng Chạy Thử Nghiệm (Dry-Run Simulator — Screen S18)
-Trước khi ấn áp dụng một quy định mới (ví dụ: giảm quota WFH từ 2 ngày xuống 1 ngày/tuần), HR có thể bấm nút **[Chạy thử Dry-Run]**:
-* Hệ thống lấy dữ liệu chấm công và đơn từ của tháng trước để giả lập chạy lại với bộ luật mới.
-* **Báo cáo phân tích tác động (Impact Report):**
-  * Có bao nhiêu nhân viên sẽ bị chuyển từ hợp lệ sang vi phạm?
-  * Tổng số ngày công toàn công ty sẽ thay đổi như thế nào?
-  * Cảnh báo nhóm đối tượng chịu ảnh hưởng lớn nhất.
-* Giúp HR ra quyết định dựa trên dữ liệu định lượng chính xác thay vì cảm tính.
+### 3.2. Xác Nhận Khi Lưu (thay cho dry-run)
+
+Business **đã bỏ màn S18/dry-run**. Thay vào đó, khi HR bấm **Lưu** tại S17:
+* Hệ thống hiện **hộp thoại xác nhận** gồm: tên quy định · giá trị mới · **ngày hiệu lực** ·
+  lý do thay đổi · cảnh báo nếu giá trị nằm ngoài khoảng cho phép.
+* HR xác nhận → backend tạo **phiên bản mới** trong `rule_versions` và cập nhật `rules.current_value`.
+* Không có bước "chạy thử trên dữ liệu tháng trước".
 
 ### 3.3. Cơ Chế Hoàn Tác 1-Chạm (Rollback)
 Nếu quy định mới ban hành gặp phản ứng tiêu cực hoặc phát sinh lỗi vận hành:
-* HR chỉ cần vào lịch sử phiên bản (`S18`), bấm nút **[Rollback về v1.0]**.
+* HR vào **Lịch sử phiên bản** (ngay trong S17), bấm **[Rollback về v1.0]**.
 * Hệ thống kích hoạt lại tham số cũ trong 1 giây mà không cần can thiệp kỹ thuật.
 
 ---
@@ -83,5 +86,5 @@ Nếu quy định mới ban hành gặp phản ứng tiêu cực hoặc phát si
 * **Loại bỏ tình trạng "Nội quy một đằng, Phần mềm chạy một nẻo":**
   * Trang `S19 - Tra cứu quy định` dành cho nhân viên không phải là trang văn bản tĩnh do HR gõ tay.
   * Nội dung được **tự động biên dịch (Auto-generated)** từ chính các tham số đang active trong Rule Engine thành văn bản tiếng Việt/Anh chuẩn mực.
-  * *Ví dụ:* Khi HR đổi `REQ_LATE_MONTHLY_QUOTA` thành `3`, trang quy định của nhân viên lập tức hiển thị: *"Theo quy định hiện hành, mỗi nhân viên được phép đi muộn/về sớm tối đa 3 lần/tháng"*.
+  * *Ví dụ:* Khi HR đổi `late_early.max_count` thành `3`, trang quy định của nhân viên lập tức hiển thị: *"Theo quy định hiện hành, mỗi nhân viên được phép đi muộn/về sớm tối đa 3 lần/tháng"*.
 * Nhân viên có thể tìm kiếm nhanh câu hỏi thường gặp (FAQ) qua thanh tìm kiếm toàn cục `Ctrl+K`.

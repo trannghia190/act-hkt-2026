@@ -1,6 +1,6 @@
 # 06 — Quản Trị Mục Tiêu & Đánh Giá Hiệu Suất OKR (OKR & Performance Appraisal)
 
-> **Mục tiêu:** Mô tả chi tiết phân hệ OKR kết hợp Đánh giá thành tích cuối năm theo chuẩn biểu mẫu Ascend/ACT, cơ cấu 20% mục tiêu công ty + 80% cá nhân, Form đánh giá 4 Box, thang điểm 1–5 nguyên ở cấp độ nhóm, chu kỳ 4 giai đoạn, quy trình đánh giá 5 bước, bảng tổng hợp 9 trường và công cụ cân chuẩn điểm (Calibration Board).
+> **Mục tiêu:** Mô tả chi tiết phân hệ OKR kết hợp Đánh giá thành tích cuối năm theo chuẩn biểu mẫu Ascend/ACT, cơ cấu 20% mục tiêu công ty + 80% cá nhân, Form đánh giá 4 Box, thang điểm 1–5 nguyên ở cấp độ nhóm, chu kỳ 5 phase cấu hình được, quy trình đánh giá 5 bước, bảng tổng hợp 9 trường và báo cáo điểm theo nhóm — **không Calibration/Bell Curve**.
 
 ---
 
@@ -8,12 +8,9 @@
 
 Mô hình OKR được thiết kế theo hướng thực tiễn cao, phản ánh chính xác form đánh giá quốc tế của tập đoàn:
 
-```mermaid
-pie title Cơ Cấu Phân Bổ Mục Tiêu OKR (100%)
-    "Company Objectives (20%) - Kế thừa/Tham khảo": 20
-    "Business Objectives (Individual 40%) - Tự do": 40
-    "People Objectives (Individual 40%) - Tự do": 40
-```
+> **Không có trọng số KR, không chấm theo hạng mục.** Mục tiêu cá nhân chia 2 nhóm
+> **Business** và **People**, mỗi nhóm chấm **1 điểm 1–5** ở tầng nhóm. Phần 20% mục tiêu
+> công ty là **tham khảo** (copy xuống nếu phù hợp), không tính vào điểm trung bình.
 
 ### 1.1. Company Objectives (20%) — Kế Thừa Tham Khảo
 * Ban Điều hành công bố 5–6 mục tiêu chiến lược của năm (ví dụ: Tăng trưởng doanh thu, Phát triển sản phẩm mới, Tối ưu vận hành).
@@ -53,7 +50,7 @@ Hệ thống số hóa 100% biểu mẫu đánh giá thực tế của công ty 
 └────────────────────────────────────────────────────────────────────────┘
                     ⬇ Hệ Thống Tự Động Tính Toán ⬇
        ĐIỂM TRUNG BÌNH OKR = (Điểm Box 2 + Điểm Box 3) ÷ 2
-       XẾP LOẠI TỔNG THỂ: A (≥ 4.5) | B (≥ 3.5) | C (≥ 2.5) | D (< 2.5)
+       KHÔNG XẾP LOẠI — chỉ hiển thị điểm 1–5 từng nhóm + điểm trung bình
 ```
 
 ### 3 Quy Tắc Chấm Điểm Khác Biệt
@@ -63,7 +60,7 @@ Hệ thống số hóa 100% biểu mẫu đánh giá thực tế của công ty 
 
 ---
 
-## 3. Chu Kỳ OKR 4 Giai Đoạn & Quy Trình Đánh Giá 5 Bước
+## 3. Chu Kỳ OKR 5 Phase & Quy Trình Đánh Giá 5 Bước
 
 ```mermaid
 flowchart LR
@@ -78,9 +75,9 @@ flowchart LR
 |---|---|---|---|
 | **Bước 1** | **Nhân viên** | Tự điền thành tích Box 2, Box 3, Box 4; tự chấm điểm bản thân (1–5). Bấm Nộp. | 3–5 ngày làm việc (Khóa link khi hết hạn) |
 | **Bước 2** | **Quản lý trực tiếp** | Xem xét thành tích, mở file đính kèm, chấm điểm chính thức (1–5 cho từng Box). | 5 ngày làm việc (Khóa link khi hết hạn) |
-| **Bước 3** | **HR Admin** | Thu thập toàn bộ đánh giá từ các phòng ban, tổng hợp vào Báo cáo Master 9 trường. | Theo lịch công ty |
-| **Bước 4** | **Ban Lãnh đạo / Giám đốc** | Giám đốc phần mềm & Giám đốc CNTT vùng đánh giá chung, cân chuẩn điểm các nhóm. | Theo lịch công ty |
-| **Bước 5** | **HR Admin** | Khóa kết quả chính thức, công bố xếp loại và xuất file Excel cho Hội đồng Lương thưởng. | Hoàn tất chu kỳ |
+| **Bước 3** | **HR Admin** | Thu thập toàn bộ đánh giá từ các nhóm, tổng hợp vào Báo cáo Master 9 trường. | Theo lịch công ty |
+| **Bước 4** | **Ban Lãnh đạo / Giám đốc** | Giám đốc phần mềm & Giám đốc CNTT vùng đánh giá chung, thống nhất điểm các nhóm (không cân chuẩn/xếp loại). | Theo lịch công ty |
+| **Bước 5** | **HR Admin** | Khóa kết quả chính thức, công bố **điểm 1–5** và xuất file Excel cho Hội đồng Lương thưởng. | Hoàn tất chu kỳ |
 
 ---
 
@@ -91,17 +88,17 @@ Hệ thống tự động sinh báo cáo tổng hợp Master gồm 9 trường c
 2. `Mã nhân viên`: Employee Code
 3. `Vị trí / Chức danh`: Job Title
 4. `Thời gian công tác`: **Tự động tính bằng tháng/năm** căn cứ từ `joined_date` đến ngày 31/12 của năm đánh giá.
-5. `Phòng ban / Nhóm`: Department / Team
+5. `Nhóm`: Team (không có phòng ban)
 6. `Tên Quản lý trực tiếp`: Line Manager Name
 7. `Điểm OKR công việc`: Điểm Box 2 (Business Score: 1–5)
 8. `Điểm OKR con người`: Điểm Box 3 (People Score: 1–5)
-9. `Điểm trung bình & Ghi chú`: Average Score + Ranking (A/B/C/D) + Note.
+9. `Điểm trung bình & Ghi chú`: Average Score + ghi chú (không xếp loại A/B/C/D).
 
 ---
 
-## 5. Bảng Cân Chuẩn Phân Bổ Điểm (Calibration Board — Screen S24)
+## 5. Báo cáo điểm theo nhóm (Screen S25)
 
-Nhằm đảm bảo tính công bằng giữa các phòng ban (tránh hiện tượng nhóm thì cho 100% Loại A, nhóm thì quá khắt khe):
-* Giao diện dành riêng cho Giám đốc & HR hiển thị biểu đồ phân bổ hình chuông (**Bell Curve Distribution**).
-* Hiển thị tỷ lệ thực tế so với định mức công ty (ví dụ: Tỷ lệ Loại A đề xuất: $\le 20\%$, Loại B: $60\%$, Loại C/D: $20\%$).
-* Lãnh đạo có thể kéo thả điều chỉnh xếp loại của từng cá nhân ngay trên bảng ma trận trước khi phê duyệt chốt sổ toàn công ty.
+* Giám đốc & HR xem **bảng điểm 1–5 theo nhóm** và điểm trung bình — **không xếp loại A/B/C/D**.
+* Không có Bell Curve/Calibration Board: lãnh đạo đánh giá trực tiếp vào bảng tổng hợp,
+  mọi điều chỉnh điểm đều có lý do + audit log.
+* Hệ thống chỉ lưu **điểm**, không sinh thêm hạng/xếp loại.

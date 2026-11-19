@@ -22,9 +22,9 @@ graph TD
 * **Hạn mức (Quota):** Tối đa **2 lần/tháng**.
 * **Thời lượng tối đa:** Không quá **60 phút/lần**.
 * **Tính năng tự động điền (Smart Auto-fill):** Khi nhân viên vào form tạo đơn, hệ thống tự động đọc log check-in thực tế của ngày hôm đó (ví dụ: check-in lúc 09:42 so với mốc 09:30) $\rightarrow$ Tự điền số phút muộn: `12 phút`.
-* **Chế độ hạn nộp (Cấu hình qua Rule Engine):**
-  * *Chế độ 1 (Có kế hoạch):* Bắt buộc gửi trước **08:00 sáng** của ngày làm việc.
-  * *Chế độ 2 (Đột xuất):* Cho phép nộp bổ sung trong ngày phát sinh sự cố kèm lý do khẩn cấp (hỏng xe, ngập lụt, tai nạn...).
+* **Hạn nộp (Cấu hình qua Rule Engine `late_early.submit_within_days`):**
+  * Nộp **trong vòng 3 ngày** kể từ ngày phát sinh (mặc định) — **tính theo ngày, không yêu cầu giờ**.
+  * Hết ngày thứ 3 là hạn cuối; không còn khái niệm "phải nộp trước 08:00".
 
 ### 1.2. Đơn Bổ Sung Chấm Công (Attendance Adjustment — Screen S31)
 * **Mục đích:** Áp dụng khi quên chấm công vào/ra hoặc lỗi kỹ thuật.
@@ -74,14 +74,14 @@ Một trong những sai lầm phổ biến của nhân viên là bấm lưu như
 
 ## 3. Ma Trận Phê Duyệt Động (Dynamic Approval Workflows)
 
-Luồng duyệt được gắn chặt với **Nhóm (Team / Department)** chứ không cố định theo tên người, đảm bảo khi thay đổi nhân sự hệ thống tự động thích ứng:
+Luồng duyệt được gắn chặt với **Nhóm (Team)** chứ không cố định theo tên người, đảm bảo khi thay đổi nhân sự hệ thống tự động thích ứng:
 
 | Nhóm / Đơn vị | Quy trình phê duyệt | Lý do & Nghiệp vụ đặc thù |
 |---|---|---|
-| **Hầu hết các phòng ban** (`Sirius`, `Optimus`, `Zeus`...) | **1 Cấp:** Quản lý trực tiếp (`line_manager_id`) $\rightarrow$ Hoàn tất. | Tối ưu tốc độ, trao quyền trực tiếp cho Lead nhóm. |
-| **Nhóm CA** | **2 Cấp:** Trưởng nhóm CA (Leader) duyệt $\rightarrow$ Chuyển **HR Admin** duyệt lần 2 $\rightarrow$ Hoàn tất. | Do cấp quản lý cao hơn ở văn phòng khu vực/Thái Lan, cần HR Việt Nam hậu kiểm. |
-| **Nhóm Mobile** | **2 Cấp:** Trưởng nhóm Mobile (Leader) duyệt $\rightarrow$ Chuyển **HR Admin** duyệt lần 2 $\rightarrow$ Hoàn tất. | Tương tự nhóm CA. |
-| **Đơn nghỉ phép dài ngày ($\ge 5$ ngày) hoặc Thai sản** | **2 Cấp:** Quản lý trực tiếp duyệt $\rightarrow$ Chuyển **HR Admin** duyệt $\rightarrow$ Hoàn tất. | Cần HR chuẩn bị thủ tục BHXH và phân bổ nhân sự thay thế. |
+| **Hầu hết các nhóm** (`Sirius`, `Optimus`, `Zeus`...) | **1 Cấp:** Quản lý trực tiếp (`manager_id`) $\rightarrow$ Hoàn tất. | Tối ưu tốc độ, trao quyền trực tiếp cho Lead nhóm. |
+| **Nhóm CA** | **2 Cấp** *(chỉ đi muộn / bổ sung công / WFH)*: Trưởng nhóm CA duyệt $\rightarrow$ **HR Admin** duyệt lần 2. Nghỉ phép vẫn 1 cấp. | Do cấp quản lý cao hơn ở văn phòng khu vực/Thái Lan, cần HR Việt Nam hậu kiểm. |
+| **Nhóm Mobile** | **2 Cấp** *(chỉ đi muộn / bổ sung công / WFH)*: Trưởng nhóm Mobile duyệt $\rightarrow$ **HR Admin** duyệt lần 2. Nghỉ phép vẫn 1 cấp. | Tương tự nhóm CA. |
+| **Đơn nghỉ phép (mọi loại, kể cả nghỉ dài/thai sản)** | **1 Cấp:** Quản lý trực tiếp duyệt $\rightarrow$ Hoàn tất. **Không chuyển HR.** | HR chỉ nhận thông báo để chuẩn bị thủ tục BHXH — không phải bước duyệt. |
 
 ---
 
@@ -103,6 +103,6 @@ Khi Quản lý bấm `[Từ chối]`, hệ thống vô hiệu hóa nút xác nh�
 
 ### 4.3. Cơ Chế Tự Động Chuyển Cấp Duyệt (Auto-Escalation SLA)
 * Thời hạn cam kết xử lý: **48 giờ** kể từ khi đơn được gửi.
-* Nếu sau 48h Quản lý trực tiếp không thao tác (do đi công tác hoặc nghỉ ốm đột xuất mà chưa kịp ủy quyền tại S37):
+* Nếu sau 48h Quản lý trực tiếp không thao tác (do đi công tác hoặc nghỉ ốm đột xuất, chưa xử lý kịp):
   * Hệ thống tự động gửi thông báo khẩn cấp (Urgent Reminder).
   * Chuyển quyền duyệt lên Quản lý cấp trên (Skip-level Manager) hoặc chuyển về Hộp thư khẩn của HR để đảm bảo không làm gián đoạn quyền lợi của người lao động.

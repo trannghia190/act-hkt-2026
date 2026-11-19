@@ -32,15 +32,17 @@ Hệ thống gồm 2 phân hệ nghiệp vụ (chấm công và OKR) cùng dùng
 |---|---|---|
 | `id` | Định danh người dùng | Khóa chính |
 | `email` | Email đăng nhập | Bắt buộc, duy nhất |
-| `password_hash` | Mật khẩu đã băm | Chỉ lưu dạng băm, không lưu bản thô; chỉ dùng cho tài khoản demo/fallback |
+| `password_hash` | Mật khẩu đã băm | Bắt buộc; bcrypt cost 12 — **chỉ lưu dạng băm**, không lưu bản thô |
 | `full_name` | Họ tên hiển thị | Bắt buộc |
 | `avatar_url` | Ảnh đại diện | Tùy chọn |
 | `role` | Vai trò hệ thống | `employee` \| `manager` \| `hr` \| `admin` |
 | `position_id` | Chức danh của người | Tham chiếu `Position`; **không phải** đơn vị cấp ứng dụng |
 | `manager_id` | Quản lý trực tiếp | Tham chiếu `User`; **căn cứ để duyệt đơn** |
 | `hire_date` | Ngày vào làm | Bắt buộc |
-| `status` | Trạng thái làm việc | `active` \| `inactive` |
-| `google_sub` | Liên kết tài khoản Google SSO | Bắt buộc với tài khoản thật; lưu ở lần đăng nhập Google đầu tiên để khớp các lần sau |
+| `status` | Trạng thái tài khoản | `pending_activation` (chưa kích hoạt) \| `active` \| `locked` \| `inactive` |
+| `must_change_password` | Bắt buộc đổi mật khẩu ở lần đăng nhập đầu | Bật khi HR tạo/reset tài khoản; tắt sau khi đổi lần đầu |
+| `activated_at` | Thời điểm kích hoạt lần đầu | Bắt buộc khi `status = active` |
+| `face_enrolled` | Đã đăng ký khuôn mặt | Có/Không — chưa có thì chưa chấm công được |
 
 ### Phân quyền theo phạm vi (Mục 3)
 
@@ -661,25 +663,54 @@ Service tập trung gom việc từ mọi module về 1 nơi. **Không nằm tro
 | `dedupe_window_hours` | 12 | Cùng một thông báo trong 12 giờ không gửi lặp |
 | `escalate_after_days` | 3 | Việc quá 3 ngày chưa xử lý → báo thêm cho quản lý |
 
-## 3. Auth & SSO
+## 3. Auth — tài khoản nội bộ (Non-SSO)
 
-HR đã quyết định: *"Em nghĩ nên dùng tài khoản google của công ty luôn"*.
+> **Quyết định (19/11/2026):** **không dùng Google SSO / Keycloak**. Hệ thống **tự quản lý tài khoản nội bộ**:
+> HR cấp tài khoản → gửi email kích hoạt qua Gmail → người dùng đổi mật khẩu lần đầu → đăng ký khuôn mặt →
+> vào thẳng "Cần làm". Ưu điểm: **không phụ thuộc dịch vụ bên thứ ba**, dữ liệu nhân sự nằm trọn trong hệ thống,
+> và cơ chế kích hoạt bắt buộc tạo sẵn đúng một "điểm chặn" cho mỗi lần đổi mật khẩu.
 
-**Quy tắc đăng nhập (business):**
+### 3.1. HR cấp tài khoản
+
+| Cách | Mô tả |
+|---|---|
+| Tạo đơn lẻ | HR điền form: `employee_code`, `full_name`, `email`, `team`, `manager_id`, `hire_date`, `role`. Hệ thống **tự sinh mật khẩu tạm** (10 ký tự: chữ hoa + thường + số + ký tự đặc biệt) hoặc HR nhập tay. |
+| Import hàng loạt | HR upload file Excel → kiểm tra trùng `email` / `employee_code` → báo cáo số tạo mới / số lỗi. |
+
+Sau khi lưu, hệ thống:
+1. Băm mật khẩu bằng **bcrypt (cost 12)** — không bao giờ lưu bản thô.
+2. Đặt `status = pending_activation`, `must_change_password = true`.
+3. Gửi email kích hoạt qua **Gmail/SMTP** (`smtp.gmail.com:587`): nội dung có tên đăng nhập + mật khẩu tạm + đường dẫn đăng nhập + hướng dẫn đổi mật khẩu & đăng ký khuôn mặt.
+
+### 3.2. Quy tắc đăng nhập (business)
 
 | Quy tắc | Nội dung |
 |---|---|
-| Cách đăng nhập | **Tài khoản Google của công ty** (@act.vn) — 1 nút "Đăng nhập bằng Google công ty" trên trang đăng nhập |
-| Tên miền | Chỉ chấp nhận email thuộc tên miền công ty; tài khoản Google ngoài tên miền bị **từ chối kèm thông báo rõ** |
+| Cách đăng nhập | **Email công ty + mật khẩu** — không có Google/Keycloak, không có OAuth |
 | Xác định vai trò | **Tự động** từ tài khoản (`User.role` + `UserScope`) — **không có bước/màn hình chọn vai trò** ở bất kỳ luồng đăng nhập nào |
-| Sau đăng nhập | Vào thẳng màn hình **"Cần làm"** (todo inbox) của vai trò được phân |
-| Giới hạn thử | Tối đa **5 lần thử trong 10 phút / IP** — quá là chặn tạm thời |
-| Khớp tài khoản | Tài khoản được khớp theo địa chỉ email công ty; `google_sub` lưu liên kết Google SSO |
-| Phiên đăng nhập | Phiên ngắn hạn (15 phút) + phiên làm mới dài hạn (7 ngày); đăng xuất thu hồi được |
-| Tài khoản demo | Chỉ dùng cho buổi demo (email + mật khẩu fallback) — **vai trò vẫn tự lấy từ tài khoản**, không có màn hình chọn vai trò |
+| Lần đăng nhập đầu | Bắt buộc đổi mật khẩu → sau đó bắt buộc đăng ký khuôn mặt → vào thẳng **"Cần làm"** |
+| Chính sách mật khẩu | Tối thiểu **8 ký tự**, có 1 chữ hoa · 1 chữ thường · 1 chữ số · 1 ký tự đặc biệt; **không trùng mật khẩu cũ** |
+| Giới hạn thử | Tối đa **5 lần thử trong 10 phút / IP** → khoá tạm 10 phút; sai **10 lần** → khoá vĩnh viễn, HR mở khóa |
+| HR reset mật khẩu | Sinh mật khẩu tạm mới + `must_change_password = true` + gửi email; **thu hồi toàn bộ phiên đang có** |
+| Phiên đăng nhập | Access token **15 phút** + refresh token **7 ngày** (httpOnly cookie); đăng xuất hoặc đổi mật khẩu → thu hồi được |
+| Đăng nhập lạ | Đăng nhập từ **thiết bị mới** → cảnh báo cho người dùng **và** quản lý (rule `alert_on_new_device`) |
 
-> **Lưu ý bảo mật:** phiên làm mới được **thu hồi được** (đăng xuất hoặc đổi mật khẩu) và
-> **chỉ lưu dạng băm** trong hệ thống — không lưu bản thô → dump dữ liệu không lộ phiên dùng được.
+### 3.3. Luồng lần đăng nhập đầu tiên
+
+```
+[HR tạo tài khoản] → [Email kích hoạt (Gmail)] → [Đăng nhập bằng mật khẩu tạm]
+        ↓
+[Server trả JWT tạm, chỉ scope FORCE_CHANGE_PASSWORD → khóa toàn bộ menu]
+        ↓
+[S01-A · Đổi mật khẩu bắt buộc] → [cấp lại access + refresh token chính thức]
+        ↓
+[Chưa có khuôn mặt?] → [S01-B · Đăng ký khuôn mặt 3 góc + liveness] → [lưu vector đặc trưng]
+        ↓
+[Vào thẳng "Cần làm" (todo inbox) của vai trò được phân]
+```
+
+> **Lưu ý bảo mật:** refresh token chỉ lưu **mã băm** trong hệ thống, mỗi phiên có `jti` riêng để thu hồi
+> đúng từng phiên; đổi mật khẩu → thu hồi **toàn bộ** phiên của tài khoản.
 
 ## 4. Realtime
 
@@ -705,7 +736,10 @@ Thông báo & nhắc việc **đẩy tới người dùng ngay (realtime)** — 
 
 ## 5. Acceptance criteria cho Core
 
-- [ ] Đăng nhập bằng **Google công ty** → vào thẳng "Cần làm" của vai trò được phân; **không có bước chọn vai trò**
+- [ ] Đăng nhập bằng **email công ty + mật khẩu** → vào thẳng "Cần làm" của vai trò được phân; **không có bước chọn vai trò**
+- [ ] Lần đăng nhập đầu: **bắt buộc đổi mật khẩu** → **bắt buộc đăng ký khuôn mặt** → mới vào được "Cần làm"
+- [ ] Đăng nhập sai 5 lần → khoá 10 phút; sai 10 lần → khoá vĩnh viễn, HR mở khóa
+- [ ] HR reset mật khẩu → sinh mật khẩu tạm + gửi email + **thu hồi toàn bộ phiên** đang có
 - [ ] Menu hiển thị đúng theo 4 vai trò, URL không thuộc vai trò trả 403
 - [ ] Manager chỉ thấy dữ liệu cấp dưới trực tiếp; HR thấy toàn công ty; HR giới hạn theo chi nhánh không thấy chi nhánh khác
 - [ ] **Lịch nhóm**: HR xem toàn công ty · Manager xem cấp dưới trực tiếp (`manager_id`) · Team lead xem nhóm mình phụ trách (`Team.lead_id`) · Member xem team của mình (`TeamMember`) — **không** thấy team khác

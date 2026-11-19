@@ -35,27 +35,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # Keycloak IAM Server (Xác thực OAuth2 / OIDC tập trung)
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    container_name: pulse-keycloak
-    restart: unless-stopped
-    command: start-dev
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/pulse_db
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: postgres123
-      KC_DB_SCHEMA: public
-      KC_HTTP_PORT: 8080
-    ports:
-      - "8180:8080" # Web Admin Console: http://localhost:8180
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   # Backend 1: Core Service (Java Spring Boot 3 - ACT PULSE)
   core-service:
     build:

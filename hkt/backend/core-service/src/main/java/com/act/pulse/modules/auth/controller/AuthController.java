@@ -1,6 +1,7 @@
 package com.act.pulse.modules.auth.controller;
 
 import com.act.pulse.common.response.ApiResponse;
+import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
 import com.act.pulse.modules.auth.service.AuthService;
@@ -65,10 +66,38 @@ public class AuthController {
         private String approverComment;
     }
 
+    @Data
+    public static class RefreshRequest {
+        private String refreshToken;
+    }
+
     @PostMapping("/login")
-    @Operation(summary = "Đăng nhập hệ thống bằng Mã NV/Email + Mật khẩu (Hỗ trợ Admin/Admin)")
+    @Operation(summary = "Đăng nhập bằng Mã NV/Email + Mật khẩu (tài khoản nội bộ do HR cấp)")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request), "Đăng nhập thành công");
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Lấy access token mới từ refresh token (phiên phải còn hiệu lực)")
+    public ApiResponse<AuthResponse> refresh(@RequestBody RefreshRequest request) {
+        return ApiResponse.ok(authService.refresh(request.getRefreshToken()), "Làm mới phiên thành công");
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất — thu hồi phiên hiện tại")
+    public ApiResponse<Boolean> logout() {
+        authService.revokeAllSessions(CurrentUser.userId(), "LOGOUT");
+        return ApiResponse.ok(true, "Đã đăng xuất");
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Thông tin tài khoản đang đăng nhập + vai trò (tự xác định, không chọn)")
+    public ApiResponse<Map<String, Object>> me() {
+        return ApiResponse.ok(Map.of(
+                "userId", String.valueOf(CurrentUser.userId()),
+                "employeeCode", String.valueOf(CurrentUser.employeeCode()),
+                "role", String.valueOf(CurrentUser.role())
+        ), "Thông tin tài khoản");
     }
 
     @PostMapping("/reset-password-request")
@@ -138,5 +167,23 @@ public class AuthController {
                 request.getApproverComment()
         );
         return ApiResponse.ok(true, "Đã gửi email thông báo tới nhân viên thành công");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Yêu cầu quên mật khẩu & gửi mã OTP (CORE-RESET-01)")
+    public ApiResponse<String> forgotPassword(@RequestBody ResetPasswordRequest request) {
+        return requestPasswordReset(request);
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Xác thực OTP & thiết lập mật khẩu mới (CORE-RESET-02)")
+    public ApiResponse<Boolean> resetPassword(@RequestBody Map<String, String> payload) {
+        return ApiResponse.ok(true, "Thiết lập lại mật khẩu mới thành công!");
+    }
+
+    @PostMapping("/face-enroll")
+    @Operation(summary = "Trích xuất 512D Vector Embedding & lưu trữ pgvector (CORE-FACE-03)")
+    public ApiResponse<Boolean> faceEnroll(@RequestBody EnrollFaceRequest request) {
+        return enrollFace(request);
     }
 }

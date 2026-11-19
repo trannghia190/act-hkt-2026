@@ -206,7 +206,7 @@ mức độ ưu tiên. Bấm vào module nào thì vào module đó — nhưng k
 |---|---|---|
 | **1 — Chặn ở gốc** | Tối đa **1 lần check-in/ngày** | Chặn "chia ca": 2 người share 1 account → chỉ 1 người công 1 ngày |
 | | **Mặc định 2 máy**, máy thứ 3 cần HR duyệt | Không dùng 3 máy để chấm hộ |
-| | Đăng nhập bằng **tài khoản Google công ty** + cảnh báo đăng nhập lạ | Không share được tài khoản |
+| | Đăng nhập bằng **tài khoản nội bộ** (HR cấp, bắt buộc đổi mật khẩu lần đầu) + cảnh báo đăng nhập lạ | Không có mật khẩu dùng chung lâu dài |
 | | Mỗi ngày chỉ 1 dòng chấm công/người | Chặn 2 entry cùng ngày |
 | | Quota tính **theo người** | Share → dùng chung quota → không đáng |
 | **2 — Quản lý thiết bị (HR)** | Hộp thư duyệt đăng ký mới · **thu hồi** khi máy mất/bị trộm · tự thu hồi sau 90 ngày không dùng · chỉ nhận yêu cầu từ mạng nội bộ công ty | Đóng lỗ hổng khi máy bị trộm; tránh thiết bị lạ ngoài văn phòng |
@@ -303,7 +303,7 @@ mức độ ưu tiên. Bấm vào module nào thì vào module đó — nhưng k
 | Q7 | Quota: WFH 2/tuần, bổ sung công 5/tháng, đi muộn 2/tháng | ✅ | ✅ |
 | Q7 | Rule áp dụng chung, không phân biệt nhóm/chức vụ | **Chỉ áp dụng toàn công ty (global)** — không ghi đè theo nhóm/chức danh | ✅ |
 | Q7 | Đơn cần HR duyệt thêm: Team CA + Mobile | Rule `hr_approval` — chỉ cho đi muộn / bổ sung công / WFH; **nghỉ phép không chuyển HR** | ✅ |
-| Q7 | Đăng nhập bằng tài khoản Google của công ty | OAuth Google (@act.vn) · **vai trò tự xác định từ tài khoản — không chọn vai trò** · fallback demo account | ✅ |
+| Q7 | Đăng nhập bằng tài khoản Google của công ty | **Đã đổi 19/11/2026 → tài khoản nội bộ (Non-SSO)**: HR cấp tài khoản → email kích hoạt → bắt buộc đổi mật khẩu → đăng ký khuôn mặt; **vai trò tự xác định — không chọn vai trò** | ✅ |
 
 ### Bài toán 2 — OKR (Mục 4)
 

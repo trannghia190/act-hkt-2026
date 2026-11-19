@@ -31,12 +31,12 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 | Dịch Vụ (Service) | Công Nghệ | Cổng (Port) | Trạng Thái | Vai Trò & Trách Nhiệm |
 | :--- | :--- | :--- | :---: | :--- |
-| **Frontend UI** | React 18, Vite, TS, TailwindCSS | `3000` | 🟢 HEALTHY | Giao diện Responsive Mobile-First, Sidebar drawer, Bottom Navigation, PWA ready |
+| **Frontend UI** | React 18, Vite, TS, TailwindCSS | `3000` | 🟢 HEALTHY | Giao diện web responsive (không có app/PWA riêng), Sidebar drawer, Bottom Navigation |
 | **Core Service** | Java 21, Spring Boot 3.3.4 | `8080` | 🟢 HEALTHY | Chấm công, nghỉ phép, OKR, phân quyền RBAC, tích hợp Gmail SMTP thật |
 | **AI Face Service** | Python 3.11, FastAPI, OpenCV | `8000` | 🟢 HEALTHY | Kiểm tra chất lượng ảnh, trích xuất 512D Vector HOG, so khớp 1:N khuôn mặt |
 | **PostgreSQL DB** | PostgreSQL 16 + pgvector | `5432` | 🟢 HEALTHY | CSDL quan hệ chính & lưu trữ vector sinh trắc học |
-| **Redis Cache** | Redis 7 Alpine | `16379` | 🟢 HEALTHY | Cache phiên làm việc, giới hạn Brute-force đăng nhập 15 phút |
-| **Keycloak IAM** | Keycloak 24.0 Quarkus | `8180` | 🟢 HEALTHY | Single Sign-On (SSO) & Quản lý danh tính OAuth2/OIDC |
+| **Redis Cache** | Redis 7 Alpine | `16379` | 🟢 HEALTHY | Cache phiên làm việc, giới hạn Brute-force đăng nhập 10 phút |
+
 
 ### 2.2. Thống Kê Mức Độ Sẵn Sàng Tính Năng (Feature Readiness)
 
@@ -67,9 +67,9 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 - **Triệt Tiêu Trùng Lặp Menu Giữa Các Phân Hệ**:
   - Không còn hiện tượng các menu quản trị tổ chức, nhân sự, quy định bị lặp lại ở cả Chấm công và Hệ thống.
   - Mỗi phân hệ độc lập hoàn toàn về mặt ngữ cảnh:
-    - **Chấm Công**: 10 mục (Chấm công, Lịch công, Bảng công của tôi, Đơn từ, Số dư phép, Duyệt đơn, Lịch nhóm, Bảng công 45 cột, Sổ cái phép).
-    - **OKR**: 8 mục (Dashboard, Thiết lập/Check-in, Đánh giá 4 Box, Duyệt OKR nhóm, Review giữa năm, Team Board, Calibration, Bảng tổng hợp HR).
-    - **Hệ Thống**: 8 mục (Quản lý nhân viên/tài khoản, Sơ đồ tổ chức/phòng ban, Ca trực & nghỉ lễ, Ủy quyền, Đăng ký khuôn mặt 3 góc, Rule Engine 19 quy định, Tra cứu nội quy, Nhật ký audit).
+    - **Chấm Công**: 10 mục (Chấm công, Lịch công, Bảng công của tôi, Đơn từ, Số dư phép, Duyệt đơn, Lịch nhóm, Bảng công 53 cột, Sổ cái phép).
+    - **OKR**: 8 mục (Dashboard, Thiết lập/Check-in, Đánh giá 4 Box, Duyệt OKR nhóm, Review giữa năm, Team Board, báo cáo điểm, Bảng tổng hợp HR).
+    - **Hệ Thống**: 8 mục (Quản lý nhân viên/tài khoản, Sơ đồ tổ chức/nhóm lồng nhau, Ca trực & nghỉ lễ, Đăng ký khuôn mặt 3 góc, Rule Engine 19 quy định, Tra cứu nội quy, Nhật ký audit).
 - **Phân Quyền Hiển Thị Menu Động (Role-Based Dynamic Menu)**:
   - Menu tự động lọc theo quyền của người dùng đăng nhập (`ADMIN`, `HR_ADMIN`, `MANAGER`, `EMPLOYEE`).
   - Nhân viên thông thường chỉ thấy các chức năng thuộc về cá nhân mình. Khi dùng role switcher trên Header chuyển sang Manager/HR/Admin, danh mục mở rộng tự động theo đúng quyền hạn mà không cần tải lại trang.
@@ -77,7 +77,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
   - **S14 - Lịch trực quan nhóm**: Ma trận lịch làm việc tại văn phòng/WFH/phép của cả đội ngũ.
   - **S11 - Bảng công của tôi**: Theo dõi chi tiết từng ngày công, OT 150%, quota đi muộn cá nhân.
   - **S34 - Sổ cái biến động phép toàn công ty**: Màn hình quản trị cho HR Admin điều chỉnh và tra cứu biến động ngày phép của toàn bộ nhân viên.
-  - **S42 - Duyệt mục tiêu OKR nhóm**: Phê duyệt riêng bộ mục tiêu OKR và KRs trọng số 100% của nhân viên.
+  - **S42 - Duyệt mục tiêu OKR nhóm**: Phê duyệt bộ mục tiêu OKR 2 nhóm Business/People (không trọng số KR).
   - **S43 - Review & Coaching giữa năm**: Ghi nhận biên bản 1-on-1 coaching giữa năm.
 
 ### [2026-11-18] — Bản Cập Nhật v2.1.1 (Tinh Gọn Điều Hướng Mặc Định)
@@ -117,7 +117,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
    - `TeamSchedulePage.tsx` (S14): Quản lý ma trận phân bổ nhân sự tuần/tháng.
    - `MyTimesheetPage.tsx` (S11): Bảng tổng hợp công, OT, quota đi muộn cá nhân.
    - `AdminLeaveLedgerPage.tsx` (S34): Sổ cái biến động phép toàn doanh nghiệp với tính năng điều chỉnh số dư phép.
-   - `OKRApprovalsPage.tsx` (S42): Màn hình phê duyệt riêng cho mục tiêu OKR và KRs trọng số 100%.
+   - `OKRApprovalsPage.tsx` (S42): Màn hình phê duyệt mục tiêu OKR 2 nhóm, không trọng số.
    - `MidYearReviewPage.tsx` (S43): Biên bản đối thoại và coaching giữa năm.
 4. **Nâng Cấp Command Palette (Ctrl+K)**:
    - Cập nhật 22 action phím tắt toàn hệ thống, trỏ chính xác về các canonical routes chuẩn hóa.
@@ -146,7 +146,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 | STT | Mã Màn Hình | Tên Tính Năng | Trạng Thái | Hướng Dẫn Test Nhanh |
 | :-: | :--- | :--- | :-: | :--- |
-| 1 | `[S01]` | Đăng nhập tài khoản nội bộ & Khóa brute-force 15p | 🟢 Ready for Test | Đăng nhập `Admin/Admin` hoặc thử nhập sai 5 lần |
+| 1 | `[S01]` | Đăng nhập tài khoản nội bộ & Khóa brute-force 10 phút | 🟢 Ready for Test | Đăng nhập `Admin/Admin` hoặc thử nhập sai 5 lần |
 | 2 | `[S01-A]` | Bắt buộc đổi mật khẩu lần đầu (Force Password Change) | 🟢 Ready for Test | Popup tự động bật khi tài khoản có cờ `mustChangePassword` |
 | 3 | `[S01-B]` | Đăng ký mẫu khuôn mặt 3 góc (Face Enrollment Wizard) | 🟢 Ready for Test | Truy cập `/auth/enroll-face`, chụp 3 góc mặt webcam |
 | 4 | `[S40.1]` | HR tạo nhân viên đơn lẻ & gửi email kích hoạt Gmail | 🟢 Ready for Test | Vào `/admin/employees`, bấm `+ Thêm nhân viên`, nhập Gmail thật |
@@ -156,12 +156,10 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 | 8 | `[S02]` | Màn hình trung tâm Todo Inbox (3 mức ưu tiên) | 🟢 Ready for Test | Vào `/todo`, xem danh sách P0, P1, P2 |
 | 9 | `[S03]` | Thanh tìm kiếm toàn năng Command Palette (Ctrl+K) | 🟢 Ready for Test | Bấm `Ctrl+K` hoặc nút tìm kiếm trên Header |
 | 10 | `[S04/S04m]` | Trung tâm thông báo đa kênh & Gộp chống spam | 🟢 Ready for Test | Bấm biểu tượng thông báo và xem toast popup |
-| 11 | `[S37]` | Thiết lập ủy quyền phê duyệt khi đi vắng | 🟢 Ready for Test | Vào `/admin/delegations`, tạo mới ủy quyền |
 | 12 | `[S16/S17]` | Trình cấu hình 19 quy định bằng Form (Rule Builder) | 🟢 Ready for Test | Vào `/attendance/rules`, chỉnh sửa tham số quy định |
-| 13 | `[S18.1]` | Quản lý phiên bản quy định & Hoàn tác 1-chạm | 🟢 Ready for Test | Xem lịch sử phiên bản và bấm `Hoàn tác` |
-| 14 | `[S18.2]` | Giả lập chạy thử quy định mới (Dry-Run Simulator) | 🟢 Ready for Test | Bấm nút `Chạy Thử (Dry-Run)` trong trang Rule Engine |
+| 13 | `[S17]` | Lịch sử phiên bản quy định & Hoàn tác 1-chạm | 🟢 Ready for Test | Xem lịch sử phiên bản ngay trong màn cấu hình và bấm `Hoàn tác` |
 | 15 | `[S19]` | Trang tra cứu nội quy tự động cho nhân viên | 🟢 Ready for Test | Vào `/attendance/policy-doc` |
-| 16 | `[S41]` | Cây sơ đồ tổ chức & Quản lý phân cấp nhóm | 🟢 Ready for Test | Vào `/admin/org-tree`, thêm/sửa/xóa phòng ban & nhóm |
+| 16 | `[S41]` | Cây sơ đồ tổ chức & Quản lý phân cấp nhóm | 🟢 Ready for Test | Vào `/admin/org-tree`, thêm/sửa/xóa nhóm lồng nhau |
 | 17 | `[S26]` | Quản lý ca làm việc & Lịch nghỉ lễ theo năm | 🟢 Ready for Test | Vào `/admin/shifts`, thêm ca làm & ngày lễ |
 | 18 | `[S35]` | Nhật ký thay đổi tập trung & Kiểm toán hệ thống | 🟢 Ready for Test | Vào `/admin/audit-logs`, lọc theo loại hành động, xuất CSV |
 
@@ -195,12 +193,12 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 | 22 | `[S09.2]` | Cơ chế ứng trước phép năm (Leave Advance Max 3 ngày) | 🟢 Ready for Test | Cho phép số dư khả dụng âm đến -3 |
 | 23 | `[S09.3]` | Luật dọn phép tồn (Mốc 01/04 & 01/07) & Cảnh báo | 🟢 Ready for Test | Hiển thị hạn dùng phép tồn năm cũ |
 | 24 | `[S34]` | Sổ cái biến động phép (Leave Ledger Audit Trail) | 🟢 Ready for Test | Tab Sổ cái phép tại `/attendance/leave-ledger` |
-| 25 | `[S15.1]` | Lưới bảng chấm công 45 cột chuẩn mẫu Excel ACT | 🟢 Ready for Test | Màn hình `/attendance/timesheet` |
+| 25 | `[S15.1]` | Lưới bảng chấm công 53 cột chuẩn mẫu Excel ACT | 🟢 Ready for Test | Màn hình `/attendance/timesheet` |
 | 26 | `[S15.2]` | Sửa trực tiếp trên ô (In-Place Edit) & Bắt buộc Audit | 🟢 Ready for Test | Click đúp chuột vào ô bảng công để sửa |
-| 27 | `[S15.3]` | Bộ máy tính tự động 19 cột chỉ số tổng hợp | 🟢 Ready for Test | Tự động cộng giờ công, làm thêm, phạt muộn |
+| 27 | `[S15.3]` | Bộ máy tính tự động 17 cột chỉ số tổng hợp | 🟢 Ready for Test | Tự động cộng giờ công, làm thêm, phạt muộn |
 | 28 | `[S11/S33]`| Quy trình nhân viên khiếu nại bảng công (Hạn 2 ngày) | 🟢 Ready for Test | Nút khiếu nại tại `/attendance/my-timesheet` |
 | 29 | `[S15.4]` | Khóa bảng công (Lock Timesheet) & Xử lý đơn trễ | 🟢 Ready for Test | Nút Khóa bảng công dành cho HR Lead |
-| 30 | `[S15.5]` | Xuất file Excel chuẩn 45 cột tương thích phần mềm lương | 🟢 Ready for Test | Xuất file Excel/CSV UTF-8 BOM chuẩn |
+| 30 | `[S15.5]` | Xuất file Excel chuẩn 53 cột tương thích phần mềm lương | 🟢 Ready for Test | Xuất file Excel/CSV UTF-8 BOM chuẩn |
 
 ---
 
@@ -214,10 +212,10 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 | 4 | `[S22]` | Check-in tiến độ định kỳ (Hàng tháng / Quý) | 🟢 Ready for Test | Cập nhật thanh trượt % tiến độ tại `/okr/my-okr` |
 | 5 | `[S43]` | Quản lý Review & Coaching giữa năm (Mid-Year) | 🟢 Ready for Test | Màn hình `/okr/mid-year-review` |
 | 6 | `[S23.1]` | Form đánh giá cuối năm 4 Box (Chuẩn Ascend/ACT) | 🟢 Ready for Test | Màn hình `/okr/assessment` |
-| 7 | `[S23.2]` | Quy tắc chấm điểm 1-5 nguyên & Tự tính điểm TB | 🟢 Ready for Test | Chọn điểm nguyên 1-5, tự tính điểm trọng số |
+| 7 | `[S23.2]` | Quy tắc chấm điểm 1-5 nguyên & Tự tính điểm TB | 🟢 Ready for Test | Chọn điểm nguyên 1-5, tự tính điểm trung bình 2 nhóm |
 | 8 | `[S23.3]` | Quy trình đánh giá cuối năm 5 bước | 🟢 Ready for Test | Thanh Stepper 5 bước tự động chuyển trạng thái |
 | 9 | `[S25]` | Báo cáo tổng hợp OKR 9 trường & Xuất Excel HR | 🟢 Ready for Test | Màn hình `/okr/summary-report`, xuất file Excel |
-| 10 | `[S24]` | Bảng so sánh cả nhóm & Cân chuẩn (Calibration) | 🟢 Ready for Test | Màn hình `/okr/calibration`, chuẩn đường cong Bell Curve |
+| 10 | `[S24]` | Bảng so sánh review cả nhóm & điểm 1–5 | 🟢 Ready for Test | Màn hình `/okr/team-review`, không xếp loại/không bell curve |
 | 11 | `[S46]` | Bảng theo dõi tiến độ OKR nhóm (Team Board) | 🟢 Ready for Test | Màn hình `/okr/team-board` theo dõi Kanban nhóm |
 
 ---

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, PRESET_USERS } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
 import { ActHktLogo } from '../../components/common/ActHktLogo';
 
 export const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState('Admin');
-  const [password, setPassword] = useState('Admin');
+  const [username, setUsername] = useState('136ACT');
+  const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
 
-  const { login, loginAsPreset } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,18 +27,13 @@ export const LoginPage: React.FC = () => {
       if (success) {
         navigate('/todo');
       } else {
-        setError('Tài khoản hoặc mật khẩu không chính xác. Mặc định là Admin/Admin');
+        setError('Tài khoản hoặc mật khẩu không chính xác.');
       }
     } catch (err: any) {
       setError(err?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (key: keyof typeof PRESET_USERS) => {
-    loginAsPreset(key);
-    navigate('/todo');
   };
 
   const handleSendReset = async (e: React.FormEvent) => {
@@ -76,7 +71,7 @@ export const LoginPage: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-ink">Đăng nhập tài khoản</h2>
             <p className="text-xs text-ink-secondary mt-0.5">
-              Sử dụng tài khoản Quản trị <code className="font-mono font-bold text-accent">Admin / Admin</code> hoặc tài khoản nhân sự
+              Dùng tài khoản công ty do HR cấp (demo: <code className="font-mono font-bold text-accent">136ACT / 123456</code>)
             </p>
           </div>
 
@@ -133,47 +128,6 @@ export const LoginPage: React.FC = () => {
               {loading ? 'Đang xác thực...' : 'Đăng Nhập Vào Hệ Thống'}
             </Button>
           </form>
-
-          {/* Quick Demo Accounts */}
-          <div className="pt-4 border-t border-line space-y-2.5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-ink-muted text-center">
-              ⚡ Đăng nhập nhanh để test phân quyền (1-Click Login)
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin')}
-                className="p-2 rounded-lg border border-line bg-canvas hover:border-accent hover:bg-surface text-left transition-all"
-              >
-                <div className="font-bold text-accent">👑 Admin (Toàn quyền)</div>
-                <div className="text-[10px] text-ink-muted">Admin / Admin</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('hr')}
-                className="p-2 rounded-lg border border-line bg-canvas hover:border-accent hover:bg-surface text-left transition-all"
-              >
-                <div className="font-bold text-ink">📋 HR Admin (Nhân sự)</div>
-                <div className="text-[10px] text-ink-muted">01HR / Admin</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('manager')}
-                className="p-2 rounded-lg border border-line bg-canvas hover:border-accent hover:bg-surface text-left transition-all"
-              >
-                <div className="font-bold text-ink">👔 Manager (Quản lý)</div>
-                <div className="text-[10px] text-ink-muted">05ACT / Admin</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('employee')}
-                className="p-2 rounded-lg border border-line bg-canvas hover:border-accent hover:bg-surface text-left transition-all"
-              >
-                <div className="font-bold text-ink">💻 Employee (Nhân viên)</div>
-                <div className="text-[10px] text-ink-muted">136ACT / Admin</div>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}
