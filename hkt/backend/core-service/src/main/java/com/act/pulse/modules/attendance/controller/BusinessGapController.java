@@ -8,6 +8,10 @@ import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.entity.AuditLog;
+import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.auth.entity.User;
+import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +33,8 @@ public class BusinessGapController {
     private final AttendanceLogRepository attendanceLogRepository;
     private final DeviceRegistrationRepository deviceRegistrationRepository;
     private final AuditLogRepository auditLogRepository;
+    private final RequestRepository requestRepository;
+    private final UserRepository userRepository;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -38,10 +44,101 @@ public class BusinessGapController {
         return ApiResponse.ok(attendanceLogRepository.findByUserIdOrderByWorkDateDesc(userId), "Bảng công của tôi");
     }
 
+    /**
+     * S14 — Lịch nhóm: WFH / nghỉ phép / đi muộn / công đủ theo ngày, kèm cảnh báo xung đột.
+     * Phân quyền xem: HR/ADMIN xem toàn công ty; MANAGER xem cấp dưới trực tiếp; còn lại xem nhóm mình.
+     */
     @GetMapping("/attendance/team-schedule")
-    @Operation(summary = "Lịch nhóm (S14)")
-    public ApiResponse<List<AttendanceLog>> teamSchedule(@RequestParam(required = false) String month) {
-        return ApiResponse.ok(attendanceLogRepository.findAll(), "Lịch nhóm");
+    @Operation(summary = "Lịch nhóm (S14) — phân quyền 4 tầng + cảnh báo xung đột")
+    public ApiResponse<Map<String, Object>> teamSchedule(@RequestParam(required = false) String month,
+                                                         @RequestParam(required = false) String scope) {
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        List<User> visible;
+        String scopeLabel;
+        if ("HR_ADMIN".equals(role) || "ADMIN".equals(role)) {
+            visible = userRepository.findAll();
+            scopeLabel = "HR — toàn công ty";
+        } else {
+            User self = userRepository.findById(me).orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+            if ("MANAGER".equals(role)) {
+                List<User> team = self.getTeamId() == null ? List.of() : userRepository.findByTeamId(self.getTeamId());
+                java.util.Set<UUID> direct = new java.util.HashSet<>();
+                direct.add(me);
+                for (User u : userRepository.findAll()) {
+                    if (me.equals(u.getManagerId())) direct.add(u.getId());
+                }
+                java.util.List<User> result = new java.util.ArrayList<>();
+                for (User u : userRepository.findAll()) {
+                    if (direct.contains(u.getId()) || team.stream().anyMatch(x -> x.getId().equals(u.getId()))) result.add(u);
+                }
+                visible = result;
+                scopeLabel = "Quản lý — cấp dưới trực tiếp & nhóm";
+            } else {
+                visible = self.getTeamId() == null ? List.of(self) : userRepository.findByTeamId(self.getTeamId());
+                scopeLabel = "Thành viên — nhóm của mình";
+            }
+        }
+        if (visible.isEmpty()) visible = List.of();
+
+        java.util.Set<UUID> ids = new java.util.HashSet<>();
+        visible.forEach(u -> ids.add(u.getId()));
+        java.util.Map<UUID, User> byId = new java.util.HashMap<>();
+        visible.forEach(u -> byId.put(u.getId(), u));
+
+        // Dữ liệu đơn đã duyệt trong tháng (mặc định tháng hiện tại)
+        String ym = (month == null || month.isBlank()) ? java.time.YearMonth.now().toString() : month;
+        java.time.YearMonth targetMonth = java.time.YearMonth.parse(ym);
+
+        List<Map<String, Object>> days = new java.util.ArrayList<>();
+        java.util.List<Map<String, Object>> conflicts = new java.util.ArrayList<>();
+        int teamSize = visible.size();
+
+        for (int d = 1; d <= targetMonth.lengthOfMonth(); d++) {
+            java.time.LocalDate day = targetMonth.atDay(d);
+            List<Map<String, Object>> entries = new java.util.ArrayList<>();
+            int wfh = 0, leave = 0, late = 0, present = 0;
+            for (User u : visible) {
+                String kind = null;
+                for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
+                    if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !day.equals(r.getWorkDate())) continue;
+                    if ("WFH".equals(r.getRequestType())) kind = "WFH";
+                    else if ("LEAVE".equals(r.getRequestType())) kind = "LEAVE";
+                    else if ("LATE_EARLY".equals(r.getRequestType())) kind = "LATE";
+                    if (kind != null) break;
+                }
+                if (kind == null) {
+                    kind = "PRESENT";
+                    present++;
+                } else if ("WFH".equals(kind)) wfh++;
+                else if ("LEAVE".equals(kind)) leave++;
+                else late++;
+                entries.add(Map.of("employeeCode", u.getEmployeeCode(), "fullName", u.getFullName(), "kind", kind));
+            }
+            Map<String, Object> row = new java.util.HashMap<>();
+            row.put("date", day.toString());
+            row.put("wfh", wfh);
+            row.put("leave", leave);
+            row.put("late", late);
+            row.put("present", present);
+            row.put("teamSize", teamSize);
+            row.put("entries", entries);
+            days.add(row);
+            if (teamSize >= 3 && (wfh + leave) * 100 >= teamSize * 60) {
+                conflicts.add(Map.of("date", day.toString(),
+                        "message", String.format("%s: %d/%d người vắng (WFH %d + nghỉ %d) — đội sẽ thiếu người",
+                                day, wfh + leave, teamSize, wfh, leave)));
+            }
+        }
+
+        Map<String, Object> out = new java.util.HashMap<>();
+        out.put("month", ym);
+        out.put("scope", scopeLabel);
+        out.put("teamSize", teamSize);
+        out.put("days", days);
+        out.put("conflicts", conflicts);
+        out.put("conflictThresholdPercent", 60);
+        return ApiResponse.ok(out, "Lịch nhóm");
     }
 
     @GetMapping("/okr/dashboard")

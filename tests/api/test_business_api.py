@@ -54,6 +54,15 @@ rules = data.get("data") or []
 check("GET /rules trả 19 rule", status == 200 and len(rules) == 19, f"got {len(rules)}")
 check("rule có ruleKey/currentValue", all(r.get("ruleKey") and r.get("currentValue") for r in rules))
 
+# 2b. Refresh token → access token mới + phiên cũ bị xoay vòng
+_, login2 = call("POST", "/auth/login", {"employeeCodeOrEmail": "136ACT", "password": "123456"}, token=False)
+rt = (login2.get("data") or {}).get("refreshToken")
+status, refreshed = call("POST", "/auth/refresh", {"refreshToken": rt}, token=False)
+new_access = (refreshed.get("data") or {}).get("accessToken")
+check("refresh trả access token", status == 200 and bool(new_access) and new_access.count(".") == 2)
+status, _ = call("POST", "/auth/refresh", {"refreshToken": rt}, token=False, expect=400)
+check("refresh token cũ bị thu hồi (xoay vòng)", status == 400)
+
 # 3. Loại nghỉ >= 8 + có tham số
 status, data = call("GET", "/leave-types")
 types = data.get("data") or []
@@ -124,6 +133,14 @@ check("GET /admin/holidays", status == 200 and isinstance(data.get("data"), list
 # 8. Bảng phép
 status, data = call("GET", "/leaves/table")
 check("GET /leaves/table", status == 200 and isinstance(data.get("data"), list))
+
+# 8b. Lịch nhóm (S14) — phân quyền + cấu trúc ngày + cảnh báo xung đột
+status, data = call("GET", "/attendance/team-schedule")
+tdata = data.get("data") or {}
+check("GET /attendance/team-schedule", status == 200 and isinstance(tdata.get("days"), list) and tdata.get("days"))
+check("lịch nhóm có scope + teamSize", "scope" in tdata and tdata.get("teamSize") is not None)
+check("mỗi ngày có present/wfh/leave/late", all(all(k in d for k in ("present", "wfh", "leave", "late")) for d in (tdata.get("days") or [])))
+check("có ngưỡng cảnh báo 60%", tdata.get("conflictThresholdPercent") == 60)
 
 # 9. Khiếu nại
 status, data = call("GET", "/disputes")
