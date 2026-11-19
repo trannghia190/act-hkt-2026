@@ -28,6 +28,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
+    private static final String AI_SERVICE_DOCKER_SERVICE_URL = "http://ai-face-service:8000/api/v1/face/verify-json";
     private static final String AI_SERVICE_DOCKER_URL = "http://pulse-ai-face-service:8000/api/v1/face/verify-json";
     private static final String AI_SERVICE_LOCAL_URL = "http://localhost:8000/api/v1/face/verify-json";
 
@@ -161,7 +162,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private JsonNode callAiFaceService(String base64Image, String expectedEmployeeCode) {
-        String[] targets = {AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL};
+        String[] targets = {AI_SERVICE_DOCKER_SERVICE_URL, AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL};
         Map<String, String> body = new HashMap<>();
         body.put("image", base64Image);
         // Do not force expected_code so AI performs true unbiased 1:N search across all enrolled employees
