@@ -7,6 +7,8 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.DeviceRegistration;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
+import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.service.AttendanceService;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
@@ -51,6 +53,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final RuleService ruleService;
     private final FaceProfileRepository faceProfileRepository;
     private final UserRepository userRepository;
+    private final ShiftRepository shiftRepository;
+    private final RequestRepository requestRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -139,7 +143,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         // ── Lớp 2 · MẠNG NỘI BỘ ───────────────────────────────────────────
         boolean requireNetwork = ruleService.getBoolean("attendance_security", "require_internal_network", true);
         boolean inOfficeNetwork = isOfficeNetwork(request.getWifiBssid());
-        boolean networkPassed = !requireNetwork || inOfficeNetwork;
+        boolean wfhToday = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .anyMatch(r -> "WFH".equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
+                        && LocalDate.now().equals(r.getWorkDate()));
+        boolean networkPassed = !requireNetwork || inOfficeNetwork || wfhToday;
         layers.add(layer("NETWORK", "Trong mạng nội bộ công ty", networkPassed,
                 networkPassed ? null : "Bạn đang ngoài mạng công ty — hãy nối Wi-Fi văn phòng"));
 
@@ -152,7 +159,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (request.getLatitude() != null && request.getLongitude() != null) {
             distance = haversineMeters(request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
                     OFFICE_LAT, OFFICE_LNG);
-            if (distance > geofenceRadius) {
+            if (distance > geofenceRadius && !wfhToday) {
                 gpsPassed = false;
                 gpsDetail = String.format("Bạn đang %,.0f km so với văn phòng (bán kính cho phép %dm)",
                         distance / 1000.0, geofenceRadius);
@@ -160,10 +167,33 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
         layers.add(layer("GPS", "Trong bán kính văn phòng", gpsPassed, gpsDetail));
 
-        // ── Lớp 4 · CA LÀM VIỆC ───────────────────────────────────────────
-        boolean hasShift = ruleService.exists("shift") || ruleService.exists("shift_times");
-        layers.add(layer("SHIFT", "Đúng ca làm việc", hasShift,
-                hasShift ? null : "Hôm nay bạn không có ca làm việc"));
+        // ── Lớp 4 · CA LÀM VIỆC: áp ca được gán cho user ──────────────────
+        boolean shiftPassed = true;
+        String shiftDetail = null;
+        if (requester.getShiftId() != null) {
+            var shiftOpt = shiftRepository.findById(requester.getShiftId());
+            if (shiftOpt.isEmpty()) {
+                shiftPassed = false;
+                shiftDetail = "Ca làm việc được gán không còn tồn tại — liên hệ HR";
+            } else {
+                var shift = shiftOpt.get();
+                java.time.LocalTime nowTime = java.time.LocalTime.now();
+                boolean inWindow = !nowTime.isBefore(shift.getCheckInStart()) && !nowTime.isAfter(shift.getCheckOutEnd());
+                if (Boolean.TRUE.equals(shift.getIsFlexible())) {
+                    inWindow = !nowTime.isBefore(shift.getFlexibleCheckinFrom() != null ? shift.getFlexibleCheckinFrom() : shift.getCheckInStart())
+                            && !nowTime.isAfter(shift.getFlexibleCheckoutTo() != null ? shift.getFlexibleCheckoutTo() : shift.getCheckOutEnd());
+                }
+                if (!inWindow) {
+                    shiftPassed = false;
+                    shiftDetail = String.format("Ngoài khung giờ ca %s (%s–%s)", shift.getName(), shift.getCheckInStart(), shift.getCheckOutEnd());
+                }
+            }
+        } else {
+            boolean hasShift = ruleService.exists("shift") || ruleService.exists("shift_times");
+            shiftPassed = hasShift;
+            shiftDetail = hasShift ? null : "Hôm nay bạn không có ca làm việc";
+        }
+        layers.add(layer("SHIFT", "Đúng ca làm việc", shiftPassed, shiftDetail));
 
         // ── Lớp 5 · KHUÔN MẶT (bắt buộc) ─────────────────────────────────
         boolean requireFace = ruleService.getBoolean("attendance_security", "require_face_verification", true);

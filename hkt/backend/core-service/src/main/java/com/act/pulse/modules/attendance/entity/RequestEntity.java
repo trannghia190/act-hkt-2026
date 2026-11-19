@@ -2,6 +2,8 @@ package com.act.pulse.modules.attendance.entity;
 
 import com.act.pulse.common.entity.BaseEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -19,8 +21,10 @@ public class RequestEntity extends BaseEntity {
     @Column(name = "leave_type", length = 20)
     private String leaveType;
     @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
     @Column(name = "applied_parameters", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String appliedParameters;
     @Column(name = "work_date")
     private LocalDate workDate;

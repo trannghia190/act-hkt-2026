@@ -1,6 +1,13 @@
 package com.act.pulse.modules.auth.controller;
 
 import com.act.pulse.common.response.ApiResponse;
+import com.act.pulse.modules.attendance.entity.Holiday;
+import com.act.pulse.modules.attendance.entity.Shift;
+import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.repository.TeamRepository;
+import com.act.pulse.modules.auth.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.*;
@@ -12,6 +19,18 @@ import java.util.*;
 @RestController
 @Tag(name = "1. Organization Structure & Administration API", description = "Quản lý cơ cấu nhóm lồng nhau, cây tổ chức, nhân viên, phân quyền RBAC và Audit Trail")
 public class OrgStructureController {
+
+    @Autowired
+    private ShiftRepository shiftRepository;
+
+    @Autowired
+    private HolidayRepository holidayRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Data
     @Builder
@@ -235,16 +254,9 @@ public class OrgStructureController {
     }
 
     @GetMapping("/admin/holidays")
-    @Operation(summary = "Lịch ngày nghỉ Lễ Tết Việt Nam 2026 & Ca trực (S35)")
-    public ApiResponse<List<Map<String, Object>>> getHolidays() {
-        List<Map<String, Object>> holidays = List.of(
-                Map.of("name", "Tết Dương Lịch 2026", "date", "2026-01-01", "isPaid", true),
-                Map.of("name", "Tết Nguyên Đán Bính Ngọ", "startDate", "2026-02-16", "endDate", "2026-02-20", "days", 5, "isPaid", true),
-                Map.of("name", "Giỗ Tổ Hùng Vương", "date", "2026-04-26", "isPaid", true),
-                Map.of("name", "Ngày Giải Phóng & Quốc Tế Lao Động", "startDate", "2026-04-30", "endDate", "2026-05-01", "days", 2, "isPaid", true),
-                Map.of("name", "Quốc Khánh 2/9", "startDate", "2026-09-01", "endDate", "2026-09-02", "days", 2, "isPaid", true)
-        );
-        return ApiResponse.ok(holidays, "Lấy lịch nghỉ lễ năm 2026 thành công");
+    @Operation(summary = "Lịch ngày nghỉ lễ (S26)")
+    public ApiResponse<List<Holiday>> getHolidays() {
+        return ApiResponse.ok(holidayRepository.findAllByOrderByHolidayDateAsc(), "Lấy lịch nghỉ lễ thành công");
     }
 
     @PostMapping("/admin/delegations")
@@ -258,9 +270,13 @@ public class OrgStructureController {
     }
 
     @PostMapping("/admin/holidays")
-    @Operation(summary = "Thêm mới ngày nghỉ lễ (CORE-CAL-01)")
-    public ApiResponse<Boolean> addHoliday(@RequestBody Map<String, Object> req) {
-        return ApiResponse.ok(true, "Thêm mới ngày lễ thành công");
+    @Operation(summary = "Thêm ngày nghỉ lễ — không cần sửa code")
+    public ApiResponse<Holiday> addHoliday(@RequestBody Holiday holiday) {
+        if (holiday.getHolidayDate() == null) throw new RuntimeException("Thiếu ngày nghỉ lễ");
+        if (holidayRepository.existsByHolidayDate(holiday.getHolidayDate())) {
+            throw new RuntimeException("Ngày lễ này đã tồn tại");
+        }
+        return ApiResponse.ok(holidayRepository.save(holiday), "Thêm ngày lễ thành công");
     }
 
     @GetMapping("/admin/users/import-template")
@@ -336,12 +352,56 @@ public class OrgStructureController {
     }
 
     @GetMapping("/admin/shifts")
-    @Operation(summary = "Danh sách ca làm việc chuẩn & ca linh hoạt (CORE-CAL-02)")
-    public ApiResponse<List<Map<String, Object>>> getShifts() {
-        return ApiResponse.ok(List.of(
-                Map.of("id", "c0000000-0000-0000-0000-000000000001", "code", "SHIFT_STANDARD", "name", "Ca Chuẩn Văn Phòng", "checkInStart", "08:00:00", "checkInEnd", "09:30:00", "checkOutStart", "17:00:00", "checkOutEnd", "18:30:00", "requiredWorkHours", 8.00),
-                Map.of("id", "c0000000-0000-0000-0000-000000000002", "code", "SHIFT_MATERNITY", "name", "Ca Con Nhỏ < 12 Tháng", "checkInStart", "08:30:00", "checkInEnd", "09:30:00", "checkOutStart", "16:30:00", "checkOutEnd", "17:30:00", "requiredWorkHours", 7.00)
-        ), "Lấy danh sách ca làm việc thành công");
+    @Operation(summary = "Danh sách ca làm việc (S26)")
+    public ApiResponse<List<Shift>> getShifts() {
+        return ApiResponse.ok(shiftRepository.findAll(), "Lấy danh sách ca làm việc thành công");
+    }
+
+    @PostMapping("/admin/shifts")
+    @Operation(summary = "Thêm ca làm việc / ca linh hoạt")
+    public ApiResponse<Shift> createShift(@RequestBody Shift shift) {
+        if (shift.getCode() == null || shift.getCode().isBlank()) throw new RuntimeException("Thiếu mã ca");
+        if (shiftRepository.findByCode(shift.getCode()).isPresent()) throw new RuntimeException("Mã ca đã tồn tại");
+        return ApiResponse.ok(shiftRepository.save(shift), "Đã thêm ca làm việc");
+    }
+
+    @PutMapping("/admin/shifts/{code}")
+    @Operation(summary = "Sửa ca làm việc")
+    public ApiResponse<Shift> updateShift(@PathVariable String code, @RequestBody Shift payload) {
+        Shift shift = shiftRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
+        payload.setId(shift.getId());
+        payload.setCode(shift.getCode());
+        payload.setUpdatedAt(LocalDateTime.now());
+        return ApiResponse.ok(shiftRepository.save(payload), "Đã cập nhật ca làm việc");
+    }
+
+    @PostMapping("/admin/shifts/{code}/assign")
+    @Operation(summary = "Áp ca cho nhóm/chức danh theo cấu hình target của ca")
+    public ApiResponse<Map<String, Object>> assignShift(@PathVariable String code) {
+        Shift shift = shiftRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
+        int assigned = 0;
+        if (shift.getTargetPosition() != null && !shift.getTargetPosition().isBlank()) {
+            for (var user : userRepository.findByPositionName(shift.getTargetPosition().trim())) {
+                user.setShiftId(shift.getId());
+                userRepository.save(user);
+                assigned++;
+            }
+        }
+        if (shift.getTargetGroup() != null && !shift.getTargetGroup().isBlank()) {
+            for (String groupName : shift.getTargetGroup().split(",")) {
+                var teamOpt = teamRepository.findByName(groupName.trim());
+                if (teamOpt.isPresent()) {
+                    for (var user : userRepository.findByTeamId(teamOpt.get().getId())) {
+                        user.setShiftId(shift.getId());
+                        userRepository.save(user);
+                        assigned++;
+                    }
+                }
+            }
+        }
+        return ApiResponse.ok(Map.of("assigned", assigned, "shiftCode", code), "Đã áp ca cho nhóm theo cấu hình");
     }
 
     @GetMapping("/media/preview/{fileId}")

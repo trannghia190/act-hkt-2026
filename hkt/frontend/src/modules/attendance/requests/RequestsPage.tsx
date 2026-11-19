@@ -4,16 +4,32 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
-import { getRequests, saveRequests, AttendanceRequestItem } from './requestStore';
+import { AttendanceRequestItem } from './requestStore';
 
 export const RequestsPage: React.FC = () => {
   const { user } = useAuth();
-  const [requests, setRequests] = useState<AttendanceRequestItem[]>(getRequests);
+  const [requests, setRequests] = useState<AttendanceRequestItem[]>([]);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<any>(null);
+  const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
+  const [punchLogs, setPunchLogs] = useState<any[]>([]);
+  const [repeatWeeks, setRepeatWeeks] = useState(1);
+  const [holidays, setHolidays] = useState<string[]>([]);
+  const [wfhLocation, setWfhLocation] = useState<'HOME' | 'OTHER'>('HOME');
+
+  useEffect(() => {
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch('/api/v1/leave-types', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data); }).catch(() => undefined);
+    fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => { if (j?.data) setLeaveBalance(j.data); }).catch(() => undefined);
+    fetch('/api/v1/attendance/my-timesheet', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setPunchLogs(j.data); }).catch(() => undefined);
+    fetch('/api/v1/admin/holidays', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setHolidays(j.data.map((h: any) => h.holidayDate)); }).catch(() => undefined);
+  }, []);
 
   const [newReq, setNewReq] = useState({
     type: 'LEAVE' as 'LEAVE' | 'WFH' | 'LATE_EARLY' | 'ADJUST',
@@ -24,19 +40,59 @@ export const RequestsPage: React.FC = () => {
     reason: '',
   });
 
-  useEffect(() => {
-    // Reload whenever localStorage changes
-    const handleStorage = () => {
-      setRequests(getRequests());
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  const authHeaders = (): Record<string, string> => {
+    try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }
+  };
+
+  const mapRequest = (r: any): AttendanceRequestItem => {
+    const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
+    return {
+      id: r.id,
+      requesterCode: r.employeeCode || user?.employeeCode || '',
+      requesterName: r.employeeName || user?.fullName || '',
+      requesterEmail: user?.email || '',
+      team: r.team || user?.team || '',
+      type: r.requestType,
+      typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveType}` : (typeNames[r.requestType] || r.requestType),
+      startDate: r.workDate || '',
+      endDate: r.workDate || '',
+      durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
+      reason: r.reason || '',
+      status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
+      approver: r.decisionComment || '—',
+      createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
+      approverComment: r.decisionComment || undefined,
+    } as AttendanceRequestItem;
+  };
+
+  const loadRequests = () => {
+    fetch('/api/v1/requests/my-requests', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(j => { if (Array.isArray(j?.data)) setRequests(j.data.map(mapRequest)); })
+      .catch(() => undefined);
+  };
+
+  useEffect(loadRequests, []);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
     setTimeout(() => setSuccessToast(null), 3000);
   };
+
+  const workingDays = (start: string, end: string): number => {
+    if (!start || !end || end < start) return 0;
+    const s = new Date(start + 'T00:00:00');
+    const e = new Date(end + 'T00:00:00');
+    let count = 0;
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10);
+      const day = d.getDay();
+      if (day !== 0 && day !== 6 && !holidays.includes(iso)) count += 1;
+    }
+    return count;
+  };
+
+  const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +130,7 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || 'luan.vu@act-corp.internal',
       team: user?.team || 'Sirius Core',
       type: newReq.type,
-      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'}` : typeNames[newReq.type],
+      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? 'nửa ngày' : 'cả ngày'})` : typeNames[newReq.type],
       startDate: newReq.startDate,
       endDate: newReq.endDate,
       durationText: newReq.duration,
@@ -84,9 +140,41 @@ export const RequestsPage: React.FC = () => {
       createdAt: nowStr
     };
 
-    const updated = [item, ...requests];
-    setRequests(updated);
-    saveRequests(updated);
+    const payload = JSON.stringify({
+      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc` : newReq.duration,
+      unit: newReq.type === 'LEAVE' ? leaveUnit : undefined,
+      urgent: false,
+      location_allowed: wfhLocation === 'HOME',
+    });
+    const body = {
+      type: newReq.type,
+      leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
+      payload,
+      workDate: newReq.startDate,
+      minutes: newReq.type === 'LATE_EARLY' ? (parseInt((newReq.duration || '').replace(/[^0-9]/g, ''), 10) || 0) : undefined,
+      reason: newReq.reason,
+      draft: false,
+    };
+    const weeks = newReq.type === 'WFH' ? Math.max(1, Math.min(8, repeatWeeks)) : 1;
+    (async () => {
+      try {
+        for (let i = 0; i < weeks; i += 1) {
+          const d = new Date(newReq.startDate);
+          d.setDate(d.getDate() + i * 7);
+          const iso = d.toISOString().slice(0, 10);
+          const res = await fetch('/api/v1/requests', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ ...body, workDate: iso, payload: JSON.stringify({ ...JSON.parse(body.payload), repeat_week: i + 1 }) }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
+        }
+        showToast(weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công');
+        loadRequests();
+      } catch (e: any) {
+        showToast(e?.message || 'Gửi đơn thất bại');
+      }
+    })();
     setIsCreateOpen(false);
     setNewReq({
       type: 'LEAVE',
@@ -99,22 +187,24 @@ export const RequestsPage: React.FC = () => {
     showToast(`Đã gửi đơn ${newId} thành công tới cấp phê duyệt`);
   };
 
-  const handleCancelRequest = (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn hủy đơn yêu cầu này?')) {
-      const updated = requests.filter(r => r.id !== id);
-      setRequests(updated);
-      saveRequests(updated);
-      showToast('Đã hủy đơn yêu cầu');
-    }
+  const handleCancelRequest = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn hủy đơn yêu cầu này?')) return;
+    const res = await fetch(`/api/v1/requests/${id}/withdraw`, { method: 'POST', headers: authHeaders() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(json?.message || 'Hủy đơn thất bại'); return; }
+    showToast('Đã hủy đơn yêu cầu');
+    loadRequests();
   };
 
   // C-cố Feature: Auto-fill form directly from punch logs (docs/02 §C-cố - S07)
   const handleAutoFillMissedPunch = (kind: 'OUT' | 'LATE') => {
+    const latest = punchLogs.find(l => (kind === 'OUT' ? l.checkInAt && !l.checkOutAt : l.checkInAt)) || punchLogs[0];
+    const logDate = latest?.workDate || (kind === 'OUT' ? '2026-11-17' : '2026-11-05');
     if (kind === 'OUT') {
       setNewReq({
         type: 'ADJUST',
-        startDate: '2026-11-17',
-        endDate: '2026-11-17',
+        startDate: logDate,
+        endDate: logDate,
         duration: 'Ca chiều (17:30)',
         leaveType: 'AL',
         reason: 'Tự động trích xuất từ log: Quên quẹt thẻ chấm công ra lúc 17:30 ngày 17/11 do bận họp với khách hàng'
@@ -124,8 +214,8 @@ export const RequestsPage: React.FC = () => {
     } else {
       setNewReq({
         type: 'ADJUST',
-        startDate: '2026-11-05',
-        endDate: '2026-11-05',
+        startDate: logDate,
+        endDate: logDate,
         duration: 'Muộn 22 phút (08:52)',
         leaveType: 'AL',
         reason: 'Tự động trích xuất từ log: Đi muộn 22 phút ngày 05/11 do sự cố kẹt xe Nguyễn Trãi (Đăng ký trừ vào Quota 1/3 lần)'
@@ -342,6 +432,16 @@ export const RequestsPage: React.FC = () => {
               <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 2 ngày/tuần)</option>
               <option value="ADJUST">⏱️ Bổ Sung Chấm Công (hạn 3 ngày)</option>
             </select>
+            {(newReq.type === 'LATE_EARLY' || newReq.type === 'LEAVE') && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {['Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình'].map((r) => (
+                  <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
+                    className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
             {newReq.type === 'LEAVE' && (
               <div className="mt-2">
                 <label className="block font-medium text-ink mb-1">Loại nghỉ</label>
@@ -350,24 +450,49 @@ export const RequestsPage: React.FC = () => {
                   onChange={e => setNewReq({ ...newReq, leaveType: e.target.value })}
                   className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
                 >
-                  <option value="AL">Phép năm (AL)</option>
-                  <option value="S">Nghỉ ốm (S)</option>
-                  <option value="NL">Nghỉ lễ tết (NL)</option>
-                  <option value="RO">Nghỉ bù (RO)</option>
-                  <option value="CL">Việc riêng có lương (CL)</option>
-                  <option value="ML">Thai sản (ML)</option>
-                  <option value="PL">Nghỉ khi có vợ sinh (PL)</option>
-                  <option value="UP">Không lương (UP)</option>
-                  <option value="HIEU">Hiếu hỉ</option>
-                  <option value="TANG">Tang gia</option>
+                  {leaveTypes.length === 0 && <option value="AL">Phép năm (AL)</option>}
+                  {leaveTypes.map((lt: any) => (
+                    <option key={lt.code} value={lt.code}>
+                      {lt.name} ({lt.code}){lt.requiresAttachment ? ' · cần giấy tờ' : ''}
+                    </option>
+                  ))}
                 </select>
+              </div>
+            )}
+            {newReq.type === 'LEAVE' && (
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <label className="font-medium">Đơn vị
+                  <select className="mt-1 w-full p-2 border border-line rounded-lg bg-surface" value={leaveUnit}
+                    onChange={e => setLeaveUnit(e.target.value as 'DAY' | 'HALF_DAY')}>
+                    <option value="DAY">Cả ngày</option>
+                    <option value="HALF_DAY">Nửa ngày</option>
+                  </select>
+                </label>
+                <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">
+                  Số dư phép còn lại: <b>{leaveBalance ? Number(leaveBalance.remaining || 0) : '—'} ngày</b>
+                  <div className="text-[10px] mt-0.5">Hạn gửi: {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.submitWithinDays ?? 3} ngày · duyệt1 cấp bởi quản lý</div>
+                  <div className="text-[10px] mt-0.5">Số ngày làm việc (trừ cuối tuần + lễ): <b>{leaveDays}</b></div>
+                </div>
               </div>
             )}
           </div>
 
           {newReq.type === 'WFH' && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed">
-              <strong>Quy chế WFH:</strong> Mỗi nhân sự được đăng ký tối đa <strong>2 ngày WFH / tuần</strong>. Đảm bảo cam kết trực tuyến qua kênh giao tiếp và hoàn thành KPI công việc.
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
+              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc.</div>
+              <label className="block text-[11px]">
+                Địa điểm WFH
+                <select className="mt-1 w-full border border-blue-200 rounded p-1" value={wfhLocation} onChange={e => setWfhLocation(e.target.value as 'HOME' | 'OTHER')}>
+                  <option value="HOME">Nhà riêng — được phép</option>
+                  <option value="OTHER">Địa điểm khác — bị cấm</option>
+                </select>
+              </label>
+              {wfhLocation === 'OTHER' && <div className="text-rose-700 font-semibold">Địa điểm này bị cấm WFH — không thể gửi đơn.</div>}
+              <label className="flex items-center gap-2 text-[11px]">
+                Lặp hàng tuần trong
+                <input type="number" min={1} max={8} className="w-16 border border-blue-200 rounded p-1" value={repeatWeeks} onChange={e => setRepeatWeeks(Number(e.target.value) || 1)} />
+                tuần (lẻ hoặc lịch cố định)
+              </label>
             </div>
           )}
 
@@ -428,7 +553,7 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
               Hủy
             </Button>
-            <Button variant="primary" size="sm" type="submit">
+            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER')}>
               Gửi Đơn Phê Duyệt
             </Button>
           </div>

@@ -41,12 +41,18 @@ public class User extends BaseEntity {
     @Column(name = "team_id")
     private UUID teamId;
 
+    @Column(name = "shift_id")
+    private UUID shiftId;
+
     /** Quản lý trực tiếp — căn cứ để duyệt đơn. */
     @Column(name = "manager_id")
     private UUID managerId;
 
     @Column(name = "position_id")
     private UUID positionId;
+
+    @Column(name = "position_name", length = 100)
+    private String positionName;
 
     @Column(name = "hire_date")
     private LocalDate hireDate;
