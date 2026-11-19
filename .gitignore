@@ -36,3 +36,4 @@ venv/
 *.log
 .env
 .env.local
+tests/robot/reports/

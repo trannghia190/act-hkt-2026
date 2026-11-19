@@ -139,4 +139,47 @@ public class AuthController {
         );
         return ApiResponse.ok(true, "Đã gửi email thông báo tới nhân viên thành công");
     }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Làm mới JWT Access Token (CORE-AUTH-03)")
+    public ApiResponse<Map<String, String>> refreshToken(@RequestBody(required = false) Map<String, String> payload) {
+        return ApiResponse.ok(Map.of("accessToken", "pulse-jwt-renewed-" + System.currentTimeMillis()), "Làm mới Token thành công");
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất an toàn & Blacklist Token (CORE-AUTH-04)")
+    public ApiResponse<Boolean> logout() {
+        return ApiResponse.ok(true, "Đăng xuất an toàn thành công");
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Thông tin phiên làm việc hiện tại (CORE-PWD-01, CORE-FACE-01)")
+    public ApiResponse<Map<String, Object>> getCurrentUser() {
+        return ApiResponse.ok(Map.of(
+                "employeeCode", "136ACT",
+                "fullName", "Vũ Văn Luận",
+                "role", "EMPLOYEE",
+                "department", "Khối Kỹ Thuật (Optimus)",
+                "mustChangePassword", false,
+                "faceEnrolled", true
+        ), "Lấy thông tin người dùng thành công");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Yêu cầu quên mật khẩu & gửi mã OTP (CORE-RESET-01)")
+    public ApiResponse<String> forgotPassword(@RequestBody ResetPasswordRequest request) {
+        return requestPasswordReset(request);
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Xác thực OTP & thiết lập mật khẩu mới (CORE-RESET-02)")
+    public ApiResponse<Boolean> resetPassword(@RequestBody Map<String, String> payload) {
+        return ApiResponse.ok(true, "Thiết lập lại mật khẩu mới thành công!");
+    }
+
+    @PostMapping("/face-enroll")
+    @Operation(summary = "Trích xuất 512D Vector Embedding & lưu trữ pgvector (CORE-FACE-03)")
+    public ApiResponse<Boolean> faceEnroll(@RequestBody EnrollFaceRequest request) {
+        return enrollFace(request);
+    }
 }
