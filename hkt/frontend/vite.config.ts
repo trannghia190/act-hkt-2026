@@ -18,7 +18,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/ai-face/, ''),
       },
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
