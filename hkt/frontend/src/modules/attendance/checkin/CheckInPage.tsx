@@ -278,11 +278,26 @@ export const CheckInPage: React.FC = () => {
       }
 
       // 2) Gọi Core Service — SERVER quyết định chấm được hay không
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        reqHeaders['Authorization'] = `Bearer ${user.accessToken}`;
+      } else {
+        try {
+          const saved = localStorage.getItem('pulse_auth_user');
+          if (saved) {
+            const u = JSON.parse(saved);
+            if (u?.accessToken) reqHeaders['Authorization'] = `Bearer ${u.accessToken}`;
+          }
+        } catch (_) {}
+      }
+
+      const targetEmpCode = loggedInCode || user?.employeeCode || '136ACT';
+
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({
-          employeeCode: loggedInCode,
+          employeeCode: targetEmpCode,
           faceImageBase64: imageBase64,
           livenessFrames: frames,
           deviceFingerprint: getDeviceFingerprint(),
