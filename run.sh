@@ -41,6 +41,11 @@ case "$MODE" in
     ;;
 
   all|dev)
+    if command -v docker &> /dev/null && docker info &> /dev/null; then
+      echo "Docker detected. Launching full stack via start-dev.sh (AI Face -> Backend -> Frontend)..."
+      exec "${SCRIPT_DIR}/start-dev.sh"
+    fi
+
     echo "=========================================="
     echo " Starting ACT HR 2026 AI Service + Frontend"
     echo " AI:   http://localhost:8000"
@@ -48,7 +53,15 @@ case "$MODE" in
     echo "=========================================="
     "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" 8000 &
     AI_PID=$!
-    sleep 2
+
+    echo "Waiting for AI Face Service at http://localhost:8000/health ..."
+    for i in {1..20}; do
+      if curl -s http://localhost:8000/health &> /dev/null; then
+        echo "✓ AI Face Service is ready!"
+        break
+      fi
+      sleep 1
+    done
 
     cd "${SCRIPT_DIR}/hkt/frontend"
     if [ ! -d "node_modules" ]; then
@@ -60,12 +73,7 @@ case "$MODE" in
     ;;
 
   docker|full)
-    echo "=========================================="
-    echo " Starting ACT HR 2026 Full Stack via Docker"
-    echo "=========================================="
-    export PATH="/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH"
-    cd "${SCRIPT_DIR}/hkt/deploy/docker"
-    exec docker compose up --build
+    exec "${SCRIPT_DIR}/start-dev.sh"
     ;;
 
   frontend|*)

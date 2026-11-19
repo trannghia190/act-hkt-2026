@@ -81,6 +81,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      ai-face-service:
+        condition: service_healthy
 
   # Backend 2: AI Face Recognition & OCR Service (Python FastAPI)
   ai-face-service:
@@ -96,6 +98,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   # Frontend: React + TypeScript + TailwindCSS (Nginx container)
   frontend:
