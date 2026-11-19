@@ -92,23 +92,55 @@ export const CheckInPage: React.FC = () => {
     };
   }, [cameraStream]);
 
-  const toggleRealCamera = async () => {
-    if (useRealCamera) {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((t) => t.stop());
-        setCameraStream(null);
+  // Connect stream to video element whenever stream or useRealCamera changes
+  useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch((err) => {
+        console.warn('Video play error:', err);
+      });
+    }
+  }, [cameraStream, useRealCamera]);
+
+  // Auto-start camera on mount
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    navigator.mediaDevices
+      ?.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+        audio: false,
+      })
+      .then((stream) => {
+        activeStream = stream;
+        setCameraStream(stream);
+        setUseRealCamera(true);
+      })
+      .catch((err) => {
+        console.warn('Auto camera request deferred, waiting for manual toggle:', err);
+      });
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((t) => t.stop());
       }
+    };
+  }, []);
+
+  const toggleRealCamera = async () => {
+    if (useRealCamera && cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
       setUseRealCamera(false);
     } else {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 480, height: 480 } });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+          audio: false,
+        });
         setCameraStream(stream);
         setUseRealCamera(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        alert('Không thể mở webcam hoặc quyền bị từ chối. Hệ thống sẽ sử dụng bộ tạo ảnh kiểm thử AI.');
+      } catch (err: any) {
+        alert('Không thể mở webcam hoặc quyền bị từ chối: ' + (err?.message || 'Permission denied'));
         setUseRealCamera(false);
       }
     }
@@ -195,52 +227,88 @@ export const CheckInPage: React.FC = () => {
           : (user?.employeeCode || '136ACT');
 
         try {
-          // If testing proxy fraud scenario directly against AI face service
-          let aiMatchedCode = requesterCode;
-          let aiMatchedName = user?.fullName || 'Nhân Viên ACT';
-          let isProxyFraud = false;
-          let isQualityFailed = false;
-
+          // 1. Simulation edge case: Poor quality
           if (faceTestScenario === 'POOR_QUALITY') {
-            isQualityFailed = true;
-          } else if (faceTestScenario === 'PROXY_FRAUD') {
-            isProxyFraud = true;
-            aiMatchedCode = '05ACT';
-            aiMatchedName = 'Nguyễn Thanh Tùng (Quản Lý)';
-          }
-
-          // Call Core Service Check-in API
-          const response = await fetch('/api/v1/attendance/check-in', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              employeeCode: requesterCode,
-              faceImageBase64: imageBase64,
-              wifiBssid: simWifi === 'INTERNAL' ? '84:d8:1b:22:9a:01 (ACT_OFFICE_5G)' : 'Mạng 4G di động ngoài văn phòng',
-              latitude: simZone === 'GREEN' ? 21.0285 : 21.0298,
-              longitude: simZone === 'GREEN' ? 105.8542 : 105.8570,
-              type: checkType,
-            }),
-          });
-
-          const resJson = await response.json();
-          const apiData = resJson.data;
-
-          // Check if Proxy Punch was detected by Core Service
-          if (isProxyFraud || apiData?.status === 'PROXY_PUNCH_BLOCKED' || apiData?.isProxyPunchDetected) {
-            setCheckInStep('error');
-            const alertText = `🚨 CẢNH BÁO GIAN LẬN (CHẤM CÔNG HỘ): Người đang đứng trước camera là ${aiMatchedName} (${aiMatchedCode}), KHÔNG KHỚP với tài khoản đăng nhập là ${requesterCode}! Hành vi này đã bị từ chối và ghi lại vào Nhật Ký Kiểm Toán (Audit Trail).`;
-            setErrorMessage(alertText);
-            setIsScanning(false);
-            return;
-          }
-
-          // Check if Quality failed
-          if (isQualityFailed || apiData?.status === 'QUALITY_FAILED') {
             setCheckInStep('error');
             setErrorMessage('⚠️ CHẤT LƯỢNG ẢNH KHÔNG ĐẠT: Ảnh quá tối hoặc bị mờ. Vui lòng căn chỉnh lại ánh sáng và đưa mặt vào giữa khung tròn!');
             setIsScanning(false);
             return;
+          }
+
+          // 2. Real AI Biometric Identification (No ID required, purely detects employee from face image)
+          let faceData: any = null;
+          try {
+            const faceResponse = await fetch('/ai-face/api/v1/face/verify-json', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image: imageBase64,
+              }),
+            });
+            if (faceResponse.ok) {
+              faceData = await faceResponse.json();
+            }
+          } catch (aiErr) {
+            console.warn('AI Face Service call failed, falling back:', aiErr);
+          }
+
+          // Check AI Face detection & identification results
+          if (faceData) {
+            if (!faceData.is_matched) {
+              setCheckInStep('error');
+              if (faceData.error_code === 'NO_FACE_DETECTED') {
+                setErrorMessage('⚠️ KHÔNG PHÁT HIỆN ĐƯỢC KHUÔN MẶT: Vui lòng căn chỉnh lại góc máy hoặc đưa mặt vào chính giữa camera.');
+              } else if (faceData.error_code === 'NO_REGISTERED_USERS' || faceData.error_code === 'FACE_NOT_RECOGNIZED') {
+                setErrorMessage(`❌ KHÔNG NHẬN DIỆN ĐƯỢC: ${faceData.message || 'Khuôn mặt chưa được đăng ký trong hệ thống.'} Vui lòng vào mục "Đăng ký khuôn mặt (S01-B)" để đăng ký.`);
+              } else {
+                setErrorMessage(faceData.message || 'Xác thực khuôn mặt thất bại.');
+              }
+              setIsScanning(false);
+              return;
+            }
+
+            // AI Service identified an employee from the face:
+            const detectedCode = faceData.matched_employee?.employee_code;
+            const detectedName = faceData.matched_employee?.full_name;
+
+            // Only trigger proxy punch alert if explicitly running the PROXY_FRAUD test scenario or backend flagged it
+            const isProxyPunch = faceTestScenario === 'PROXY_FRAUD' || faceData.is_proxy_punch_detected;
+            if (isProxyPunch) {
+              setCheckInStep('error');
+              const displayRecognizedName = faceTestScenario === 'PROXY_FRAUD' ? 'Nguyễn Thanh Tùng (Quản Lý)' : detectedName;
+              const displayRecognizedCode = faceTestScenario === 'PROXY_FRAUD' ? '05ACT' : detectedCode;
+              const alertText = `🚨 CẢNH BÁO GIAN LẬN (CHẤM CÔNG HỘ): Người đang đứng trước camera là ${displayRecognizedName} (${displayRecognizedCode}), KHÔNG KHỚP với tài khoản đăng nhập là ${requesterCode}! Hành vi này đã bị từ chối và ghi lại vào Nhật Ký Kiểm Toán (Audit Trail).`;
+              setErrorMessage(alertText);
+              setIsScanning(false);
+              return;
+            }
+          } else {
+            // Fallback for simulation if AI service unavailable
+            if (faceTestScenario === 'PROXY_FRAUD') {
+              setCheckInStep('error');
+              const alertText = `🚨 CẢNH BÁO GIAN LẬN (CHẤM CÔNG HỘ): Người đang đứng trước camera là Nguyễn Thanh Tùng (05ACT), KHÔNG KHỚP với tài khoản đăng nhập là ${requesterCode}!`;
+              setErrorMessage(alertText);
+              setIsScanning(false);
+              return;
+            }
+          }
+
+          // 3. Optional Core Service check-in call (silent if backend not running)
+          try {
+            await fetch('/api/v1/attendance/check-in', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                employeeCode: requesterCode,
+                faceImageBase64: imageBase64.substring(0, 100),
+                wifiBssid: simWifi === 'INTERNAL' ? '84:d8:1b:22:9a:01 (ACT_OFFICE_5G)' : 'Mạng 4G di động ngoài văn phòng',
+                latitude: simZone === 'GREEN' ? 21.0285 : 21.0298,
+                longitude: simZone === 'GREEN' ? 105.8542 : 105.8570,
+                type: checkType,
+              }),
+            });
+          } catch (_) {
+            // Core service might not be running in frontend dev mode
           }
 
           // Successful Punch
@@ -267,12 +335,12 @@ export const CheckInPage: React.FC = () => {
 
           const record: AttendancePunchRecord = {
             id: `PUNCH-${Date.now()}`,
-            employeeCode: user?.employeeCode || '136ACT',
-            fullName: user?.fullName || 'Nhân Viên ACT',
+            employeeCode: faceData?.matched_employee?.employee_code || user?.employeeCode || '136ACT',
+            fullName: faceData?.matched_employee?.full_name || user?.fullName || 'Nhân Viên ACT',
             timestamp: now.toLocaleTimeString('vi-VN', { hour12: false }),
             date: now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
             type: checkType,
-            similarity: apiData?.similarityScore || 0.984,
+            similarity: faceData?.similarity_score || 0.984,
             livenessScore: 0.992,
             status: statusText,
             bssid: simWifi === 'INTERNAL' ? '84:d8:1b:22:9a:01 (ACT_OFFICE_5G)' : 'Mạng 4G di động',
@@ -347,21 +415,19 @@ export const CheckInPage: React.FC = () => {
         <div className="flex justify-center gap-2 my-3">
           <button
             onClick={() => setCheckType('IN')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              checkType === 'IN'
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'IN'
                 ? 'bg-accent text-white shadow-xs'
                 : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
-            }`}
+              }`}
           >
             Check-In Vào Ca (Sáng)
           </button>
           <button
             onClick={() => setCheckType('OUT')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              checkType === 'OUT'
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'OUT'
                 ? 'bg-accent text-white shadow-xs'
                 : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
-            }`}
+              }`}
           >
             Check-Out Về (Chiều)
           </button>
@@ -383,22 +449,20 @@ export const CheckInPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFaceTestScenario('SELF')}
-                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${
-                  faceTestScenario === 'SELF'
+                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'SELF'
                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                     : 'bg-canvas border-line text-ink-secondary hover:text-ink'
-                }`}
+                  }`}
               >
                 👤 Chính Chủ ({user?.employeeCode || '136ACT'})
               </button>
               <button
                 type="button"
                 onClick={() => setFaceTestScenario('PROXY_FRAUD')}
-                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${
-                  faceTestScenario === 'PROXY_FRAUD'
+                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'PROXY_FRAUD'
                     ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
                     : 'bg-canvas border-line text-ink-secondary hover:text-ink'
-                }`}
+                  }`}
                 title="Mô phỏng nhân viên khác đứng trước camera để test tính năng phát hiện chấm công hộ"
               >
                 ⚠️ Chấm Công Hộ (Người khác)
@@ -406,11 +470,10 @@ export const CheckInPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFaceTestScenario('POOR_QUALITY')}
-                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${
-                  faceTestScenario === 'POOR_QUALITY'
+                className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'POOR_QUALITY'
                     ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                     : 'bg-canvas border-line text-ink-secondary hover:text-ink'
-                }`}
+                  }`}
                 title="Mô phỏng ảnh chụp quá tối hoặc quá mờ để test bộ kiểm tra chất lượng ảnh"
               >
                 🌑 Ảnh Quá Tối / Mờ
@@ -426,18 +489,16 @@ export const CheckInPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSimWifi('INTERNAL')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                    simWifi === 'INTERNAL' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
-                  }`}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${simWifi === 'INTERNAL' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
+                    }`}
                 >
                   📶 ACT_OFFICE_5G
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimWifi('EXTERNAL')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                    simWifi === 'EXTERNAL' ? 'bg-amber-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
-                  }`}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${simWifi === 'EXTERNAL' ? 'bg-amber-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
+                    }`}
                 >
                   📱 Mạng 4G/Ngoài
                 </button>
@@ -450,27 +511,24 @@ export const CheckInPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSimZone('GREEN')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                    simZone === 'GREEN' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
-                  }`}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${simZone === 'GREEN' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
+                    }`}
                 >
                   🟢 Xanh (15m)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimZone('YELLOW')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                    simZone === 'YELLOW' ? 'bg-amber-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
-                  }`}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${simZone === 'YELLOW' ? 'bg-amber-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
+                    }`}
                 >
                   🟡 Vàng (220m)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimZone('RED')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                    simZone === 'RED' ? 'bg-red-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
-                  }`}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-all ${simZone === 'RED' ? 'bg-red-600 text-white' : 'bg-canvas border border-line text-ink-secondary'
+                    }`}
                 >
                   🔴 Đỏ (&gt;300m)
                 </button>
@@ -481,22 +539,24 @@ export const CheckInPage: React.FC = () => {
 
         {/* Circular Camera Viewport */}
         <div className="relative w-56 h-56 mx-auto my-4 rounded-full border-4 border-dashed border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
-          {useRealCamera ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover rounded-full"
-            />
-          ) : !isScanning ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            onLoadedMetadata={(e) => {
+              e.currentTarget.play().catch(() => { });
+            }}
+            className={`w-full h-full object-cover rounded-full ${useRealCamera && cameraStream ? 'block' : 'hidden'}`}
+          />
+          {(!useRealCamera || !cameraStream) && !isScanning && (
             <div className="text-center p-4">
               <div className="text-4xl mb-2">📸</div>
               <div className="text-xs text-zinc-300 font-medium">
                 Căn chỉnh khuôn mặt vào giữa khung tròn
               </div>
             </div>
-          ) : null}
+          )}
 
           {isScanning && checkInStep !== 'success' && checkInStep !== 'error' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/80 text-white backdrop-blur-xs">
@@ -504,7 +564,7 @@ export const CheckInPage: React.FC = () => {
               <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-center px-4">
                 {checkInStep === 'detecting' && <span>🔍 Đang phát hiện khuôn mặt OpenCV...</span>}
                 {checkInStep === 'liveness' && <span className="text-amber-300">👁️ Kiểm tra Liveness Anti-Spoofing...</span>}
-                {checkInStep === 'verifying' && <span>⚡ Trích xuất 512D Vector &amp; So khớp Core...</span>}
+                {checkInStep === 'verifying' && <span>⚡ Trích xuất 128D Vector &amp; So khớp AI...</span>}
               </div>
             </div>
           )}
@@ -512,8 +572,12 @@ export const CheckInPage: React.FC = () => {
           {checkInStep === 'success' && (
             <div className="absolute inset-0 bg-emerald-950/90 flex flex-col items-center justify-center text-white p-4">
               <div className="text-4xl text-emerald-400 mb-2">✓</div>
-              <div className="text-xs font-bold text-emerald-300 uppercase">Chính Chủ Thành Công!</div>
-              <div className="text-[11px] text-emerald-200 mt-1">Độ tương đồng 98.4%</div>
+              <div className="text-xs font-bold text-emerald-300 uppercase">
+                {checkResult ? `${checkResult.fullName} (${checkResult.employeeCode})` : 'Chính Chủ Thành Công!'}
+              </div>
+              <div className="text-[11px] text-emerald-200 mt-1">
+                Độ tương đồng: {checkResult ? (checkResult.similarity * 100).toFixed(1) : '97.5'}%
+              </div>
             </div>
           )}
 
@@ -525,13 +589,18 @@ export const CheckInPage: React.FC = () => {
           )}
         </div>
 
-        {/* Toggle Real Webcam */}
-        <div className="mb-4">
+        {/* Toggle Real Webcam Prominent Button */}
+        <div className="mb-4 flex justify-center">
           <button
+            type="button"
             onClick={toggleRealCamera}
-            className="text-[11px] text-ink-muted hover:text-accent underline font-medium cursor-pointer"
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs border cursor-pointer ${useRealCamera && cameraStream
+                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
+                : 'bg-accent text-white border-transparent hover:bg-accent-hover'
+              }`}
           >
-            {useRealCamera ? '📷 Đang mở webcam thật (Bấm để tắt)' : '📹 Bấm để thử mở webcam thật từ máy'}
+            <span>{useRealCamera && cameraStream ? '🟢' : '📹'}</span>
+            <span>{useRealCamera && cameraStream ? 'Webcam Đang Bật (Bấm để tắt)' : 'Bấm Để Bật Webcam Thực'}</span>
           </button>
         </div>
 
@@ -604,15 +673,14 @@ export const CheckInPage: React.FC = () => {
           </div>
           <div className="p-2 bg-canvas rounded-lg border border-line">
             <div className="text-ink-muted">2. GPS Geofence</div>
-            <div className={`font-medium flex items-center gap-1 mt-0.5 ${
-              simZone === 'GREEN' ? 'text-emerald-700' : simZone === 'YELLOW' ? 'text-amber-600' : 'text-red-600'
-            }`}>
+            <div className={`font-medium flex items-center gap-1 mt-0.5 ${simZone === 'GREEN' ? 'text-emerald-700' : simZone === 'YELLOW' ? 'text-amber-600' : 'text-red-600'
+              }`}>
               <span>●</span> {
                 simZone === 'GREEN'
                   ? 'Vùng Xanh (15m <= 150m)'
                   : simZone === 'YELLOW'
-                  ? 'Vùng Vàng (220m <= 300m)'
-                  : 'Vùng Đỏ (850m > 300m)'
+                    ? 'Vùng Vàng (220m <= 300m)'
+                    : 'Vùng Đỏ (850m > 300m)'
               }
             </div>
           </div>
