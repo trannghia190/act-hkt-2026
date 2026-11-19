@@ -27,3 +27,4 @@ echo " URL:  http://localhost:${PORT}"
 echo " Docs: http://localhost:${PORT}/docs"
 echo "=================================================="
 exec ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --reload
+
