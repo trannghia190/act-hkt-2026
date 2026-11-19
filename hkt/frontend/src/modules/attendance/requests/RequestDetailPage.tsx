@@ -42,7 +42,7 @@ export const RequestDetailPage: React.FC = () => {
               <div><div className="font-semibold">{t.action}</div><div className="text-xs text-ink-muted">{t.at} · {t.actor}</div></div>
             </div>
           ))}
-          <div className="text-xs text-ink-muted">Lịch sử chỉnh sửa: ghi trong nhật ký thay đổi.</div>
+          <div className="text-xs text-ink-muted mt-2 border-t border-line pt-2">Lịch sử chỉnh sửa: {data?.timeline?.length || 0} mốc · mọi thay đổi ghi vào nhật ký (audit log).</div>
         </div>
       )}
     </div>

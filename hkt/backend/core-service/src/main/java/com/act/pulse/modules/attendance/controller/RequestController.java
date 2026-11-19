@@ -74,6 +74,7 @@ public class RequestController {
             if (monthly >= max) throw new RuntimeException("Đã dùng đủ " + max + " lần đi muộn/về sớm trong tháng");
         }
 
+        boolean overdueFlag = false;
         if ("ADJUST".equals(body.getType())) {
             LocalDate workDate = body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate();
             long monthly = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
@@ -84,9 +85,8 @@ public class RequestController {
                     .count();
             if (monthly >= 5) throw new RuntimeException("Đã dùng đủ 5 lần bổ sung công trong tháng");
             int deadlineDays = ruleService.getInt("makeup", "deadline_working_days", 3);
-            boolean allowOverdue = ruleService.getBoolean("makeup", "allow_overdue_with_approval", false);
-            if (workDate.isBefore(LocalDate.now().minusDays(deadlineDays)) && !allowOverdue) {
-                throw new RuntimeException("Đã quá hạn " + deadlineDays + " ngày để bổ sung chấm công");
+            if (workDate.isBefore(LocalDate.now().minusDays(deadlineDays))) {
+                overdueFlag = true; // quá hạn vẫn nộp được nhưng gắn cờ để quản lý thấy
             }
         }
 
@@ -123,6 +123,7 @@ public class RequestController {
             }
         }
 
+        if (overdueFlag) applied.put("overdue_submitted", true);
         String appliedJson;
         try {
             appliedJson = objectMapper.writeValueAsString(applied);

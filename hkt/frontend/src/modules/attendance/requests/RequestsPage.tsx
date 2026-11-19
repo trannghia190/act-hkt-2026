@@ -94,7 +94,7 @@ export const RequestsPage: React.FC = () => {
 
   const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
 
@@ -153,7 +153,7 @@ export const RequestsPage: React.FC = () => {
       workDate: newReq.startDate,
       minutes: newReq.type === 'LATE_EARLY' ? (parseInt((newReq.duration || '').replace(/[^0-9]/g, ''), 10) || 0) : undefined,
       reason: newReq.reason,
-      draft: false,
+      draft: asDraft,
     };
     const weeks = newReq.type === 'WFH' ? Math.max(1, Math.min(8, repeatWeeks)) : 1;
     (async () => {
@@ -169,7 +169,7 @@ export const RequestsPage: React.FC = () => {
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
         }
-        showToast(weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công');
+        showToast(asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy' : (weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công'));
         loadRequests();
       } catch (e: any) {
         showToast(e?.message || 'Gửi đơn thất bại');
@@ -401,6 +401,11 @@ export const RequestsPage: React.FC = () => {
                       >
                         Hủy đơn
                       </Button>
+                    ) : req.status === 'REJECTED' ? (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setNewReq({ ...newReq, type: req.type as any, reason: req.reason, startDate: req.startDate || newReq.startDate, endDate: req.endDate || newReq.endDate });
+                        setIsCreateOpen(true);
+                      }}>Sửa & gửi lại</Button>
                     ) : (
                       <span className="text-ink-muted text-[11px]">Đã xử lý</span>
                     )}
@@ -501,6 +506,19 @@ export const RequestsPage: React.FC = () => {
               <strong>Hạn nộp:</strong> Bổ sung chấm công phải gửi trong vòng <strong>3 ngày</strong> kể từ ngày quên chấm (tính theo ngày, không theo giờ).
             </div>
           )}
+
+          {newReq.type === 'ADJUST' && (() => {
+            const d = new Date(newReq.startDate + 'T00:00:00');
+            const deadline = new Date(d); deadline.setDate(deadline.getDate() + 3);
+            const limit = new Date(); limit.setDate(limit.getDate() - 3);
+            const overdue = d < limit;
+            return (
+              <div className={`p-2 rounded text-[11px] ${overdue ? 'bg-rose-50 border border-rose-200 text-rose-700' : 'bg-canvas border border-line text-ink-secondary'}`}>
+                Hạn nộp: <b>{deadline.toLocaleDateString('vi-VN')}</b> (3 ngày sau ngày quên chấm)
+                {overdue && ' · ⚠️ Đã quá hạn — đơn sẽ bị gắn cờ "nộp trễ", cần lý do rõ ràng'}
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

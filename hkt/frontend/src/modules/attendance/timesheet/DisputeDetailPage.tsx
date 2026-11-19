@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 export const DisputeDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -12,8 +12,15 @@ export const DisputeDetailPage: React.FC = () => {
     const reason = window.prompt('Lý do xử lý (bắt buộc khi từ chối):', 'Đã đối chiếu 3 nguồn dữ liệu') || '';
     if (action === 'REJECT' && !reason.trim()) return;
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
-    await fetch(`/api/v1/disputes/${id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ action, reason }) });
-    alert('Đã xử lý khiếu nại');
+    const res = await fetch(`/api/v1/disputes/${id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ action, reason }) });
+    if (action === 'REJECT' && res.ok && data?.employee) {
+      await fetch('/api/v1/auth/send-notification', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ toEmail: 'luan.vu@act-corp.internal', fullName: data.employee, requestId: id,
+          requestType: 'Khiếu nại bảng công', decision: 'REJECTED', approverName: 'HR', approverComment: reason }),
+      }).catch(() => undefined);
+    }
+    alert(action === 'REJECT' ? 'Đã từ chối — nhân viên sẽ nhận thông báo' : 'Đã xử lý khiếu nại');
   };
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -34,6 +41,7 @@ export const DisputeDetailPage: React.FC = () => {
           </div>
         ))}
       </div>
+      <div className="text-xs"><Link to="/attendance/disputes" className="text-accent underline">← Quay lại danh sách khiếu nại</Link></div>
       <div className="bg-surface border border-line rounded-xl p-4 flex gap-2">
         <button onClick={() => act('FIX')} className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white">Chấp nhận khiếu nại</button>
         <button onClick={() => act('REJECT')} className="text-xs px-3 py-1.5 rounded border border-line">Từ chối (bắt buộc lý do)</button>

@@ -36,6 +36,7 @@ public class TimesheetController {
     private final RuleService ruleService;
     private final AuditLogRepository auditLogRepository;
 
+    public static final java.util.concurrent.atomic.AtomicInteger DISPUTES_PENDING = new java.util.concurrent.atomic.AtomicInteger(2);
     private static final Map<String, String> STATUS = new java.util.concurrent.ConcurrentHashMap<>();
     /** Ô đã sửa tay: key = month|employeeCode|day */
     private static final Map<String, String> CELL_OVERRIDES = new java.util.concurrent.ConcurrentHashMap<>();
@@ -181,7 +182,11 @@ public class TimesheetController {
 
     @PostMapping("/lock")
     @Operation(summary = "Khoá kỳ công — chặn đơn/quyết định sau khoá")
-    public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month) {
+    public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month,
+                                                 @RequestParam(required = false, defaultValue = "false") boolean force) {
+        if (!force && DISPUTES_PENDING.get() > 0) {
+            throw new RuntimeException("Còn " + DISPUTES_PENDING.get() + " khiếu nại chưa xử lý — xử lý hết trước khi khoá kỳ công");
+        }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
         STATUS.put(ym.toString(), "locked");
         return ApiResponse.ok(Map.of("month", ym.toString(), "status", "locked",
