@@ -35,9 +35,9 @@ case "$MODE" in
     echo "=========================================="
     echo " Starting Face Recognition AI Service"
     echo " URL:  http://localhost:8000"
-    echo " Dir:  ${SCRIPT_DIR}/hkt/face-recognition"
+    echo " Dir:  ${SCRIPT_DIR}/hkt/backend/ai-face-service"
     echo "=========================================="
-    exec "${SCRIPT_DIR}/hkt/face-recognition/run.sh" --service
+    exec "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh"
     ;;
 
   all|dev)
@@ -46,7 +46,7 @@ case "$MODE" in
     echo " AI:   http://localhost:8000"
     echo " UI:   http://localhost:${PORT}"
     echo "=========================================="
-    "${SCRIPT_DIR}/hkt/face-recognition/run.sh" --service &
+    "${SCRIPT_DIR}/hkt/backend/ai-face-service/run.sh" 8000 &
     AI_PID=$!
     sleep 2
 

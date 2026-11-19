@@ -293,9 +293,10 @@ export const CheckInPage: React.FC = () => {
             }
           }
 
-          // 3. Optional Core Service check-in call (silent if backend not running)
+          // 3. Core Service Attendance Punch (Check-in or Check-out)
           try {
-            await fetch('/api/v1/attendance/check-in', {
+            const punchEndpoint = checkType === 'OUT' ? '/api/v1/attendance/check-out' : '/api/v1/attendance/check-in';
+            await fetch(punchEndpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
