@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final AttendanceLogRepository attendanceLogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${app.services.ai-face-service-url:http://localhost:8000}")
+    private String aiFaceServiceBaseUrl;
 
     private static final String AI_SERVICE_DOCKER_SERVICE_URL = "http://ai-face-service:8000/api/v1/face/verify-json";
     private static final String AI_SERVICE_DOCKER_URL = "http://pulse-ai-face-service:8000/api/v1/face/verify-json";
@@ -165,19 +169,30 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private JsonNode callAiFaceService(String base64Image, String expectedEmployeeCode) {
-        String[] targets = { AI_SERVICE_DOCKER_SERVICE_URL, AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL };
+        String baseUrl = (aiFaceServiceBaseUrl != null && !aiFaceServiceBaseUrl.trim().isEmpty())
+                ? aiFaceServiceBaseUrl.trim().replaceAll("/+$", "")
+                : "http://localhost:8000";
+        String configuredEndpoint = baseUrl + "/api/v1/face/verify-json";
+
+        java.util.LinkedHashSet<String> targets = new java.util.LinkedHashSet<>();
+        targets.add(configuredEndpoint);
+        targets.add(AI_SERVICE_DOCKER_SERVICE_URL);
+        targets.add(AI_SERVICE_DOCKER_URL);
+        targets.add(AI_SERVICE_LOCAL_URL);
+
         Map<String, String> body = new HashMap<>();
         body.put("image", base64Image);
-        // Do not force expected_code so AI performs true unbiased 1:N search across all
-        // enrolled employees
+        // Do not force expected_code so AI performs true unbiased 1:N search across all enrolled employees
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
 
         for (String url : targets) {
             try {
+                log.info("Calling AI Face Service at endpoint: {}", url);
                 ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    log.info("Successfully connected to AI Face Service at {}", url);
                     return objectMapper.readTree(response.getBody());
                 }
             } catch (Exception e) {

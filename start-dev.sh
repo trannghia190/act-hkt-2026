@@ -69,13 +69,12 @@ prepare_frontend() {
 
 start_docker_infra() {
   echo -e "\n${BLUE}▶ 3. Khởi chạy cụm hạ tầng Docker Containers...${NC}"
-  echo -e "${CYAN}→ Khởi động PostgreSQL 16 (pgvector), Redis 7, Keycloak 24 IAM, Core Service, AI Face Service...${NC}"
+  echo -e "${CYAN}→ Khởi động PostgreSQL 16 (pgvector), Redis 7, Keycloak 24 IAM...${NC}"
 
-  docker compose -f "$COMPOSE_FILE" up -d postgres redis keycloak core-service ai-face-service
+  # Step 3.1: Start DB, Cache, IAM
+  docker compose -f "$COMPOSE_FILE" up -d postgres redis keycloak
 
-  echo -e "\n${BLUE}▶ 4. Chờ dịch vụ cơ sở dữ liệu và AI sẵn sàng (Healthcheck)...${NC}"
-  
-  # Wait for PostgreSQL
+  echo -e "\n${BLUE}▶ 4. Chờ cơ sở dữ liệu sẵn sàng (Healthcheck)...${NC}"
   for i in {1..30}; do
     if docker exec pulse-postgres pg_isready -U postgres -d pulse_db &> /dev/null; then
       echo -e "${GREEN}✓ PostgreSQL Database (pulse_db:5432): Sẵn sàng kết nối.${NC}"
@@ -85,10 +84,28 @@ start_docker_infra() {
     sleep 1
   done
 
-  # Wait for AI Face Service
-  for i in {1..20}; do
-    if curl -s http://localhost:8000/docs &> /dev/null; then
-      echo -e "${GREEN}✓ AI Face Biometric Service (OpenCV 512D HOG:8000): Sẵn sàng xử lý.${NC}"
+  # Step 3.2: Start AI Face Recognition Service first
+  echo -e "\n${BLUE}▶ 5. Khởi chạy AI Face Recognition Service (Port 8000)...${NC}"
+  docker compose -f "$COMPOSE_FILE" up -d ai-face-service
+
+  echo -e "${CYAN}→ Chờ AI Face Service sẵn sàng...${NC}"
+  for i in {1..30}; do
+    if curl -s http://localhost:8000/health &> /dev/null || curl -s http://localhost:8000/docs &> /dev/null; then
+      echo -e "${GREEN}✓ AI Face Biometric Service (OpenCV YuNet + SFace 128D:8000): Sẵn sàng xử lý.${NC}"
+      break
+    fi
+    echo -ne "."
+    sleep 1
+  done
+
+  # Step 3.3: Start Core Service (Backend), connecting to AI Face Service via AI_FACE_SERVICE_URL
+  echo -e "\n${BLUE}▶ 6. Khởi chạy Backend Core Service API (Port 8080)...${NC}"
+  docker compose -f "$COMPOSE_FILE" up -d core-service
+
+  echo -e "${CYAN}→ Chờ Backend Core Service khởi động và kết nối với AI Face Service...${NC}"
+  for i in {1..40}; do
+    if curl -s http://localhost:8080/api/v1/swagger-ui.html &> /dev/null || curl -s http://localhost:8080/v3/api-docs &> /dev/null; then
+      echo -e "${GREEN}✓ Backend Core Service (Spring Boot 3:8080): Sẵn sàng kết nối.${NC}"
       break
     fi
     echo -ne "."
