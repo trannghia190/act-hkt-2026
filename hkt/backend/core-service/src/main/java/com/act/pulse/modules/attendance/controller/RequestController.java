@@ -247,6 +247,56 @@ public class RequestController {
         return ApiResponse.ok(out, "Đơn của tôi");
     }
 
+    @GetMapping("/history")
+    @Operation(summary = "Lịch sử đơn đã duyệt/từ chối của quản lý (tab Đã duyệt / Bị từ chối)")
+    public ApiResponse<List<Map<String, Object>>> history() {
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        java.util.Set<UUID> managed = new java.util.HashSet<>();
+        for (User u : userRepository.findAll()) if (me.equals(u.getManagerId())) managed.add(u.getId());
+        boolean allCompany = "HR_ADMIN".equals(role) || "ADMIN".equals(role);
+        List<RequestEntity> list = new ArrayList<>();
+        for (RequestEntity r : requestRepository.findAll()) {
+            boolean decidedStatus = "APPROVED".equals(r.getStatus()) || "REJECTED".equals(r.getStatus());
+            if (!decidedStatus) continue;
+            if (allCompany || managed.contains(r.getUserId()) || me.equals(r.getDecidedBy())) list.add(r);
+        }
+        list.sort((a, b) -> {
+            java.time.LocalDateTime da = a.getDecidedAt() == null ? java.time.LocalDateTime.MIN : a.getDecidedAt();
+            java.time.LocalDateTime db = b.getDecidedAt() == null ? java.time.LocalDateTime.MIN : b.getDecidedAt();
+            return db.compareTo(da);
+        });
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (RequestEntity r : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", r.getId());
+            m.put("userId", r.getUserId());
+            m.put("requestType", r.getRequestType());
+            m.put("leaveType", r.getLeaveType());
+            m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
+            m.put("workDate", r.getWorkDate());
+            m.put("endDate", r.getEndDate());
+            m.put("minutes", r.getMinutes());
+            m.put("reason", r.getReason());
+            m.put("status", r.getStatus());
+            m.put("createdAt", r.getCreatedAt());
+            m.put("decidedAt", r.getDecidedAt());
+            m.put("decisionComment", r.getDecisionComment());
+            m.put("payload", r.getPayload());
+            m.put("attachmentCount", requestAttachmentRepository.countByRequestId(r.getId()));
+            userRepository.findById(r.getUserId()).ifPresent(u -> {
+                m.put("employeeCode", u.getEmployeeCode());
+                m.put("employeeName", u.getFullName());
+                m.put("employeeEmail", u.getEmail());
+            });
+            if (r.getDecidedBy() != null) {
+                userRepository.findById(r.getDecidedBy()).ifPresent(u -> m.put("approverName", u.getFullName()));
+            }
+            rows.add(m);
+        }
+        return ApiResponse.ok(rows, "Lịch sử duyệt đơn");
+    }
+
     @GetMapping("/inbox")
     @Operation(summary = "Hộp thư duyệt của quản lý (S12)")
     public ApiResponse<List<Map<String, Object>>> inbox() {

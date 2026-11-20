@@ -158,3 +158,8 @@ Khi Quản lý bấm `[Từ chối]`, hệ thống vô hiệu hóa nút xác nh�
 * Nếu sau 48h Quản lý trực tiếp không thao tác (do đi công tác hoặc nghỉ ốm đột xuất, chưa xử lý kịp):
   * Hệ thống tự động gửi thông báo khẩn cấp (Urgent Reminder).
   * Chuyển quyền duyệt lên Quản lý cấp trên (Skip-level Manager) hoặc chuyển về Hộp thư khẩn của HR để đảm bảo không làm gián đoạn quyền lợi của người lao động.
+
+### 4.4. Tab lịch sử duyệt (S12)
+* Tab **Chờ phê duyệt** đọc `GET /requests/inbox` (PENDING_APPROVAL của cấp dưới).
+* Tab **Đã phê duyệt / Bị từ chối** đọc `GET /requests/history`: đơn `APPROVED/REJECTED` của cấp dưới hoặc do chính quản lý quyết định (HR/ADMIN xem toàn công ty), có tên/mã nhân viên, ngày áp dụng, người xử lý, lý do, số giấy tờ.
+* Sau khi duyệt/từ chối, UI tải lại cả inbox + history → số đếm trên 3 tab cập nhật ngay (đã test: chờ34→33, đã duyệt6→7).

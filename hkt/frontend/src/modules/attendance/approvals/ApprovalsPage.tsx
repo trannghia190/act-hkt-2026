@@ -53,9 +53,20 @@ export const ApprovalsPage: React.FC = () => {
     } as AttendanceRequestItem;
   };
   const loadInbox = () => {
-    fetch('/api/v1/requests/inbox', { headers: authOnly() })
-      .then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setRequests(j.data.map(mapRequest)); })
-      .catch(() => undefined);
+    Promise.all([
+      fetch('/api/v1/requests/inbox', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/v1/requests/history', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
+    ]).then(([pendingJson, historyJson]) => {
+      const merged: any[] = [];
+      const seen = new Set<string>();
+      [...(Array.isArray(pendingJson?.data) ? pendingJson.data : []),
+       ...(Array.isArray(historyJson?.data) ? historyJson.data : [])].forEach((r: any) => {
+        if (!r?.id || seen.has(r.id)) return;
+        seen.add(r.id);
+        merged.push(r);
+      });
+      setRequests(merged.map(mapRequest));
+    }).catch(() => undefined);
   };
   useEffect(loadInbox, []);
 
