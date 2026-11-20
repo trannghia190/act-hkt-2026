@@ -9,9 +9,11 @@ import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
+import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,7 @@ public class BusinessGapController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final ShiftRepository shiftRepository;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -51,6 +54,46 @@ public class BusinessGapController {
      * S14 — Lịch nhóm: WFH / nghỉ phép / đi muộn / công đủ theo ngày, kèm cảnh báo xung đột.
      * Phân quyền xem: HR/ADMIN xem toàn công ty; MANAGER xem cấp dưới trực tiếp; còn lại xem nhóm mình.
      */
+    @GetMapping("/attendance/my-shift")
+    @Operation(summary = "Ca làm việc của tôi — khung giờ chuẩn để tính đi muộn/về sớm (S07/S30)")
+    public ApiResponse<Map<String, Object>> myShift() {
+        UUID userId = CurrentUser.userId();
+        Shift shift = null;
+        boolean assigned = false;
+        if (userId != null) {
+            User u = userRepository.findById(userId).orElse(null);
+            if (u != null && u.getShiftId() != null) {
+                shift = shiftRepository.findById(u.getShiftId()).orElse(null);
+                assigned = shift != null;
+            }
+        }
+        if (shift == null) {
+            shift = shiftRepository.findAll().stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
+                    .filter(s -> !Boolean.TRUE.equals(s.getIsException()))
+                    .findFirst().orElse(null);
+        }
+        Map<String, Object> out = new HashMap<>();
+        if (shift != null) {
+            out.put("code", shift.getCode());
+            out.put("name", shift.getName());
+            out.put("checkInStart", String.valueOf(shift.getCheckInStart()));
+            out.put("checkInEnd", String.valueOf(shift.getCheckInEnd()));
+            out.put("checkOutStart", String.valueOf(shift.getCheckOutStart()));
+            out.put("checkOutEnd", String.valueOf(shift.getCheckOutEnd()));
+            out.put("lunchBreakStart", String.valueOf(shift.getLunchBreakStart()));
+            out.put("lunchBreakEnd", String.valueOf(shift.getLunchBreakEnd()));
+            out.put("requiredWorkHours", shift.getRequiredWorkHours());
+            out.put("isFlexible", Boolean.TRUE.equals(shift.getIsFlexible()));
+            out.put("flexibleCheckinFrom", String.valueOf(shift.getFlexibleCheckinFrom()));
+            out.put("flexibleCheckinTo", String.valueOf(shift.getFlexibleCheckinTo()));
+            out.put("flexibleCheckoutFrom", String.valueOf(shift.getFlexibleCheckoutFrom()));
+            out.put("flexibleCheckoutTo", String.valueOf(shift.getFlexibleCheckoutTo()));
+            out.put("assigned", assigned);
+        }
+        return ApiResponse.ok(out, shift == null ? "Chưa cấu hình ca làm việc" : "Ca làm việc của tôi");
+    }
+
     @GetMapping("/attendance/team-schedule")
     @Operation(summary = "Lịch nhóm (S14) — phân quyền 4 tầng + cảnh báo xung đột")
     public ApiResponse<Map<String, Object>> teamSchedule(@RequestParam(required = false) String month,
