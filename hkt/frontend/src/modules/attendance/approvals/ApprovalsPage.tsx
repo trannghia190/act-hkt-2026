@@ -312,7 +312,9 @@ export const ApprovalsPage: React.FC = () => {
                     </td>
                   )}
                   <td className="py-3 px-4 font-mono font-medium text-ink">
-                    {item.id}
+                    <Link to={`/attendance/requests/${item.id}`} className="hover:text-accent hover:underline" title="Xem chi tiết đơn">
+                      {item.id}
+                    </Link>
                     {item.status === 'PENDING' && item.createdAt && Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) >= 2 && (
                       <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">⏰ Quá hạn</span>
                     )}
@@ -348,7 +350,11 @@ export const ApprovalsPage: React.FC = () => {
                     )}
                   </td>
                   <td className="py-3 px-4 text-ink-muted font-mono">{item.createdAt}</td>
-                  <td className="py-3 px-4 text-right space-x-1.5">
+                  <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                    <Link to={`/attendance/requests/${item.id}`}
+                      className="inline-block text-[11px] px-2 py-1 rounded border border-line text-accent hover:bg-accent-soft">
+                      Chi tiết
+                    </Link>
                     {item.status === 'PENDING' ? (
                       <>
                         <Button
