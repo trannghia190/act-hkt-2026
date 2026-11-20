@@ -151,10 +151,14 @@ check("ngày công bố mặc định 11", sheet.get("publishDay") == 11)
 if sheet.get("rows"):
     r0 = sheet["rows"][0]
     check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)
-# C2c: bổ sung công quá hạn vẫn nộp được (gắn cờ)
+# C2c: hạn nộp 3 ngày — quá hạn bị chặn server-side (đi muộn/nghỉ/bổ sung)
 old_date = (date.today() - timedelta(days=10)).isoformat()
-status, data = call("POST", "/requests", {"type": "ADJUST", "workDate": old_date, "minutes": 30, "reason": "Quên chấm công", "payload": "{}"})
-check("bổ sung công quá hạn vẫn nộp được (gắn cờ)", status == 200, str(data)[:120])
+status, data = call("POST", "/requests", {"type": "ADJUST", "workDate": old_date, "minutes": 30, "reason": "Quên chấm công", "payload": "{}"}, expect=400)
+check("bổ sung công quá hạn 3 ngày bị chặn", status == 400 and "3 ngày" in (data.get("message") or ""), str(data)[:120])
+status, data = call("POST", "/requests", {"type": "LATE_EARLY", "workDate": old_date, "minutes": 10, "reason": "Kẹt xe", "payload": "{}"}, expect=400)
+check("đi muộn quá hạn 3 ngày bị chặn", status == 400)
+status, data = call("POST", "/requests", {"type": "LEAVE", "leaveType": "AL", "workDate": old_date, "reason": "Nghỉ phép", "payload": "{}"}, expect=400)
+check("nghỉ phép quá hạn gửi bị chặn", status == 400)
 
 status, data = call("POST", "/timesheets/publish")
 check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")

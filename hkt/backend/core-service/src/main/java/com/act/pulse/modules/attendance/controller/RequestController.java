@@ -86,6 +86,21 @@ public class RequestController {
             if (body.getMinutes() != null && body.getMinutes() > maxMinutes) {
                 throw new RuntimeException("Đi muộn/về sớm tối đa " + maxMinutes + " phút mỗi lần");
             }
+            int submitWithin = ruleService.getInt("late_early", "submit_within_days", 3);
+            if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(submitWithin))) {
+                throw new RuntimeException("Chỉ được tạo đơn đi muộn/về sớm trong vòng " + submitWithin + " ngày kể từ ngày xảy ra");
+            }
+        }
+
+        // ── NGHỈ PHÉP: hạn gửi theo cấu hình loại nghỉ (mặc định 3 ngày) ──
+        if ("LEAVE".equals(body.getType())) {
+            LocalDate workDate = body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate();
+            int submitWithin = leaveTypeRepository.findByCode(body.getLeaveType() == null ? "AL" : body.getLeaveType())
+                    .map(lt -> lt.getSubmitWithinDays() == null ? 3 : lt.getSubmitWithinDays())
+                    .orElse(ruleService.getInt("leave_request", "submit_within_days", 3));
+            if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(submitWithin))) {
+                throw new RuntimeException("Loại nghỉ này chỉ được gửi trong vòng " + submitWithin + " ngày kể từ ngày nghỉ");
+            }
         }
 
         boolean overdueFlag = false;
@@ -99,8 +114,8 @@ public class RequestController {
                     .count();
             if (monthly >= 5) throw new RuntimeException("Đã dùng đủ 5 lần bổ sung công trong tháng");
             int deadlineDays = ruleService.getInt("makeup", "deadline_working_days", 3);
-            if (workDate.isBefore(LocalDate.now().minusDays(deadlineDays))) {
-                overdueFlag = true; // quá hạn vẫn nộp được nhưng gắn cờ để quản lý thấy
+            if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(deadlineDays))) {
+                throw new RuntimeException("Bổ sung chấm công chỉ được gửi trong vòng " + deadlineDays + " ngày kể từ ngày quên chấm");
             }
         }
 

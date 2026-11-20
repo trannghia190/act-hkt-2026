@@ -24,6 +24,7 @@ export const RequestsPage: React.FC = () => {
   const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
   const [lateEarlyTime, setLateEarlyTime] = useState('08:45');
   const [myShift, setMyShift] = useState<any>(null);
+  const [rulesCfg, setRulesCfg] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -32,6 +33,11 @@ export const RequestsPage: React.FC = () => {
     fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => { if (j?.data) setLeaveBalance(j.data); }).catch(() => undefined);
     fetch('/api/v1/attendance/my-timesheet', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setPunchLogs(j.data); }).catch(() => undefined);
     fetch('/api/v1/admin/holidays', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setHolidays(j.data.map((h: any) => h.holidayDate)); }).catch(() => undefined);
+    fetch('/api/v1/rules', { headers }).then(r => r.json()).then(j => {
+      const map: Record<string, any> = {};
+      (j?.data || []).forEach((r: any) => { try { map[r.ruleKey] = JSON.parse(r.currentValue || '{}'); } catch { /* ignore */ } });
+      setRulesCfg(map);
+    }).catch(() => undefined);
     fetch('/api/v1/attendance/my-shift', { headers }).then(r => r.json()).then(j => {
       if (j?.data && j.data.code) {
         setMyShift(j.data);
@@ -105,6 +111,31 @@ export const RequestsPage: React.FC = () => {
   };
 
   const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
+
+  // Hạn nộp & giới hạn ngày lấy từ cấu hình quy định hiện hành.
+  const isoDaysFromToday = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('en-CA');
+  };
+  const lateSubmitDays = Number(rulesCfg?.late_early?.submit_within_days ?? 3);
+  const adjustDeadlineDays = Number(rulesCfg?.makeup?.deadline_working_days ?? 3);
+  const selectedLeaveCfg = leaveTypes.find((lt: any) => lt.code === newReq.leaveType);
+  const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+  const minDateFor = (type: string) => {
+    if (type === 'WFH') return isoDaysFromToday(1);
+    if (type === 'LATE_EARLY') return isoDaysFromToday(-lateSubmitDays);
+    if (type === 'ADJUST') return isoDaysFromToday(-adjustDeadlineDays);
+    return isoDaysFromToday(-leaveSubmitDays);
+  };
+  const minDateForSelected = minDateFor(newReq.type);
+  const handleTypeChange = (type: 'LEAVE' | 'WFH' | 'LATE_EARLY' | 'ADJUST') => {
+    const min = minDateFor(type);
+    setNewReq(prev => {
+      const start = prev.startDate < min ? min : prev.startDate;
+      return { ...prev, type, startDate: start, endDate: start };
+    });
+  };
 
   // Đi muộn/về sớm: 1 ngày, chọn giờ vào/ra thực tế; số phút tính theo ca thật của nhân viên.
   const hhmm = (value?: string) => (value || '').slice(0, 5);
@@ -260,8 +291,8 @@ export const RequestsPage: React.FC = () => {
     const d = new Date(log.checkInAt);
     return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_START));
   };
-  const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt);
-  const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0);
+  const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt && l.workDate >= isoDaysFromToday(-adjustDeadlineDays));
+  const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0 && l.workDate >= isoDaysFromToday(-lateSubmitDays));
   const anomalyCount = (missingCheckoutLog ? 1 : 0) + (lateLog ? 1 : 0);
 
   const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
@@ -502,7 +533,7 @@ export const RequestsPage: React.FC = () => {
             <label className="block font-medium text-ink mb-1">Loại Đơn Yêu Cầu</label>
             <select
               value={newReq.type}
-              onChange={e => setNewReq({ ...newReq, type: e.target.value as any })}
+              onChange={e => handleTypeChange(e.target.value as any)}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"
             >
               <option value="LATE_EARLY">🕘 Đi muộn / Về sớm</option>
@@ -515,7 +546,12 @@ export const RequestsPage: React.FC = () => {
                 <label className="block font-medium text-ink mb-1">Loại nghỉ</label>
                 <select
                   value={newReq.leaveType}
-                  onChange={e => setNewReq({ ...newReq, leaveType: e.target.value })}
+                  onChange={e => {
+                    const code = e.target.value;
+                    const days = Number(leaveTypes.find((lt: any) => lt.code === code)?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+                    const min = isoDaysFromToday(-days);
+                    setNewReq(prev => ({ ...prev, leaveType: code, startDate: prev.startDate < min ? min : prev.startDate }));
+                  }}
                   className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
                 >
                   {leaveTypes.length === 0 && <option value="AL">Phép năm (AL)</option>}
@@ -539,7 +575,7 @@ export const RequestsPage: React.FC = () => {
                 </label>
                 <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">
                   Số dư phép còn lại: <b>{leaveBalance ? Number(leaveBalance.remaining || 0) : '—'} ngày</b>
-                  <div className="text-[10px] mt-0.5">Hạn gửi: {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.submitWithinDays ?? 3} ngày · duyệt1 cấp bởi quản lý</div>
+                  <div className="text-[10px] mt-0.5">Duyệt 1 cấp bởi quản lý trực tiếp</div>
                   <div className="text-[10px] mt-0.5">Số ngày làm việc (trừ cuối tuần + lễ): <b>{leaveDays}</b></div>
                 </div>
               </div>
@@ -548,7 +584,7 @@ export const RequestsPage: React.FC = () => {
 
           {newReq.type === 'WFH' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
-              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc.</div>
+              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc — ngày sớm nhất <strong>{minDateForSelected}</strong>.</div>
               <label className="block text-[11px]">
                 Địa điểm WFH
                 <select className="mt-1 w-full border border-blue-200 rounded p-1" value={wfhLocation} onChange={e => setWfhLocation(e.target.value as 'HOME' | 'OTHER')}>
@@ -565,21 +601,12 @@ export const RequestsPage: React.FC = () => {
             </div>
           )}
 
-          {newReq.type === 'ADJUST' && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[11px] leading-relaxed">
-              <strong>Hạn nộp:</strong> Bổ sung chấm công phải gửi trong vòng <strong>3 ngày</strong> kể từ ngày quên chấm (tính theo ngày, không theo giờ).
-            </div>
-          )}
 
           {newReq.type === 'ADJUST' && (() => {
-            const d = new Date(newReq.startDate + 'T00:00:00');
-            const deadline = new Date(d); deadline.setDate(deadline.getDate() + 3);
-            const limit = new Date(); limit.setDate(limit.getDate() - 3);
-            const overdue = d < limit;
+            const min = isoDaysFromToday(-adjustDeadlineDays);
             return (
-              <div className={`p-2 rounded text-[11px] ${overdue ? 'bg-rose-50 border border-rose-200 text-rose-700' : 'bg-canvas border border-line text-ink-secondary'}`}>
-                Hạn nộp: <b>{deadline.toLocaleDateString('vi-VN')}</b> (3 ngày sau ngày quên chấm)
-                {overdue && ' · ⚠️ Đã quá hạn — đơn sẽ bị gắn cờ "nộp trễ", cần lý do rõ ràng'}
+              <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
+                Hạn nộp: trong vòng <b>{adjustDeadlineDays} ngày</b> kể từ ngày quên chấm — lịch chỉ cho chọn từ <b>{min}</b>.
               </div>
             );
           })()}
@@ -592,6 +619,7 @@ export const RequestsPage: React.FC = () => {
                   <input
                     type="date"
                     required
+                    min={isoDaysFromToday(-lateSubmitDays)}
                     value={newReq.startDate}
                     onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
@@ -640,6 +668,7 @@ export const RequestsPage: React.FC = () => {
                       ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
                       : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa 60 phút).</>}
                   </div>
+                  <div className="mt-1 text-ink-secondary">Hạn nộp: trong vòng <b>{lateSubmitDays} ngày</b> kể từ ngày xảy ra · chọn từ {isoDaysFromToday(-lateSubmitDays)}.</div>
                 </div>
               </div>
             </>
@@ -651,8 +680,9 @@ export const RequestsPage: React.FC = () => {
                   <input
                     type="date"
                     required
+                    min={minDateForSelected}
                     value={newReq.startDate}
-                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
+                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value, endDate: e.target.value < newReq.endDate ? e.target.value : newReq.endDate })}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
@@ -661,11 +691,16 @@ export const RequestsPage: React.FC = () => {
                   <input
                     type="date"
                     required
+                    min={newReq.startDate}
                     value={newReq.endDate}
                     onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
+              </div>
+
+              <div className="text-[11px] bg-canvas border border-line rounded-lg px-2 py-1.5 text-ink-secondary">
+                {newReq.type === 'LEAVE' && <>Hạn gửi loại nghỉ này: <b>{leaveSubmitDays} ngày</b> kể từ ngày nghỉ — chọn từ <b>{minDateForSelected}</b>.</>}
               </div>
 
               <div>
