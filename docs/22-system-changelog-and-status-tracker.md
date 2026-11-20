@@ -48,6 +48,24 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 ## 3. NHẬT KÝ THAY ĐỔI VỀ MẶT NGHIỆP VỤ (BUSINESS CHANGELOG)
 
+### [2026-11-20] — Bản Cập Nhật v2.3.0 (Đơn từ, đính kèm, bảng công lưu DB)
+
+**Nghiệp vụ & UI**
+* WFH: bỏ giới hạn địa điểm + lặp tuần; cả ngày chọn khoảng ngày (1 đơn/ngày làm việc), nửa ngày 0.5 chọn sáng/chiều.
+* Đi muộn/về sớm: 1 ngày, chọn đi muộn/về sớm + giờ thực tế; giới hạn phút theo `late_early.max_minutes`.
+* Bổ sung chấm công: 1 ngày trong hạn (không ngày tương lai), chọn giờ vào/ra, bỏ ô thời lượng.
+* Nghỉ phép nửa ngày = 0.5 + buổi sáng/chiều + khung giờ làm thực tế; `end_date` lưu DB và hiển thị khoảng ngày.
+* Đơn từ hiển thị tên loại nghỉ (Nghỉ ốm) thay mã S/AL; danh sách phân trang server-side, lọc khoảng ngày, cột Ngày tạo, nút Xem chi tiết, Sửa đơn khi chờ duyệt/bị từ chối.
+* Đính kèm giấy tờ: nhiều fileảnh/PDF, lưu bytea DB, chặn gửi/duyệt khi thiếu.
+
+**Kỹ thuật**
+* Flyway V9–V14: `timesheet_disputes`, `todo_completions`, `request_attachments`, `requests.end_date` (+backfill).
+* Bảng công: trạng thái kỳ/ô sửa tay/audit lưu `timesheets`, `timesheet_cells`, `timesheet_audit_logs` (không RAM); khiếu nại lưu DB.
+* Quản lý nhân viên/audit log/OKR Form 4 Box/Todo completion đọc-ghi DB.
+* API: paging/lọc đơn server-side, `PUT /requests/{id}`, upload/download attachments, `GET /attendance/my-shift`.
+* Auth: JWT gửi qua `X-Auth-Token` để chạy sau ngrok basic auth; CORS localhost + domain tunnel.
+* Test: API suite pass; UI kiểm thử bằng Chrome headless CDP; `tsc`/build/consistency pass.
+
 ### [2026-11-18] — Bản Cập Nhật v2.2.0 (Chuẩn Hóa Đánh Số 22 Tài Liệu Hệ Thống & Nâng Cấp Tracking Excel Đầy Đủ Expected Behaviour)
 - **Chuẩn Hóa Thứ Tự & Đánh Số Tuần Tự 22 Tài Liệu (`docs/`)**:
   - Loại bỏ hoàn toàn sự trùng lặp chỉ số (trước đây có 2 bộ tài liệu cùng mang đầu số 01, 02, 03...).

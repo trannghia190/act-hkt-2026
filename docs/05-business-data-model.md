@@ -626,3 +626,24 @@ Công ty (nhóm gốc, parent = None)
 
 > **Vì sao bắt buộc sao lưu trước mỗi lần chốt công:** quy trình chốt công ghi hàng loạt vào bảng
 > công và khóa kỳ — nếu chạy sai, không có đường quay lại nếu không có bản sao lưu.
+
+---
+
+## Cập nhật schema thực tế — 20/11/2026
+
+Các bảng/cột đã bổ sung và đang dùng trong code (Flyway V2–V14):
+
+| Bảng / cột | Trạng thái | Mục đích |
+|---|---|---|
+| `requests.end_date` | Thêm (V12) | Ngày kết thúc áp dụng; backfill V13/V14 cho đơn nghỉ cũ theo `duration` N ngày làm việc |
+| `request_attachments` | Thêm (V11) | File thật (`bytea`), `file_name`, `content_type`, `size_bytes`, `uploaded_by`; 1 đơn nhiều file |
+| `timesheet_disputes` | Thêm (V9) | Khiếu nại bảng công: user/ngày/lý do/status/deadline/resolution; seed DC-01/DC-02 |
+| `todo_completions` | Thêm (V10) | Trạng thái hoàn tất Todo theo người dùng |
+| `timesheets` | Đang dùng | Status kỳ công theo người/tháng (`draft/published/locked`), publishedAt, disputeDeadline, lockedAt |
+| `timesheet_cells` | Đang dùng | Ô sửa tay theo kỳ/ngày/symbol, `is_manual=true` |
+| `timesheet_audit_logs` | Đang dùng | Audit từng lần sửa ô (old/new/reason/changed_by) |
+| `okr_reviews` | Đang dùng | Form 4 Box tự đánh giá + điểm quản lý chấm |
+| `leave_types.config`, `submit_within_days`, `requires_attachment`, `unit`, `is_paid`, `deducts_annual_leave` | Đang dùng | Cấu hình loại nghỉ 3 tầng |
+| `notifications` | Đang dùng | Thông báo DB cho nhân viên (duyệt/từ chối/khiếu nại) |
+
+**Ghi chú quan trọng:** `requests` hiện dùng `work_date` + `end_date` (không còn `start_date`); `payload` là JSONB chứa `unit`, `half_day_period`, `work_window_*`, `late_early`, `time`, `adjust_kind`, `duration`. Mọi trạng thái bảng công/khiếu nại/todo/OKR review đều đọc-ghi DB, không còn lưu RAM.

@@ -289,3 +289,35 @@ erDiagram
 | S46 | `GET /api/v1/leaves/table` |
 
 > `PUT /api/v1/rules/{ruleKey}` + `GET /api/v1/rules/{ruleKey}/versions` + rollback đã thay cho `/rules/dry-run`.
+
+---
+
+## Cập nhật API & schema thực tế — 20/11/2026
+
+### Schema
+* `requests`: `work_date`, **`end_date`**, `payload JSONB`, `applied_parameters JSONB`, `minutes`, `status`, `decided_by/at`, `decision_comment`. (Không dùng `request_code/start_date/target_checkin_time`.)
+* `request_attachments`: `id, request_id, file_name, content_type, size_bytes, data BYTEA, uploaded_by, created_at`.
+* `timesheet_disputes`, `todo_completions` (V9/V10); `timesheets`, `timesheet_cells`, `timesheet_audit_logs` đang được dùng thật.
+* `leave_types` thêm `submit_within_days`, `requires_attachment`, `unit`, `is_paid`, `deducts_annual_leave`, `config`.
+
+### Endpoints đơn từ
+| Method | Endpoint | Ghi chú |
+|---|---|---|
+| POST | `/requests` | body `{type, leaveType, workDate, endDate, minutes, reason, payload, draft}` |
+| GET | `/requests/my-requests?page&size&from&to&type&status&keyword` | Trả `content/page/size/totalElements/totalPages`; không truyền `page` → list cũ |
+| PUT | `/requests/{id}` | Sửa đơn của mình khi DRAFT/PENDING/REJECTED → PENDING, xoá quyết định cũ |
+| POST | `/requests/{id}/submit` | Gửi duyệt đơn nháp |
+| POST | `/requests/{id}/attachments` | multipart `file`, nhiều lần cho nhiều file;ảnh/PDF ≤10MB |
+| GET | `/requests/{id}/attachments` | Danh sách file (chủ đơn/quản lý/HR) |
+| GET | `/requests/{id}/attachments/{attachmentId}` | Tải file thật |
+| GET | `/requests/{id}` | Chi tiết + timeline + `endDate`, `leaveTypeName`, `approverName`, `attachmentCount` |
+| GET | `/requests/inbox` | Kèm `employeeCode/Name`, `endDate`, `leaveTypeName`, `attachmentCount` |
+| POST | `/requests/{id}/approve` | Chặn nếu loại nghỉ cần giấy tờ mà chưa có file |
+| POST | `/requests/{id}/reject` | Bắt buộc lý do |
+
+### Endpoints bảng công / khiếu nại
+* `GET /timesheets?month=YYYY-MM` — 53 cột, đọc DB (log + đơn duyệt + ngày lễ + ô sửa DB), trả `status` từ `timesheets`.
+* `POST /timesheets/cell`, `/timesheets/bulk` — ghi `timesheet_cells` + `timesheet_audit_logs`; bắt buộc lý do; chặn khi khoá.
+* `POST /timesheets/publish`, `/timesheets/lock` — lưu `timesheets`; lock đếm pending từ `timesheet_disputes`.
+* `POST /disputes` (nhân viên tạo), `GET /disputes`, `GET /disputes/{id}`, `POST /disputes/{id}/resolve` — DB `timesheet_disputes`.
+* `GET /attendance/my-shift` — ca thật (khung vào/ra, nghỉ trưa, giờ/ngày) để tính đi muộn/về sớm và hiển thị giờ làm.
