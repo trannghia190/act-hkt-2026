@@ -237,8 +237,12 @@
 > Mọi đơn đều có **quota** hiển thị sẵn, **validate tức thì**, và **bắt buộc lý do khi bị từ chối**.
 
 ### C1c · Tạo đơn đi muộn — prefill 🔴 · S07
+> **Cập nhật 20/11:** form chỉ chọn **1 ngày**, chọn Đi muộn (sửa giờ vào) / Về sớm (sửa giờ ra) + giờ thực tế; số phút tự tính theo ca và giới hạn bởi `late_early.max_minutes` (cấu hình); ô giờ bị min/max theo max phút; hạn nộp 3 ngày; duyệt xong cập nhật `attendance_logs`.
+
 **Nghiệm thu:**
 - [ ] Mở form → **ngày và giờ đã điền sẵn từ log chấm công thật** (nhân viên không gõ)
+- [ ] Chỉ chọn 1 ngày; chọn Đi muộn/Về sớm + giờ thực tế; không nhập thời lượng
+- [ ] Số phút ≤ `late_early.max_minutes` (đổi cấu hình → ô giờ đổi min/max)
 - [ ] Quota 2 lần/tháng → lần 3 **bị chặn ngay lúc tạo**, kèm số đã dùng
 - [ ] "Lưu nháp" → **không trừ quota, không hiện cho quản lý**
 - [ ] Nhân viên hỏi "vì sao bị chặn" → hiện đúng lý do theo rule
@@ -248,8 +252,12 @@
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §6, mockup S07, code `hkt/frontend/src/modules/attendance/requests/RequestsPage.tsx` (đã có phần prefill từ log) và `RequestController` (`POST /requests`). Hoàn thiện prefill ngày/giờ từ log đi muộn thật, quota 2 lần/tháng chặn ở server, lưu nháp không trừ quota và không hiện cho quản lý, chip lý do 1 chạm, thông báo lý do bị chặn theo rule. **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `POST /api/v1/requests` type=LATE_EARLY lần 1 và 2 → 200; lần 3 trong cùng tháng → 400 kèm số quota đã dùng; tạo 1 đơn DRAFT → `GET /api/v1/requests/my-requests` có nó nhưng `GET /api/v1/requests/inbox` của quản lý KHÔNG thấy; lưu nháp KHÔNG trừ quota. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/requests`: tạo log đi muộn qua API rồi mở form → ngày/giờ phải được điền sẵn từ log (không phải ô trống); bấm lưu nháp → quota không đổi, đơn không hiện trong hộp thư duyệt của quản lý; gửi 3 lần trong tháng → lần 3 hiện lý do bị chặn; chip lý do bấm 1 lần đổi được lý do. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.
 
 ### C2c · Đơn bổ sung chấm công 🔴 · S31
+> **Cập nhật 20/11:** form chỉ chọn **1 ngày** (hôm nay hoặc quá khứ trong `makeup.deadline_working_days`, không cho ngày tương lai), chọn **Giờ vào/Giờ ra + giờ thực tế**, **không nhập thời lượng**. Duyệt xong cập nhật `attendance_logs`.
+
 **Nghiệm thu:**
 - [ ] Hạn nộp tính theo **ngày làm việc**, hiện rõ hạn là ngày nào
+- [ ] Chỉ 1 ngày trong hạn (min = hôm nay − 3, max = hôm nay); không chọn ngày tương lai
+- [ ] Chọn Giờ vào hoặc Giờ ra + giờ thực tế; **không có ô Số lượng/Thời lượng**
 - [ ] Quota 5 lần/tháng
 - [ ] Bắt buộc lý do
 - [ ] Quá hạn → nộp được nếu quy định cho phép, **bắt buộc lý do + gắn cờ**
@@ -258,20 +266,28 @@
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §6, mockup S31, code `RequestsPage.tsx` và `RequestController`. Hoàn thiện đơn bổ sung công: hạn tính theo NGÀY làm việc (mặc định 3), quota 5 lần/tháng, lý do bắt buộc, cho phép quá hạn nếu rule bật và gắn cờ cho HR. **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `POST /api/v1/requests` type=MAKEUP: trong hạn → 200; quá hạn khi rule `makeup` không cho phép → 400 nêu rõ số ngày quá hạn; lần 6 trong tháng → 400 vượt quota; đơn quá hạn được tạo phải có cờ hiện trong `GET /api/v1/requests/inbox`. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/requests` tab đơn bổ sung công: hạn nộp hiện rõ là NGÀY nào (không phải giờ); thiếu lý do thì nút gửi disable; gửi đơn quá hạn → hiện cờ đỏ kèm lý do theo rule. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.
 
 ### C3c · Đơn của tôi 🔴 · S08
+> **Cập nhật 20/11:** phân trang server-side 10/trang; lọc server-side theo loại/trạng thái/**khoảng ngày**/lý do; cột **Ngày áp dụng** (1 ngày hoặc khoảng) + **Ngày tạo**; nút **Xem chi tiết** mọi dòng; **Sửa đơn** khi PENDING/REJECTED.
+
 **Nghiệm thu:**
 - [ ] Lịch sử đơn + trạng thái rõ ràng (chờ duyệt / được duyệt / bị từ chối + lý do)
 - [ ] Badge quota còn lại luôn hiển thị
 - [ ] Nhân viên **không thấy đơn của đồng nghiệp** (trừ khi được cấu hình)
 - [ ] **Tab theo loại đơn + Tất cả**
-- [ ] Đơn bị trả lại → nút **"Sửa & gửi lại"** ngay trong danh sách
+- [ ] Đơn bị trả lại hoặc đang chờ duyệt → nút **"Sửa đơn"** ngay trong danh sách
+- [ ] Phân trang + lọc khoảng ngày server-side; hiện Ngày áp dụng/Ngày tạo
+- [ ] Nút Xem chi tiết hiện đủ thông tin + file đính kèm
 **Phụ thuộc:** C1c
 
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §5.1, mockup S08, code `RequestsPage.tsx`, `RequestDetailPage.tsx` và `RequestController` (`/my-requests`, `/{id}`). Hoàn thiện lịch sử đơn + trạng thái + lý do từ chối, badge quota còn lại, tab theo loại đơn + Tất cả, nút "Sửa & gửi lại" khi bị trả, và chỉ thấy đơn của mình (trừ khi được cấu hình). **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `GET /api/v1/requests/my-requests` của một người KHÔNG được chứa đơn của người khác (so 2 response); `GET /api/v1/requests/{id}` → có timeline + lý do từ chối; `POST /api/v1/requests/{id}/withdraw` → trạng thái thành WITHDRAWN. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/requests`: tab theo loại + Tất cả lọc đúng số dòng; badge quota khớp số còn lại từ API; đơn bị trả lại có nút 'Sửa & gửi lại' và bấm được; đăng nhập bằng tài khoản khác không thấy đơn của người này. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.
 
 ### C4c · Xin nghỉ phép 🔴 · S30
+> **Cập nhật 20/11:** nửa ngày = 0.5, chọn buổi sáng/chiều + khung giờ làm còn lại theo ca; `end_date` lưu thật và hiển thị khoảng ngày; loại nghỉ cần giấy tờ **bắt buộc ≥1 file, cho nhiều file**ảnh/PDF ≤10MB lưu DB; server chặn duyệt nếu thiếu.
+
 **Nghiệm thu:**
 - [ ] **8 loại nghỉ** hiện đúng, lấy từ cấu hình của HR (không hard-code)
-- [ ] Đơn vị **ngày / nửa ngày**
+- [ ] Đơn vị **ngày / nửa ngày (0.5)** — nửa ngày chọn buổi sáng/chiều, hiện khung giờ làm còn lại
+- [ ] Loại nghỉ cần giấy tờ → chọn/nhiều file (ảnh/PDF) và chặn gửi/duyệt khi thiếu
+- [ ] Ngày bắt đầu/kết thúc hiển thị rõ (1 ngày hoặc khoảng)
 - [ ] Hạn gửi + giấy tờ đều cấu hình được theo từng loại
 - [ ] Số dư phép còn lại hiện ngay trong form
 - [ ] Đủ **8 loại nghỉ khớp cột bảng công**
@@ -282,8 +298,11 @@
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §2.3, mockup S30, code `RequestsPage.tsx`, `LeaveController.java` (`/leave-types`), `LeaveType.java` và bảng `leave_ledger`. Hoàn thiện form xin nghỉ đủ 8 loại lấy từ cấu hình DB (không hard-code), đơn vị ngày/nửa ngày, tự tính ngày làm việc trừ cuối tuần + lễ, hiện số dư ngay trong form, lưu snapshot `applied_parameters`, gửi từ bất kỳ đâu (không GPS/mạng công ty). **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `GET /api/v1/leave-types` → đủ 8 loại; `POST /api/v1/requests` type=LEAVE với ngày trải qua cuối tuần → số ngày làm việc tính ra khớp số ngày làm việc thật; đổi cấu hình loại nghỉ rồi đọc lại đơn cũ → `applied_parameters` phải giữ nguyên giá trị lúc gửi. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/requests` tab nghỉ phép: dropdown loại nghỉ hiện đúng 8 loại lấy từ API; chọn ngày → số ngày làm việc tự tính (bỏ cuối tuần + lễ) khớp API; số dư phép hiện ngay trong form; đơn nghỉ chỉ cần quản lý duyệt, KHÔNG chuyển HR. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.
 
 ### C5c · Đăng ký WFH 🔴 · S10
+> **Cập nhật 20/11:** không giới hạn địa điểm, không lặp tuần; cả ngày chọn khoảng ngày (mỗi ngày làm việc 1 đơn, quota 2/tuần) hoặc nửa ngày 0.5 (1 ngày, sáng/chiều).
+
 **Nghiệm thu:**
-- [ ] Đăng ký lẻ hoặc **lịch cố định** (thứ Sáu hằng tuần) tạo được nhiều tuần
+- [ ] WFH cả ngày chọn khoảng ngày; nửa ngày 0.5 chỉ 1 ngày + buổi sáng/chiều
+- [ ] Không giới hạn địa điểm, không lặp tuần
 - [ ] Quota 2 lần/tuần → lần 3 bị chặn
 - [ ] Hạn đăng ký ≥ 1 ngày làm việc → báo rõ lý do khi vi phạm
 - [ ] Ngày WFH đã duyệt → **chấm công được ngoài mạng và ngoài bán kính GPS** (ngoại lệ duy nhất)
@@ -293,7 +312,8 @@
 
 ### C6c · Số dư phép 🔴 · S09
 **Nghiệm thu:**
-- [ ] Card từng loại nghỉ, progress bar phép năm
+- [ ] Card tổng phép/đã dùng/còn lại + progress bar phép năm; không bắt buộc hiển thị bảng riêng “số dư theo loại nghỉ”
+- [ ] Phép ốm · phép thâm niên · phép tồn có card riêng
 - [ ] Thẻ **Tổng phép còn lại** = phép năm còn + phép tồn còn — tự cộng, đổi số dư thì tự cập nhật
 - [ ] **Phép ốm** và **phép thâm niên** có card riêng
 - [ ] **Cộng phép hàng tháng vào ngày 15**, chỉ người vào làm từ **ngày 15 trở về trước** mới cộng trong tháng đó (vào 20/11 → tháng 11 không cộng, kỳ đầu tiên là 15/12)
@@ -301,6 +321,7 @@
 - [ ] Cảnh báo **phép tồn** theo luật (toàn bộ → 01/04; còn 5 ngày → 01/07; tồn = 0 từ 01/07)
 - [ ] Phép tồn là **thẻ riêng** cạnh phép năm (không ẩn vào dòng phụ)
 - [ ] **Lịch sử phép có filter**: theo loại phép (phép năm · tồn · chức vụ · thâm niên · ốm · bù) và theo năm; lọc xong danh sách chỉ còn dòng khớp
+- [ ] Sổ phép hiện **loại phép của từng dòng** và **số dư sau theo đúng loại đó** (AL trừ phép năm, S trừ/đếm phép ốm — không cộng chung một quỹ)
 **Phụ thuộc:** E8
 
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §5.1, mockup S09, code `hkt/frontend/src/modules/attendance/leaves/LeavesPage.tsx`, `LeaveController` (`/leaves/my-balance`), `CronController` (`/monthly-leave-accrual`, `/yearly-seniority-accrual`). Hoàn thiện card từng loại nghỉ, thẻ Tổng phép còn lại tự cộng, cộng phép ngày 15 với cutoff (vào sau 15 → hoãn kỳ sau), thâm niên đúng ngày tròn, cảnh báo tồn theo 01/04 và 01/07, filter lịch sử theo loại + năm. **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `GET /api/v1/leaves/my-balance` → số dư từng loại; TỔNG phép còn lại phải bằng TỔNG các loại (tính lại bằng script, không copy số hiển thị); `GET /api/v1/leaves/my-ledger` → có dòng cộng ngày 15 và dòng thâm niên với lý do đúng; chạy job cộng phép hàng tháng → `GET /api/v1/leaves/my-balance` tăng đúng số ngày; vào làm sau ngày 15 → tháng đó KHÔNG được cộng. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/leaves`: card từng loại hiện đúng số dư API; thẻ 'Tổng phép còn lại' = tổng các card, tự cộng và tự cập nhật khi đổi số dư; phép ốm và phép thâm niên có card riêng; lọc lịch sử theo loại phép và theo năm lọc đúng số dòng. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.

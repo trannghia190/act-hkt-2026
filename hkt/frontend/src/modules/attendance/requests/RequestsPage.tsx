@@ -19,12 +19,16 @@ export const RequestsPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAttachmentCount, setEditingAttachmentCount] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
   const [halfDayPeriod, setHalfDayPeriod] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
+  const [adjustKind, setAdjustKind] = useState<'IN' | 'OUT'>('OUT');
+  const [adjustTime, setAdjustTime] = useState('17:30');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [punchLogs, setPunchLogs] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
@@ -48,8 +52,8 @@ export const RequestsPage: React.FC = () => {
     fetch('/api/v1/attendance/my-shift', { headers }).then(r => r.json()).then(j => {
       if (j?.data && j.data.code) {
         setMyShift(j.data);
-        const start = String(j.data.checkInStart || '08:00').slice(0, 5);
-        const [h, m] = start.split(':').map(Number);
+        const inEnd = String(j.data.checkInEnd || '09:30').slice(0, 5);
+        const [h, m] = inEnd.split(':').map(Number);
         const total = h * 60 + m + 15;
         setLateEarlyTime(`${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
       }
@@ -69,6 +73,12 @@ export const RequestsPage: React.FC = () => {
     try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }
   };
 
+  const fmtDate = (iso?: string) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return d && m && y ? `${d}/${m}/${y}` : iso;
+  };
+
   const mapRequest = (r: any): AttendanceRequestItem => {
     const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
     return {
@@ -78,9 +88,10 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || '',
       team: r.team || user?.team || '',
       type: r.requestType,
+      leaveType: r.leaveType,
       typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName || r.leaveType}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '',
-      endDate: r.workDate || '',
+      endDate: r.endDate || r.workDate || '',
       durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');
@@ -91,7 +102,10 @@ export const RequestsPage: React.FC = () => {
       })(),
       reason: r.reason || '',
       status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
-      approver: r.decidedAt ? 'Quản lý đã xử lý' : '—',
+      approver: r.approverName || (r.decidedAt ? 'Quản lý đã xử lý' : '—'),
+      payload: r.payload,
+      minutes: r.minutes,
+      attachmentCount: Number(r.attachmentCount || 0),
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
     } as AttendanceRequestItem;
@@ -193,6 +207,7 @@ export const RequestsPage: React.FC = () => {
     return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
   };
   const SHIFT_START = hhmm(myShift?.checkInStart) || '08:00';
+  const SHIFT_IN_END = hhmm(myShift?.checkInEnd) || '09:30';
   const SHIFT_END = hhmm(myShift?.checkOutStart) || '17:00';
   const shiftStartLabel = hhmm(myShift?.checkInStart) || '08:00';
   const shiftInEnd = hhmm(myShift?.checkInEnd) || '09:30';
@@ -211,17 +226,18 @@ export const RequestsPage: React.FC = () => {
     : 0;
   const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
     ? (lateEarlyKind === 'LATE'
-        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
+        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_IN_END)
         : toMinutes(SHIFT_END) - toMinutes(lateEarlyTime))
     : 0;
   const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax;
   const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
+  const adjustDuration = `Bổ sung giờ ${adjustKind === 'IN' ? 'vào' : 'ra'} (${adjustTime})`;
 
   const handleCreate = (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
-    if (leaveNeedsAttachment && attachments.length === 0) {
+    if (leaveNeedsAttachment && attachments.length === 0 && !(editingId && editingAttachmentCount > 0)) {
       showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi');
       return;
     }
@@ -275,6 +291,8 @@ export const RequestsPage: React.FC = () => {
         ? (leaveUnit === 'HALF_DAY'
             ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}`
             : `${wfhDaysCount} ngày làm việc`)
+        : newReq.type === 'ADJUST'
+        ? adjustDuration
         : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
@@ -290,7 +308,8 @@ export const RequestsPage: React.FC = () => {
         : newReq.type === 'WFH'
         ? (wfhHalf ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}`
                    : `${wfhDaysCount} ngày làm việc`)
-        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
+        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration
+        : newReq.type === 'ADJUST' ? adjustDuration : newReq.duration,
       unit: halfType ? leaveUnit : undefined,
       ...(halfType && leaveUnit === 'HALF_DAY' ? {
         half_day_period: halfDayPeriod,
@@ -303,8 +322,12 @@ export const RequestsPage: React.FC = () => {
       ...(newReq.type === 'LATE_EARLY' ? {
         late_early: lateEarlyKind,
         time: lateEarlyTime,
-        shift_start: SHIFT_START,
+        shift_start: SHIFT_IN_END,
         shift_end: SHIFT_END,
+      } : {}),
+      ...(newReq.type === 'ADJUST' ? {
+        adjust_kind: adjustKind,
+        time: adjustTime,
       } : {}),
     });
     const body = {
@@ -312,6 +335,7 @@ export const RequestsPage: React.FC = () => {
       leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
       payload,
       workDate: newReq.startDate,
+      endDate: newReq.type === 'LEAVE' ? newReq.endDate : newReq.startDate,
       minutes: newReq.type === 'LATE_EARLY' ? lateEarlyMinutes : undefined,
       reason: newReq.reason,
       draft: asDraft,
@@ -324,7 +348,7 @@ export const RequestsPage: React.FC = () => {
       return;
     }
     // Chặn trước nếu vượt quota 2 ngày WFH/tuần (backend cũng chặn từng đơn).
-    if (newReq.type === 'WFH') {
+    if (newReq.type === 'WFH' && !editingId) {
       const weekKey = (iso: string) => {
         const d = new Date(iso + 'T00:00:00');
         const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
@@ -344,13 +368,22 @@ export const RequestsPage: React.FC = () => {
     (async () => {
       const createdIds: string[] = [];
       try {
-        for (const iso of sendDates) {
-          const res = await fetch('/api/v1/requests', {
-            method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...body, workDate: iso }),
+        if (editingId) {
+          const res = await fetch(`/api/v1/requests/${editingId}`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify(body),
           });
           const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
-          if (json?.data?.id) createdIds.push(json.data.id);
+          if (!res.ok) throw new Error(json?.message || 'Cập nhật đơn thất bại');
+          createdIds.push(editingId);
+        } else {
+          for (const iso of sendDates) {
+            const res = await fetch('/api/v1/requests', {
+              method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...body, workDate: iso }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
+            if (json?.data?.id) createdIds.push(json.data.id);
+          }
         }
         let uploadFailed = false;
         for (const requestId of createdIds) {
@@ -371,11 +404,14 @@ export const RequestsPage: React.FC = () => {
           if (uploadFailed) break;
         }
         showToast(uploadFailed
-          ? 'Đơn đã tạo nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
-          : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
-              : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công')));
+          ? 'Đơn đã cập nhật nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
+          : (editingId ? 'Đã cập nhật đơn và gửi lại quản lý'
+              : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
+                  : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))));
         loadRequests();
         setIsCreateOpen(false);
+        setEditingId(null);
+        setEditingAttachmentCount(0);
         setAttachments([]);
         setLeaveUnit('DAY');
         setHalfDayPeriod('MORNING');
@@ -410,6 +446,33 @@ export const RequestsPage: React.FC = () => {
     loadRequests();
   };
 
+  const openEditRequest = (req: AttendanceRequestItem) => {
+    let p: any = {};
+    try { p = JSON.parse(req.payload || '{}'); } catch { p = {}; }
+    setEditingId(req.id);
+    setEditingAttachmentCount(req.attachmentCount || 0);
+    setAttachments([]);
+    setLeaveUnit(p.unit === 'HALF_DAY' || p.half_day_period ? 'HALF_DAY' : 'DAY');
+    setHalfDayPeriod(p.half_day_period === 'AFTERNOON' ? 'AFTERNOON' : 'MORNING');
+    if (req.type === 'LATE_EARLY') {
+      setLateEarlyKind(p.late_early === 'EARLY' ? 'EARLY' : 'LATE');
+      if (p.time) setLateEarlyTime(String(p.time).slice(0, 5));
+    }
+    if (req.type === 'ADJUST') {
+      setAdjustKind(p.adjust_kind === 'IN' ? 'IN' : 'OUT');
+      if (p.time) setAdjustTime(String(p.time).slice(0, 5));
+    }
+    setNewReq({
+      type: req.type as any,
+      startDate: req.startDate,
+      endDate: req.endDate || req.startDate,
+      duration: p.duration || req.durationText || '1.0 ngày',
+      leaveType: req.leaveType || 'AL',
+      reason: req.reason,
+    });
+    setIsCreateOpen(true);
+  };
+
   // Gợi ý điền đơn từ log chấm công thật (không hiển thị mô tả nội bộ của task).
   const fmtDay = (iso: string) => {
     const [y, m, d] = (iso || '').split('-');
@@ -423,15 +486,20 @@ export const RequestsPage: React.FC = () => {
   const lateMinutesOf = (log: any) => {
     if (!log?.checkInAt) return 0;
     const d = new Date(log.checkInAt);
-    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_START));
+    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_IN_END));
   };
   const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt && l.workDate >= isoDaysFromToday(-adjustDeadlineDays));
   const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0 && l.workDate >= isoDaysFromToday(-lateSubmitDays));
-  const anomalyCount = (missingCheckoutLog ? 1 : 0) + (lateLog ? 1 : 0);
+  const anomalyCount = new Set([
+    missingCheckoutLog?.workDate,
+    lateLog?.workDate,
+  ].filter(Boolean)).size;
 
   const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
     const logDate = log?.workDate || '';
     if (kind === 'OUT') {
+      setAdjustKind('OUT');
+      setAdjustTime(SHIFT_END);
       setNewReq({
         type: 'ADJUST', startDate: logDate, endDate: logDate, duration: 'Bổ sung giờ ra', leaveType: 'AL',
         reason: `Quên chấm công ra ngày ${fmtDay(logDate)} — đề nghị bổ sung giờ ra theo log chấm công`,
@@ -442,7 +510,7 @@ export const RequestsPage: React.FC = () => {
       setLateEarlyKind('LATE');
       setLateEarlyTime(timeOf(log.checkInAt));
       setNewReq({
-        type: 'ADJUST', startDate: logDate, endDate: logDate,
+        type: 'LATE_EARLY', startDate: logDate, endDate: logDate,
         duration: `Muộn ${mins} phút (${timeOf(log.checkInAt)})`, leaveType: 'AL',
         reason: `Đi muộn ${mins} phút ngày ${fmtDay(logDate)} — nhập lý do cụ thể`,
       });
@@ -474,7 +542,7 @@ export const RequestsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => { setEditingId(null); setEditingAttachmentCount(0); setAttachments([]); setIsCreateOpen(true); }}>
             + Tạo Đơn Mới
           </Button>
         </div>
@@ -573,12 +641,14 @@ export const RequestsPage: React.FC = () => {
 
       {/* Requests Table */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[1180px] text-left border-collapse text-xs">
           <thead>
             <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
               <th className="py-3 px-4">Mã Đơn</th>
               <th className="py-3 px-4">Loại Đơn Yêu Cầu</th>
-              <th className="py-3 px-4">Thời Gian Áp Dụng</th>
+              <th className="py-3 px-4">Ngày áp dụng</th>
+              <th className="py-3 px-4">Ngày tạo</th>
               <th className="py-3 px-4">Thời Lượng</th>
               <th className="py-3 px-4">Lý Do</th>
               <th className="py-3 px-4">Người Phê Duyệt</th>
@@ -589,7 +659,7 @@ export const RequestsPage: React.FC = () => {
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-ink-muted">
+                <td colSpan={9} className="py-8 text-center text-ink-muted">
                   Không có đơn yêu cầu nào phù hợp điều kiện lọc.
                 </td>
               </tr>
@@ -599,11 +669,11 @@ export const RequestsPage: React.FC = () => {
                   <td className="py-3 px-4 font-mono font-medium text-ink">{req.id}</td>
                   <td className="py-3 px-4 min-w-[180px]">
                     <span className="font-semibold text-ink whitespace-normal leading-snug block">{req.typeName}</span>
-                    <div className="text-[10px] text-ink-muted mt-0.5">Gửi lúc: {req.createdAt}</div>
                   </td>
-                  <td className="py-3 px-4 font-mono text-ink-secondary">
-                    {req.startDate} {req.startDate !== req.endDate ? `→ ${req.endDate}` : ''}
+                  <td className="py-3 px-4 font-mono text-ink-secondary whitespace-nowrap">
+                    {fmtDate(req.startDate)}{req.startDate !== req.endDate ? ` → ${fmtDate(req.endDate)}` : ''}
                   </td>
+                  <td className="py-3 px-4 text-ink-secondary whitespace-nowrap">{req.createdAt || '—'}</td>
                   <td className="py-3 px-4 font-medium text-ink">{req.durationText}</td>
                   <td className="py-3 px-4 text-ink-secondary max-w-xs">
                     <div>{req.reason}</div>
@@ -631,19 +701,12 @@ export const RequestsPage: React.FC = () => {
                         <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy</Button>
                       </div>
                     ) : req.status === 'PENDING' ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCancelRequest(req.id)}
-                        className="text-status-danger"
-                      >
-                        Hủy đơn
-                      </Button>
+                      <div className="inline-flex gap-1.5">
+                        <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa đơn</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy đơn</Button>
+                      </div>
                     ) : req.status === 'REJECTED' ? (
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setNewReq({ ...newReq, type: req.type as any, reason: req.reason, startDate: req.startDate || newReq.startDate, endDate: req.endDate || newReq.endDate });
-                        setIsCreateOpen(true);
-                      }}>Sửa & gửi lại</Button>
+                      <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa & gửi lại</Button>
                     ) : (
                       <span className="text-ink-muted text-[11px]">Đã xử lý</span>
                     )}
@@ -653,6 +716,7 @@ export const RequestsPage: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
         <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-secondary">
           <span>Trang <b>{page + 1}</b> / {totalPages} · {totalElements} đơn</span>
           <div className="flex items-center gap-1.5">
@@ -667,8 +731,8 @@ export const RequestsPage: React.FC = () => {
       {/* Create Modal */}
       <Modal
         isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Tạo Đơn Yêu Cầu Mới"
+        onClose={() => { setIsCreateOpen(false); setEditingId(null); setEditingAttachmentCount(0); }}
+        title={editingId ? "Sửa Đơn Yêu Cầu" : "Tạo Đơn Yêu Cầu Mới"}
         maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 text-xs">
@@ -805,14 +869,31 @@ export const RequestsPage: React.FC = () => {
           )}
 
 
-          {newReq.type === 'ADJUST' && (() => {
-            const min = isoDaysFromToday(-adjustDeadlineDays);
-            return (
-              <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
-                Hạn nộp: trong vòng <b>{adjustDeadlineDays} ngày</b> kể từ ngày quên chấm — lịch chỉ cho chọn từ <b>{min}</b>.
-              </div>
-            );
-          })()}
+          {newReq.type === 'ADJUST' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block font-medium text-ink">Cần bổ sung
+                <select className="mt-1 w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                  value={adjustKind}
+                  onChange={e => {
+                    const kind = e.target.value as 'IN' | 'OUT';
+                    setAdjustKind(kind);
+                    setAdjustTime(kind === 'IN' ? SHIFT_START : SHIFT_END);
+                  }}>
+                  <option value="IN">Giờ vào (check-in)</option>
+                  <option value="OUT">Giờ ra (check-out)</option>
+                </select>
+              </label>
+              <label className="block font-medium text-ink">Giờ thực tế
+                <input type="time" required className="mt-1 w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  value={adjustTime} onChange={e => setAdjustTime(e.target.value)} />
+              </label>
+            </div>
+          )}
+          {newReq.type === 'ADJUST' && (
+            <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
+              Chỉ chọn <b>hôm nay hoặc trong {adjustDeadlineDays} ngày trước</b> ({isoDaysFromToday(-adjustDeadlineDays)} → {isoDaysFromToday(0)}). Không nhập thời lượng.
+            </div>
+          )}
 
           {newReq.type === 'LATE_EARLY' ? (
             <>
@@ -836,7 +917,7 @@ export const RequestsPage: React.FC = () => {
                       const kind = e.target.value as 'LATE' | 'EARLY';
                       setLateEarlyKind(kind);
                       setLateEarlyTime(kind === 'LATE'
-                        ? `${String(Math.floor((toMinutes(SHIFT_START) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 15) % 60).padStart(2, '0')}`
+                        ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + 15) % 60).padStart(2, '0')}`
                         : `${String(Math.floor((toMinutes(SHIFT_END) - 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 15) % 60).padStart(2, '0')}`);
                     }}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
@@ -855,10 +936,10 @@ export const RequestsPage: React.FC = () => {
                     type="time"
                     required
                     min={lateEarlyKind === 'LATE'
-                      ? `${String(Math.floor((toMinutes(SHIFT_START) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 1) % 60).padStart(2, '0')}`
+                      ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + 1) % 60).padStart(2, '0')}`
                       : `${String(Math.floor((toMinutes(SHIFT_END) - lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - lateMinutesMax) % 60).padStart(2, '0')}`}
                     max={lateEarlyKind === 'LATE'
-                      ? `${String(Math.floor((toMinutes(SHIFT_START) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + lateMinutesMax) % 60).padStart(2, '0')}`
+                      ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + lateMinutesMax) % 60).padStart(2, '0')}`
                       : `${String(Math.floor((toMinutes(SHIFT_END) - 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 1) % 60).padStart(2, '0')}`}
                     value={lateEarlyTime}
                     onChange={e => setLateEarlyTime(e.target.value)}
@@ -893,12 +974,13 @@ export const RequestsPage: React.FC = () => {
                     type="date"
                     required
                     min={minDateForSelected}
+                    max={newReq.type === 'ADJUST' ? isoDaysFromToday(0) : undefined}
                     value={newReq.startDate}
                     onChange={e => setNewReq({ ...newReq, startDate: e.target.value, endDate: e.target.value < newReq.endDate ? e.target.value : newReq.endDate })}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
-                {!(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && !(newReq.type === 'WFH' && leaveUnit === 'HALF_DAY') && (
+                {newReq.type !== 'ADJUST' && !(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && !(newReq.type === 'WFH' && leaveUnit === 'HALF_DAY') && (
                   <div>
                     <label className="block font-medium text-ink mb-1">Đến Ngày</label>
                     <input
@@ -932,7 +1014,7 @@ export const RequestsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ) : (
+              ) : newReq.type === 'ADJUST' ? null : (
                 <div>
                   <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
                   <input
@@ -974,14 +1056,14 @@ export const RequestsPage: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => { setIsCreateOpen(false); setEditingId(null); setEditingAttachmentCount(0); }}>
               Hủy
             </Button>
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (leaveNeedsAttachment && attachments.length === 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
-              Gửi Đơn Phê Duyệt
+              {editingId ? 'Cập nhật & Gửi Lại' : 'Gửi Đơn Phê Duyệt'}
             </Button>
           </div>
         </form>

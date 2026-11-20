@@ -15,11 +15,14 @@ interface EnterpriseLeaveLedgerItem {
   balanceAfter: number;
   reason: string;
   approvedBy: string;
+  leaveType?: string;
+  createdAt?: string;
 }
 
 export const AdminLeaveLedgerPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [employees, setEmployees] = useState<any[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<{ code: string; name: string }[]>([]);
   const [selectedCode, setSelectedCode] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
@@ -52,15 +55,29 @@ export const AdminLeaveLedgerPage: React.FC = () => {
     if (!code) return;
     fetch(`/api/v1/leaves/ledger/by-code/${encodeURIComponent(code)}`, { headers: authOnly() })
       .then(r => r.json()).then(j => {
-        if (Array.isArray(j?.data)) setLedgerEntries(j.data.map((e: any) => ({
-          id: e.id, employeeCode: code, employeeName: employees.find(x => x.employeeCode === code)?.fullName || code,
-          department: '', date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
-          type: e.action, amount: Number(e.amount || 0), balanceAfter: Number(e.balanceAfter || 0),
-          reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
-        })));
+        if (Array.isArray(j?.data)) {
+          const mapped = j.data.map((e: any) => ({
+            id: e.id, employeeCode: code, employeeName: employees.find(x => x.employeeCode === code)?.fullName || code,
+            department: '', date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
+            type: e.action, amount: Number(e.amount || 0), balanceAfter: Number(e.balanceAfter || 0),
+            reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
+            leaveType: e.leaveType, createdAt: e.createdAt,
+          }));
+          const runningByType: Record<string, number> = {};
+          const byId: Record<string, number> = {};
+          [...mapped].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).forEach(e => {
+            const code = String(e.leaveType || 'AL').toUpperCase();
+            runningByType[code] = (runningByType[code] || 0) + e.amount;
+            byId[e.id] = Math.round(runningByType[code] * 100) / 100;
+          });
+          setLedgerEntries(mapped.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter })));
+        }
       }).catch(() => undefined);
   };
   useEffect(() => {
+    fetch('/api/v1/leave-types', { headers: authOnly() }).then(r => r.json())
+      .then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data.map((x: any) => ({ code: x.code, name: x.name }))); })
+      .catch(() => undefined);
     fetch('/api/v1/leaves/table', { headers: authOnly() }).then(r => r.json()).then(j => {
       if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); setAdjustEmpCode(prev => prev || j.data[0].employeeCode); } }
     }).catch(() => undefined);
@@ -146,7 +163,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           <option value="GRANT">Cấp phép đầu kỳ (+)</option>
           <option value="USED">Đã sử dụng (-)</option>
           <option value="ADJUST">Điều chỉnh HR (±)</option>
-          <option value="EXPIRED">Hết hạn 31/3 (-)</option>
+          <option value="EXPIRED">Hết hạn phép tồn (-)</option>
         </select>
       </div>
 
@@ -160,9 +177,10 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                 <th className="py-2.5 px-3">Nhân Viên</th>
                 <th className="py-2.5 px-3">Phòng Ban</th>
                 <th className="py-2.5 px-3">Ngày</th>
+                <th className="py-2.5 px-3">Loại Phép</th>
                 <th className="py-2.5 px-3">Loại Biến Động</th>
                 <th className="py-2.5 px-3 text-center">Số Ngày</th>
-                <th className="py-2.5 px-3 text-right">Số Dư Sau</th>
+                <th className="py-2.5 px-3 text-right">Số Dư Sau (theo loại)</th>
                 <th className="py-2.5 px-3">Lý Do / Căn Cứ</th>
                 <th className="py-2.5 px-3">Người Duyệt</th>
               </tr>
@@ -178,6 +196,10 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                   <td className="py-2.5 px-3 text-ink-secondary text-[11px]">{item.department}</td>
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{item.date}</td>
                   <td className="py-2.5 px-3">
+                    <div className="font-semibold text-ink">{leaveTypes.find(x => x.code === item.leaveType)?.name || item.leaveType || 'Phép năm'}</div>
+                    <div className="font-mono text-[10px] text-ink-muted">{item.leaveType || 'AL'}</div>
+                  </td>
+                  <td className="py-2.5 px-3">
                     {item.type === 'GRANT' && <Badge variant="ok">Cấp phép đầu kỳ</Badge>}
                     {item.type === 'USED' && <Badge variant="warn">Trừ phép đã nghỉ</Badge>}
                     {item.type === 'ADJUST' && <Badge variant="accent">HR Điều chỉnh</Badge>}
@@ -191,7 +213,9 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                     {item.amount > 0 ? `+${item.amount}` : item.amount}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-ink">
-                    {item.balanceAfter} ngày
+                    {ledgerEntries.some(e => e.type === 'GRANT' && (e.leaveType || 'AL') === (item.leaveType || 'AL'))
+                      ? `${item.balanceAfter} ngày`
+                      : `Đã dùng ${Math.abs(item.balanceAfter)} ngày`}
                   </td>
                   <td className="py-2.5 px-3 text-ink text-[11px] max-w-[200px] truncate" title={item.reason}>
                     {item.reason}

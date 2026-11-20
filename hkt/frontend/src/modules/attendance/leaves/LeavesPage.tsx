@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -10,6 +10,8 @@ interface LeaveLedgerEntry {
   description: string;
   amount: number;
   balanceAfter: number;
+  leaveType?: string;
+  createdAt?: string;
 }
 
 export const LeavesPage: React.FC = () => {
@@ -23,9 +25,17 @@ export const LeavesPage: React.FC = () => {
     expiringOnMarch31: 0,
     annualRemaining: 0,
     carriedRemaining: 0,
+    sickUsed: 0,
+    adjust: 0,
+    baseAnnual: 0,
+    carriedGrant: 0,
+    expiredCarry: 0,
+    carryStatus: 'AVAILABLE',
+    byType: [] as { code: string; name: string; used: number; defaultDays: number | null; unit?: string }[],
   });
 
   const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<{ code: string; name: string }[]>([]);
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -36,21 +46,33 @@ export const LeavesPage: React.FC = () => {
         const used = Number(j.data.used || 0);
         const carried = Number(j.data.carriedRemaining ?? 0);
         const annual = Number(j.data.annualRemaining ?? 0);
-        const seniority = Math.max(0, granted - 12 - carried);
-        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted, used,
+        const seniority = Number(j.data.seniority ?? 0);
+        const adjust = Number(j.data.adjust ?? 0);
+        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted + adjust - Number(j.data.expiredCarry ?? 0), used,
           remaining: Number(j.data.remaining || 0),
           annualRemaining: annual,
           carriedRemaining: carried,
           carriedOver: carried,
           seniorityBonus: seniority,
+          adjust,
+          sickUsed: Number(j.data.sickUsed ?? 0),
+          baseAnnual: Number(j.data.baseAnnual ?? 0),
+          carriedGrant: Number(j.data.carriedGrant ?? 0),
+          expiredCarry: Number(j.data.expiredCarry ?? 0),
+          carryStatus: String(j.data.carryStatus || 'AVAILABLE'),
+          byType: Array.isArray(j.data.byType) ? j.data.byType.map((x: any) => ({
+            code: x.code, name: x.name, used: Number(x.used || 0),
+            defaultDays: x.defaultDays == null ? null : Number(x.defaultDays), unit: x.unit,
+          })) : [],
           expiringOnMarch31: carried }));
       }
     }).catch(() => undefined);
+    fetch('/api/v1/leave-types', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data.map((x: any) => ({ code: x.code, name: x.name }))); }).catch(() => undefined);
     fetch('/api/v1/leaves/my-ledger', { headers }).then(r => r.json()).then(j => {
       if (Array.isArray(j?.data)) {
         setLedger(j.data.map((e: any) => ({
           id: e.id, date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
-          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0),
+          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0), leaveType: e.leaveType, createdAt: e.createdAt,
           balanceAfter: Number(e.balanceAfter || 0),
         })));
       }
@@ -59,11 +81,25 @@ export const LeavesPage: React.FC = () => {
 
   const [filterType, setFilterType] = useState('Tất cả');
   const [filterYear, setFilterYear] = useState('2026');
-  const filteredLedger = ledger.filter(entry => {
+  const leaveTypeName = (code?: string) => leaveTypes.find(t => t.code === code)?.name || code || 'Phép năm';
+  const hasGrantFor = (code?: string) => ledger.some(e => e.type === 'GRANT' && (e.leaveType || 'AL') === (code || 'AL'));
+  const ledgerWithBalance = useMemo(() => {
+    const asc = [...ledger].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    const runningByType: Record<string, number> = {};
+    const byId: Record<string, number> = {};
+    for (const e of asc) {
+      const code = (e.leaveType || 'AL').toUpperCase();
+      runningByType[code] = (runningByType[code] || 0) + e.amount;
+      byId[e.id] = Math.round(runningByType[code] * 100) / 100;
+    }
+    return ledger.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter }));
+  }, [ledger]);
+
+  const filteredLedger = ledgerWithBalance.filter(entry => {
     if (filterYear !== 'Tất cả' && !entry.date.endsWith(filterYear)) return false;
     if (filterType === 'Tất cả') return true;
-    if (filterType === 'Phép năm') return entry.description.toLowerCase().includes('phép năm') || entry.type === 'GRANT';
-    if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
+    if (filterType === 'Phép năm') return entry.leaveType === 'AL';
+    if (filterType === 'Phép ốm') return entry.leaveType === 'S';
     if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
     if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
     if (filterType === 'Chức vụ') return entry.description.toLowerCase().includes('chức vụ');
@@ -91,9 +127,11 @@ export const LeavesPage: React.FC = () => {
         <div>
           <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
           <p className="mt-0.5 text-amber-800 leading-relaxed">
-            {balance.expiringOnMarch31 > 0
-              ? <>Bạn hiện có <strong>{balance.expiringOnMarch31} ngày phép tồn từ năm trước</strong>. Theo điều khoản số 04 trong Quy chế Nội bộ, toàn bộ số phép tồn này sẽ tự động hết hiệu lực sau ngày <strong>31/03/2027</strong>. Hãy chủ động lên kế hoạch nghỉ phép trước hạn.</>
-              : <>Bạn hiện không có phép tồn từ năm trước. Phép năm 2026 cấp mới sẽ dùng theo quy chế hiện hành (01/04 giữ tối đa 5 ngày · 01/07 về 0).</>}
+            {balance.carryStatus === 'EXPIRED' || balance.expiringOnMarch31 <= 0
+              ? <>Phép tồn năm trước đã <strong>hết hiệu lực từ 01/07</strong> theo quy chế (01/04 giữ tối đa 5 ngày · 01/07 về 0). Số dư hiện tại không còn phép tồn.</>
+              : balance.carryStatus === 'CAPPED'
+              ? <>Đã qua <strong>01/04</strong>: chỉ được giữ tối đa <strong>5 ngày phép tồn</strong>. Bạn còn <strong>{balance.expiringOnMarch31} ngày</strong>; phần vượt sẽ hết hiệu lực từ <strong>01/07</strong>.</>
+              : <>Bạn có <strong>{balance.expiringOnMarch31} ngày phép tồn</strong>; dùng trước <strong>01/04</strong>. Từ 01/04 chỉ giữ tối đa 5 ngày, từ <strong>01/07</strong> về 0.</>}
           </p>
         </div>
       </div>
@@ -103,7 +141,7 @@ export const LeavesPage: React.FC = () => {
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Tổng Phép Năm Được Hưởng</div>
           <div className="text-2xl font-bold text-ink mt-1">{balance.totalEntitlement} ngày</div>
-          <div className="text-[11px] text-ink-secondary mt-1">{balance.grantedCurrentYear - balance.carriedOver - balance.seniorityBonus} chuẩn + {balance.carriedOver} tồn + {balance.seniorityBonus} thâm niên</div>
+          <div className="text-[11px] text-ink-secondary mt-1">{balance.baseAnnual} chuẩn + {balance.carriedGrant} tồn + {balance.seniorityBonus} thâm niên{balance.adjust ? ` + ${balance.adjust} điều chỉnh` : ''}{balance.expiredCarry ? ` · ${balance.expiredCarry} tồn hết hạn` : ''}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -121,14 +159,14 @@ export const LeavesPage: React.FC = () => {
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép Tồn Cần Dùng Trước 31/3</div>
+          <div className="text-xs text-ink-muted">Phép Tồn Còn Lại (hạn 01/07)</div>
           <div className="text-2xl font-bold text-amber-700 mt-1">{balance.expiringOnMarch31} ngày</div>
-          <div className="text-[11px] text-amber-600 mt-1">Cần ưu tiên trừ trước</div>
+          <div className="text-[11px] text-amber-600 mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép ốm (S)</div>
-          <div className="text-2xl font-bold text-ink mt-1">0 ngày</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.sickUsed} ngày</div>
           <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
         </div>
 
@@ -161,10 +199,11 @@ export const LeavesPage: React.FC = () => {
             <thead>
               <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
                 <th className="py-2.5 px-3">Ngày Ghi Sổ</th>
+                <th className="py-2.5 px-3">Loại Phép</th>
                 <th className="py-2.5 px-3">Nghiệp Vụ Biến Động</th>
                 <th className="py-2.5 px-3">Chi Tiết / Mã Đơn</th>
                 <th className="py-2.5 px-3 text-center">Số Ngày</th>
-                <th className="py-2.5 px-3 text-right">Số Dư Sau Biến Động</th>
+                <th className="py-2.5 px-3 text-right">Số Dư Sau (theo loại)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -172,16 +211,22 @@ export const LeavesPage: React.FC = () => {
                 <tr key={entry.id} className="hover:bg-canvas/40 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{entry.date}</td>
                   <td className="py-2.5 px-3">
-                    <Badge variant={entry.type === 'GRANT' ? 'ok' : 'gray'}>
-                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : 'Sử dụng phép'}
+                    <div className="font-semibold text-ink">{leaveTypeName(entry.leaveType)}</div>
+                    <div className="font-mono text-[10px] text-ink-muted">{entry.leaveType || 'AL'}</div>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <Badge variant={entry.type === 'GRANT' ? 'ok' : entry.type === 'ADJUST' ? 'warn' : 'gray'}>
+                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : entry.type === 'EXPIRED' ? 'Hết hạn phép tồn' : 'Sử dụng phép'}
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3 font-medium text-ink">{entry.description}</td>
                   <td className={`py-2.5 px-3 text-center font-bold ${entry.amount > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-ink">
-                    {entry.balanceAfter} ngày
+                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-rose-700' : 'text-ink'}`}>
+                    {hasGrantFor(entry.leaveType)
+                      ? `${entry.balanceAfter} ngày`
+                      : `Đã dùng ${Math.abs(entry.balanceAfter)} ngày`}
                   </td>
                 </tr>
               ))}

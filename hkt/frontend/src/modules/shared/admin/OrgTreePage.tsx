@@ -4,785 +4,833 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
+import {
+  Network,
+  Users,
+  AlertTriangle,
+  ChevronRight,
+  ChevronDown,
+  UserCheck,
+  Search,
+  Plus,
+  ArrowRight,
+  GitPullRequest,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
+  UserX,
+  ExternalLink,
+  Edit2
+} from 'lucide-react';
 
-export interface TeamNode {
+export interface EmployeeItem {
+  id: string;
+  employeeCode: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  team?: string;
+  teamId?: string;
+  positionName?: string;
+  role?: string;
+  status?: string;
+  managerId?: string;
+  managerName?: string;
+  managerCode?: string;
+  approvalChain?: string;
+}
+
+export interface OrgNode {
   id: string;
   name: string;
-  leadName: string;
-  leadCode: string;
-  leadEmail: string;
+  code: string;
+  parentId?: string | null;
+  parentName?: string | null;
+  leaderId?: string | null;
+  leaderCode?: string | null;
+  leaderName?: string | null;
+  hasLeader: boolean;
   memberCount: number;
-  approvalType: 'STANDARD_2_STEP' | 'DIRECT_HR';
-  note: string;
+  totalMemberCount: number;
+  pendingRequestsCount: number;
+  totalPendingRequestsCount: number;
+  isSpecialApproval?: boolean;
+  members: EmployeeItem[];
+  children: OrgNode[];
 }
-
-export interface DeptNode {
-  id: string;
-  name: string;
-  headName: string;
-  headTitle: string;
-  teams: TeamNode[];
-}
-
-const INITIAL_DEPARTMENTS: DeptNode[] = [
-  {
-    id: 'D01',
-    name: 'Ban Giám Đốc (Executive Board)',
-    headName: 'Trịnh Văn Quản Trị',
-    headTitle: 'Tổng Giám Đốc',
-    teams: [
-      {
-        id: 'T00',
-        name: 'Executive Office',
-        leadName: 'Trịnh Văn Quản Trị',
-        leadCode: 'ACT0001',
-        leadEmail: 'admin@actvn.edu.vn',
-        memberCount: 4,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Văn phòng điều hành'
-      }
-    ]
-  },
-  {
-    id: 'D02',
-    name: 'Phòng Nhân Sự (HR & Operations)',
-    headName: 'Lê Thị Thu Hà',
-    headTitle: 'Trưởng Phòng Nhân Sự',
-    teams: [
-      {
-        id: 'T01',
-        name: 'HR Operations & C&B',
-        leadName: 'Lê Thị Thu Hà',
-        leadCode: 'ACT0012',
-        leadEmail: 'hr.ha@actvn.edu.vn',
-        memberCount: 5,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Chịu trách nhiệm chấm công, tính lương và quan hệ lao động'
-      }
-    ]
-  },
-  {
-    id: 'D03',
-    name: 'Trung Tâm Công Nghệ & R&D',
-    headName: 'Vũ Quốc Toàn',
-    headTitle: 'Giám Đốc Công Nghệ (CTO)',
-    teams: [
-      {
-        id: 'T02',
-        name: 'Sirius (Core Platform Team)',
-        leadName: 'Phạm Minh Tuấn',
-        leadCode: 'ACT0045',
-        leadEmail: 'lead.tuan@actvn.edu.vn',
-        memberCount: 14,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Quy trình chuẩn: Lead duyệt -> HR xác nhận'
-      },
-      {
-        id: 'T03',
-        name: 'Optimus (AI & Data Intelligence)',
-        leadName: 'Hoàng Anh Dũng',
-        leadCode: 'ACT0055',
-        leadEmail: 'dung.ha@actvn.edu.vn',
-        memberCount: 11,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Quy trình chuẩn: Lead duyệt -> HR xác nhận'
-      },
-      {
-        id: 'T04',
-        name: 'Zeus (Security & DevOps)',
-        leadName: 'Nguyễn Văn Đạt',
-        leadCode: 'ACT0062',
-        leadEmail: 'dat.nv@actvn.edu.vn',
-        memberCount: 9,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Quy trình chuẩn: Lead duyệt -> HR xác nhận'
-      },
-      {
-        id: 'T05',
-        name: 'CA (Certificate & Auth - Ngoại lệ)',
-        leadName: 'Trần Văn Kiên (Tạm quyền)',
-        leadCode: 'ACT0078',
-        leadEmail: 'kien.tv@actvn.edu.vn',
-        memberCount: 6,
-        approvalType: 'DIRECT_HR',
-        note: '⚠️ NGOẠI LỆ ĐẶC BIỆT: Đơn từ duyệt thẳng HR, không qua Team Lead'
-      }
-    ]
-  },
-  {
-    id: 'D04',
-    name: 'Khối Kinh Doanh & Tiếp Thị (Commercial & Growth)',
-    headName: 'Đặng Mai Phương',
-    headTitle: 'Giám Đốc Kinh Doanh',
-    teams: [
-      {
-        id: 'T06',
-        name: 'Mobile App Product Team (Ngoại lệ)',
-        leadName: 'Lý Quốc Huy (Tech Lead)',
-        leadCode: 'ACT0090',
-        leadEmail: 'huy.lq@actvn.edu.vn',
-        memberCount: 12,
-        approvalType: 'DIRECT_HR',
-        note: '⚠️ NGOẠI LỆ ĐẶC BIỆT: Nhân sự dự án di động chuyển duyệt thẳng HR'
-      },
-      {
-        id: 'T07',
-        name: 'Enterprise Growth & Sales',
-        leadName: 'Phạm Thị Mỹ Linh',
-        leadCode: 'ACT0095',
-        leadEmail: 'linh.ptm@actvn.edu.vn',
-        memberCount: 8,
-        approvalType: 'STANDARD_2_STEP',
-        note: 'Quy trình chuẩn'
-      }
-    ]
-  }
-];
-
-const STORAGE_KEY = 'pulse_org_tree_data';
 
 export const OrgTreePage: React.FC = () => {
   const { user } = useAuth();
   const canManage = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN';
 
-  const [departments, setDepartments] = useState<DeptNode[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to parse saved org tree', e);
-    }
-    return INITIAL_DEPARTMENTS;
-  });
-
+  const [treeData, setTreeData] = useState<OrgNode[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState<TeamNode | null>(null);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [hideEmpty, setHideEmpty] = useState(false);
+  const [onlyIssues, setOnlyIssues] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [selectedNode, setSelectedNode] = useState<OrgNode | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Modals state
-  const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
-  const [editingDept, setEditingDept] = useState<DeptNode | null>(null);
-  const [deptForm, setDeptForm] = useState({ id: '', name: '', headName: '', headTitle: '' });
+  // Modal: Đổi trưởng nhóm
+  const [isLeaderModalOpen, setIsLeaderModalOpen] = useState(false);
+  const [targetTeam, setTargetTeam] = useState<OrgNode | null>(null);
+  const [newLeaderId, setNewLeaderId] = useState('');
+  const [leaderChangeReason, setLeaderChangeReason] = useState('');
 
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [selectedDeptIdForTeam, setSelectedDeptIdForTeam] = useState<string>('');
-  const [editingTeam, setEditingTeam] = useState<{ deptId: string; team: TeamNode } | null>(null);
-  const [teamForm, setTeamForm] = useState({
-    id: '',
-    name: '',
-    leadName: '',
-    leadCode: '',
-    leadEmail: '',
-    memberCount: 5,
-    approvalType: 'STANDARD_2_STEP' as 'STANDARD_2_STEP' | 'DIRECT_HR',
-    note: ''
-  });
+  // Modal: Thêm nhóm con
+  const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
+  const [parentTeamForAdd, setParentTeamForAdd] = useState<OrgNode | null>(null);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamLeaderId, setNewTeamLeaderId] = useState('');
+
+  // Modal: Gán quản lý cho nhân viên chưa có quản lý
+  const [isAssignMgrModalOpen, setIsAssignMgrModalOpen] = useState(false);
+  const [targetEmployee, setTargetEmployee] = useState<EmployeeItem | null>(null);
+  const [assignMgrId, setAssignMgrId] = useState('d0000000-0000-0000-0000-000000000002');
+  const [assignMgrReason, setAssignMgrReason] = useState('Gán quản lý trực tiếp từ sơ đồ phân tầng');
+
+  const fetchTree = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/v1/org/tree');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setTreeData(json.data);
+          // Mặc định mở tất cả node gốc
+          const exp: Record<string, boolean> = {};
+          const traverse = (nodes: OrgNode[]) => {
+            nodes.forEach(n => {
+              exp[n.id] = true;
+              if (n.children && n.children.length > 0) traverse(n.children);
+            });
+          };
+          traverse(json.data);
+          setExpandedNodes(exp);
+        }
+      }
+    } catch (e) {
+      console.error('Lỗi tải cây sơ đồ tổ chức', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(departments));
-  }, [departments]);
+    fetchTree();
+  }, []);
 
   const showToast = (msg: string) => {
-    setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 3000);
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Department Handlers
-  const handleOpenAddDept = () => {
-    const nextId = `D0${departments.length + 1}`;
-    setEditingDept(null);
-    setDeptForm({ id: nextId, name: '', headName: '', headTitle: 'Trưởng Khối / Phòng' });
-    setIsDeptModalOpen(true);
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleOpenEditDept = (dept: DeptNode) => {
-    setEditingDept(dept);
-    setDeptForm({ id: dept.id, name: dept.name, headName: dept.headName, headTitle: dept.headTitle });
-    setIsDeptModalOpen(true);
-  };
+  // Tính số điểm gãy: nhóm chưa có trưởng + nhân viên chưa có quản lý
+  let brokenGroups = 0;
+  let brokenMembers = 0;
+  let totalMembersAll = 0;
+  let totalPendingAll = 0;
 
-  const handleSaveDept = (e: React.FormEvent) => {
+  const countIssues = (nodes: OrgNode[]) => {
+    nodes.forEach(n => {
+      if (!n.hasLeader) brokenGroups++;
+      totalMembersAll += n.memberCount;
+      totalPendingAll += n.pendingRequestsCount;
+      if (n.members) {
+        n.members.forEach(m => {
+          if (!m.managerId) brokenMembers++;
+        });
+      }
+      if (n.children) countIssues(n.children);
+    });
+  };
+  countIssues(treeData);
+
+  // Đổi trưởng nhóm
+  const handleSaveLeader = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!deptForm.name.trim() || !deptForm.headName.trim()) return;
-
-    if (editingDept) {
-      setDepartments(prev =>
-        prev.map(d => (d.id === editingDept.id ? { ...d, ...deptForm } : d))
-      );
-      showToast(`Đã cập nhật thông tin nhóm "${deptForm.name}" thành công`);
-    } else {
-      const newDept: DeptNode = {
-        ...deptForm,
-        teams: []
-      };
-      setDepartments(prev => [...prev, newDept]);
-      showToast(`Đã thêm nhóm "${deptForm.name}" thành công`);
-    }
-    setIsDeptModalOpen(false);
-  };
-
-  const handleDeleteDept = (deptId: string, deptName: string) => {
-    const target = departments.find(d => d.id === deptId);
-    if (target && target.teams.length > 0) {
-      alert(`Không thể xóa nhóm "${deptName}" vì đang có ${target.teams.length} nhóm trực thuộc. Hãy chuyển hoặc xóa các nhóm trước.`);
+    if (!targetTeam || !newLeaderId || !leaderChangeReason.trim()) {
+      alert('Vui lòng chọn trưởng nhóm mới và nhập lý do bắt buộc!');
       return;
     }
-    if (confirm(`Bạn có chắc chắn muốn xóa nhóm "${deptName}"?`)) {
-      setDepartments(prev => prev.filter(d => d.id !== deptId));
-      showToast(`Đã xóa nhóm "${deptName}"`);
+    try {
+      const res = await fetch(`/api/v1/admin/teams/${targetTeam.id}/change-leader`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newLeaderId: newLeaderId.trim(),
+          reason: leaderChangeReason.trim()
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || 'Đổi trưởng nhóm thành công và chuyển đơn chờ duyệt!');
+        setIsLeaderModalOpen(false);
+        fetchTree();
+        if (selectedNode && selectedNode.id === targetTeam.id) {
+          setSelectedNode(null);
+        }
+      } else {
+        alert(json.message || 'Lỗi đổi trưởng nhóm');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối tới máy chủ');
     }
   };
 
-  // Team Handlers
-  const handleOpenAddTeam = (deptId: string) => {
-    const totalTeams = departments.reduce((acc, d) => acc + d.teams.length, 0);
-    const nextId = `T${String(totalTeams + 1).padStart(2, '0')}`;
-    setSelectedDeptIdForTeam(deptId);
-    setEditingTeam(null);
-    setTeamForm({
-      id: nextId,
-      name: '',
-      leadName: '',
-      leadCode: 'ACT' + Math.floor(1000 + Math.random() * 9000),
-      leadEmail: '',
-      memberCount: 6,
-      approvalType: 'STANDARD_2_STEP',
-      note: 'Quy trình chuẩn: Lead duyệt -> HR xác nhận'
-    });
-    setIsTeamModalOpen(true);
-  };
-
-  const handleOpenEditTeam = (deptId: string, team: TeamNode) => {
-    setSelectedDeptIdForTeam(deptId);
-    setEditingTeam({ deptId, team });
-    setTeamForm({
-      id: team.id,
-      name: team.name,
-      leadName: team.leadName,
-      leadCode: team.leadCode,
-      leadEmail: team.leadEmail,
-      memberCount: team.memberCount,
-      approvalType: team.approvalType,
-      note: team.note
-    });
-    setIsTeamModalOpen(true);
-  };
-
-  const handleSaveTeam = (e: React.FormEvent) => {
+  // Thêm nhóm mới
+  const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamForm.name.trim() || !teamForm.leadName.trim()) return;
+    if (!newTeamName.trim()) {
+      alert('Vui lòng nhập tên nhóm!');
+      return;
+    }
+    try {
+      const res = await fetch('/api/v1/admin/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTeamName.trim(),
+          parentId: parentTeamForAdd ? parentTeamForAdd.id : null,
+          leaderId: newTeamLeaderId.trim() || null,
+          reason: 'Mở rộng cơ cấu phân tầng nhóm'
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`Đã tạo nhóm "${newTeamName.trim()}" thành công!`);
+        setIsAddTeamModalOpen(false);
+        setNewTeamName('');
+        setNewTeamLeaderId('');
+        fetchTree();
+      } else {
+        alert(json.message || 'Lỗi tạo nhóm');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối');
+    }
+  };
 
-    if (editingTeam) {
-      setDepartments(prev =>
-        prev.map(d => {
-          if (d.id === editingTeam.deptId) {
+  // Gán quản lý cho nhân viên
+  const handleAssignManager = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetEmployee || !assignMgrId) return;
+    try {
+      const res = await fetch(`/api/v1/admin/users/${targetEmployee.employeeCode}/change-manager`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newManagerId: assignMgrId,
+          reason: assignMgrReason.trim() || 'Gán quản lý trực tiếp từ sơ đồ cây'
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`Đã gán quản lý cho ${targetEmployee.fullName} thành công!`);
+        setIsAssignMgrModalOpen(false);
+        fetchTree();
+        if (selectedNode) {
+          // refresh selected node members
+          setSelectedNode(prev => {
+            if (!prev) return null;
             return {
-              ...d,
-              teams: d.teams.map(t => (t.id === editingTeam.team.id ? { ...teamForm } : t))
+              ...prev,
+              members: prev.members.map(m =>
+                m.id === targetEmployee.id
+                  ? { ...m, managerId: assignMgrId, managerName: 'Đã gán quản lý' }
+                  : m
+              )
             };
-          }
-          return d;
-        })
-      );
-      if (selectedTeam && selectedTeam.id === editingTeam.team.id) {
-        setSelectedTeam({ ...teamForm });
+          });
+        }
+      } else {
+        alert(json.message || 'Lỗi gán quản lý');
       }
-      showToast(`Đã cập nhật nhóm "${teamForm.name}" thành công`);
-    } else {
-      const newTeam: TeamNode = { ...teamForm };
-      setDepartments(prev =>
-        prev.map(d => {
-          if (d.id === selectedDeptIdForTeam) {
-            return { ...d, teams: [...d.teams, newTeam] };
-          }
-          return d;
-        })
-      );
-      showToast(`Đã thêm nhóm "${teamForm.name}" vào nhóm`);
-    }
-    setIsTeamModalOpen(false);
-  };
-
-  const handleDeleteTeam = (deptId: string, teamId: string, teamName: string) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa nhóm "${teamName}"?`)) {
-      setDepartments(prev =>
-        prev.map(d => {
-          if (d.id === deptId) {
-            return { ...d, teams: d.teams.filter(t => t.id !== teamId) };
-          }
-          return d;
-        })
-      );
-      if (selectedTeam?.id === teamId) {
-        setSelectedTeam(null);
-      }
-      showToast(`Đã xóa nhóm "${teamName}"`);
+    } catch (e) {
+      alert('Lỗi kết nối');
     }
   };
 
-  const handleResetToDefault = () => {
-    if (confirm('Khôi phục toàn bộ cây tổ chức về mặc định ban đầu?')) {
-      setDepartments(INITIAL_DEPARTMENTS);
-      localStorage.removeItem(STORAGE_KEY);
-      showToast('Đã khôi phục dữ liệu cây tổ chức mẫu');
-    }
-  };
+  // Render đệ quy từng node (KHÔNG GIỚI HẠN TẦNG)
+  const renderTreeNode = (node: OrgNode, level: number = 0) => {
+    const isExpanded = !!expandedNodes[node.id];
+    const hasChildren = node.children && node.children.length > 0;
+    const isSelected = selectedNode?.id === node.id;
+    const isBroken = !node.hasLeader;
 
-  // Filtered view
-  const filteredDepartments = departments.map(dept => {
-    const matchesDept = dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        dept.headName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchedTeams = dept.teams.filter(
-      t =>
-        matchesDept ||
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.leadName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.leadEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.id.toLowerCase().includes(searchQuery.toLowerCase())
+    // Filter "Ẩn nhánh rỗng"
+    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) {
+      return null;
+    }
+
+    // Filter "Chỉ hiện nhánh có lỗi / đơn chờ"
+    if (onlyIssues && node.hasLeader && node.totalPendingRequestsCount === 0) {
+      return null;
+    }
+
+    // Highlight nếu từ khóa khớp
+    const isMatch = searchQuery.trim() && (
+      node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-    return { ...dept, teams: matchedTeams };
-  }).filter(dept => dept.teams.length > 0 || dept.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const totalDepts = departments.length;
-  const totalTeams = departments.reduce((acc, d) => acc + d.teams.length, 0);
-  const directHrCount = departments.reduce(
-    (acc, d) => acc + d.teams.filter(t => t.approvalType === 'DIRECT_HR').length,
-    0
-  );
-  const standardCount = totalTeams - directHrCount;
+    return (
+      <div key={node.id} className="relative transition-all">
+        {/* Node Card */}
+        <div
+          onClick={() => setSelectedNode(node)}
+          className={`cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all mb-2.5 shadow-2xs ${
+            isSelected
+              ? 'bg-accent-soft border-accent shadow-xs'
+              : isBroken
+              ? 'bg-amber-50/70 border-amber-300 hover:border-amber-400'
+              : isMatch
+              ? 'bg-emerald-50/70 border-emerald-400 shadow-2xs'
+              : 'bg-surface border-line hover:border-line-focus hover:bg-canvas'
+          }`}
+          style={{ marginLeft: `${Math.min(level * 24, 160)}px` }}
+        >
+          <div className="flex items-center gap-3">
+            {hasChildren ? (
+              <button
+                onClick={(e) => toggleExpand(node.id, e)}
+                className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-accent" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-ink-muted" />
+                )}
+              </button>
+            ) : (
+              <div className="w-6 h-6 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-ink-muted/40" />
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+                  level === 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                  level === 1 ? 'bg-sky-50 text-sky-700 border border-sky-200' :
+                  'bg-canvas text-ink-secondary border border-line'
+                }`}>
+                  {level === 0 ? 'Khối / Ban Gốc' : level === 1 ? 'Phòng / Nhóm Cha' : `Tầng ${level + 1}`}
+                </span>
+                <span className="font-semibold text-ink text-sm group-hover:text-accent transition-colors">
+                  {node.name}
+                </span>
+                {node.isSpecialApproval && (
+                  <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
+                    Duyệt đặc biệt
+                  </span>
+                )}
+              </div>
+
+              <div className="text-xs text-ink-muted flex items-center gap-2 mt-1">
+                {node.hasLeader ? (
+                  <span>
+                    Trưởng nhóm: <b className="text-ink font-semibold">{node.leaderName}</b> ({node.leaderCode})
+                  </span>
+                ) : (
+                  <span className="text-status-warn font-semibold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-status-warn" />
+                    Chưa có trưởng nhóm — cần gán để duyệt đơn
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap md:self-auto self-end">
+            <span className="px-2.5 py-1 bg-canvas border border-line rounded-lg text-xs font-mono text-ink-secondary">
+              {node.totalMemberCount > node.memberCount ? (
+                <span>{node.memberCount} ng <span className="text-ink-muted">({node.totalMemberCount} cả nhánh)</span></span>
+              ) : (
+                <span>{node.memberCount} người</span>
+              )}
+            </span>
+
+            {node.totalPendingRequestsCount > 0 ? (
+              <span className="px-2.5 py-1 bg-amber-50 border border-amber-300 rounded-lg text-xs font-semibold text-amber-800 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                {node.totalPendingRequestsCount} đơn chờ
+              </span>
+            ) : (
+              <span className="px-2 py-1 bg-canvas rounded-lg text-xs text-ink-muted border border-line-soft">
+                0 đơn
+              </span>
+            )}
+
+            {canManage && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTargetTeam(node);
+                    setNewLeaderId(node.leaderId || '');
+                    setLeaderChangeReason('');
+                    setIsLeaderModalOpen(true);
+                  }}
+                  className="px-2 py-1 text-xs bg-surface hover:bg-canvas text-ink-secondary hover:text-ink rounded border border-line shadow-2xs"
+                  title="Đổi trưởng nhóm"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setParentTeamForAdd(node);
+                    setIsAddTeamModalOpen(true);
+                  }}
+                  className="px-2 py-1 text-xs bg-surface hover:bg-canvas text-ink-secondary hover:text-ink rounded border border-line shadow-2xs"
+                  title="Thêm nhóm con trực thuộc"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Children Subtree */}
+        {hasChildren && isExpanded && (
+          <div className="border-l-2 border-line pl-3 ml-4">
+            {node.children.map(child => renderTreeNode(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
-      {successToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <span>✓</span>
-          <span>{successToast}</span>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-24">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-white" />
+          <span className="font-medium text-sm">{toastMessage}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header (Mockup S41) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Sơ Đồ Cơ Cấu Tổ Chức &amp; Luồng Duyệt</h1>
-            {canManage ? (
-              <Badge variant="ok">Chế độ Quản trị (Admin/HR)</Badge>
-            ) : (
-              <Badge variant="gray">Chế độ Xem (Read-only)</Badge>
-            )}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs uppercase tracking-wider text-accent font-semibold px-2 py-0.5 rounded bg-accent-soft border border-accent-line">
+              Nền tảng dùng chung · HR · P0 — S41
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Hiển thị cây nhóm, phân bổ nhóm chức năng, Trưởng nhóm và cấu hình ngoại lệ phê duyệt (CA, Mobile App)
+          <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
+            <Network className="w-6 h-6 text-accent" />
+            Cây Phân Tầng Quản Lý
+          </h1>
+          <p className="text-sm text-ink-muted mt-1">
+            Nhóm lồng nhau không giới hạn số tầng · Tìm ra chỗ kẹt duyệt đơn và nhân viên chưa có quản lý
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="text"
-            placeholder="Tìm theo tên phòng, nhóm, lead..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          {brokenGroups + brokenMembers > 0 && (
+            <span className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              ⚠ {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
+            </span>
+          )}
           {canManage && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleResetToDefault}>
-                Khôi phục mẫu
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleOpenAddDept}>
-                + Thêm Phòng Ban
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setParentTeamForAdd(null);
+                setIsAddTeamModalOpen(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm nhóm gốc mới
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Highlights / Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-xs text-ink-muted">Tổng số Phòng Ban</div>
-          <div className="text-2xl font-bold text-ink mt-1">{totalDepts} Khối / Đơn vị</div>
-          <div className="text-[11px] text-ink-secondary mt-1">Cơ cấu điều hành toàn công ty</div>
-        </div>
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-xs text-ink-muted">Tổng số Nhóm Trực Thuộc</div>
-          <div className="text-2xl font-bold text-ink mt-1">{totalTeams} Đội nhóm (Teams)</div>
-          <div className="text-[11px] text-ink-secondary mt-1">Được gán Lead &amp; luồng duyệt</div>
-        </div>
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-xs text-ink-muted">Quy Trình Chuẩn (2 Cấp)</div>
-          <div className="text-2xl font-bold text-accent mt-1">{standardCount} Nhóm (Standard)</div>
-          <div className="text-[11px] text-accent-dark mt-1">Luồng 2 cấp: Team Lead → HR Duyệt</div>
-        </div>
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-xs text-ink-muted">Quy Trình Ngoại Lệ</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{directHrCount} Nhóm (Direct HR)</div>
-          <div className="text-[11px] text-amber-600 mt-1">Đơn từ chuyển thẳng HR phê duyệt</div>
-        </div>
-      </div>
-
-      {/* Visual Org Tree */}
-      <div className="space-y-6">
-        {filteredDepartments.map(dept => (
-          <div key={dept.id} className="bg-surface rounded-xl border border-line p-5 shadow-2xs">
-            <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-line gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-ink">{dept.name}</span>
-                  <Badge variant="gray">Mã: {dept.id}</Badge>
-                </div>
-                <div className="text-xs text-ink-secondary mt-0.5">
-                  Lãnh đạo phụ trách: <strong className="text-ink">{dept.headName}</strong> · {dept.headTitle}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-ink-muted">{dept.teams.length} Nhóm trực thuộc</span>
-                {canManage && (
-                  <div className="flex items-center gap-1.5 ml-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenAddTeam(dept.id)}
-                      className="text-xs py-1 px-2"
-                    >
-                      + Thêm Nhóm
-                    </Button>
-                    <button
-                      onClick={() => handleOpenEditDept(dept)}
-                      className="p-1 text-xs text-ink-muted hover:text-ink hover:bg-canvas rounded"
-                      title="Sửa nhóm"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteDept(dept.id, dept.name)}
-                      className="p-1 text-xs text-status-danger hover:bg-status-danger/10 rounded"
-                      title="Xóa nhóm"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Teams Grid */}
-            {dept.teams.length === 0 ? (
-              <div className="p-6 text-center text-xs text-ink-muted">
-                Chưa có nhóm nào trực thuộc nhóm này.
-                {canManage && (
-                  <button
-                    onClick={() => handleOpenAddTeam(dept.id)}
-                    className="text-accent underline ml-1 font-semibold"
-                  >
-                    Thêm ngay
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {dept.teams.map(team => (
-                  <div
-                    key={team.id}
-                    onClick={() => setSelectedTeam(team)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-xs relative group ${
-                      team.approvalType === 'DIRECT_HR'
-                        ? 'border-amber-300 bg-amber-50/20 hover:border-amber-400'
-                        : 'border-line bg-canvas/40 hover:border-accent'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-semibold text-xs text-ink">{team.name}</span>
-                      {team.approvalType === 'DIRECT_HR' ? (
-                        <Badge variant="warn">Duyệt thẳng HR</Badge>
-                      ) : (
-                        <Badge variant="ok">2 Bước</Badge>
-                      )}
-                    </div>
-
-                    <div className="mt-3 text-xs space-y-1">
-                      <div className="text-ink-secondary">
-                        Lead: <strong className="text-ink">{team.leadName}</strong>
-                      </div>
-                      <div className="text-[11px] text-ink-muted font-mono">{team.leadEmail}</div>
-                      <div className="text-[11px] text-ink-muted mt-2">
-                        Nhân sự: <strong className="text-ink">{team.memberCount} thành viên</strong>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-line/60 text-[11px] text-ink-secondary line-clamp-2">
-                      {team.note}
-                    </div>
-
-                    {/* Quick Action buttons */}
-                    {canManage && (
-                      <div className="mt-3 pt-2 border-t border-line/40 flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100">
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleOpenEditTeam(dept.id, team);
-                          }}
-                          className="px-2 py-0.5 text-[11px] text-ink-secondary hover:text-accent rounded bg-surface border border-line"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleDeleteTeam(dept.id, team.id, team.name);
-                          }}
-                          className="px-2 py-0.5 text-[11px] text-status-danger hover:bg-status-danger/10 rounded bg-surface border border-line"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Selected Team Detail */}
-      {selectedTeam && (
-        <Card
-          title={`Chi tiết cấu hình nhóm: ${selectedTeam.name}`}
-          action={
-            <Button variant="ghost" size="sm" onClick={() => setSelectedTeam(null)}>
-              Đóng
-            </Button>
-          }
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="space-y-2">
-              <div>
-                <span className="text-ink-muted">Trưởng nhóm (Approver L1):</span>
-                <div className="font-semibold text-ink mt-0.5">
-                  {selectedTeam.leadName} ({selectedTeam.leadCode})
-                </div>
-                <div className="font-mono text-ink-muted text-[11px]">{selectedTeam.leadEmail}</div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Số lượng nhân viên chính thức:</span>
-                <div className="font-semibold text-ink mt-0.5">{selectedTeam.memberCount} người</div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Mã định danh nhóm:</span>
-                <div className="font-mono font-semibold text-ink mt-0.5">{selectedTeam.id}</div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <span className="text-ink-muted">Luồng phê duyệt (Approval Routing):</span>
-                <div className="mt-1">
-                  {selectedTeam.approvalType === 'DIRECT_HR' ? (
-                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900">
-                      <strong>Cấu hình Ngoại lệ (Direct to HR):</strong> Mọi đơn từ xin nghỉ, OT, giải trình của các thành viên trong nhóm sẽ bỏ qua bước Team Lead và xuất hiện trực tiếp trong hòm thư duyệt của HR Admin.
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-900">
-                      <strong>Quy trình chuẩn 2 cấp:</strong> Nhân viên gửi đơn → Team Lead ({selectedTeam.leadName}) phê duyệt cấp 1 → HR Admin phê duyệt cấp 2.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Ghi chú vận hành:</span>
-                <div className="text-ink text-xs mt-0.5">{selectedTeam.note || 'Không có ghi chú'}</div>
-              </div>
+      {/* Warning Box (Mockup S41) */}
+      {brokenMembers > 0 && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 flex items-start justify-between gap-4 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Cảnh báo luồng duyệt: {brokenMembers} nhân viên chưa có quản lý trực tiếp!
+              </p>
+              <p className="text-xs text-amber-800 mt-1">
+                Những đơn của các nhân viên này sẽ <b>không có ai duyệt được và bị kẹt</b>. Bấm vào nhóm tương ứng bên dưới để gán quản lý trực tiếp.
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Modal: Thêm / Sửa Phòng Ban */}
-      <Modal
-        isOpen={isDeptModalOpen}
-        onClose={() => setIsDeptModalOpen(false)}
-        title={editingDept ? 'Chỉnh Sửa Phòng Ban / Khối' : 'Thêm Phòng Ban / Khối Mới'}
-      >
-        <form onSubmit={handleSaveDept} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-ink-muted mb-1">Mã Phòng Ban</label>
-              <input
-                type="text"
-                required
-                value={deptForm.id}
-                onChange={e => setDeptForm({ ...deptForm, id: e.target.value.toUpperCase() })}
-                disabled={!!editingDept}
-                placeholder="VD: D05"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink font-mono disabled:bg-canvas"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Tên Phòng Ban / Khối</label>
-              <input
-                type="text"
-                required
-                value={deptForm.name}
-                onChange={e => setDeptForm({ ...deptForm, name: e.target.value })}
-                placeholder="VD: Khối Tài Chính Kế Toán"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-ink-muted mb-1">Họ tên Lãnh Đạo</label>
-              <input
-                type="text"
-                required
-                value={deptForm.headName}
-                onChange={e => setDeptForm({ ...deptForm, headName: e.target.value })}
-                placeholder="VD: Hoàng Văn Nam"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Chức Danh / Vị Trí</label>
-              <input
-                type="text"
-                required
-                value={deptForm.headTitle}
-                onChange={e => setDeptForm({ ...deptForm, headTitle: e.target.value })}
-                placeholder="VD: Giám Đốc Tài Chính (CFO)"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-line">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsDeptModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
-              {editingDept ? 'Cập Nhật Phòng Ban' : 'Tạo Phòng Ban Mới'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal: Thêm / Sửa Nhóm (Team) */}
-      <Modal
-        isOpen={isTeamModalOpen}
-        onClose={() => setIsTeamModalOpen(false)}
-        title={editingTeam ? `Chỉnh Sửa Nhóm: ${editingTeam.team.name}` : 'Thêm Nhóm Chức Năng Mới'}
-      >
-        <form onSubmit={handleSaveTeam} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-ink-muted mb-1">Mã Nhóm</label>
-              <input
-                type="text"
-                required
-                value={teamForm.id}
-                onChange={e => setTeamForm({ ...teamForm, id: e.target.value.toUpperCase() })}
-                disabled={!!editingTeam}
-                placeholder="VD: T08"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink font-mono disabled:bg-canvas"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Tên Nhóm (Team Name)</label>
-              <input
-                type="text"
-                required
-                value={teamForm.name}
-                onChange={e => setTeamForm({ ...teamForm, name: e.target.value })}
-                placeholder="VD: Apollo Mobile Team"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-ink-muted mb-1">Họ Tên Team Lead</label>
-              <input
-                type="text"
-                required
-                value={teamForm.leadName}
-                onChange={e => setTeamForm({ ...teamForm, leadName: e.target.value })}
-                placeholder="VD: Nguyễn Văn Bình"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Mã Nhân Viên Lead</label>
-              <input
-                type="text"
-                required
-                value={teamForm.leadCode}
-                onChange={e => setTeamForm({ ...teamForm, leadCode: e.target.value.toUpperCase() })}
-                placeholder="VD: ACT0105"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Email Công Ty</label>
-              <input
-                type="email"
-                required
-                value={teamForm.leadEmail}
-                onChange={e => setTeamForm({ ...teamForm, leadEmail: e.target.value })}
-                placeholder="binh.nv@act-corp.internal"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-ink-muted mb-1">Số Thành Viên</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                required
-                value={teamForm.memberCount}
-                onChange={e => setTeamForm({ ...teamForm, memberCount: parseInt(e.target.value) || 1 })}
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
-            <div>
-              <label className="block text-ink-muted mb-1">Luồng Phê Duyệt Nghỉ / OT</label>
-              <select
-                value={teamForm.approvalType}
-                onChange={e => setTeamForm({ ...teamForm, approvalType: e.target.value as any })}
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
-              >
-                <option value="STANDARD_2_STEP">Chuẩn 2 cấp (Team Lead duyệt → HR duyệt)</option>
-                <option value="DIRECT_HR">⚠️ Ngoại lệ (Chuyển thẳng HR Admin)</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-ink-muted mb-1">Ghi Chú Vận Hành</label>
-            <textarea
-              rows={2}
-              value={teamForm.note}
-              onChange={e => setTeamForm({ ...teamForm, note: e.target.value })}
-              placeholder="Ghi chú về nhóm hoặc lý do chọn luồng ngoại lệ..."
-              className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink"
+      {/* Top Filter & Search Controls */}
+      <Card className="p-4 bg-surface border-line shadow-2xs">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="relative w-full md:w-96">
+            <Search className="w-4 h-4 text-ink-muted absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="Tìm tên nhóm, mã nhóm, trưởng nhóm..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-canvas border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-line">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsTeamModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
-              {editingTeam ? 'Cập Nhật Nhóm' : 'Thêm Nhóm Vào Phòng'}
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+            <label className="flex items-center gap-2 text-xs text-ink-secondary font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hideEmpty}
+                onChange={e => setHideEmpty(e.target.checked)}
+                className="rounded border-line text-accent focus:ring-accent"
+              />
+              Ẩn nhánh rỗng
+            </label>
+
+            <label className="flex items-center gap-2 text-xs text-ink-secondary font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={onlyIssues}
+                onChange={e => setOnlyIssues(e.target.checked)}
+                className="rounded border-line text-accent focus:ring-accent"
+              />
+              Chỉ hiện nhánh có đơn / lỗi
+            </label>
+
+            <Button variant="secondary" onClick={fetchTree} className="text-xs px-3">
+              Tải lại cây
             </Button>
           </div>
-        </form>
-      </Modal>
+        </div>
+      </Card>
+
+      {/* Layout 2 Cột: Cây phân tầng bên trái (7 phần) & Chi tiết node bên phải (5 phần) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Cột trái: Cây phân tầng đệ quy */}
+        <div className="lg:col-span-7 space-y-2">
+          {loading ? (
+            <div className="p-12 text-center text-ink-muted bg-surface rounded-xl border border-line shadow-2xs">
+              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              Đang phân tích và xây dựng cây phân tầng quản lý...
+            </div>
+          ) : treeData.length === 0 ? (
+            <div className="p-12 text-center text-ink-muted bg-surface rounded-xl border border-line shadow-2xs">
+              Không có nhóm nào trong hệ thống.
+            </div>
+          ) : (
+            treeData.map(rootNode => renderTreeNode(rootNode, 0))
+          )}
+        </div>
+
+        {/* Cột phải: Chi tiết nhóm được chọn (Mockup S41 Drawer / Detail Card) */}
+        <div className="lg:col-span-5 sticky top-20">
+          {selectedNode ? (
+            <Card className="p-5 bg-surface border-line shadow-sm space-y-5">
+              <div className="flex items-start justify-between gap-3 border-b border-line pb-4">
+                <div>
+                  <span className="text-xs text-accent uppercase font-bold tracking-wider">
+                    {selectedNode.code}
+                  </span>
+                  <h3 className="text-lg font-bold text-ink mt-0.5">
+                    {selectedNode.name}
+                  </h3>
+                  <p className="text-xs text-ink-muted mt-1">
+                    {selectedNode.parentName ? `Trực thuộc: ${selectedNode.parentName}` : 'Nhóm cấp cao nhất (Root)'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="text-ink-muted hover:text-ink p-1 rounded hover:bg-canvas"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Thông tin Trưởng nhóm & Cấp duyệt */}
+              <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-ink-muted">Trưởng nhóm:</span>
+                  {selectedNode.hasLeader ? (
+                    <span className="font-semibold text-ink">
+                      {selectedNode.leaderName} ({selectedNode.leaderCode})
+                    </span>
+                  ) : (
+                    <span className="text-status-warn font-semibold flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-status-warn" /> Chưa có
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-ink-muted">Đơn chờ duyệt trong nhóm:</span>
+                  <span className={`font-semibold ${selectedNode.pendingRequestsCount > 0 ? 'text-amber-800' : 'text-ink-secondary'}`}>
+                    {selectedNode.pendingRequestsCount} đơn
+                  </span>
+                </div>
+
+                {canManage && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setTargetTeam(selectedNode);
+                      setNewLeaderId(selectedNode.leaderId || '');
+                      setLeaderChangeReason('');
+                      setIsLeaderModalOpen(true);
+                    }}
+                    className="w-full text-xs mt-2 py-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                    Đổi trưởng nhóm & Chuyển đơn chờ
+                  </Button>
+                )}
+              </div>
+
+              {/* Danh sách nhân viên trong nhóm */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-ink uppercase tracking-wider">
+                    Thành viên trực thuộc ({selectedNode.members.length})
+                  </h4>
+                  <span className="text-[11px] text-ink-muted">Gán sếp nếu thiếu</span>
+                </div>
+
+                {selectedNode.members.length === 0 ? (
+                  <p className="text-xs text-ink-muted italic py-3 text-center">
+                    Nhóm hiện chưa có nhân sự trực thuộc
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {selectedNode.members.map(member => {
+                      const hasMgr = !!member.managerId;
+                      return (
+                        <div
+                          key={member.id}
+                          className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                            hasMgr
+                              ? 'bg-canvas border-line'
+                              : 'bg-rose-50 border-rose-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-ink">
+                                {member.fullName}
+                              </span>
+                              <span className="text-[11px] text-ink-muted font-mono">
+                                ({member.employeeCode})
+                              </span>
+                            </div>
+                            <div className="text-[11px] mt-0.5">
+                              {hasMgr ? (
+                                <span className="text-ink-muted">
+                                  QL: <span className="text-ink font-medium">{member.managerName}</span>
+                                </span>
+                              ) : (
+                                <span className="text-rose-700 font-semibold">
+                                  ⚠ Chưa có quản lý trực tiếp
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {!hasMgr && canManage && (
+                            <Button
+                              variant="danger"
+                              onClick={() => {
+                                setTargetEmployee(member);
+                                setIsAssignMgrModalOpen(true);
+                              }}
+                              className="text-[11px] px-2 py-1 h-auto shrink-0"
+                            >
+                              Gán sếp
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-8 text-center text-ink-muted bg-surface border-line shadow-2xs">
+              <Network className="w-10 h-10 text-ink-muted/50 mx-auto mb-3" />
+              <p className="font-medium text-sm text-ink">Chọn một nhóm để xem chi tiết</p>
+              <p className="text-xs text-ink-muted mt-1">
+                Xem danh sách người bên dưới, ai chưa có quản lý, đơn chờ duyệt và đổi trưởng nhóm
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Modal: Đổi trưởng nhóm (Mockup S41) */}
+      {isLeaderModalOpen && targetTeam && (
+        <Modal
+          isOpen={isLeaderModalOpen}
+          onClose={() => setIsLeaderModalOpen(false)}
+          title={`Đổi Trưởng Nhóm: ${targetTeam.name}`}
+        >
+          <form onSubmit={handleSaveLeader} className="space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+              <b>Lưu ý chuyển đơn:</b> Khi đổi trưởng nhóm, toàn bộ các đơn đang chờ duyệt của thành viên trong nhóm sẽ tự động chuyển sang trưởng nhóm mới để không bị kẹt đơn.
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Chọn Trưởng Nhóm Mới <span className="text-rose-600">*</span>
+              </label>
+              <select
+                value={newLeaderId}
+                onChange={e => setNewLeaderId(e.target.value)}
+                required
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              >
+                <option value="">-- Chọn nhân sự làm trưởng nhóm --</option>
+                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT) - Manager</option>
+                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR) - HR Admin</option>
+                <option value="d0000000-0000-0000-0000-000000000003">Vũ Văn Luận (136ACT) - Team Lead</option>
+                <option value="d0000000-0000-0000-0000-000000000000">Quản Trị Viên Hệ Thống (Admin)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Lý Do Đổi Trưởng Nhóm (Bắt buộc ghi Audit Log) <span className="text-rose-600">*</span>
+              </label>
+              <textarea
+                value={leaderChangeReason}
+                onChange={e => setLeaderChangeReason(e.target.value)}
+                required
+                rows={3}
+                placeholder="Nhập lý do điều động / bổ nhiệm trưởng nhóm..."
+                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setIsLeaderModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" type="submit">
+                Xác Nhận Đổi Trưởng Nhóm
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal: Thêm nhóm con */}
+      {isAddTeamModalOpen && (
+        <Modal
+          isOpen={isAddTeamModalOpen}
+          onClose={() => setIsAddTeamModalOpen(false)}
+          title={parentTeamForAdd ? `Thêm Nhóm Con Trực Thuộc: ${parentTeamForAdd.name}` : 'Thêm Nhóm Gốc Mới'}
+        >
+          <form onSubmit={handleCreateTeam} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Tên Nhóm / Phòng Ban <span className="text-rose-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={newTeamName}
+                onChange={e => setNewTeamName(e.target.value)}
+                required
+                placeholder="Ví dụ: Backend Core, AI Intelligence..."
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Trưởng Nhóm (Có thể để trống để gán sau)
+              </label>
+              <select
+                value={newTeamLeaderId}
+                onChange={e => setNewTeamLeaderId(e.target.value)}
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              >
+                <option value="">-- Chưa có trưởng nhóm (Sẽ hiển thị cảnh báo để bổ sung) --</option>
+                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT)</option>
+                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR)</option>
+                <option value="d0000000-0000-0000-0000-000000000003">Vũ Văn Luận (136ACT)</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setIsAddTeamModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" type="submit">
+                Tạo Nhóm
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal: Gán sếp cho nhân viên */}
+      {isAssignMgrModalOpen && targetEmployee && (
+        <Modal
+          isOpen={isAssignMgrModalOpen}
+          onClose={() => setIsAssignMgrModalOpen(false)}
+          title={`Gán Quản Lý Trực Tiếp Cho ${targetEmployee.fullName}`}
+        >
+          <form onSubmit={handleAssignManager} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Chọn Quản Lý Trực Tiếp <span className="text-rose-600">*</span>
+              </label>
+              <select
+                value={assignMgrId}
+                onChange={e => setAssignMgrId(e.target.value)}
+                required
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              >
+                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT) - Quản lý kỹ thuật</option>
+                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR) - HR Admin</option>
+                <option value="d0000000-0000-0000-0000-000000000000">Quản Trị Viên Hệ Thống (Admin)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary mb-1">
+                Lý Do Gán Quản Lý <span className="text-rose-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={assignMgrReason}
+                onChange={e => setAssignMgrReason(e.target.value)}
+                required
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setIsAssignMgrModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" type="submit">
+                Gán Quản Lý
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };

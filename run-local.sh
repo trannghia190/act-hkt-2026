@@ -25,6 +25,8 @@
 #   ./run-local.sh stop            # dừng các process do script này đã start
 #
 # Có thể kết hợp: ./run-local.sh --no-frontend --no-ai  → chỉ Core
+# HMR mặc định TẮT (an toàn khi share qua tunnel Basic Auth).
+# Muốn hot-reload khi dev local: VITE_DISABLE_HMR=0 ./run-local.sh
 # Ghi đè cấu hình bằng biến môi trường, ví dụ:
 #   DB_USER=postgres CORE_PORT=8081 ./run-local.sh
 # ==============================================================================
@@ -112,10 +114,14 @@ cleanup() {
       kill "$pid" 2>/dev/null || true
     fi
   done
-  # Maven/uvicorn/npm đều sinh process con — dọn thêm theo cổng đang nghe.
+  # Maven/uvicorn/npm đều sinh process con — dọn thêm theo cổng đang nghe (bỏ qua Docker).
   for p in "$FRONTEND_PORT" "$CORE_PORT" "$AI_PORT"; do
     pids="$(lsof -nP -tiTCP:"$p" -sTCP:LISTEN 2>/dev/null || true)"
-    if [ -n "$pids" ]; then kill $pids 2>/dev/null || true; fi
+    for pid in $pids; do
+      if [ -n "$pid" ] && ! ps -p "$pid" -o comm= 2>/dev/null | grep -iq docker; then
+        kill "$pid" 2>/dev/null || true
+      fi
+    done
   done
   rm -f "$RUN_DIR"/*.pid 2>/dev/null || true
   exit 0
@@ -317,6 +323,7 @@ start_core() {
     SPRING_REDIS_PORT="$REDIS_PORT" \
     AI_FACE_SERVICE_URL="http://127.0.0.1:${AI_PORT}" \
     MANAGEMENT_HEALTH_MAIL_ENABLED=false \
+    SPRING_FLYWAY_OUT_OF_ORDER=true \
     exec mvn spring-boot:run
   ) >"$LOG_DIR/core-service.log" 2>&1 &
   CORE_PID=$!
@@ -386,6 +393,7 @@ start_frontend() {
     cd "$FRONTEND_DIR"
     VITE_CORE_URL="http://127.0.0.1:${CORE_PORT}" \
     VITE_AI_FACE_URL="http://127.0.0.1:${AI_PORT}" \
+    VITE_DISABLE_HMR="${VITE_DISABLE_HMR:-1}" \
     exec npm run dev -- --port "$FRONTEND_PORT" --host 0.0.0.0
   ) >"$LOG_DIR/frontend.log" 2>&1 &
   FRONTEND_PID=$!
@@ -397,7 +405,8 @@ start_frontend() {
 
 stop_previous() {
   local f pid p
-  for f in "$RUN_DIR"/*.pid; do
+  # Chỉ dừng service của run-local — KHÔNG đụng tunnel.pid của share-local.sh
+  for f in "$RUN_DIR/ai-face.pid" "$RUN_DIR/core-service.pid" "$RUN_DIR/frontend.pid"; do
     [ -f "$f" ] || continue
     pid="$(cat "$f" 2>/dev/null || true)"
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then

@@ -103,8 +103,13 @@ public class TimesheetController {
                     case "LEAVE" -> {
                         boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
                         String sym = r.getLeaveType() == null ? "AL" : r.getLeaveType();
-                        daySymbol.put(d, halfDay ? sym + "/0.50" : sym);
-                        leave += halfDay ? 0.5 : 1;
+                        LocalDate start = r.getWorkDate();
+                        LocalDate end = r.getEndDate() == null || halfDay ? start : r.getEndDate();
+                        for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
+                            if (!YearMonth.from(cur).equals(ym)) continue;
+                            daySymbol.put(cur.getDayOfMonth(), halfDay ? sym + "/0.50" : sym);
+                            leave += halfDay ? 0.5 : 1;
+                        }
                     }
                     default -> { if ("LATE_EARLY".equals(r.getRequestType())) late++; }
                 }

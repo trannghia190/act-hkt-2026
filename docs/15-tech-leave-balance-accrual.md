@@ -97,3 +97,40 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * Sổ phép (`leave_ledger`) **append-only**: chỉ thêm dòng `GRANT/USED/EXPIRED/ADJUST`, không sửa/xoá;
   điều chỉnh tay phải có lý do + người thực hiện.
 * Màn hình: S32 (quản lý loại nghỉ) · S34 (sổ phép) · S09 (số dư + tổng phép còn lại).
+
+---
+
+## Cập nhật triển khai — 20/11/2026
+
+* **Nguồn số dư là `leave_ledger` (append-only)**:
+  * `GRANT` dương: phép năm chuẩn, phép tồn (reason chứa "bảo lưu"/"tồn"), thâm niên (reason chứa "thâm niên") — so khớp **không phân biệt hoa/thường**.
+  * `USED` **âm**: mỗi lần duyệt đơn nghỉ tạo 1 dòng; nửa ngày = `-0.5`; nhiều ngày = số ngày làm việc (bỏ cuối tuần + lễ).
+  * `ADJUST` ±: HR điều chỉnh tay, có lý do/người thực hiện.
+* Nghỉ ốm (S) vẫn có dòng USED để tra cứu nhưng **không trừ phép năm**; phép ốm có thẻ riêng.
+* `GET /leaves/my-balance` trả `granted, used, remaining, annualRemaining, carriedRemaining, seniority, adjust, sickUsed, baseAnnual, carriedGrant`.
+* `GET /leaves/my-ledger` trả lịch sử; UI tính **số dư chạy** theo đúng quy tắc trên để cột “Số dư sau” khớp thẻ tổng.
+* Sổ cái HR (`/attendance/leave-ledger`) hiển thị cùng running balance; bộ lọc Phép năm/Phép ốm dựa trên `leaveType` (AL/S), không dựa vào mô tả.
+
+### Kiểm chứng C6c — 20/11/2026
+* **Card số dư:** UI hiển thị tổng phép/đã dùng/còn lại + progress; các thẻ riêng Phép tồn, Phép ốm (S), Phép thâm niên. Không hiển thị thêm bảng “Số dư theo loại nghỉ” (API `byType` chỉ dùng nội bộ nếu cần).
+* **Tổng phép còn lại** = `annualRemaining + carriedRemaining`; tự cập nhật sau điều chỉnh/duyệt đơn (đã test +1, -0.5).
+* **Phép tồn** có card riêng + trạng thái `AVAILABLE / CAPPED / EXPIRED` theo `leave_carryover` (`max_keep_from`, `max_keep_days`, `expire_from`); test đổi rule: AVAILABLEcarry1.5 · CAPPEDcarry1 (expired0.5) · EXPIREDcarry0.
+* **Cộng phép ngày15:** endpoint `POST /cron/monthly-leave-accrual` cộng1 ngày, chạy lại không cộng trùng; user vào sau ngày15 (test 20/11) **không** được cộng tháng đó.
+* **Thâm niên:** sửa so sánh năm theo tháng/ngày (không dùng day-of-year do năm nhuận); test user vào20/11/2024 → cộng1 ngày đúng ngày tròn, tách khỏi kỳ cộng tháng15.
+* **Sổ phép:** filter theo loại (AL/S/…) và năm lọc đúng số dòng. Mỗi dòng hiển thị **Loại phép** (tên + code) và **số dư chạy theo đúng loại đó**: AL = quỹ phép năm; S = số ngày nghỉ ốm đã dùng (không trộn với quỹ AL). Áp dụng cả Sổ phép cá nhân và Sổ cái HR.
+
+### Cơ chế tự động (cập nhật 20/11/2026)
+* **Cộng phép tháng** — `@Scheduled` **daily 02:00** (không cố định ngày15), mỗi lần chạy:
+  * Đọc `leave_accrual.accrual_on` (ngày cộng, mặc định15) và số ngày/tháng = `base_days_per_year / 12` (mặc định12/12=1).
+  * Chỉ user `status=ACTIVE`; bỏ qua user vào làm sau ngày cộng của kỳ đó.
+  * **Không cộng đôi:** user đã có GRANT “Cấp phép năm {năm}”/“Cấp phép năm định kỳ {năm}” (cấp trọn gói) thì bỏ qua cộng tháng.
+  * **Catch-up:** tìm kỳ “Cộng phép tháng M/YYYY” gần nhất trong ledger, cộng bù mọi tháng thiếu tới tháng hiện tại; nếu chưa có kỳ nào thì bắt đầu tháng hiện tại (tránh cộng trùng với seed cấp năm).
+  * `@EventListener(ApplicationReadyEvent)` chạy cùng logic khi khởi động → không mất kỳ nếu server tắt đúng ngày15.
+  * Endpoint thủ công: `POST /cron/monthly-leave-accrual` (idempotent, trả `backfilledMonths`).
+* **Cắt phép tồn** — `@Scheduled` **daily 02:15** + chạy khi khởi động, endpoint `POST /cron/leave-carry-expiry`:
+  * Đọc `leave_carryover`: từ `max_keep_from` (04-01) giữ tối đa `max_keep_days` (5); từ `expire_from` (07-01) về0.
+  * Tính tồn còn lại = GRANT tồn − USED **chỉ loại trừ phép năm** (S/không trừ phép không ảnh hưởng) − EXPIRED đã ghi.
+  * Ghi dòng `EXPIRED` âm vào `leave_ledger` + **audit `EXPIRE_LEAVE_CARRY`**; tag theo mốc policy nên chạy lại không ghi trùng.
+  * Chạy daily nên tự bù nếu lỡ ngày 01/04 hoặc 01/07.
+* **Thâm niên** — daily 02:30, đọc `leave_seniority.days_per_interval` (mặc định1), cộng đúng ngày tròn, idempotent theo tag, không gộp kỳ ngày15.
+* **Sổ phép** hiển thị cả dòng `EXPIRED` (Hết hạn phép tồn), tính số dư chạy theo từng loại phép.

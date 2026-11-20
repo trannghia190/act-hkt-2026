@@ -6,7 +6,12 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
+import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
+import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
+import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
+import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import java.math.BigDecimal;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
@@ -48,6 +53,8 @@ public class RequestController {
     private final NotificationRepository notificationRepository;
     private final AttendanceLogRepository attendanceLogRepository;
     private final RequestAttachmentRepository requestAttachmentRepository;
+    private final LeaveLedgerRepository leaveLedgerRepository;
+    private final HolidayRepository holidayRepository;
     private final ObjectMapper objectMapper;
 
     private String leaveTypeName(String code) {
@@ -123,6 +130,9 @@ public class RequestController {
                     .count();
             if (monthly >= 5) throw new RuntimeException("Đã dùng đủ 5 lần bổ sung công trong tháng");
             int deadlineDays = ruleService.getInt("makeup", "deadline_working_days", 3);
+            if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isAfter(LocalDate.now())) {
+                throw new RuntimeException("Bổ sung chấm công chỉ áp dụng cho hôm nay hoặc ngày đã qua");
+            }
             if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(deadlineDays))) {
                 throw new RuntimeException("Bổ sung chấm công chỉ được gửi trong vòng " + deadlineDays + " ngày kể từ ngày quên chấm");
             }
@@ -176,6 +186,9 @@ public class RequestController {
                 .payload(body.getPayload() == null ? "{}" : body.getPayload())
                 .appliedParameters(appliedJson)
                 .workDate(body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate())
+                .endDate(body.getEndDate() == null
+                        ? (body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate())
+                        : body.getEndDate())
                 .minutes(body.getMinutes())
                 .reason(body.getReason() == null ? "" : body.getReason())
                 .status(Boolean.TRUE.equals(body.getDraft()) ? "DRAFT" : "PENDING_APPROVAL")
@@ -221,6 +234,9 @@ public class RequestController {
         for (RequestEntity r : result.getContent()) {
             Map<String, Object> m = objectMapper.convertValue(r, Map.class);
             m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
+            if (r.getDecidedBy() != null) {
+                m.put("approverName", userRepository.findById(r.getDecidedBy()).map(User::getFullName).orElse(null));
+            }
             content.add(m);
         }
         out.put("content", content);
@@ -229,6 +245,56 @@ public class RequestController {
         out.put("totalElements", result.getTotalElements());
         out.put("totalPages", result.getTotalPages());
         return ApiResponse.ok(out, "Đơn của tôi");
+    }
+
+    @GetMapping("/history")
+    @Operation(summary = "Lịch sử đơn đã duyệt/từ chối của quản lý (tab Đã duyệt / Bị từ chối)")
+    public ApiResponse<List<Map<String, Object>>> history() {
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        java.util.Set<UUID> managed = new java.util.HashSet<>();
+        for (User u : userRepository.findAll()) if (me.equals(u.getManagerId())) managed.add(u.getId());
+        boolean allCompany = "HR_ADMIN".equals(role) || "ADMIN".equals(role);
+        List<RequestEntity> list = new ArrayList<>();
+        for (RequestEntity r : requestRepository.findAll()) {
+            boolean decidedStatus = "APPROVED".equals(r.getStatus()) || "REJECTED".equals(r.getStatus());
+            if (!decidedStatus) continue;
+            if (allCompany || managed.contains(r.getUserId()) || me.equals(r.getDecidedBy())) list.add(r);
+        }
+        list.sort((a, b) -> {
+            java.time.LocalDateTime da = a.getDecidedAt() == null ? java.time.LocalDateTime.MIN : a.getDecidedAt();
+            java.time.LocalDateTime db = b.getDecidedAt() == null ? java.time.LocalDateTime.MIN : b.getDecidedAt();
+            return db.compareTo(da);
+        });
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (RequestEntity r : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", r.getId());
+            m.put("userId", r.getUserId());
+            m.put("requestType", r.getRequestType());
+            m.put("leaveType", r.getLeaveType());
+            m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
+            m.put("workDate", r.getWorkDate());
+            m.put("endDate", r.getEndDate());
+            m.put("minutes", r.getMinutes());
+            m.put("reason", r.getReason());
+            m.put("status", r.getStatus());
+            m.put("createdAt", r.getCreatedAt());
+            m.put("decidedAt", r.getDecidedAt());
+            m.put("decisionComment", r.getDecisionComment());
+            m.put("payload", r.getPayload());
+            m.put("attachmentCount", requestAttachmentRepository.countByRequestId(r.getId()));
+            userRepository.findById(r.getUserId()).ifPresent(u -> {
+                m.put("employeeCode", u.getEmployeeCode());
+                m.put("employeeName", u.getFullName());
+                m.put("employeeEmail", u.getEmail());
+            });
+            if (r.getDecidedBy() != null) {
+                userRepository.findById(r.getDecidedBy()).ifPresent(u -> m.put("approverName", u.getFullName()));
+            }
+            rows.add(m);
+        }
+        return ApiResponse.ok(rows, "Lịch sử duyệt đơn");
     }
 
     @GetMapping("/inbox")
@@ -246,6 +312,7 @@ public class RequestController {
             m.put("requestType", r.getRequestType());
             m.put("leaveType", r.getLeaveType());
             m.put("workDate", r.getWorkDate());
+            m.put("endDate", r.getEndDate());
             m.put("minutes", r.getMinutes());
             m.put("reason", r.getReason());
             m.put("status", r.getStatus());
@@ -398,6 +465,43 @@ public class RequestController {
         return ApiResponse.ok(requestRepository.save(r), "Đã rút đơn");
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Nhân viên sửa đơn đang chờ duyệt hoặc đã bị từ chối rồi gửi lại")
+    public ApiResponse<RequestEntity> updateRequest(@PathVariable UUID id, @RequestBody CreateRequest body) {
+        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được sửa đơn của mình");
+        if (!"PENDING_APPROVAL".equals(r.getStatus()) && !"REJECTED".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
+            throw new RuntimeException("Chỉ sửa được đơn nháp, đang chờ duyệt hoặc bị từ chối");
+        }
+        if (body.getType() != null) r.setRequestType(body.getType());
+        if (body.getLeaveType() != null) r.setLeaveType(body.getLeaveType());
+        if (body.getWorkDate() != null) r.setWorkDate(body.getWorkDate());
+        r.setEndDate(body.getEndDate() == null ? r.getWorkDate() : body.getEndDate());
+        if (body.getMinutes() != null) r.setMinutes(body.getMinutes());
+        if (body.getReason() != null) r.setReason(body.getReason());
+        if (body.getPayload() != null) r.setPayload(body.getPayload());
+        if (r.getReason() == null || r.getReason().isBlank()) throw new RuntimeException("Đơn phải có lý do");
+
+        if ("LEAVE".equals(r.getRequestType())
+                && leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                    .map(lt -> Boolean.TRUE.equals(lt.getRequiresAttachment())).orElse(false)
+                && requestAttachmentRepository.countByRequestId(id) == 0) {
+            throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm");
+        }
+        if ("LATE_EARLY".equals(r.getRequestType())) {
+            int maxMinutes = ruleService.getInt("late_early", "max_minutes", 60);
+            if (r.getMinutes() == null || r.getMinutes() <= 0) throw new RuntimeException("Đơn đi muộn/về sớm phải có số phút > 0");
+            if (r.getMinutes() > maxMinutes) throw new RuntimeException("Đi muộn/về sớm tối đa " + maxMinutes + " phút mỗi lần");
+        }
+
+        r.setStatus("PENDING_APPROVAL");
+        r.setDecidedBy(null);
+        r.setDecidedAt(null);
+        r.setDecisionComment(null);
+        r.setUpdatedAt(LocalDateTime.now());
+        return ApiResponse.ok(requestRepository.save(r), "Đã cập nhật đơn và gửi lại quản lý");
+    }
+
     @PostMapping("/{id}/submit")
     @Operation(summary = "Gửi duyệt đơn đang lưu nháp")
     public ApiResponse<RequestEntity> submitDraft(@PathVariable UUID id) {
@@ -417,6 +521,20 @@ public class RequestController {
         return ApiResponse.ok(result, "Đã duyệt " + result.size() + " đơn");
     }
 
+    private double leaveDayCount(RequestEntity r) {
+        if (r.getPayload() != null && r.getPayload().contains("half_day_period")) return 0.5;
+        LocalDate start = r.getWorkDate();
+        LocalDate end = r.getEndDate() == null ? start : r.getEndDate();
+        if (start == null) return 0;
+        java.util.Set<LocalDate> holidays = new java.util.HashSet<>();
+        for (Holiday h : holidayRepository.findAll()) holidays.add(h.getHolidayDate());
+        double days = 0;
+        for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
+            if (cur.getDayOfWeek().getValue() < 6 && !holidays.contains(cur)) days += 1;
+        }
+        return days;
+    }
+
     private ApiResponse<RequestEntity> decide(UUID id, boolean approve, String comment) {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         User owner = userRepository.findById(r.getUserId()).orElseThrow();
@@ -430,24 +548,51 @@ public class RequestController {
                 && requestAttachmentRepository.countByRequestId(id) == 0) {
             throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm — nhân viên cần tải file trước khi duyệt");
         }
+        boolean wasApproved = "APPROVED".equals(r.getStatus());
         r.setStatus(approve ? "APPROVED" : "REJECTED");
         r.setDecidedBy(me);
         r.setDecidedAt(LocalDateTime.now());
         r.setDecisionComment(comment);
         RequestEntity saved = requestRepository.save(r);
 
+        if (approve && "LEAVE".equals(r.getRequestType()) && !wasApproved) {
+            double days = leaveDayCount(r);
+            if (days > 0) {
+                BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(owner.getId()).stream()
+                        .map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal amount = BigDecimal.valueOf(-days);
+                leaveLedgerRepository.save(LeaveLedgerEntry.builder()
+                        .userId(owner.getId())
+                        .leaveType(r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                        .action("USED")
+                        .amount(amount)
+                        .balanceAfter(prev.add(amount))
+                        .reason("Duyệt đơn nghỉ " + (r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                                + " ngày " + r.getWorkDate()
+                                + (r.getEndDate() != null && !r.getEndDate().equals(r.getWorkDate()) ? " → " + r.getEndDate() : "")
+                                + (days == 0.5 ? " (nửa ngày)" : ""))
+                        .performedBy(me)
+                        .performedBySystem(false)
+                        .build());
+            }
+        }
+
         // Đơn đi muộn/về sớm được duyệt → cập nhật giờ vào/ra tương ứng trong bảng công.
-        if (approve && "LATE_EARLY".equals(r.getRequestType()) && r.getWorkDate() != null && r.getPayload() != null) {
+        if (approve && ("LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType()))
+                && r.getWorkDate() != null && r.getPayload() != null) {
             try {
                 Map<?, ?> payload = objectMapper.readValue(r.getPayload(), Map.class);
-                String kind = String.valueOf(payload.get("late_early"));
+                String kind = "ADJUST".equals(r.getRequestType())
+                        ? String.valueOf(payload.get("adjust_kind"))
+                        : String.valueOf(payload.get("late_early"));
                 String time = payload.get("time") == null ? null : String.valueOf(payload.get("time"));
                 if (time != null && time.matches("^\\d{2}:\\d{2}$")) {
                     LocalTime t = LocalTime.parse(time);
                     AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(owner.getId(), r.getWorkDate())
                             .orElseGet(() -> AttendanceLog.builder()
                                     .userId(owner.getId()).workDate(r.getWorkDate()).status("INCOMPLETE").build());
-                    if ("EARLY".equals(kind)) log.setCheckOutAt(r.getWorkDate().atTime(t));
+                    boolean out = "EARLY".equals(kind) || "OUT".equals(kind);
+                    if (out) log.setCheckOutAt(r.getWorkDate().atTime(t));
                     else log.setCheckInAt(r.getWorkDate().atTime(t));
                     log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
                     attendanceLogRepository.save(log);
@@ -476,6 +621,7 @@ public class RequestController {
         private String leaveType;
         private String payload;
         private LocalDate workDate;
+        private LocalDate endDate;
         private Integer minutes;
         private String reason;
         private Boolean draft;
