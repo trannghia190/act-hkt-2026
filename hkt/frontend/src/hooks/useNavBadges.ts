@@ -50,6 +50,47 @@ export function useNavBadges() {
       } catch (e) {
         // Fallback to default
       }
+
+      // 3. Fetch Approvals count from /api/v1/todos/approvals
+      try {
+        const res = await fetch('/api/v1/todos/approvals', { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            if (isMounted) {
+              setBadges((prev) => ({ ...prev, approve: json.data.length }));
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 4. Fetch Requests count from /api/v1/requests/my-requests
+      try {
+        const res = await fetch('/api/v1/requests/my-requests', { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            const pendingReqs = json.data.filter((r: any) => r.status === 'PENDING_APPROVAL' || r.status === 'SUBMITTED').length;
+            if (isMounted) {
+              setBadges((prev) => ({ ...prev, reqs: pendingReqs }));
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 5. Fetch Disputes count from /api/v1/disputes
+      try {
+        const res = await fetch('/api/v1/disputes', { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            const pendingDisputes = json.data.filter((d: any) => d.status === 'PENDING').length;
+            if (isMounted) {
+              setBadges((prev) => ({ ...prev, dispute: pendingDisputes }));
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     fetchBadges();

@@ -163,11 +163,8 @@ public class AuthServiceImpl implements AuthService {
             session.setRevokedAt(now);
             session.setRevokedReason("ROTATED");
             refreshTokenRepository.save(session);
-        } else if (employeeCode != null && !employeeCode.isBlank()) {
-            user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + employeeCode));
         } else {
-            throw new RuntimeException("Thiếu refresh token hoặc thông tin tài khoản");
+            throw new RuntimeException("Thiếu refresh token hợp lệ — vui lòng đăng nhập lại");
         }
 
         boolean forceChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
@@ -279,15 +276,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public void sendPasswordResetOtp(String email) {
-        String target = email != null ? email.trim() : "";
+        if (email == null || email.isBlank()) return;
+        String target = email.trim();
         User user = userRepository.findByEmail(target).orElse(null);
         if (user == null) {
             user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(target, target).orElse(null);
         }
-        if (user == null) {
-            user = userRepository.findByEmail("admin@act.vn").orElse(null);
-        }
-        if (user != null) {
+        if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
             String otp = String.format("%06d", (int) (Math.random() * 900000) + 100000);
             emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), otp);
         }

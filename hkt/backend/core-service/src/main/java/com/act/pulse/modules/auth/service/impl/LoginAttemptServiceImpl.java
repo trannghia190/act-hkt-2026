@@ -23,14 +23,14 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     private final LoginAttemptRepository loginAttemptRepository;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public LoginAttempt getOrCreate(String identifier) {
         return loginAttemptRepository.findByIdentifier(identifier.toLowerCase())
-                .orElseGet(() -> LoginAttempt.builder()
+                .orElseGet(() -> loginAttemptRepository.saveAndFlush(LoginAttempt.builder()
                         .identifier(identifier.toLowerCase())
                         .failedCount(0)
                         .permanentlyLocked(false)
-                        .build());
+                        .build()));
     }
 
     @Override

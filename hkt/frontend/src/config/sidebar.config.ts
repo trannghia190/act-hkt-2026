@@ -121,12 +121,12 @@ export const VARIANTS = {
 };
 
 export const DEFAULT_BADGES: Record<string, number> = {
-  todo: 3,
-  notif: 5,
-  reqs: 1,
-  checkin: 2,
-  approve: 12,
-  dispute: 5,
+  todo: 0,
+  notif: 0,
+  reqs: 0,
+  checkin: 0,
+  approve: 0,
+  dispute: 0,
 };
 
 /**
