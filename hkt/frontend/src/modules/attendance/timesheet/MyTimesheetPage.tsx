@@ -77,7 +77,8 @@ export const MyTimesheetPage: React.FC = () => {
     const out: DayRecord[] = [];
     for (const d of monthDates) {
       const log = logs.find(l => l.workDate === d.iso);
-      const approved = approvedRequests.filter(r => r.workDate === d.iso);
+      const approved = approvedRequests.filter(r => r.workDate === d.iso
+        || (r.requestType === 'LEAVE' && r.endDate && d.iso >= r.workDate && d.iso <= r.endDate));
       const leave = approved.find(r => r.requestType === 'LEAVE');
       const wfh = approved.find(r => r.requestType === 'WFH');
       const lateEarly = approved.find(r => r.requestType === 'LATE_EARLY');

@@ -22,6 +22,11 @@ export const RequestDetailPage: React.FC = () => {
   }, [id]);
 
   const req = data?.request;
+  const shownDate = (iso?: string) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return d && m && y ? `${d}/${m}/${y}` : iso;
+  };
   const me = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); } catch { return {}; } })();
   const canUpload = data?.employeeCode && me?.employeeCode === data.employeeCode
     && (req?.status === 'PENDING_APPROVAL' || req?.status === 'DRAFT');
@@ -78,7 +83,7 @@ export const RequestDetailPage: React.FC = () => {
                 <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <div><span className="text-ink-muted">Mã đơn:</span> <span className="font-mono">{req.id}</span></div>
                   <div><span className="text-ink-muted">Nhân viên:</span> <b>{data.employeeName || '—'}</b> {data.employeeCode ? `(${data.employeeCode})` : ''}</div>
-                  <div><span className="text-ink-muted">Ngày áp dụng:</span> <b>{req.workDate || '—'}</b></div>
+                  <div><span className="text-ink-muted">Ngày áp dụng:</span> <b>{req.workDate ? `${shownDate(req.workDate)}${req.endDate && req.endDate !== req.workDate ? ` → ${shownDate(req.endDate)}` : ''}` : '—'}</b></div>
                   <div><span className="text-ink-muted">Thời lượng:</span> <b>{p.duration || (req.minutes ? `${req.minutes} phút` : '—')}</b></div>
                   {p.half_day_period && (
                     <div><span className="text-ink-muted">Buổi:</span> <b>{p.half_day_period === 'MORNING' ? 'Buổi sáng' : 'Buổi chiều'}</b>

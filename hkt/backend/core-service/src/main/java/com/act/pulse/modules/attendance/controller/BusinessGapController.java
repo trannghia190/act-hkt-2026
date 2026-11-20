@@ -154,7 +154,11 @@ public class BusinessGapController {
                 String kind = null;
                 RequestEntity found = null;
                 for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
-                    if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !day.equals(r.getWorkDate())) continue;
+                    if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null) continue;
+                    boolean covers = day.equals(r.getWorkDate())
+                            || ("LEAVE".equals(r.getRequestType()) && r.getEndDate() != null
+                                && !day.isBefore(r.getWorkDate()) && !day.isAfter(r.getEndDate()));
+                    if (!covers) continue;
                     if ("WFH".equals(r.getRequestType())) kind = "WFH";
                     else if ("LEAVE".equals(r.getRequestType())) kind = "LEAVE";
                     else if ("LATE_EARLY".equals(r.getRequestType())) kind = "LATE";

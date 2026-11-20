@@ -176,6 +176,9 @@ public class RequestController {
                 .payload(body.getPayload() == null ? "{}" : body.getPayload())
                 .appliedParameters(appliedJson)
                 .workDate(body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate())
+                .endDate(body.getEndDate() == null
+                        ? (body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate())
+                        : body.getEndDate())
                 .minutes(body.getMinutes())
                 .reason(body.getReason() == null ? "" : body.getReason())
                 .status(Boolean.TRUE.equals(body.getDraft()) ? "DRAFT" : "PENDING_APPROVAL")
@@ -221,6 +224,9 @@ public class RequestController {
         for (RequestEntity r : result.getContent()) {
             Map<String, Object> m = objectMapper.convertValue(r, Map.class);
             m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
+            if (r.getDecidedBy() != null) {
+                m.put("approverName", userRepository.findById(r.getDecidedBy()).map(User::getFullName).orElse(null));
+            }
             content.add(m);
         }
         out.put("content", content);
@@ -246,6 +252,7 @@ public class RequestController {
             m.put("requestType", r.getRequestType());
             m.put("leaveType", r.getLeaveType());
             m.put("workDate", r.getWorkDate());
+            m.put("endDate", r.getEndDate());
             m.put("minutes", r.getMinutes());
             m.put("reason", r.getReason());
             m.put("status", r.getStatus());
@@ -476,6 +483,7 @@ public class RequestController {
         private String leaveType;
         private String payload;
         private LocalDate workDate;
+        private LocalDate endDate;
         private Integer minutes;
         private String reason;
         private Boolean draft;
