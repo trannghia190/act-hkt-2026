@@ -38,6 +38,7 @@ graph TD
 * Loại nghỉ lấy từ `leave_types` (không hard-code), kèm `submitWithinDays`, `requiresAttachment`, đơn vị.
 * **Cả ngày hoặc nửa ngày (0.5)**; nửa ngày chọn **buổi sáng/chiều**, hiển thị khung giờ làm việc thực tế còn lại theo ca.
 * Ngày bắt đầu/kết thúc lưu thật vào `requests.work_date/end_date`; nhiều ngày hiển thị `dd/mm/yyyy → dd/mm/yyyy`.
+* **Không giới hạn ngày tương lai** — nhân viên có thể xin nghỉ cho tháng sau/năm sau; chỉ ràng buộc hạn nộp cho ngày trong quá khứ.
 * **Giấy tờ đính kèm**: loại nghỉ có `requires_attachment` bắt buộc ≥1 file (nhiều file được);ảnh/PDF, mỗi file ≤10MB; lưu nội dung thật trong `request_attachments.data (bytea)`. UI chặn gửi khi thiếu file; server chặn duyệt nếu chưa có file.
 * Duyệt 1 cấp bởi quản lý trực tiếp (không qua HR). Khi duyệt → ghi 1 dòng `USED` âm vào `leave_ledger`: số ngày = số ngày làm việc (bỏ cuối tuần/lễ), nửa ngày = 0.5; nghỉ ốm (S) có dòng nhưng **không trừ phép năm**.
 
@@ -45,7 +46,7 @@ graph TD
 * **Không giới hạn địa điểm WFH**, **không có lịch lặp tuần**.
 * **Cả ngày**: chọn **từ ngày → đến ngày**; mỗi ngày làm việc trong khoảng tạo 1 đơn, chặn trước nếu vượt quota 2 ngày/tuần.
 * **Nửa ngày (0.5)**: chỉ 1 ngày, chọn buổi sáng/chiều; không hiển thị khung giờ làm vì làm tại nhà.
-* Cho phép đăng ký **lùi tối đa `wfh.submit_within_days` (mặc định3) ngày** (kể cả hôm nay) và ngày tương lai; quá hạn →400. Ngày WFH đã duyệt được chấm công ngoài mạng/GPS.
+* Cho phép đăng ký **lùi tối đa `wfh.submit_within_days` (mặc định3) ngày** (kể cả hôm nay) và **ngày tương lai không giới hạn**; quá hạn →400. Ngày WFH đã duyệt được chấm công ngoài mạng/GPS.
 * Trên bảng công: `R` (cả ngày) hoặc `R/0.50` (nửa ngày); lịch nhóm hiện "WFH sáng/chiều".
 
 ### 1.5. Danh sách & chi tiết đơn của nhân viên (S08)

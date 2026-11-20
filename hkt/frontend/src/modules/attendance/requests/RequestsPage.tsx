@@ -980,7 +980,7 @@ export const RequestsPage: React.FC = () => {
                     min={minDateForSelected}
                     max={newReq.type === 'ADJUST' ? isoDaysFromToday(0) : undefined}
                     value={newReq.startDate}
-                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value, endDate: e.target.value < newReq.endDate ? e.target.value : newReq.endDate })}
+                    onChange={e => { const start = e.target.value; setNewReq(prev => ({ ...prev, startDate: start, endDate: prev.endDate < start ? start : prev.endDate })); }}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
