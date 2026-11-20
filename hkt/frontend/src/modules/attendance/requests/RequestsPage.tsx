@@ -489,7 +489,10 @@ export const RequestsPage: React.FC = () => {
   };
   const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt && l.workDate >= isoDaysFromToday(-adjustDeadlineDays));
   const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0 && l.workDate >= isoDaysFromToday(-lateSubmitDays));
-  const anomalyCount = (missingCheckoutLog ? 1 : 0) + (lateLog ? 1 : 0);
+  const anomalyCount = new Set([
+    missingCheckoutLog?.workDate,
+    lateLog?.workDate,
+  ].filter(Boolean)).size;
 
   const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
     const logDate = log?.workDate || '';
