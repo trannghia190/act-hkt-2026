@@ -139,6 +139,12 @@ public class CronController {
         for (User user : userRepository.findAll()) {
             if (!active(user)) continue;
             var entries = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+            // Đã cấp phép năm trọn gói cho năm nay → không cộng thêm theo tháng (tránh cộng đôi).
+            String annualTag = "Cấp phép năm " + today.getYear();
+            String annualTagPeriodic = "Cấp phép năm định kỳ " + today.getYear();
+            boolean hasAnnualGrant = entries.stream().anyMatch(e -> "GRANT".equals(e.getAction()) && e.getReason() != null
+                    && (e.getReason().contains(annualTag) || e.getReason().contains(annualTagPeriodic)));
+            if (hasAnnualGrant) continue;
             // Tìm kỳ cộng phép gần nhất đã ghi; nếu chưa có thì bắt đầu từ tháng hiện tại.
             int latestIndex = 0;
             for (LeaveLedgerEntry e : entries) {
