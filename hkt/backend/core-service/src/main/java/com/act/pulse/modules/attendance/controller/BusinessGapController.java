@@ -15,6 +15,7 @@ import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetRepository;
@@ -53,6 +54,7 @@ public class BusinessGapController {
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final ShiftRepository shiftRepository;
+    private final TeamRepository teamRepository;
     private final TimesheetDisputeRepository timesheetDisputeRepository;
     private final HolidayRepository holidayRepository;
     private final TimesheetRepository timesheetRepository;
@@ -424,8 +426,14 @@ public class BusinessGapController {
             scopeLabel = "HR — toàn công ty";
         } else {
             User self = userRepository.findById(me).orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
-            if ("MANAGER".equals(role)) {
-                List<User> team = self.getTeamId() == null ? List.of() : userRepository.findByTeamId(self.getTeamId());
+            java.util.Set<UUID> ledTeamIds = new java.util.HashSet<>();
+            for (var team : teamRepository.findAll()) {
+                if (me.equals(team.getLeaderId())) ledTeamIds.add(team.getId());
+            }
+            boolean isTeamLead = !ledTeamIds.isEmpty();
+            if ("MANAGER".equals(role) || isTeamLead) {
+                java.util.Set<UUID> teamIds = new java.util.HashSet<>(ledTeamIds);
+                if (self.getTeamId() != null) teamIds.add(self.getTeamId());
                 java.util.Set<UUID> direct = new java.util.HashSet<>();
                 direct.add(me);
                 for (User u : userRepository.findAll()) {
@@ -433,14 +441,17 @@ public class BusinessGapController {
                 }
                 java.util.List<User> result = new java.util.ArrayList<>();
                 for (User u : userRepository.findAll()) {
-                    if (direct.contains(u.getId()) || team.stream().anyMatch(x -> x.getId().equals(u.getId()))) result.add(u);
+                    boolean inTeam = u.getTeamId() != null && teamIds.contains(u.getTeamId());
+                    if (direct.contains(u.getId()) || inTeam) result.add(u);
                 }
                 visible = result;
-                scopeLabel = "Quản lý — cấp dưới trực tiếp & nhóm";
+                scopeLabel = "MANAGER".equals(role) ? "Quản lý — cấp dưới trực tiếp & nhóm" : "Trưởng nhóm — nhóm mình";
             } else {
                 visible = self.getTeamId() == null ? List.of(self) : userRepository.findByTeamId(self.getTeamId());
                 scopeLabel = "Thành viên — nhóm của mình";
             }
+            // Cấu hình riêng nhóm (C7): leader_id của nhóm cũng xem lịch nhóm mình phụ trách.
+            if (visible.isEmpty()) visible = List.of(self);
         }
         if (visible.isEmpty()) visible = List.of();
 
