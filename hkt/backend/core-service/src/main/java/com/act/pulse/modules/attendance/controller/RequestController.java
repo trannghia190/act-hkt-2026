@@ -251,7 +251,8 @@ public class RequestController {
         }
         if (file == null || file.isEmpty()) throw new RuntimeException("File rỗng");
         if (file.getSize() > 10 * 1024 * 1024) throw new RuntimeException("File tối đa 10MB");
-        String type = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
+        String type = file.getContentType();
+        if (type == null || type.isBlank()) type = "application/octet-stream";
         String originalName = file.getOriginalFilename();
         String name = originalName == null || originalName.isBlank() ? "file"
                 : originalName.substring(Math.max(originalName.lastIndexOf('/'), originalName.lastIndexOf('\\')) + 1);

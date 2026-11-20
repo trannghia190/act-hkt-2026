@@ -323,8 +323,14 @@ export const RequestsPage: React.FC = () => {
           for (const file of attachments) {
             const fd = new FormData();
             fd.append('file', file);
+            const tokenOnly = (() => {
+              try {
+                const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
+                return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {};
+              } catch { return {}; }
+            })();
             const up = await fetch(`/api/v1/requests/${requestId}/attachments`, {
-              method: 'POST', headers: authHeaders(), body: fd,
+              method: 'POST', headers: tokenOnly, body: fd,
             });
             if (!up.ok) { uploadFailed = true; break; }
           }
