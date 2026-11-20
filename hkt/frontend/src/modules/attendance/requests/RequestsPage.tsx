@@ -21,6 +21,8 @@ export const RequestsPage: React.FC = () => {
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [holidays, setHolidays] = useState<string[]>([]);
   const [wfhLocation, setWfhLocation] = useState<'HOME' | 'OTHER'>('HOME');
+  const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
+  const [lateEarlyTime, setLateEarlyTime] = useState('08:45');
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -94,9 +96,25 @@ export const RequestsPage: React.FC = () => {
 
   const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
 
+  // Đi muộn/về sớm: chỉ 1 ngày, chọn giờ vào/ra thực tế; số phút tính theo ca chuẩn 08:30–17:30.
+  const SHIFT_START = '08:30';
+  const SHIFT_END = '17:30';
+  const toMinutes = (hhmm: string) => {
+    const [h, m] = (hhmm || '').split(':').map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
+  };
+  const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
+    ? (lateEarlyKind === 'LATE'
+        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
+        : toMinutes(SHIFT_END) - toMinutes(lateEarlyTime))
+    : 0;
+  const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= 60;
+  const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
+
   const handleCreate = (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
+    if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
 
     const leaveNames: Record<string, string> = { AL: 'Phép năm', S: 'Nghỉ ốm', NL: 'Nghỉ lễ tết', RO: 'Nghỉ bù', CL: 'Việc riêng có lương', ML: 'Thai sản', PL: 'Nghỉ khi có vợ sinh', UP: 'Không lương', HIEU: 'Hiếu hỉ', TANG: 'Tang gia' };
     const typeNames: Record<string, string> = {
@@ -132,8 +150,8 @@ export const RequestsPage: React.FC = () => {
       type: newReq.type,
       typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? 'nửa ngày' : 'cả ngày'})` : typeNames[newReq.type],
       startDate: newReq.startDate,
-      endDate: newReq.endDate,
-      durationText: newReq.duration,
+      endDate: newReq.type === 'LATE_EARLY' ? newReq.startDate : newReq.endDate,
+      durationText: newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
       approver: approverName,
@@ -141,17 +159,24 @@ export const RequestsPage: React.FC = () => {
     };
 
     const payload = JSON.stringify({
-      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc` : newReq.duration,
+      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc`
+        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
       unit: newReq.type === 'LEAVE' ? leaveUnit : undefined,
       urgent: false,
       location_allowed: wfhLocation === 'HOME',
+      ...(newReq.type === 'LATE_EARLY' ? {
+        late_early: lateEarlyKind,
+        time: lateEarlyTime,
+        shift_start: SHIFT_START,
+        shift_end: SHIFT_END,
+      } : {}),
     });
     const body = {
       type: newReq.type,
       leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
       payload,
       workDate: newReq.startDate,
-      minutes: newReq.type === 'LATE_EARLY' ? (parseInt((newReq.duration || '').replace(/[^0-9]/g, ''), 10) || 0) : undefined,
+      minutes: newReq.type === 'LATE_EARLY' ? lateEarlyMinutes : undefined,
       reason: newReq.reason,
       draft: asDraft,
     };
@@ -233,6 +258,8 @@ export const RequestsPage: React.FC = () => {
       showToast(`Đã điền sẵn đơn bổ sung giờ ra ngày ${fmtDay(logDate)}`);
     } else {
       const mins = lateMinutesOf(log);
+      setLateEarlyKind('LATE');
+      setLateEarlyTime(timeOf(log.checkInAt));
       setNewReq({
         type: 'ADJUST', startDate: logDate, endDate: logDate,
         duration: `Muộn ${mins} phút (${timeOf(log.checkInAt)})`, leaveType: 'AL',
@@ -550,40 +577,98 @@ export const RequestsPage: React.FC = () => {
             );
           })()}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-medium text-ink mb-1">Từ Ngày</label>
-              <input
-                type="date"
-                required
-                value={newReq.startDate}
-                onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-ink mb-1">Đến Ngày</label>
-              <input
-                type="date"
-                required
-                value={newReq.endDate}
-                onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-              />
-            </div>
-          </div>
+          {newReq.type === 'LATE_EARLY' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    value={newReq.startDate}
+                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink mb-1">Hình thức</label>
+                  <select
+                    value={lateEarlyKind}
+                    onChange={e => {
+                      const kind = e.target.value as 'LATE' | 'EARLY';
+                      setLateEarlyKind(kind);
+                      setLateEarlyTime(kind === 'LATE' ? '08:45' : '17:15');
+                    }}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                  >
+                    <option value="LATE">Đi muộn — cập nhật giờ vào</option>
+                    <option value="EARLY">Về sớm — cập nhật giờ ra</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">
+                    {lateEarlyKind === 'LATE' ? 'Giờ vào thực tế' : 'Giờ ra thực tế'}
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={lateEarlyTime}
+                    onChange={e => setLateEarlyTime(e.target.value)}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+                <div className={`p-2 rounded-lg border text-[11px] ${
+                  lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-rose-50 border-rose-200 text-rose-700'
+                }`}>
+                  Ca chuẩn <b>{SHIFT_START}–{SHIFT_END}</b>
+                  <div className="mt-0.5">
+                    {lateEarlyMinutes > 0 && lateEarlyMinutes <= 60
+                      ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
+                      : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa 60 phút).</>}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">Từ Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    value={newReq.startDate}
+                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink mb-1">Đến Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    value={newReq.endDate}
+                    onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
-            <input
-              type="text"
-              required
-              placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
-              value={newReq.duration}
-              onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
-              className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-            />
-          </div>
+              <div>
+                <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
+                  value={newReq.duration}
+                  onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
+                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block font-medium text-ink mb-1">Lý Do Chi Tiết &amp; Minh Chứng</label>
@@ -604,7 +689,7 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER')}>
+            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER') || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
               Gửi Đơn Phê Duyệt
             </Button>
           </div>

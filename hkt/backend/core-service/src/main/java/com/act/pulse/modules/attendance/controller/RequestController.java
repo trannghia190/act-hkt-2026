@@ -2,9 +2,11 @@ package com.act.pulse.modules.attendance.controller;
 
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
+import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.DayOfWeek;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +40,7 @@ public class RequestController {
     private final RuleService ruleService;
     private final LeaveTypeRepository leaveTypeRepository;
     private final NotificationRepository notificationRepository;
+    private final AttendanceLogRepository attendanceLogRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping
@@ -75,6 +79,13 @@ public class RequestController {
                     .count();
             int max = ruleService.getInt("late_early", "max_count", 2);
             if (monthly >= max) throw new RuntimeException("Đã dùng đủ " + max + " lần đi muộn/về sớm trong tháng");
+            int maxMinutes = ruleService.getInt("late_early", "max_minutes", 60);
+            if (!Boolean.TRUE.equals(body.getDraft()) && (body.getMinutes() == null || body.getMinutes() <= 0)) {
+                throw new RuntimeException("Đơn đi muộn/về sớm phải có số phút > 0");
+            }
+            if (body.getMinutes() != null && body.getMinutes() > maxMinutes) {
+                throw new RuntimeException("Đi muộn/về sớm tối đa " + maxMinutes + " phút mỗi lần");
+            }
         }
 
         boolean overdueFlag = false;
@@ -261,6 +272,25 @@ public class RequestController {
         r.setDecidedAt(LocalDateTime.now());
         r.setDecisionComment(comment);
         RequestEntity saved = requestRepository.save(r);
+
+        // Đơn đi muộn/về sớm được duyệt → cập nhật giờ vào/ra tương ứng trong bảng công.
+        if (approve && "LATE_EARLY".equals(r.getRequestType()) && r.getWorkDate() != null && r.getPayload() != null) {
+            try {
+                Map<?, ?> payload = objectMapper.readValue(r.getPayload(), Map.class);
+                String kind = String.valueOf(payload.get("late_early"));
+                String time = payload.get("time") == null ? null : String.valueOf(payload.get("time"));
+                if (time != null && time.matches("^\\d{2}:\\d{2}$")) {
+                    LocalTime t = LocalTime.parse(time);
+                    AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(owner.getId(), r.getWorkDate())
+                            .orElseGet(() -> AttendanceLog.builder()
+                                    .userId(owner.getId()).workDate(r.getWorkDate()).status("INCOMPLETE").build());
+                    if ("EARLY".equals(kind)) log.setCheckOutAt(r.getWorkDate().atTime(t));
+                    else log.setCheckInAt(r.getWorkDate().atTime(t));
+                    log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
+                    attendanceLogRepository.save(log);
+                }
+            } catch (Exception ignored) { /* payload cũ/không hợp lệ: chỉ duyệt đơn, không sửa log */ }
+        }
 
         // Nhân viên nhận thông báo kết quả duyệt/từ chối (từ chối luôn kèm lý do).
         notificationRepository.save(Notification.builder()
