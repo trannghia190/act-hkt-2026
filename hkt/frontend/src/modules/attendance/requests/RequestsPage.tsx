@@ -991,11 +991,11 @@ export const RequestsPage: React.FC = () => {
                   <div className="mt-0.5">
                     Vào <b>{shiftStartLabel}–{shiftInEnd}</b> · ra <b>{shiftOutStart}–{shiftOutEnd}</b> · {shiftHours}h/ngày
                   </div>
-                  <div className="mt-0.5">
-                    {lateEarlyMinutes > 0 && lateEarlyMinutes <= 60
-                      ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
-                      : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa {lateMinutesMax} phút).</>}
-                  </div>
+                  {!(lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax) && (
+                    <div className="mt-0.5 text-rose-700">
+                      Giờ đã chọn không hợp lệ (tối đa {lateMinutesMax} phút).
+                    </div>
+                  )}
                   <div className="mt-1 text-ink-secondary">Hạn nộp: trong vòng <b>{lateSubmitDays} ngày</b> kể từ ngày xảy ra · chọn từ {isoDaysFromToday(-lateSubmitDays)} · tối đa <b>{lateMinutesMax} phút/lần</b>.</div>
                 </div>
               </div>
