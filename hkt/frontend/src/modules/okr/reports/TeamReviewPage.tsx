@@ -14,7 +14,6 @@ export const TeamReviewPage: React.FC = () => {
   return (
   <div className="max-w-3xl mx-auto space-y-4">
     <div className="bg-canvas border border-line rounded-xl p-6">
-      <div className="text-xs text-accent font-semibold">S24 · Quản lý</div>
       <h1 className="text-xl font-bold text-ink mt-1">Review OKR cả nhóm</h1>
       <p className="text-xs text-ink-muted mt-1">1 bảng thay vì mở từng objective; điểm 1–5 từng nhóm, điểm TB tự tính.</p>
     </div>

@@ -93,7 +93,6 @@ export const AdminLeaveLedgerPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Sổ Cái Biến Động Phép Toàn Doanh Nghiệp</h1>
-            <Badge variant="accent">S34</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Quản trị sổ cái biến động ngày phép của toàn bộ nhân sự, tra cứu lịch sử cấp phép, trừ phép và điều chỉnh thủ công

@@ -205,7 +205,6 @@ export const RuleEnginePage: React.FC = () => {
 
       <div className="bg-canvas border border-line rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="text-xs text-accent font-semibold">S16 · HR</div>
           <h1 className="text-xl font-bold text-ink mt-1">Cấu hình 19 quy định</h1>
           <p className="text-xs text-ink-muted mt-1">Chỉ áp dụng toàn công ty · mỗi lần lưu tạo phiên bản có ngày hiệu lực + lý do.</p>
         </div>

@@ -34,7 +34,6 @@ export const DisputeDetailPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S33 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Xử lý khiếu nại {id || 'DC-01'}</h1>
         <p className="text-xs text-ink-muted mt-1">
           So sánh 3 cột trước khi sửa: log chấm công gốc (không sửa) · đơn/khiếu nại của NV · bảng công HR đang sửa.

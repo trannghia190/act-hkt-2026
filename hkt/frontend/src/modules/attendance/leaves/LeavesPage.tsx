@@ -78,7 +78,6 @@ export const LeavesPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Số Dư Phép &amp; Sổ Phép Cá Nhân</h1>
-            <Badge variant="accent">S09 / S34</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Minh bạch từng ngày nghỉ phép năm, bảo lưu phép năm cũ và hạn chót sử dụng trước ngày 31/03
@@ -140,7 +139,7 @@ export const LeavesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bộ lọc lịch sử phép (S09) */}
+      {/* Bộ lọc lịch sử phép */}
       <div className="flex flex-wrap items-center gap-2">
         {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
           <button key={f} onClick={() => setFilterType(f)}
@@ -156,7 +155,7 @@ export const LeavesPage: React.FC = () => {
       </div>
 
       {/* Ledger Table */}
-      <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động - S34)">
+      <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động)">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>

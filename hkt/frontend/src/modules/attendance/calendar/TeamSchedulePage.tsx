@@ -48,7 +48,6 @@ export const TeamSchedulePage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S14 · Quản lý</div>
         <h1 className="text-xl font-bold text-ink mt-1">Lịch nhóm — ai vắng, ai có mặt</h1>
         <p className="text-xs text-ink-muted mt-1">
           {data?.scope || 'Đang tải…'} · {data?.teamSize ?? 0} người · cảnh báo khi ≥{data?.conflictThresholdPercent ?? 60}% nhóm vắng

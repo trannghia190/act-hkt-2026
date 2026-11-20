@@ -221,7 +221,6 @@ export const TodoInboxPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Hộp Việc Cần Xử Lý (Todo Inbox)</h1>
-            <Badge variant="accent">S02 / P0</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Trung tâm điều phối một màn hình gom mọi việc đang chờ: Chấm công ra vào, check-in OKR, đơn từ và các phê duyệt của quản lý

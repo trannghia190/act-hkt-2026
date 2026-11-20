@@ -67,7 +67,7 @@ function MainLayout() {
       {/* 5. Global Enterprise Gmail / SMTP Setup Modal */}
       <EnterpriseGmailModal isOpen={isGmailModalOpen} onClose={() => setIsGmailModalOpen(false)} />
 
-      {/* 6. Forced First-Login Change Password Modal (S01-A) */}
+      {/* 6. Forced First-Login Change Password Modal */}
       <FirstLoginChangePasswordModal
         isOpen={Boolean(user?.mustChangePassword)}
         onSuccess={() => {
