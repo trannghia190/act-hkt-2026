@@ -64,6 +64,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 * Bảng công: trạng thái kỳ/ô sửa tay/audit lưu `timesheets`, `timesheet_cells`, `timesheet_audit_logs` (không RAM); khiếu nại lưu DB.
 * Quản lý nhân viên/audit log/OKR Form 4 Box/Todo completion đọc-ghi DB.
 * API: paging/lọc đơn server-side, `PUT /requests/{id}`, upload/download attachments, `GET /attendance/my-shift`.
+* Phê duyệt đơn: tab Đã duyệt/Bị từ chối đọc lịch sử quyết định từ DB, số đếm cập nhật ngay sau khi duyệt/từ chối.
 * Cron phép: cộng tháng đọc cấu hình `leave_accrual`, chạy daily + catch-up các kỳ lỡ khi khởi động; cắt phép tồn chạy daily, ghi `EXPIRED` + audit; chỉ user ACTIVE.
 * Auth: JWT gửi qua `X-Auth-Token` để chạy sau ngrok basic auth; CORS localhost + domain tunnel.
 * Test: API suite pass; UI kiểm thử bằng Chrome headless CDP; `tsc`/build/consistency pass.
