@@ -227,6 +227,34 @@ public class RequestController {
                 Boolean.TRUE.equals(body.getDraft()) ? "Đã lưu nháp — không trừ quota" : "Đã gửi đơn tới quản lý");
     }
 
+    @GetMapping("/my-quota")
+    @Operation(summary = "Quota đã dùng trong tháng/tuần của tôi (không tính đơn hủy/từ chối/nháp)")
+    public ApiResponse<Map<String, Object>> myQuota() {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) throw new RuntimeException("Chưa đăng nhập");
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+        LocalDate weekEnd = weekStart.plusDays(6);
+        long lateUsed = 0, adjustUsed = 0, wfhWeekUsed = 0;
+        for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+            boolean counted = "PENDING_APPROVAL".equals(r.getStatus()) || "APPROVED".equals(r.getStatus());
+            if (!counted || r.getWorkDate() == null) continue;
+            boolean sameMonth = r.getWorkDate().getMonth() == today.getMonth() && r.getWorkDate().getYear() == today.getYear();
+            if ("LATE_EARLY".equals(r.getRequestType()) && sameMonth) lateUsed++;
+            if ("ADJUST".equals(r.getRequestType()) && sameMonth) adjustUsed++;
+            if ("WFH".equals(r.getRequestType()) && !r.getWorkDate().isBefore(weekStart) && !r.getWorkDate().isAfter(weekEnd)) wfhWeekUsed++;
+        }
+        Map<String, Object> out = new HashMap<>();
+        out.put("lateUsed", lateUsed);
+        out.put("lateMax", ruleService.getInt("late_early", "max_count", 2));
+        out.put("adjustUsed", adjustUsed);
+        out.put("adjustMax", ruleService.getInt("makeup", "max_count", 5));
+        out.put("wfhWeekUsed", wfhWeekUsed);
+        out.put("wfhMax", ruleService.getInt("wfh", "max_count", 2));
+        out.put("weekStart", weekStart.toString());
+        return ApiResponse.ok(out, "Quota của tôi");
+    }
+
     @GetMapping("/my-requests")
     @Operation(summary = "Đơn của tôi (S08)")
     public ApiResponse<Object> myRequests(

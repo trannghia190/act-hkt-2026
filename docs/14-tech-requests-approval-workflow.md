@@ -67,6 +67,10 @@ graph TD
 
 ## 2. Quota Engine & Trạng Thái Đơn: Lưu Nháp vs Gửi Đơn
 
+* Quota (đi muộn2/tháng, bổ sung5/tháng, WFH2/tuần) **chỉ đếm đơn PENDING_APPROVAL hoặc APPROVED**.
+* Đơn `DRAFT`, `REJECTED`, `WITHDRAWN` (kể cả tự hủy do trùng ngày) **không tính quota**.
+* UI lấy số đã dùng từ `GET /requests/my-quota` (tính server-side theo tháng/tuần), không đếm trên trang đang xem.
+
 Một trong những sai lầm phổ biến của nhân viên là bấm lưu nhưng tưởng đã gửi:
 * **Nút "Lưu nháp" (Save Draft):**
   * Trạng thái đơn: `DRAFT`.
@@ -117,6 +121,10 @@ Khi Quản lý bấm `[Từ chối]`, hệ thống vô hiệu hóa nút xác nh�
   * Hệ thống tự động gửi thông báo khẩn cấp (Urgent Reminder).
   * Chuyển quyền duyệt lên Quản lý cấp trên (Skip-level Manager) hoặc chuyển về Hộp thư khẩn của HR để đảm bảo không làm gián đoạn quyền lợi của người lao động.
 ## 2. Quota Engine & Trạng Thái Đơn: Lưu Nháp vs Gửi Đơn
+
+* Quota (đi muộn2/tháng, bổ sung5/tháng, WFH2/tuần) **chỉ đếm đơn PENDING_APPROVAL hoặc APPROVED**.
+* Đơn `DRAFT`, `REJECTED`, `WITHDRAWN` (kể cả tự hủy do trùng ngày) **không tính quota**.
+* UI lấy số đã dùng từ `GET /requests/my-quota` (tính server-side theo tháng/tuần), không đếm trên trang đang xem.
 
 Một trong những sai lầm phổ biến của nhân viên là bấm lưu nhưng tưởng đã gửi:
 * **Nút "Lưu nháp" (Save Draft):**

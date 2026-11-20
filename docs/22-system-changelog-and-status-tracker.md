@@ -64,6 +64,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 * Bảng công: trạng thái kỳ/ô sửa tay/audit lưu `timesheets`, `timesheet_cells`, `timesheet_audit_logs` (không RAM); khiếu nại lưu DB.
 * Quản lý nhân viên/audit log/OKR Form 4 Box/Todo completion đọc-ghi DB.
 * API: paging/lọc đơn server-side, `PUT /requests/{id}`, upload/download attachments, `GET /attendance/my-shift`.
+* Quota đơn chỉ tính đơn chờ/đã duyệt; không tính nháp, bị từ chối, đã hủy/tự hủy trùng ngày; UI lấy `/requests/my-quota` server-side.
 * Thêm tài khoản QA độc lập `137ACT/123456` (cùng nhóm/quản lý/ca với 136ACT, có sổ phép 11 kỳ + log thiếu check-out hôm qua).
 * Trùng ngày nghỉ phép/WFH: confirm hủy đơn cũ rồi áp dụng đơn mới (theo ngày+buổi), có audit `AUTO_CANCEL_DUPLICATE`.
 * Nghỉ phép & WFH: không giới hạn ngày tương lai (xin cho tháng sau/năm sau).
