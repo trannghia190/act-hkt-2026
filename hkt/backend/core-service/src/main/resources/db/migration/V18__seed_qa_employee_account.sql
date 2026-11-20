@@ -12,9 +12,9 @@ SELECT '137ACT', 'Lê Thị Quỳnh Anh (QA)', 'qa137@act-corp.internal',
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_code = '137ACT');
 
 -- Sổ phép: 11 kỳ cộng tháng 1–11/2026 + tồn 2025 + thâm niên; dùng 2 ngày, tồn còn lại hết hạn 01/07.
-INSERT INTO leave_ledger (user_id, leave_type, action, amount, balance_after, reason, performed_by_system, created_at, updated_at)
+INSERT INTO leave_ledger (user_id, leave_type, action, amount, balance_after, reason, performed_by_system, created_at)
 SELECT u.id, v.leave_type, v.action, v.amount, v.balance_after, v.reason, v.performed_by_system,
-       v.created_at, v.created_at
+       v.created_at
 FROM users u
 CROSS JOIN (VALUES
     ('AL','GRANT',2.5, 2.5,'Bảo lưu phép năm 2025 (2.5 ngày)',true,TIMESTAMPTZ '2026-01-01 00:01:00+07'),
@@ -25,17 +25,17 @@ CROSS JOIN (VALUES
 WHERE u.employee_code = '137ACT'
   AND NOT EXISTS (SELECT 1 FROM leave_ledger l WHERE l.user_id = u.id);
 
-INSERT INTO leave_ledger (user_id, leave_type, action, amount, balance_after, reason, performed_by_system, created_at, updated_at)
+INSERT INTO leave_ledger (user_id, leave_type, action, amount, balance_after, reason, performed_by_system, created_at)
 SELECT u.id, 'AL', 'GRANT', 1.0, 3.5 + extract(month from d)::int,
-       'Cộng phép tháng ' || extract(month from d)::int || '/2026', true, d, d
+       'Cộng phép tháng ' || extract(month from d)::int || '/2026', true, d
 FROM users u
 CROSS JOIN generate_series(DATE '2026-01-15', DATE '2026-11-15', INTERVAL '1 month') d
 WHERE u.employee_code = '137ACT'
   AND NOT EXISTS (SELECT 1 FROM leave_ledger l WHERE l.user_id = u.id AND l.reason LIKE 'Cộng phép tháng%');
 
 -- Log chấm công hôm qua: có vào, thiếu ra để QA thấy gợi ý tạo đơn (S07).
-INSERT INTO attendance_logs (user_id, work_date, check_in_at, check_out_at, status, type)
-SELECT u.id, CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '08:10', NULL, 'INCOMPLETE', 'CHECK_IN'
+INSERT INTO attendance_logs (user_id, work_date, check_in_at, check_out_at, status)
+SELECT u.id, CURRENT_DATE - 1, (CURRENT_DATE - 1) + TIME '08:10', NULL, 'INCOMPLETE'
 FROM users u
 WHERE u.employee_code = '137ACT'
   AND NOT EXISTS (SELECT 1 FROM attendance_logs a WHERE a.user_id = u.id AND a.work_date = CURRENT_DATE - 1);

@@ -16,7 +16,10 @@ import {
   UserCheck,
   Calendar,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  Database,
+  GitPullRequest,
+  Users
 } from 'lucide-react';
 
 export interface AuditLogItem {
@@ -201,6 +204,55 @@ export const AuditLogPage: React.FC = () => {
           <p className="text-sky-800 text-xs mt-1 leading-relaxed">
             Mục 3: <i className="text-accent font-semibold">"Ghi lại ai sửa gì, lúc nào — bắt buộc với dữ liệu công và điểm OKR vì liên quan đến lương và đánh giá."</i> Khi nhân viên khiếu nại "công tháng 11 của tôi bị sửa lúc nào?", HR lọc theo tên nhân viên và thấy ngay dòng sửa, giá trị cũ → mới, và lý do trong 5 giây.
           </p>
+        </div>
+      </div>
+
+      {/* Metrics Summary Strip (A5) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng bản ghi nhật ký</div>
+            <div className="text-lg font-bold text-ink">{logs.length} thao tác</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Sửa công &amp; phép</div>
+            <div className="text-lg font-bold text-emerald-700">
+              {logs.filter(l => l.action?.includes('TIMESHEET') || l.action?.includes('LEAVE')).length} sự kiện
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Quy định &amp; Nhóm</div>
+            <div className="text-lg font-bold text-sky-700">
+              {logs.filter(l => l.action?.includes('RULE') || l.action?.includes('TEAM')).length} sự kiện
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <GitPullRequest className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Đổi sếp &amp; Nhân sự</div>
+            <div className="text-lg font-bold text-amber-700">
+              {logs.filter(l => l.action?.includes('MANAGER') || l.action?.includes('PASSWORD') || l.action?.includes('USER')).length} sự kiện
+            </div>
+          </div>
         </div>
       </div>
 
@@ -393,8 +445,8 @@ export const AuditLogPage: React.FC = () => {
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => testAppendOnlyBlock(log.id)}
-                        className="text-[11px] text-rose-600 hover:text-rose-800 underline font-medium cursor-pointer"
-                        title="Bấm để kiểm tra tính append-only (hệ thống sẽ từ chối xóa)"
+                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 border border-rose-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+                        title="Bấm để kiểm tra tính append-only (hệ thống sẽ từ chối xóa theo tiêu chuẩn A5)"
                       >
                         Thử xóa
                       </button>
