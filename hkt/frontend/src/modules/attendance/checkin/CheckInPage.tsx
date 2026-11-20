@@ -58,13 +58,6 @@ export const CheckInPage: React.FC = () => {
     { name: 'face', status: 'pending', label: '5. Nhận diện khuôn mặt AI & Liveness' },
   ]);
 
-  // Simulation test toggles (for QA verification)
-  const [showQaTools, setShowQaTools] = useState(false);
-  const [simWifi, setSimWifi] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL');
-  const [simZone, setSimZone] = useState<'GREEN' | 'YELLOW' | 'RED'>('GREEN');
-  const [simGpsAccuracy, setSimGpsAccuracy] = useState<'ACCURATE' | 'POOR'>('ACCURATE');
-  const [faceTestScenario, setFaceTestScenario] = useState<'SELF' | 'PROXY_FRAUD' | 'POOR_QUALITY'>('SELF');
-
   // Offline punches queue (Criterion B1 #11)
   const [offlineCount, setOfflineCount] = useState<number>(() => {
     try {
@@ -215,18 +208,6 @@ export const CheckInPage: React.FC = () => {
   };
 
   const captureFrameOrGetTestImage = (offset = 0): string => {
-    if (faceTestScenario === 'POOR_QUALITY') {
-      const canvas = document.createElement('canvas');
-      canvas.width = 100;
-      canvas.height = 100;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#050505';
-        ctx.fillRect(0, 0, 100, 100);
-      }
-      return canvas.toDataURL('image/jpeg', 0.8);
-    }
-
     if (useRealCamera && videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -250,11 +231,6 @@ export const CheckInPage: React.FC = () => {
       ctx.beginPath();
       ctx.arc(75 + offset, 75, 45, 0, Math.PI * 2);
       ctx.fill();
-
-      if (faceTestScenario === 'PROXY_FRAUD') {
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(60, 60, 30, 20);
-      }
     }
     return canvas.toDataURL('image/jpeg', 0.8);
   };
@@ -360,49 +336,6 @@ export const CheckInPage: React.FC = () => {
       { name: 'face', status: 'checking', label: '5. Nhận diện khuôn mặt AI & Liveness' },
     ]);
 
-    // Fast-fail checks for QA simulation toggles
-    if (simGpsAccuracy === 'POOR') {
-      setParallelSteps((prev) =>
-        prev.map((s) => (s.name === 'gps' ? { ...s, status: 'failed' } : s))
-      );
-      setCheckInStep('error');
-      setErrorType('GPS_ACCURACY');
-      setErrorMessage(
-        'Không xác định được vị trí chính xác (độ chính xác > 100m). Vui lòng di chuyển lại gần cửa sổ hoặc khu vực thông thoáng và thử lại.'
-      );
-      vibrate([50, 60, 50]);
-      setIsScanning(false);
-      return;
-    }
-
-    if (simZone === 'RED') {
-      setParallelSteps((prev) =>
-        prev.map((s) => (s.name === 'gps' ? { ...s, status: 'failed' } : s))
-      );
-      setCheckInStep('error');
-      setErrorType('GPS_GEOFENCE');
-      setErrorMessage(
-        'Bạn đang cách văn phòng 850m (vượt quá bán kính cho phép 150m). Ngoài bán kính là CHẶN, không phải cảnh báo.'
-      );
-      vibrate([50, 60, 50]);
-      setIsScanning(false);
-      return;
-    }
-
-    if (simWifi === 'EXTERNAL') {
-      setParallelSteps((prev) =>
-        prev.map((s) => (s.name === 'network' ? { ...s, status: 'failed' } : s))
-      );
-      setCheckInStep('error');
-      setErrorType('NETWORK');
-      setErrorMessage(
-        'Bạn đang ngoài mạng công ty. Vui lòng kết nối vào mạng Wi-Fi công ty (ACT_OFFICE_5G) để chấm công.'
-      );
-      vibrate([50, 60, 50]);
-      setIsScanning(false);
-      return;
-    }
-
     try {
       const frames = await captureFrames(3);
       const imageBase64 = frames[frames.length - 1];
@@ -480,10 +413,10 @@ export const CheckInPage: React.FC = () => {
           faceImageBase64: imageBase64,
           livenessFrames: frames,
           deviceFingerprint: getDeviceFingerprint(),
-          wifiBssid: simWifi === 'INTERNAL' ? 'ACT_OFFICE_5G' : '4G_EXTERNAL',
-          latitude: simZone === 'GREEN' ? 21.0285 : 21.0360,
+          wifiBssid: 'ACT_OFFICE_5G',
+          latitude: 21.0285,
           longitude: 105.8542,
-          accuracyMeters: (simGpsAccuracy as string) === 'POOR' ? 150 : 12,
+          accuracyMeters: 12,
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
         }),
       });
@@ -493,6 +426,22 @@ export const CheckInPage: React.FC = () => {
 
       if (!coreResponse.ok || !serverResult || serverResult.status !== 'VALID') {
         setCheckInStep('error');
+        if (serverResult?.layers && Array.isArray(serverResult.layers)) {
+          setParallelSteps(
+            serverResult.layers.map((l: any) => ({
+              name: l.layer?.toLowerCase() || 'general',
+              status: l.passed ? 'passed' : 'failed',
+              label: l.label || l.layer,
+            }))
+          );
+        }
+        if (serverResult?.rejectReason === 'OUTSIDE_GEOFENCE') {
+          setErrorType('GPS_GEOFENCE');
+        } else if (serverResult?.rejectReason === 'OUTSIDE_NETWORK') {
+          setErrorType('NETWORK');
+        } else if (serverResult?.rejectReason === 'FACE_NOT_MATCHED') {
+          setErrorType('FACE_MISMATCH');
+        }
         setErrorMessage(
           serverResult?.message || coreJson?.message || `Máy chủ từ chối chấm công (HTTP ${coreResponse.status})`
         );
@@ -633,97 +582,6 @@ export const CheckInPage: React.FC = () => {
             RA VỀ (Chiều)
           </button>
         </div>
-
-        {/* Toggle QA Simulation Tools (collapsible to keep UI clean conforming to Criterion B1 #13) */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => setShowQaTools((prev) => !prev)}
-            className="text-[11px] text-ink-muted hover:text-ink inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-dashed border-line hover:border-accent bg-canvas-subtle/60 hover:bg-canvas transition-all cursor-pointer"
-          >
-            <span>🧪</span>
-            <span>{showQaTools ? 'Thu gọn công cụ giả lập test QA' : 'Bật công cụ giả lập test QA (Mạng/GPS/Khuôn mặt)'}</span>
-          </button>
-        </div>
-
-        {/* QA Simulation Bar */}
-        {showQaTools && (
-          <div className="p-3 bg-amber-500/10 dark:bg-amber-500/15 rounded-xl border-2 border-dashed border-amber-500/40 text-left text-xs space-y-2 shadow-xs animate-in fade-in">
-            <div className="text-[12px] font-bold text-amber-900 dark:text-amber-200 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">🧪 Kịch Bản Nghiệm Thu 5 Lớp Xác Thực</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold px-2 py-0.5 rounded-full">Dành cho Tester / Nghiệm thu</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
-              <div>
-                <span className="text-ink-muted font-medium">1. Khuôn mặt:</span>
-                <div className="flex gap-1 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setFaceTestScenario('SELF')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${faceTestScenario === 'SELF' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    Chính chủ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFaceTestScenario('PROXY_FRAUD')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${faceTestScenario === 'PROXY_FRAUD' ? 'bg-rose-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    Chấm hộ
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-ink-muted font-medium">2. Mạng Wi-Fi:</span>
-                <div className="flex gap-1 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setSimWifi('INTERNAL')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simWifi === 'INTERNAL' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    Nội bộ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimWifi('EXTERNAL')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simWifi === 'EXTERNAL' ? 'bg-amber-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    Ngoài mạng
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-ink-muted font-medium">3. GPS Vị trí:</span>
-                <div className="flex gap-1 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setSimZone('GREEN'); setSimGpsAccuracy('ACCURATE'); }}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simZone === 'GREEN' && simGpsAccuracy === 'ACCURATE' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    15m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimZone('RED')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simZone === 'RED' ? 'bg-rose-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    850m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimGpsAccuracy('POOR')}
-                    className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simGpsAccuracy === 'POOR' ? 'bg-purple-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
-                  >
-                    Sai số &gt;100m
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Camera Viewport with Oval Guideline Overlay (Criterion B1 #2) */}
         <div className="relative w-56 h-56 sm:w-60 sm:h-60 mx-auto rounded-full border-4 border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">

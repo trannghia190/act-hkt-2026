@@ -188,8 +188,10 @@ public class AttendanceServiceImpl implements AttendanceService {
             gpsDetail = String.format("Độ chính xác GPS (%.0fm) vượt quá sai số cho phép (%dm). Vui lòng di chuyển lại gần cửa sổ hoặc khu vực thông thoáng và thử lại.",
                     request.getAccuracyMeters().doubleValue(), gpsTolerance);
         } else if (request.getLatitude() != null && request.getLongitude() != null) {
+            double officeLat = ruleService.getDouble("attendance_security", "office_lat", OFFICE_LAT);
+            double officeLng = ruleService.getDouble("attendance_security", "office_lng", OFFICE_LNG);
             distance = haversineMeters(request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
-                    OFFICE_LAT, OFFICE_LNG);
+                    officeLat, officeLng);
             if (distance > geofenceRadius && !wfhToday) {
                 gpsPassed = false;
                 gpsDetail = String.format("Bạn đang cách văn phòng %,.0fm (vượt quá bán kính cho phép %dm)",
@@ -493,8 +495,19 @@ public class AttendanceServiceImpl implements AttendanceService {
             return false;
         }
         String bssid = wifiBssid.toLowerCase();
-        return bssid.contains("act_office") || bssid.contains("act-office")
-                || OFFICE_NETWORK_PREFIXES.stream().anyMatch(bssid::startsWith);
+        String wifiKeywords = ruleService.getString("attendance_security", "office_wifi_keywords", "act_office,act-office,act_office_5g");
+        for (String kw : wifiKeywords.split(",")) {
+            if (!kw.isBlank() && bssid.contains(kw.trim().toLowerCase())) {
+                return true;
+            }
+        }
+        String ipPrefixes = ruleService.getString("attendance_security", "office_ip_prefixes", "10.0.,192.168.,172.16.,127.0.");
+        for (String prefix : ipPrefixes.split(",")) {
+            if (!prefix.isBlank() && bssid.startsWith(prefix.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
