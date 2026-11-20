@@ -69,6 +69,12 @@ export const RequestsPage: React.FC = () => {
     try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }
   };
 
+  const fmtDate = (iso?: string) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return d && m && y ? `${d}/${m}/${y}` : iso;
+  };
+
   const mapRequest = (r: any): AttendanceRequestItem => {
     const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
     return {
@@ -80,7 +86,7 @@ export const RequestsPage: React.FC = () => {
       type: r.requestType,
       typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName || r.leaveType}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '',
-      endDate: r.workDate || '',
+      endDate: r.endDate || r.workDate || '',
       durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');
@@ -91,7 +97,7 @@ export const RequestsPage: React.FC = () => {
       })(),
       reason: r.reason || '',
       status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
-      approver: r.decidedAt ? 'Quản lý đã xử lý' : '—',
+      approver: r.approverName || (r.decidedAt ? 'Quản lý đã xử lý' : '—'),
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
     } as AttendanceRequestItem;
@@ -312,6 +318,7 @@ export const RequestsPage: React.FC = () => {
       leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
       payload,
       workDate: newReq.startDate,
+      endDate: newReq.type === 'LEAVE' ? newReq.endDate : newReq.startDate,
       minutes: newReq.type === 'LATE_EARLY' ? lateEarlyMinutes : undefined,
       reason: newReq.reason,
       draft: asDraft,
@@ -578,7 +585,8 @@ export const RequestsPage: React.FC = () => {
             <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
               <th className="py-3 px-4">Mã Đơn</th>
               <th className="py-3 px-4">Loại Đơn Yêu Cầu</th>
-              <th className="py-3 px-4">Thời Gian Áp Dụng</th>
+              <th className="py-3 px-4">Ngày áp dụng</th>
+              <th className="py-3 px-4">Ngày tạo</th>
               <th className="py-3 px-4">Thời Lượng</th>
               <th className="py-3 px-4">Lý Do</th>
               <th className="py-3 px-4">Người Phê Duyệt</th>
@@ -589,7 +597,7 @@ export const RequestsPage: React.FC = () => {
           <tbody className="divide-y divide-line">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-ink-muted">
+                <td colSpan={9} className="py-8 text-center text-ink-muted">
                   Không có đơn yêu cầu nào phù hợp điều kiện lọc.
                 </td>
               </tr>
@@ -599,11 +607,11 @@ export const RequestsPage: React.FC = () => {
                   <td className="py-3 px-4 font-mono font-medium text-ink">{req.id}</td>
                   <td className="py-3 px-4 min-w-[180px]">
                     <span className="font-semibold text-ink whitespace-normal leading-snug block">{req.typeName}</span>
-                    <div className="text-[10px] text-ink-muted mt-0.5">Gửi lúc: {req.createdAt}</div>
                   </td>
-                  <td className="py-3 px-4 font-mono text-ink-secondary">
-                    {req.startDate} {req.startDate !== req.endDate ? `→ ${req.endDate}` : ''}
+                  <td className="py-3 px-4 font-mono text-ink-secondary whitespace-nowrap">
+                    {fmtDate(req.startDate)}{req.startDate !== req.endDate ? ` → ${fmtDate(req.endDate)}` : ''}
                   </td>
+                  <td className="py-3 px-4 text-ink-secondary whitespace-nowrap">{req.createdAt || '—'}</td>
                   <td className="py-3 px-4 font-medium text-ink">{req.durationText}</td>
                   <td className="py-3 px-4 text-ink-secondary max-w-xs">
                     <div>{req.reason}</div>

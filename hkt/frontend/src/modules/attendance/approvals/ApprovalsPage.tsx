@@ -36,7 +36,7 @@ export const ApprovalsPage: React.FC = () => {
     return {
       id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
       team: r.team || '', type: r.requestType, typeName: r.leaveTypeName ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName}` : (typeNames[r.requestType] || r.requestType),
-      startDate: r.workDate || '', endDate: r.workDate || '', durationText: (() => {
+      startDate: r.workDate || '', endDate: r.endDate || r.workDate || '', durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');
           if (p.half_day_period) {

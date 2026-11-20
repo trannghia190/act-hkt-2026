@@ -28,6 +28,8 @@ public class RequestEntity extends BaseEntity {
     private String appliedParameters;
     @Column(name = "work_date")
     private LocalDate workDate;
+    @Column(name = "end_date")
+    private LocalDate endDate;
     @Column(name = "minutes")
     private Integer minutes;
     @Column(name = "reason", nullable = false, columnDefinition = "text")
