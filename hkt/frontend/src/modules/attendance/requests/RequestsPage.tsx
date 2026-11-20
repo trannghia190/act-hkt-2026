@@ -23,6 +23,7 @@ export const RequestsPage: React.FC = () => {
   const [wfhLocation, setWfhLocation] = useState<'HOME' | 'OTHER'>('HOME');
   const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
   const [lateEarlyTime, setLateEarlyTime] = useState('08:45');
+  const [myShift, setMyShift] = useState<any>(null);
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -31,6 +32,15 @@ export const RequestsPage: React.FC = () => {
     fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => { if (j?.data) setLeaveBalance(j.data); }).catch(() => undefined);
     fetch('/api/v1/attendance/my-timesheet', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setPunchLogs(j.data); }).catch(() => undefined);
     fetch('/api/v1/admin/holidays', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setHolidays(j.data.map((h: any) => h.holidayDate)); }).catch(() => undefined);
+    fetch('/api/v1/attendance/my-shift', { headers }).then(r => r.json()).then(j => {
+      if (j?.data && j.data.code) {
+        setMyShift(j.data);
+        const start = String(j.data.checkInStart || '08:00').slice(0, 5);
+        const [h, m] = start.split(':').map(Number);
+        const total = h * 60 + m + 15;
+        setLateEarlyTime(`${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
+      }
+    }).catch(() => undefined);
   }, []);
 
   const [newReq, setNewReq] = useState({
@@ -96,13 +106,19 @@ export const RequestsPage: React.FC = () => {
 
   const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
 
-  // Đi muộn/về sớm: chỉ 1 ngày, chọn giờ vào/ra thực tế; số phút tính theo ca chuẩn 08:30–17:30.
-  const SHIFT_START = '08:30';
-  const SHIFT_END = '17:30';
-  const toMinutes = (hhmm: string) => {
-    const [h, m] = (hhmm || '').split(':').map(Number);
+  // Đi muộn/về sớm: 1 ngày, chọn giờ vào/ra thực tế; số phút tính theo ca thật của nhân viên.
+  const hhmm = (value?: string) => (value || '').slice(0, 5);
+  const toMinutes = (hhmmValue: string) => {
+    const [h, m] = (hhmmValue || '').split(':').map(Number);
     return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
   };
+  const SHIFT_START = hhmm(myShift?.checkInStart) || '08:00';
+  const SHIFT_END = hhmm(myShift?.checkOutStart) || '17:00';
+  const shiftStartLabel = hhmm(myShift?.checkInStart) || '08:00';
+  const shiftInEnd = hhmm(myShift?.checkInEnd) || '09:30';
+  const shiftOutStart = hhmm(myShift?.checkOutStart) || '17:00';
+  const shiftOutEnd = hhmm(myShift?.checkOutEnd) || '18:30';
+  const shiftHours = myShift?.requiredWorkHours ?? 8;
   const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
     ? (lateEarlyKind === 'LATE'
         ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
@@ -242,7 +258,7 @@ export const RequestsPage: React.FC = () => {
   const lateMinutesOf = (log: any) => {
     if (!log?.checkInAt) return 0;
     const d = new Date(log.checkInAt);
-    return Math.max(0, d.getHours() * 60 + d.getMinutes() - (8 * 60 + 30));
+    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_START));
   };
   const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt);
   const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0);
@@ -587,7 +603,9 @@ export const RequestsPage: React.FC = () => {
                     onChange={e => {
                       const kind = e.target.value as 'LATE' | 'EARLY';
                       setLateEarlyKind(kind);
-                      setLateEarlyTime(kind === 'LATE' ? '08:45' : '17:15');
+                      setLateEarlyTime(kind === 'LATE'
+                        ? `${String(Math.floor((toMinutes(SHIFT_START) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 15) % 60).padStart(2, '0')}`
+                        : `${String(Math.floor((toMinutes(SHIFT_END) - 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 15) % 60).padStart(2, '0')}`);
                     }}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
                   >
@@ -612,7 +630,10 @@ export const RequestsPage: React.FC = () => {
                 <div className={`p-2 rounded-lg border text-[11px] ${
                   lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-rose-50 border-rose-200 text-rose-700'
                 }`}>
-                  Ca chuẩn <b>{SHIFT_START}–{SHIFT_END}</b>
+                  {myShift?.name || 'Ca chuẩn'}
+                  <div className="mt-0.5">
+                    Vào <b>{shiftStartLabel}–{shiftInEnd}</b> · ra <b>{shiftOutStart}–{shiftOutEnd}</b> · {shiftHours}h/ngày
+                  </div>
                   <div className="mt-0.5">
                     {lateEarlyMinutes > 0 && lateEarlyMinutes <= 60
                       ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
