@@ -5,6 +5,8 @@ import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Notification;
+import com.act.pulse.modules.attendance.entity.RequestAttachment;
+import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
@@ -17,6 +19,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +45,7 @@ public class RequestController {
     private final LeaveTypeRepository leaveTypeRepository;
     private final NotificationRepository notificationRepository;
     private final AttendanceLogRepository attendanceLogRepository;
+    private final RequestAttachmentRepository requestAttachmentRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping
@@ -63,9 +68,6 @@ public class RequestController {
             if (weekly >= 2) throw new RuntimeException("Đã đăng ký đủ 2 ngày WFH trong tuần này — lần thứ 3 bị chặn");
             if (workDate.isBefore(LocalDate.now().plusDays(1)) && !Boolean.TRUE.equals(body.getUrgent())) {
                 throw new RuntimeException("WFH phải đăng ký trước ít nhất 1 ngày làm việc");
-            }
-            if (Boolean.FALSE.equals(body.getLocationAllowed())) {
-                throw new RuntimeException("Vị trí đăng ký WFH không được phép");
             }
         }
 
@@ -204,6 +206,7 @@ public class RequestController {
             m.put("createdAt", r.getCreatedAt());
             m.put("appliedParameters", r.getAppliedParameters());
             m.put("payload", r.getPayload());
+            m.put("attachmentCount", requestAttachmentRepository.countByRequestId(r.getId()));
             userRepository.findById(r.getUserId()).ifPresent(u -> {
                 m.put("employeeCode", u.getEmployeeCode());
                 m.put("employeeName", u.getFullName());
@@ -225,9 +228,96 @@ public class RequestController {
             timeline.add(Map.of("at", String.valueOf(r.getDecidedAt()), "actor", "Quản lý",
                     "action", "APPROVED".equals(r.getStatus()) ? "Đã duyệt" : "Đã từ chối"));
         }
-        return ApiResponse.ok(Map.of("request", r, "timeline", timeline,
-                "impact", r.getMinutes() != null ? "Trừ " + r.getMinutes() + " phút công" : "Không đổi bảng công"),
-                "Chi tiết đơn");
+        Map<String, Object> out = new HashMap<>();
+        out.put("request", r);
+        out.put("timeline", timeline);
+        out.put("impact", r.getMinutes() != null ? "Trừ " + r.getMinutes() + " phút công" : "Không đổi bảng công");
+        out.put("attachmentCount", requestAttachmentRepository.countByRequestId(id));
+        userRepository.findById(r.getUserId()).ifPresent(u -> {
+            out.put("employeeCode", u.getEmployeeCode());
+            out.put("employeeName", u.getFullName());
+        });
+        return ApiResponse.ok(out, "Chi tiết đơn");
+    }
+
+    @PostMapping("/{id}/attachments")
+    @Operation(summary = "Tải lên giấy tờ đính kèm cho đơn (nghỉ ốm, thai sản…)")
+    public ApiResponse<Map<String, Object>> uploadAttachment(@PathVariable UUID id, @RequestParam("file") MultipartFile file) {
+        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        UUID me = CurrentUser.userId();
+        if (!r.getUserId().equals(me)) throw new RuntimeException("Chỉ người tạo đơn mới được đính kèm file");
+        if (!"PENDING_APPROVAL".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
+            throw new RuntimeException("Chỉ đính kèm được khi đơn còn nháp hoặc chờ duyệt");
+        }
+        if (file == null || file.isEmpty()) throw new RuntimeException("File rỗng");
+        if (file.getSize() > 10 * 1024 * 1024) throw new RuntimeException("File tối đa 10MB");
+        String type = file.getContentType();
+        if (type == null || type.isBlank()) type = "application/octet-stream";
+        String originalName = file.getOriginalFilename();
+        String name = originalName == null || originalName.isBlank() ? "file"
+                : originalName.substring(Math.max(originalName.lastIndexOf('/'), originalName.lastIndexOf('\\')) + 1);
+        String lowerName = name.toLowerCase();
+        boolean extOk = lowerName.endsWith(".pdf") || lowerName.endsWith(".png") || lowerName.endsWith(".jpg")
+                || lowerName.endsWith(".jpeg") || lowerName.endsWith(".webp");
+        if (!(type.startsWith("image/") || type.equals("application/pdf")
+                || (type.equals("application/octet-stream") && extOk))) {
+            throw new RuntimeException("Chỉ nhận ảnh hoặc PDF");
+        }
+        RequestAttachment att;
+        try {
+            att = RequestAttachment.builder().requestId(id).fileName(name).contentType(type)
+                    .sizeBytes(file.getSize()).data(file.getBytes()).uploadedBy(me).build();
+        } catch (Exception e) {
+            throw new RuntimeException("Không đọc được file tải lên");
+        }
+        requestAttachmentRepository.save(att);
+        Map<String, Object> out = new HashMap<>();
+        out.put("id", att.getId().toString());
+        out.put("fileName", att.getFileName());
+        out.put("contentType", att.getContentType());
+        out.put("sizeBytes", att.getSizeBytes());
+        return ApiResponse.ok(out, "Đã tải lên giấy tờ đính kèm");
+    }
+
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Danh sách giấy tờ đính kèm của đơn")
+    public ApiResponse<List<Map<String, Object>>> listAttachments(@PathVariable UUID id) {
+        RequestEntity r = canAccessRequest(id);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (RequestAttachment a : requestAttachmentRepository.findByRequestIdOrderByCreatedAtAsc(r.getId())) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", a.getId().toString());
+            m.put("fileName", a.getFileName());
+            m.put("contentType", a.getContentType());
+            m.put("sizeBytes", a.getSizeBytes());
+            m.put("createdAt", String.valueOf(a.getCreatedAt()));
+            list.add(m);
+        }
+        return ApiResponse.ok(list, "Danh sách giấy tờ đính kèm");
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}")
+    @Operation(summary = "Tải file đính kèm")
+    public ResponseEntity<byte[]> downloadAttachment(@PathVariable UUID id, @PathVariable UUID attachmentId) {
+        canAccessRequest(id);
+        RequestAttachment a = requestAttachmentRepository.findById(attachmentId)
+                .filter(x -> id.equals(x.getRequestId()))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm"));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(a.getContentType() == null ? "application/octet-stream" : a.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + a.getFileName() + "\"")
+                .body(a.getData());
+    }
+
+    private RequestEntity canAccessRequest(UUID id) {
+        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role();
+        boolean allowed = me.equals(r.getUserId()) || me.equals(r.getDecidedBy())
+                || "HR_ADMIN".equals(role) || "ADMIN".equals(role)
+                || userRepository.findById(r.getUserId()).map(u -> me.equals(u.getManagerId())).orElse(false);
+        if (!allowed) throw new RuntimeException("Không có quyền xem giấy tờ của đơn này");
+        return r;
     }
 
     @PostMapping("/{id}/approve")
@@ -283,6 +373,12 @@ public class RequestController {
         boolean isManager = me.equals(owner.getManagerId())
                 || userRepository.findById(me).map(u -> "HR_ADMIN".equals(u.getRole()) || "ADMIN".equals(u.getRole())).orElse(false);
         if (!isManager) throw new RuntimeException("Chỉ quản lý trực tiếp (hoặc HR) được duyệt");
+        if (approve && "LEAVE".equals(r.getRequestType())
+                && leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                    .map(lt -> Boolean.TRUE.equals(lt.getRequiresAttachment())).orElse(false)
+                && requestAttachmentRepository.countByRequestId(id) == 0) {
+            throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm — nhân viên cần tải file trước khi duyệt");
+        }
         r.setStatus(approve ? "APPROVED" : "REJECTED");
         r.setDecidedBy(me);
         r.setDecidedAt(LocalDateTime.now());

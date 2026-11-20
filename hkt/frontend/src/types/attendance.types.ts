@@ -76,6 +76,7 @@ export interface AttendanceRequestItem {
   status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
   approver: string;
   approverComment?: string;
+  attachmentCount?: number;
   createdAt: string;
 }
 
