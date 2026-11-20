@@ -174,27 +174,6 @@ export const LeavesPage: React.FC = () => {
         </div>
       </div>
 
-      {balance.byType.length > 0 && (
-        <Card title="Số dư theo loại nghỉ">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {balance.byType.map(t => {
-              const remaining = t.defaultDays == null ? null : Math.max(0, t.defaultDays - t.used);
-              const pct = t.defaultDays && t.defaultDays > 0 ? Math.min(100, Math.round((t.used / t.defaultDays) * 100)) : 0;
-              return (
-                <div key={t.code} className="p-3 rounded-xl border border-line bg-surface">
-                  <div className="text-xs font-semibold text-ink">{t.name} <span className="font-mono text-[10px] text-ink-muted">{t.code}</span></div>
-                  <div className="text-xl font-bold text-ink mt-1">{remaining == null ? `${t.used} ngày đã dùng` : `${remaining} ngày còn`}</div>
-                  <div className="text-[10px] text-ink-muted">Đã dùng {t.used}{t.defaultDays != null ? ` / ${t.defaultDays}` : ''} ngày</div>
-                  {t.defaultDays != null && t.defaultDays > 0 && (
-                    <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${pct}%` }} /></div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
       {/* Bộ lọc lịch sử phép */}
       <div className="flex flex-wrap items-center gap-2">
         {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (

@@ -312,7 +312,8 @@
 
 ### C6c · Số dư phép 🔴 · S09
 **Nghiệm thu:**
-- [ ] Card từng loại nghỉ, progress bar phép năm
+- [ ] Card tổng phép/đã dùng/còn lại + progress bar phép năm; không bắt buộc hiển thị bảng riêng “số dư theo loại nghỉ”
+- [ ] Phép ốm · phép thâm niên · phép tồn có card riêng
 - [ ] Thẻ **Tổng phép còn lại** = phép năm còn + phép tồn còn — tự cộng, đổi số dư thì tự cập nhật
 - [ ] **Phép ốm** và **phép thâm niên** có card riêng
 - [ ] **Cộng phép hàng tháng vào ngày 15**, chỉ người vào làm từ **ngày 15 trở về trước** mới cộng trong tháng đó (vào 20/11 → tháng 11 không cộng, kỳ đầu tiên là 15/12)
