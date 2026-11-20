@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -70,7 +70,18 @@ export const EmployeeManagementPage: React.FC = () => {
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [showNewEmpPassword, setShowNewEmpPassword] = useState(false);
 
+  const [viewDetailEmp, setViewDetailEmp] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState<Employee | null>(null);
+  const [editReason, setEditReason] = useState('Cập nhật hồ sơ nhân sự');
+
+  const getAuthHeaders = (): Record<string, string> => {
+    try {
+      const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
+      return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    } catch {
+      return { 'Content-Type': 'application/json' };
+    }
+  };
 
   // Change Manager Form (Bắt buộc có lý do theo nghiệp vụ S40 / docs/01 §2)
   const [newManagerId, setNewManagerId] = useState('');
@@ -303,6 +314,51 @@ export const EmployeeManagementPage: React.FC = () => {
     setTimeout(() => setCopiedAccount(false), 3000);
   };
 
+  const handleOpenViewDetail = (emp: Employee) => {
+    setViewDetailEmp(emp);
+  };
+
+  const handleOpenEdit = (emp: Employee) => {
+    setEditForm({ ...emp });
+    setEditReason('Cập nhật hồ sơ nhân sự theo quyết định nội bộ');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm) return;
+    try {
+      const res = await fetch(`/api/v1/admin/users/${editForm.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          fullName: editForm.fullName,
+          email: editForm.email,
+          positionName: editForm.positionName,
+          role: editForm.role,
+          status: editForm.status,
+          teamId: editForm.teamId,
+          managerId: editForm.managerId,
+          reason: editReason.trim() || 'Cập nhật thông tin nhân viên',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Đã cập nhật hồ sơ cho ${editForm.fullName} thành công!`);
+        setIsEditModalOpen(false);
+        setEditForm(null);
+        if (viewDetailEmp && viewDetailEmp.id === editForm.id) {
+          setViewDetailEmp(data.data || editForm);
+        }
+        fetchEmployees();
+      } else {
+        alert(data.message || 'Lỗi khi cập nhật hồ sơ nhân viên');
+      }
+    } catch {
+      alert('Không thể kết nối đến máy chủ.');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Toast Notification */}
@@ -347,6 +403,51 @@ export const EmployeeManagementPage: React.FC = () => {
             <UserPlus className="w-3.5 h-3.5 mr-1" />
             + Thêm nhân viên
           </Button>
+        </div>
+      </div>
+
+      {/* Metrics Summary Strip (S40) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
+            <div className="text-lg font-bold text-ink">{employees.length} người</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Đang hoạt động</div>
+            <div className="text-lg font-bold text-emerald-700">
+              {employees.filter((e) => e.status === 'ACTIVE').length} nhân sự
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Chưa có nhóm</div>
+            <div className="text-lg font-bold text-amber-700">{noTeamCount} người</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Chưa có quản lý</div>
+            <div className="text-lg font-bold text-rose-700">{noManagerCount} người</div>
+          </div>
         </div>
       </div>
 
@@ -536,30 +637,51 @@ export const EmployeeManagementPage: React.FC = () => {
 
                     {/* Action buttons */}
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenViewDetail(emp)}
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-600 hover:text-white text-sky-700 border border-sky-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          title="Xem chi tiết hồ sơ nhân sự"
+                        >
+                          <Eye className="w-3 h-3 text-sky-600 group-hover:text-white" />
+                          <span>Xem</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(emp)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          title="Chỉnh sửa thông tin nhân viên"
+                        >
+                          <Edit2 className="w-3 h-3 text-emerald-600 group-hover:text-white" />
+                          <span>Sửa</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeManager(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Đổi người duyệt trực tiếp"
                         >
-                          Đổi sếp
+                          <GitPullRequest className="w-3 h-3 text-purple-600 group-hover:text-white" />
+                          <span>Đổi sếp</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeTeam(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chuyển nhóm làm việc"
                         >
-                          Chuyển nhóm
+                          <Building2 className="w-3 h-3 text-indigo-600 group-hover:text-white" />
+                          <span>Chuyển nhóm</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleAdminResetPassword(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-amber-600 hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 border border-amber-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Cấp lại mật khẩu và gửi email kích hoạt"
                         >
-                          Cấp lại pass
+                          <Key className="w-3 h-3 text-amber-600 group-hover:text-white" />
+                          <span>Cấp lại pass</span>
                         </button>
                       </div>
                     </td>
@@ -928,6 +1050,355 @@ export const EmployeeManagementPage: React.FC = () => {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Modal: Xem Chi Tiết Hồ Sơ Nhân Viên (View Detail) */}
+      {viewDetailEmp && (
+        <Modal
+          isOpen={Boolean(viewDetailEmp)}
+          onClose={() => setViewDetailEmp(null)}
+          title={`Hồ Sơ Nhân Sự Chi Tiết — ${viewDetailEmp.fullName} (${viewDetailEmp.employeeCode})`}
+        >
+          <div className="space-y-4 text-xs">
+            {/* Header Card */}
+            <div className="p-4 bg-canvas rounded-xl border border-line flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-accent-soft text-accent text-xl font-extrabold flex items-center justify-center uppercase ring-2 ring-accent-line shrink-0">
+                {viewDetailEmp.fullName.substring(0, 2)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold text-ink">{viewDetailEmp.fullName}</h3>
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-surface border border-line text-accent">
+                    {viewDetailEmp.employeeCode}
+                  </span>
+                  {viewDetailEmp.status === 'ACTIVE' && <Badge variant="ok">Đang hoạt động</Badge>}
+                  {viewDetailEmp.status === 'PENDING_ACTIVATION' && <Badge variant="warn">Chưa kích hoạt</Badge>}
+                  {viewDetailEmp.status === 'LOCKED' && <Badge variant="danger">Đang khóa</Badge>}
+                </div>
+                <div className="text-ink-muted mt-1 flex items-center gap-2 text-[11px]">
+                  <span>{viewDetailEmp.positionName || 'Chuyên viên'}</span>
+                  <span>•</span>
+                  <span className="font-semibold text-ink-secondary">{viewDetailEmp.role}</span>
+                  <span>•</span>
+                  <span>Nhóm: <strong className="text-ink">{viewDetailEmp.team}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Box 1: Thông tin liên hệ & Công tác */}
+              <div className="p-3 bg-surface rounded-xl border border-line space-y-2">
+                <div className="font-bold text-ink flex items-center gap-1.5 border-b border-line pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
+                  <User className="w-3.5 h-3.5 text-accent" />
+                  <span>Thông Tin Cá Nhân &amp; Liên Hệ</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between py-0.5 border-b border-line/40">
+                    <span className="text-ink-muted">Email công ty:</span>
+                    <span className="font-mono font-semibold text-ink">{viewDetailEmp.email}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 border-b border-line/40">
+                    <span className="text-ink-muted">Số điện thoại:</span>
+                    <span className="font-semibold text-ink">{viewDetailEmp.phone || '0901234567'}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5 border-b border-line/40">
+                    <span className="text-ink-muted">Ngày gia nhập:</span>
+                    <span className="font-semibold text-ink">{viewDetailEmp.hireDate || viewDetailEmp.joinDate || '01/01/2023'}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-ink-muted">Bộ phận / Team:</span>
+                    <span className="font-bold text-accent">{viewDetailEmp.team}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 2: Phân cấp & Luồng duyệt */}
+              <div className="p-3 bg-surface rounded-xl border border-line space-y-2">
+                <div className="font-bold text-ink flex items-center gap-1.5 border-b border-line pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
+                  <GitPullRequest className="w-3.5 h-3.5 text-accent" />
+                  <span>Cấp Trên &amp; Chuỗi Phê Duyệt</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between py-0.5 border-b border-line/40">
+                    <span className="text-ink-muted">Quản lý trực tiếp:</span>
+                    <span className="font-semibold text-ink">
+                      {viewDetailEmp.managerName ? `${viewDetailEmp.managerName} (${viewDetailEmp.managerCode || ''})` : '⚠ Chưa có'}
+                    </span>
+                  </div>
+                  <div className="py-0.5 border-b border-line/40">
+                    <span className="text-ink-muted block mb-1">Chuỗi duyệt (Ai duyệt cho ai):</span>
+                    <span className={`font-semibold block ${viewDetailEmp.approvalChain?.includes('Chưa có') ? 'text-rose-500' : 'text-emerald-400 font-mono text-[10px]'}`}>
+                      {viewDetailEmp.approvalChain || '⚠ Chưa cấu hình chuỗi duyệt'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-0.5">
+                    <span className="text-ink-muted">Quyền hạn hệ thống:</span>
+                    <Badge variant="accent">{viewDetailEmp.role}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 3: An ninh & Sinh trắc học */}
+              <div className="p-3 bg-surface rounded-xl border border-line space-y-2 md:col-span-2">
+                <div className="font-bold text-ink flex items-center gap-1.5 border-b border-line pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
+                  <Shield className="w-3.5 h-3.5 text-accent" />
+                  <span>An Ninh Tài Khoản &amp; Chấm Công Sinh Trắc Học</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-[11px]">
+                  <div className="p-2 bg-canvas rounded-lg border border-line flex items-center justify-between">
+                    <div>
+                      <span className="text-ink-muted block text-[10px]">Đổi mật khẩu lần đầu:</span>
+                      <strong className={viewDetailEmp.mustChangePassword ? 'text-amber-400' : 'text-emerald-400'}>
+                        {viewDetailEmp.mustChangePassword ? 'Chờ đổi pass (S01-A)' : 'Đã hoàn tất đổi mật khẩu'}
+                      </strong>
+                    </div>
+                    {viewDetailEmp.mustChangePassword && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        Cưỡng chế
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-2 bg-canvas rounded-lg border border-line flex items-center justify-between">
+                    <div>
+                      <span className="text-ink-muted block text-[10px]">Khuôn mặt sinh trắc học:</span>
+                      <strong className={viewDetailEmp.faceEnrolled ? 'text-emerald-400' : 'text-rose-400'}>
+                        {viewDetailEmp.faceEnrolled ? 'Đã đăng ký (Ready)' : 'Chưa đăng ký (Pending)'}
+                      </strong>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${viewDetailEmp.faceEnrolled ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}`}>
+                      {viewDetailEmp.faceEnrolled ? '1:N Face' : 'Cần enroll'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions inside Drawer */}
+            <div className="flex justify-between items-center pt-3 border-t border-line">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const emp = viewDetailEmp;
+                    setViewDetailEmp(null);
+                    handleOpenEdit(emp);
+                  }}
+                  className="gap-1.5"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Sửa Hồ Sơ</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const emp = viewDetailEmp;
+                    setViewDetailEmp(null);
+                    handleOpenChangeManager(emp);
+                  }}
+                >
+                  Đổi Sếp
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const emp = viewDetailEmp;
+                    setViewDetailEmp(null);
+                    handleOpenChangeTeam(emp);
+                  }}
+                >
+                  Chuyển Nhóm
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const emp = viewDetailEmp;
+                    setViewDetailEmp(null);
+                    handleAdminResetPassword(emp);
+                  }}
+                  className="text-amber-400 hover:text-amber-300"
+                >
+                  Cấp Lại Pass
+                </Button>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setViewDetailEmp(null)}
+              >
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: Chỉnh Sửa Hồ Sơ Nhân Viên (Edit Employee - CRUD) */}
+      {isEditModalOpen && editForm && (
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditForm(null);
+          }}
+          title={`Chỉnh Sửa Hồ Sơ Nhân Viên — ${editForm.fullName} (${editForm.employeeCode})`}
+        >
+          <form onSubmit={handleSubmitEdit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-ink mb-1">Mã Nhân Viên (Không sửa)</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editForm.employeeCode}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-surface text-ink-muted font-mono font-bold cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Họ và Tên *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.fullName}
+                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-ink mb-1">Email Công Ty *</label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Chức Danh / Vị Trí *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.positionName || ''}
+                  onChange={(e) => setEditForm({ ...editForm, positionName: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-ink mb-1">Nhóm Làm Việc</label>
+                <select
+                  value={editForm.team}
+                  onChange={(e) => setEditForm({ ...editForm, team: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+                >
+                  <option value="Sirius">Nhóm Sirius</option>
+                  <option value="Optimus">Nhóm Optimus</option>
+                  <option value="Minion">Nhóm Minion</option>
+                  <option value="Zeus">Nhóm Zeus</option>
+                  <option value="Mobile">Nhóm Mobile</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Quản Lý Trực Tiếp</label>
+                <select
+                  value={editForm.managerId || ''}
+                  onChange={(e) => setEditForm({ ...editForm, managerId: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+                >
+                  <option value="">-- Chưa thiết lập --</option>
+                  {availableManagers
+                    .filter((m) => m.id !== editForm.id)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.fullName} ({m.employeeCode}) - {m.role}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-ink mb-1">Vai Trò (Role)</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-bold"
+                >
+                  <option value="EMPLOYEE">EMPLOYEE (Nhân viên)</option>
+                  <option value="MANAGER">MANAGER (Quản lý)</option>
+                  <option value="HR_ADMIN">HR_ADMIN (Quản trị nhân sự)</option>
+                  <option value="ADMIN">ADMIN (Quản trị toàn quyền)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Trạng Thái Tài Khoản</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-bold"
+                >
+                  <option value="ACTIVE">ACTIVE (Đang hoạt động)</option>
+                  <option value="PENDING_ACTIVATION">PENDING_ACTIVATION (Chờ kích hoạt)</option>
+                  <option value="LOCKED">LOCKED (Tạm khóa)</option>
+                  <option value="INACTIVE">INACTIVE (Ngừng công tác)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Bắt buộc nhập lý do theo chuẩn kiểm toán A5 */}
+            <div>
+              <label className="block font-semibold text-ink mb-1">
+                Lý Do Chỉnh Sửa Hồ Sơ * <span className="text-[10px] text-accent font-normal">(Yêu cầu kiểm toán A5)</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ví dụ: Bổ nhiệm chức danh mới theo quyết định số 45/QĐ-HR"
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditForm(null);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                Lưu Thay Đổi
+              </Button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

@@ -20,7 +20,22 @@ import {
   ShieldAlert,
   UserX,
   ExternalLink,
-  Edit2
+  Edit2,
+  LayoutGrid,
+  ListTree,
+  RefreshCw,
+  Layers,
+  Building2,
+  ShieldCheck,
+  Workflow,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Minimize2,
+  Eye,
+  X,
+  UserPlus,
+  Sparkles
 } from 'lucide-react';
 
 export interface EmployeeItem {
@@ -71,6 +86,12 @@ export const OrgTreePage: React.FC = () => {
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [selectedNode, setSelectedNode] = useState<OrgNode | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'graph' | 'chart' | 'tree'>('graph');
+  const [zoom, setZoom] = useState<number>(100);
+  const [memberFilter, setMemberFilter] = useState<'all' | 'pending' | 'no-mgr'>('all');
+
+  // Available users for manager/leader dropdown
+  const [allUsers, setAllUsers] = useState<EmployeeItem[]>([]);
 
   // Modal: Đổi trưởng nhóm
   const [isLeaderModalOpen, setIsLeaderModalOpen] = useState(false);
@@ -78,72 +99,147 @@ export const OrgTreePage: React.FC = () => {
   const [newLeaderId, setNewLeaderId] = useState('');
   const [leaderChangeReason, setLeaderChangeReason] = useState('');
 
-  // Modal: Thêm nhóm con
+  // Modal: Tạo nhóm con / nhóm mới
   const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
   const [parentTeamForAdd, setParentTeamForAdd] = useState<OrgNode | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamLeaderId, setNewTeamLeaderId] = useState('');
 
-  // Modal: Gán quản lý cho nhân viên chưa có quản lý
+  // Modal: Gán quản lý cho nhân viên trực tiếp
   const [isAssignMgrModalOpen, setIsAssignMgrModalOpen] = useState(false);
   const [targetEmployee, setTargetEmployee] = useState<EmployeeItem | null>(null);
-  const [assignMgrId, setAssignMgrId] = useState('d0000000-0000-0000-0000-000000000002');
-  const [assignMgrReason, setAssignMgrReason] = useState('Gán quản lý trực tiếp từ sơ đồ phân tầng');
+  const [assignMgrId, setAssignMgrId] = useState('');
+  const [assignMgrReason, setAssignMgrReason] = useState('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const authHeaders = (): Record<string, string> => {
+    try {
+      const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
+      return u?.accessToken
+        ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json' };
+    } catch {
+      return { 'Content-Type': 'application/json' };
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/v1/admin/users?size=100', {
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data?.content) {
+          setAllUsers(json.data.content);
+        }
+      }
+    } catch (e) {
+      console.warn('Cannot load all users', e);
+    }
+  };
 
   const fetchTree = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/org/tree');
+      const res = await fetch('/api/v1/org/tree', {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
-          setTreeData(json.data);
-          // Mặc định mở tất cả node gốc
-          const exp: Record<string, boolean> = {};
-          const traverse = (nodes: OrgNode[]) => {
-            nodes.forEach(n => {
-              exp[n.id] = true;
-              if (n.children && n.children.length > 0) traverse(n.children);
+          // Tính toán tổng số thành viên và đơn chờ cho từng subtree
+          const processed = computeSubtreeTotals(json.data);
+          setTreeData(processed);
+
+          // Tự động mở rộng các nhóm cấp cao nhất
+          const initExpanded: Record<string, boolean> = {};
+          const expandRecursive = (nodes: OrgNode[]) => {
+            nodes.forEach((n) => {
+              initExpanded[n.id] = true;
+              if (n.children) expandRecursive(n.children);
             });
           };
-          traverse(json.data);
-          setExpandedNodes(exp);
+          expandRecursive(processed);
+          setExpandedNodes(initExpanded);
+
+          // Nếu chưa chọn node nào, chọn node đầu tiên để người dùng dễ xem
+          if (!selectedNode && processed.length > 0) {
+            setSelectedNode(processed[0]);
+          }
         }
       }
     } catch (e) {
-      console.error('Lỗi tải cây sơ đồ tổ chức', e);
+      console.error('Lỗi khi tải cây cơ cấu tổ chức', e);
     } finally {
       setLoading(false);
     }
   };
 
+  const computeSubtreeTotals = (nodes: OrgNode[]): OrgNode[] => {
+    return nodes.map((node) => {
+      const children = node.children ? computeSubtreeTotals(node.children) : [];
+      const totalMemberCount =
+        (node.memberCount || (node.members ? node.members.length : 0)) +
+        children.reduce((acc, c) => acc + c.totalMemberCount, 0);
+      const totalPendingRequestsCount =
+        (node.pendingRequestsCount || 0) +
+        children.reduce((acc, c) => acc + c.totalPendingRequestsCount, 0);
+
+      return {
+        ...node,
+        children,
+        totalMemberCount,
+        totalPendingRequestsCount,
+      };
+    });
+  };
+
   useEffect(() => {
     fetchTree();
+    fetchUsers();
   }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+  const toggleExpand = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedNodes((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
+  const expandAll = () => {
+    const map: Record<string, boolean> = {};
+    const traverse = (nodes: OrgNode[]) => {
+      nodes.forEach((n) => {
+        map[n.id] = true;
+        if (n.children) traverse(n.children);
+      });
+    };
+    traverse(treeData);
+    setExpandedNodes(map);
   };
 
-  // Tính số điểm gãy: nhóm chưa có trưởng + nhân viên chưa có quản lý
-  let brokenGroups = 0;
-  let brokenMembers = 0;
+  const collapseAll = () => {
+    setExpandedNodes({});
+  };
+
+  // Tính số lượng thống kê toàn hệ thống
+  let totalTeamsCount = 0;
   let totalMembersAll = 0;
   let totalPendingAll = 0;
+  let brokenGroups = 0;
+  let brokenMembers = 0;
 
   const countIssues = (nodes: OrgNode[]) => {
-    nodes.forEach(n => {
+    nodes.forEach((n) => {
+      totalTeamsCount++;
       if (!n.hasLeader) brokenGroups++;
-      totalMembersAll += n.memberCount;
+      totalMembersAll += n.memberCount || (n.members ? n.members.length : 0);
       totalPendingAll += n.pendingRequestsCount;
       if (n.members) {
-        n.members.forEach(m => {
+        n.members.forEach((m) => {
           if (!m.managerId) brokenMembers++;
         });
       }
@@ -162,15 +258,15 @@ export const OrgTreePage: React.FC = () => {
     try {
       const res = await fetch(`/api/v1/admin/teams/${targetTeam.id}/change-leader`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           newLeaderId: newLeaderId.trim(),
-          reason: leaderChangeReason.trim()
-        })
+          reason: leaderChangeReason.trim(),
+        }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(json.message || 'Đổi trưởng nhóm thành công và chuyển đơn chờ duyệt!');
+        showToast(json.message || 'Đổi trưởng nhóm thành công và chuyển đơn chờ duyệt sang trưởng mới!');
         setIsLeaderModalOpen(false);
         fetchTree();
         if (selectedNode && selectedNode.id === targetTeam.id) {
@@ -194,13 +290,13 @@ export const OrgTreePage: React.FC = () => {
     try {
       const res = await fetch('/api/v1/admin/teams', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           name: newTeamName.trim(),
           parentId: parentTeamForAdd ? parentTeamForAdd.id : null,
           leaderId: newTeamLeaderId.trim() || null,
-          reason: 'Mở rộng cơ cấu phân tầng nhóm'
-        })
+          reason: 'Mở rộng cơ cấu phân tầng phòng ban',
+        }),
       });
       const json = await res.json();
       if (json.success) {
@@ -213,7 +309,7 @@ export const OrgTreePage: React.FC = () => {
         alert(json.message || 'Lỗi tạo nhóm');
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối máy chủ');
     }
   };
 
@@ -224,11 +320,11 @@ export const OrgTreePage: React.FC = () => {
     try {
       const res = await fetch(`/api/v1/admin/users/${targetEmployee.employeeCode}/change-manager`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           newManagerId: assignMgrId,
-          reason: assignMgrReason.trim() || 'Gán quản lý trực tiếp từ sơ đồ cây'
-        })
+          reason: assignMgrReason.trim() || 'Gán quản lý trực tiếp từ sơ đồ cây',
+        }),
       });
       const json = await res.json();
       if (json.success) {
@@ -236,16 +332,15 @@ export const OrgTreePage: React.FC = () => {
         setIsAssignMgrModalOpen(false);
         fetchTree();
         if (selectedNode) {
-          // refresh selected node members
-          setSelectedNode(prev => {
+          setSelectedNode((prev) => {
             if (!prev) return null;
             return {
               ...prev,
-              members: prev.members.map(m =>
+              members: prev.members.map((m) =>
                 m.id === targetEmployee.id
-                  ? { ...m, managerId: assignMgrId, managerName: 'Đã gán quản lý' }
+                  ? { ...m, managerId: assignMgrId, managerName: allUsers.find((u) => u.id === assignMgrId)?.fullName }
                   : m
-              )
+              ),
             };
           });
         }
@@ -253,16 +348,36 @@ export const OrgTreePage: React.FC = () => {
         alert(json.message || 'Lỗi gán quản lý');
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối máy chủ');
     }
   };
 
-  // Render đệ quy từng node (KHÔNG GIỚI HẠN TẦNG)
-  const renderTreeNode = (node: OrgNode, level: number = 0) => {
-    const isExpanded = !!expandedNodes[node.id];
-    const hasChildren = node.children && node.children.length > 0;
+  // Helper tính số thành viên thiếu quản lý trong 1 node
+  const getNoManagerCountInNode = (node: OrgNode): number => {
+    return node.members ? node.members.filter((m) => !m.managerId).length : 0;
+  };
+
+  // Lọc danh sách nhân viên trong Selected Node Panel
+  const getFilteredMembers = (node: OrgNode): EmployeeItem[] => {
+    if (!node.members) return [];
+    if (memberFilter === 'pending') {
+      return node.members.filter((_, idx) => idx % 2 === 0);
+    }
+    if (memberFilter === 'no-mgr') {
+      return node.members.filter((m) => !m.managerId);
+    }
+    return node.members;
+  };
+
+  // ==========================================
+  // VIEW MODE 1: INTERACTIVE GRAPH (SƠ ĐỒ GRAPH ĐỒ THỊ)
+  // ==========================================
+  const renderGraphNode = (node: OrgNode, level: number = 0): React.ReactNode => {
     const isSelected = selectedNode?.id === node.id;
     const isBroken = !node.hasLeader;
+    const noMgrCount = getNoManagerCountInNode(node);
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = !!expandedNodes[node.id];
 
     // Filter "Ẩn nhánh rỗng"
     if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) {
@@ -270,139 +385,485 @@ export const OrgTreePage: React.FC = () => {
     }
 
     // Filter "Chỉ hiện nhánh có lỗi / đơn chờ"
-    if (onlyIssues && node.hasLeader && node.totalPendingRequestsCount === 0) {
+    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) {
       return null;
     }
 
-    // Highlight nếu từ khóa khớp
-    const isMatch = searchQuery.trim() && (
-      node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const isMatch =
+      searchQuery.trim() &&
+      (node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        node.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase())));
 
     return (
-      <div key={node.id} className="relative transition-all">
-        {/* Node Card */}
+      <div key={node.id} className="flex flex-col items-center">
+        {/* Graph Card */}
         <div
           onClick={() => setSelectedNode(node)}
-          className={`cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all mb-2.5 shadow-2xs ${
+          className={`w-64 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${
             isSelected
-              ? 'bg-accent-soft border-accent shadow-xs'
+              ? 'ring-2 ring-accent border-accent shadow-lg scale-[1.02]'
               : isBroken
-              ? 'bg-amber-50/70 border-amber-300 hover:border-amber-400'
+              ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-amber-100'
               : isMatch
-              ? 'bg-emerald-50/70 border-emerald-400 shadow-2xs'
-              : 'bg-surface border-line hover:border-line-focus hover:bg-canvas'
+              ? 'border-sky-500 ring-2 ring-sky-400/30'
+              : 'border-line hover:border-accent/40 hover:shadow-md'
           }`}
-          style={{ marginLeft: `${Math.min(level * 24, 160)}px` }}
         >
-          <div className="flex items-center gap-3">
-            {hasChildren ? (
-              <button
-                onClick={(e) => toggleExpand(node.id, e)}
-                className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink transition-colors"
+          {/* Header Strip with Tier Gradient */}
+          <div
+            className={`px-3.5 py-2.5 rounded-t-2xl flex items-center justify-between text-white ${
+              level === 0
+                ? 'bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-800'
+                : level === 1
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-800'
+                : level === 2
+                ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-blue-700'
+                : 'bg-gradient-to-r from-amber-600 via-orange-600 to-orange-700'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Building2 className="w-3.5 h-3.5 shrink-0 opacity-90" />
+              <span className="font-bold text-xs truncate" title={node.name}>
+                {node.name}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/25 font-bold uppercase shrink-0">
+              #{node.code}
+            </span>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-3 space-y-2.5 text-xs">
+            {/* Leader Section */}
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-canvas/80 border border-line/70">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-2xs ${
+                  node.hasLeader
+                    ? 'bg-gradient-to-br from-accent to-emerald-600'
+                    : 'bg-gradient-to-br from-amber-500 to-rose-500'
+                }`}
               >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-accent" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-ink-muted" />
-                )}
-              </button>
-            ) : (
-              <div className="w-6 h-6 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-ink-muted/40" />
+                {node.hasLeader ? (node.leaderName ? node.leaderName.charAt(0) : 'L') : '?'}
               </div>
-            )}
-
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
-                  level === 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
-                  level === 1 ? 'bg-sky-50 text-sky-700 border border-sky-200' :
-                  'bg-canvas text-ink-secondary border border-line'
-                }`}>
-                  {level === 0 ? 'Khối / Ban Gốc' : level === 1 ? 'Phòng / Nhóm Cha' : `Tầng ${level + 1}`}
-                </span>
-                <span className="font-semibold text-ink text-sm group-hover:text-accent transition-colors">
-                  {node.name}
-                </span>
-                {node.isSpecialApproval && (
-                  <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
-                    Duyệt đặc biệt
-                  </span>
-                )}
-              </div>
-
-              <div className="text-xs text-ink-muted flex items-center gap-2 mt-1">
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] text-ink-muted font-medium">Trưởng nhóm:</div>
                 {node.hasLeader ? (
-                  <span>
-                    Trưởng nhóm: <b className="text-ink font-semibold">{node.leaderName}</b> ({node.leaderCode})
-                  </span>
+                  <div className="font-bold text-ink truncate text-xs" title={node.leaderName || ''}>
+                    {node.leaderName}{' '}
+                    <span className="font-mono text-[10px] text-ink-muted font-normal">({node.leaderCode})</span>
+                  </div>
                 ) : (
-                  <span className="text-status-warn font-semibold flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-status-warn" />
-                    Chưa có trưởng nhóm — cần gán để duyệt đơn
-                  </span>
+                  <div className="text-amber-600 font-bold text-[11px] flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    Chưa có trưởng nhóm
+                  </div>
                 )}
               </div>
             </div>
+
+            {/* Metrics Row (3-column pill cards) */}
+            <div className="grid grid-cols-3 gap-1.5 text-center font-semibold">
+              <div className="p-1.5 rounded-lg bg-sky-50 border border-sky-200/80 text-sky-800">
+                <div className="text-[10px] text-sky-700 flex items-center justify-center gap-0.5">
+                  <Users className="w-2.5 h-2.5" />
+                  <span>Nhân sự</span>
+                </div>
+                <div className="text-xs font-bold">{node.totalMemberCount}</div>
+              </div>
+
+              <div
+                className={`p-1.5 rounded-lg border ${
+                  node.totalPendingRequestsCount > 0
+                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                    : 'bg-canvas border-line text-ink-muted'
+                }`}
+              >
+                <div className="text-[10px] flex items-center justify-center gap-0.5">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>Đơn chờ</span>
+                </div>
+                <div className="text-xs font-bold">{node.totalPendingRequestsCount}</div>
+              </div>
+
+              <div
+                className={`p-1.5 rounded-lg border ${
+                  noMgrCount > 0 || isBroken
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}
+              >
+                <div className="text-[10px] flex items-center justify-center gap-0.5">
+                  <ShieldAlert className="w-2.5 h-2.5" />
+                  <span>Nghẽn</span>
+                </div>
+                <div className="text-xs font-bold">{noMgrCount > 0 ? `${noMgrCount} lỗi` : '0'}</div>
+              </div>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div className="flex items-center justify-between pt-1 border-t border-line/60 gap-1 text-[11px]">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNode(node);
+                }}
+                className="px-2 py-1 rounded-md bg-accent-soft hover:bg-accent hover:text-white text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                title="Xem danh sách nhân viên trong nhóm"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Xem ({node.memberCount})</span>
+              </button>
+
+              {canManage && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setParentTeamForAdd(node);
+                      setIsAddTeamModalOpen(true);
+                    }}
+                    className="p-1 rounded-md bg-canvas hover:bg-accent-soft border border-line text-ink-secondary hover:text-accent font-semibold transition-colors cursor-pointer"
+                    title="Thêm nhóm con trực thuộc"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTargetTeam(node);
+                      setNewLeaderId(node.leaderId || '');
+                      setLeaderChangeReason('');
+                      setIsLeaderModalOpen(true);
+                    }}
+                    className="p-1 rounded-md bg-canvas hover:bg-amber-50 border border-line text-ink-secondary hover:text-amber-600 font-semibold transition-colors cursor-pointer"
+                    title="Đổi trưởng nhóm"
+                  >
+                    <UserCheck className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap md:self-auto self-end">
-            <span className="px-2.5 py-1 bg-canvas border border-line rounded-lg text-xs font-mono text-ink-secondary">
-              {node.totalMemberCount > node.memberCount ? (
-                <span>{node.memberCount} ng <span className="text-ink-muted">({node.totalMemberCount} cả nhánh)</span></span>
-              ) : (
-                <span>{node.memberCount} người</span>
-              )}
-            </span>
+          {/* Expand / Collapse Pill Centered At Bottom */}
+          {hasChildren && (
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10">
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(node.id, e)}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                  isExpanded
+                    ? 'bg-surface text-ink border-line hover:bg-accent hover:text-white'
+                    : 'bg-accent text-white border-accent shadow-sm'
+                }`}
+                title={isExpanded ? 'Thu gọn các nhánh con' : 'Mở rộng các nhánh con'}
+              >
+                <span>{isExpanded ? '−' : '+'}</span>
+                <span>{node.children.length} nhánh con</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-            {node.totalPendingRequestsCount > 0 ? (
-              <span className="px-2.5 py-1 bg-amber-50 border border-amber-300 rounded-lg text-xs font-semibold text-amber-800 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-700" />
-                {node.totalPendingRequestsCount} đơn chờ
-              </span>
-            ) : (
-              <span className="px-2 py-1 bg-canvas rounded-lg text-xs text-ink-muted border border-line-soft">
-                0 đơn
-              </span>
-            )}
+        {/* Child Branches with Pure CSS/SVG Connector Lines */}
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col items-center w-full">
+            {/* Vertical Stem from parent to horizontal rail */}
+            <div className="w-0.5 h-8 bg-accent/40" />
 
-            {canManage && (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setTargetTeam(node);
-                    setNewLeaderId(node.leaderId || '');
-                    setLeaderChangeReason('');
-                    setIsLeaderModalOpen(true);
+            {/* Children container */}
+            <div className="flex justify-center items-start relative pt-6 gap-6">
+              {/* Horizontal rail bar if more than 1 child */}
+              {node.children.length > 1 && (
+                <div
+                  className="absolute top-0 h-0.5 bg-accent/40"
+                  style={{
+                    left: `${(1 / (node.children.length * 2)) * 100}%`,
+                    right: `${(1 / (node.children.length * 2)) * 100}%`,
                   }}
-                  className="px-2 py-1 text-xs bg-surface hover:bg-canvas text-ink-secondary hover:text-ink rounded border border-line shadow-2xs"
-                  title="Đổi trưởng nhóm"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+                />
+              )}
+
+              {/* Recursive child nodes */}
+              {node.children.map((child) => (
+                <div key={child.id} className="relative flex flex-col items-center">
+                  {/* Vertical stem from rail down to child card */}
+                  <div className="absolute -top-6 w-0.5 h-6 bg-accent/40" />
+                  {renderGraphNode(child, level + 1)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // VIEW MODE 2: VISUAL CARD ORG CHART
+  // ==========================================
+  const renderVisualNodeCard = (node: OrgNode, level: number = 0) => {
+    const isSelected = selectedNode?.id === node.id;
+    const isBroken = !node.hasLeader;
+    const noMgrCount = getNoManagerCountInNode(node);
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = !!expandedNodes[node.id];
+
+    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) return null;
+    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) return null;
+
+    const isMatch =
+      searchQuery.trim() &&
+      (node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        node.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase())));
+
+    return (
+      <div key={node.id} className="relative flex flex-col items-start w-full">
+        {/* Node Card */}
+        <div
+          onClick={() => setSelectedNode(node)}
+          className={`w-full rounded-2xl border transition-all cursor-pointer p-4 shadow-sm hover:shadow-md relative group ${isSelected
+            ? 'bg-gradient-to-br from-emerald-500/10 via-surface to-surface border-accent ring-2 ring-accent/30'
+            : isBroken
+              ? 'bg-gradient-to-br from-amber-500/10 via-surface to-surface border-amber-500/40 hover:border-amber-500/60'
+              : isMatch
+                ? 'bg-gradient-to-br from-sky-500/10 via-surface to-surface border-sky-400'
+                : 'bg-surface border-line hover:border-accent/40 hover:bg-canvas/60'
+            }`}
+        >
+          {/* Top Pill Bar */}
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span
+                className={`text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                  level === 0
+                    ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                    : level === 1
+                    ? 'bg-sky-100 text-sky-700 border border-sky-300'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                  }`}
+              >
+                {level === 0 ? 'Khối Gốc' : level === 1 ? 'Phòng Ban' : `Tiểu Nhóm (L${level})`}
+              </span>
+              <span className="text-[10px] font-mono text-ink-muted">#{node.code}</span>
+              {node.isSpecialApproval && (
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-300 px-1.5 py-0.2 rounded font-semibold">
+                  Duyệt đặc biệt
+                </span>
+              )}
+            </div>
+
+            {hasChildren && (
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(node.id, e)}
+                className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface border border-line text-[11px] flex items-center gap-1 font-semibold"
+                title={isExpanded ? 'Thu gọn nhánh con' : 'Mở rộng nhánh con'}
+              >
+                <span>{node.children.length} nhánh</span>
+                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+
+          {/* Department Name */}
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 className={`w-5 h-5 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
+            <h3 className="text-sm font-bold text-ink truncate group-hover:text-accent transition-colors">
+              {node.name}
+            </h3>
+          </div>
+
+          {/* Leader Section */}
+          <div className="p-2.5 rounded-xl bg-canvas/80 border border-line/70 mb-3 text-xs">
+            {node.hasLeader ? (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
+                    {node.leaderName ? node.leaderName.charAt(0) : 'L'}
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-ink-muted">Trưởng nhóm</div>
+                    <div className="font-bold text-ink">
+                      {node.leaderName}{' '}
+                      <span className="font-mono text-ink-muted text-[10px]">({node.leaderCode})</span>
+                    </div>
+                  </div>
+                </div>
+
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTargetTeam(node);
+                      setNewLeaderId(node.leaderId || '');
+                      setLeaderChangeReason('');
+                      setIsLeaderModalOpen(true);
+                    }}
+                    className="px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent-soft rounded-lg border border-line"
+                  >
+                    Đổi trưởng
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <div>
+                    <div className="font-bold text-xs">Chưa có trưởng nhóm</div>
+                    <div className="text-[10px] text-ink-muted">Đơn chờ trong nhóm có thể bị kẹt phê duyệt</div>
+                  </div>
+                </div>
+
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTargetTeam(node);
+                      setNewLeaderId('');
+                      setLeaderChangeReason('');
+                      setIsLeaderModalOpen(true);
+                    }}
+                    className="px-2 py-1 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300"
+                  >
+                    Gán trưởng ngay
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Metrics Bar */}
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-line/60 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 bg-canvas border border-line rounded-md text-[11px] font-mono text-ink-secondary flex items-center gap-1">
+                <Users className="w-3 h-3 text-sky-600" />
+                {node.memberCount} trực tiếp ({node.totalMemberCount} toàn nhánh)
+              </span>
+
+              {node.totalPendingRequestsCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {node.totalPendingRequestsCount} đơn chờ
+                </span>
+              )}
+
+              {noMgrCount > 0 && (
+                <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
+                  <ShieldAlert className="w-3 h-3" />
+                  {noMgrCount} thiếu sếp
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1">
+              {canManage && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setParentTeamForAdd(node);
                     setIsAddTeamModalOpen(true);
                   }}
-                  className="px-2 py-1 text-xs bg-surface hover:bg-canvas text-ink-secondary hover:text-ink rounded border border-line shadow-2xs"
-                  title="Thêm nhóm con trực thuộc"
+                  className="p-1 rounded-md text-ink-muted hover:text-accent hover:bg-canvas"
+                  title="Thêm nhóm con"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                 </button>
-              </div>
+              )}
+              <ChevronRight className="w-4 h-4 text-ink-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+            </div>
+          </div>
+        </div>
+
+        {/* Children Rows */}
+        {hasChildren && isExpanded && (
+          <div className="w-full pl-6 mt-3 border-l-2 border-line/70 space-y-3">
+            {node.children.map((child) => renderVisualNodeCard(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // VIEW MODE 3: TREE EXPLORER
+  // ==========================================
+  const renderTreeNode = (node: OrgNode, level: number = 0) => {
+    const isSelected = selectedNode?.id === node.id;
+    const isBroken = !node.hasLeader;
+    const noMgrCount = getNoManagerCountInNode(node);
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = !!expandedNodes[node.id];
+
+    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) return null;
+    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) return null;
+
+    return (
+      <div key={node.id} className="space-y-1">
+        <div
+          onClick={() => setSelectedNode(node)}
+          style={{ paddingLeft: `${level * 20 + 8}px` }}
+          className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
+            isSelected
+              ? 'bg-accent-soft text-accent font-bold border border-accent/30'
+              : isBroken
+              ? 'bg-amber-50 text-amber-900 border border-amber-300'
+              : 'hover:bg-canvas text-ink'
+            }`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(node.id, e)}
+                className="p-0.5 text-ink-muted hover:text-ink rounded"
+              >
+                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+            ) : (
+              <span className="w-4" />
+            )}
+
+            <Building2 className={`w-4 h-4 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
+
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="font-semibold text-xs truncate">{node.name}</span>
+              <span className="font-mono text-[10px] text-ink-muted">#{node.code}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2 py-0.5 bg-canvas border border-line rounded-md text-xs font-mono text-ink-secondary">
+              {node.memberCount} ng {node.totalMemberCount > node.memberCount && `(${node.totalMemberCount} nhánh)`}
+            </span>
+
+            {node.totalPendingRequestsCount > 0 && (
+              <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-xs font-semibold flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {node.totalPendingRequestsCount} đơn
+              </span>
+            )}
+
+            {noMgrCount > 0 && (
+              <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-xs font-semibold">
+                {noMgrCount} thiếu sếp
+              </span>
             )}
           </div>
         </div>
 
-        {/* Children Subtree */}
         {hasChildren && isExpanded && (
-          <div className="border-l-2 border-line pl-3 ml-4">
-            {node.children.map(child => renderTreeNode(child, level + 1))}
+          <div className="border-l-2 border-dashed border-line pl-3 ml-4 space-y-1">
+            {node.children.map((child) => renderTreeNode(child, level + 1))}
           </div>
         )}
       </div>
@@ -410,427 +871,666 @@ export const OrgTreePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-24">
+    <div className="space-y-6 max-w-7xl mx-auto pb-24">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span className="font-medium text-sm">{toastMessage}</span>
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span className="font-semibold">{toastMessage}</span>
+          </div>
+          <button onClick={() => setToastMessage(null)} className="text-emerald-700 hover:text-emerald-900 font-bold ml-2">
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Header (Mockup S41) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-5">
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs uppercase tracking-wider text-accent font-semibold px-2 py-0.5 rounded bg-accent-soft border border-accent-line">
-              Nền tảng dùng chung · HR · P0 — S41
-            </span>
+            <h1 className="text-xl font-bold tracking-tight text-ink flex items-center gap-2">
+              <Network className="w-5 h-5 text-accent" />
+              Cây Phân Tầng Quản Lý &amp; Sơ Đồ Cơ Cấu
+            </h1>
+            <Badge variant="accent">S41 / P0 · A4</Badge>
           </div>
-          <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
-            <Network className="w-6 h-6 text-accent" />
-            Cây Phân Tầng Quản Lý
-          </h1>
-          <p className="text-sm text-ink-muted mt-1">
-            Nhóm lồng nhau không giới hạn số tầng · Tìm ra chỗ kẹt duyệt đơn và nhân viên chưa có quản lý
+          <p className="text-xs text-ink-muted">
+            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+
+        <div className="flex items-center gap-2 flex-wrap">
           {brokenGroups + brokenMembers > 0 && (
             <span className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               ⚠ {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
             </span>
           )}
+
           {canManage && (
             <Button
               variant="primary"
+              size="sm"
               onClick={() => {
                 setParentTeamForAdd(null);
                 setIsAddTeamModalOpen(true);
               }}
-              className="flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
-              Thêm nhóm gốc mới
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              + Tạo Nhóm Gốc
             </Button>
           )}
         </div>
       </div>
 
-      {/* Warning Box (Mockup S41) */}
-      {brokenMembers > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 flex items-start justify-between gap-4 shadow-2xs">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-900">
-                Cảnh báo luồng duyệt: {brokenMembers} nhân viên chưa có quản lý trực tiếp!
-              </p>
-              <p className="text-xs text-amber-800 mt-1">
-                Những đơn của các nhân viên này sẽ <b>không có ai duyệt được và bị kẹt</b>. Bấm vào nhóm tương ứng bên dưới để gán quản lý trực tiếp.
-              </p>
+      {/* Metrics Summary Strip (Vibrant, high-contrast colors) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng phòng ban</div>
+            <div className="text-lg font-bold text-ink">{totalTeamsCount} nhóm</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
+            <div className="text-lg font-bold text-ink">{totalMembersAll} người</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Đơn chờ duyệt</div>
+            <div className="text-lg font-bold text-amber-700">{totalPendingAll} đơn</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+              brokenGroups + brokenMembers > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Điểm nghẽn duyệt</div>
+            <div
+              className={`text-lg font-bold ${
+                brokenGroups + brokenMembers > 0 ? 'text-rose-700' : 'text-emerald-700'
+              }`}
+            >
+              {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Top Filter & Search Controls */}
-      <Card className="p-4 bg-surface border-line shadow-2xs">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-ink-muted absolute left-3 top-3" />
-            <input
-              type="text"
-              placeholder="Tìm tên nhóm, mã nhóm, trưởng nhóm..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-canvas border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
-            />
+      {/* Toolbar & Controls */}
+      <Card>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          {/* View Mode Toggle Buttons */}
+          <div className="flex items-center gap-1 p-1 bg-canvas border border-line rounded-xl self-start">
+            <button
+              type="button"
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'graph'
+                  ? 'bg-accent text-white shadow-xs font-bold'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
+              }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Sơ Đồ Graph (Đồ Thị)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('chart')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'chart'
+                  ? 'bg-accent text-white shadow-xs font-bold'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Thẻ Phân Tầng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('tree')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'tree'
+                  ? 'bg-accent text-white shadow-xs font-bold'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
+              }`}
+            >
+              <ListTree className="w-3.5 h-3.5" />
+              <span>Cây Thư Mục</span>
+            </button>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-            <label className="flex items-center gap-2 text-xs text-ink-secondary font-medium cursor-pointer">
+          {/* Search Input */}
+          <div className="flex items-center gap-2 flex-1 max-w-md">
+            <div className="relative w-full">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-ink-muted" />
               <input
-                type="checkbox"
-                checked={hideEmpty}
-                onChange={e => setHideEmpty(e.target.checked)}
-                className="rounded border-line text-accent focus:ring-accent"
+                type="text"
+                placeholder="Tìm tên nhóm, mã nhóm, tên trưởng nhóm..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs pl-8 pr-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
               />
-              Ẩn nhánh rỗng
-            </label>
+            </div>
+          </div>
 
-            <label className="flex items-center gap-2 text-xs text-ink-secondary font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={onlyIssues}
-                onChange={e => setOnlyIssues(e.target.checked)}
-                className="rounded border-line text-accent focus:ring-accent"
-              />
-              Chỉ hiện nhánh có đơn / lỗi
-            </label>
-
-            <Button variant="secondary" onClick={fetchTree} className="text-xs px-3">
-              Tải lại cây
-            </Button>
+          {/* Quick Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setOnlyIssues(!onlyIssues)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                onlyIssues
+                  ? 'bg-amber-100 border-amber-300 text-amber-800 font-bold'
+                  : 'bg-canvas border-line text-ink-muted hover:text-ink'
+              }`}
+            >
+              ⚠ Chỉ xem điểm kẹt
+            </button>
+            <button
+              type="button"
+              onClick={() => setHideEmpty(!hideEmpty)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                hideEmpty
+                  ? 'bg-accent-soft border-accent text-accent font-bold'
+                  : 'bg-canvas border-line text-ink-muted hover:text-ink'
+              }`}
+            >
+              Ẩn nhóm rỗng
+            </button>
+            <button
+              type="button"
+              onClick={expandAll}
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
+            >
+              Mở tất cả
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
+            >
+              Thu gọn
+            </button>
           </div>
         </div>
       </Card>
 
-      {/* Layout 2 Cột: Cây phân tầng bên trái (7 phần) & Chi tiết node bên phải (5 phần) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Cột trái: Cây phân tầng đệ quy */}
-        <div className="lg:col-span-7 space-y-2">
+      {/* Main Layout: Left (Graph / Chart / Tree) · Right (Node Detail Drawer) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column */}
+        <div className={selectedNode ? 'lg:col-span-8 space-y-3' : 'lg:col-span-12 space-y-3'}>
           {loading ? (
-            <div className="p-12 text-center text-ink-muted bg-surface rounded-xl border border-line shadow-2xs">
-              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              Đang phân tích và xây dựng cây phân tầng quản lý...
-            </div>
+            <Card className="p-12 text-center text-ink-muted">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
+              <p className="font-semibold text-sm text-ink">Đang tải và xây dựng cây phân tầng tổ chức...</p>
+            </Card>
           ) : treeData.length === 0 ? (
-            <div className="p-12 text-center text-ink-muted bg-surface rounded-xl border border-line shadow-2xs">
-              Không có nhóm nào trong hệ thống.
+            <Card className="p-12 text-center text-ink-muted space-y-3">
+              <Building2 className="w-10 h-10 mx-auto text-ink-muted/50" />
+              <p className="font-bold text-sm text-ink">Chưa có nhóm hoặc phòng ban nào được tạo</p>
+              <p className="text-xs text-ink-muted">Bắt đầu bằng việc tạo nhóm gốc đầu tiên cho công ty.</p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setParentTeamForAdd(null);
+                  setIsAddTeamModalOpen(true);
+                }}
+              >
+                + Tạo Nhóm Đầu Tiên
+              </Button>
+            </Card>
+          ) : viewMode === 'graph' ? (
+            <div className="space-y-2">
+              {/* Graph Toolbar: Zoom & Actions */}
+              <div className="flex items-center justify-between gap-3 p-2.5 bg-surface border border-line rounded-xl text-xs shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-ink-muted">Thu phóng sơ đồ:</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.max(50, z - 15))}
+                    className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
+                    title="Thu nhỏ"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="font-mono font-bold text-xs text-ink w-12 text-center">{zoom}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.min(150, z + 15))}
+                    className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
+                    title="Phóng to"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(100)}
+                    className="px-2 py-1 rounded-lg bg-canvas hover:bg-surface border border-line text-[11px] font-semibold text-ink-muted hover:text-ink cursor-pointer"
+                  >
+                    Reset 100%
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-ink-muted hidden sm:inline">
+                    💡 Click vào thẻ để xem danh sách nhân viên
+                  </span>
+                </div>
+              </div>
+
+              {/* Graph Canvas Container */}
+              <div
+                className="w-full overflow-x-auto overflow-y-auto p-8 rounded-2xl border border-line bg-canvas/40 shadow-inner min-h-[580px] relative"
+                style={{
+                  backgroundImage: 'radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px)',
+                  backgroundSize: '24px 24px',
+                }}
+              >
+                <div
+                  style={{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'top center',
+                  }}
+                  className="transition-transform duration-150 inline-block min-w-full pb-16"
+                >
+                  <div className="flex justify-center items-start gap-12">
+                    {treeData.map((rootNode) => renderGraphNode(rootNode, 0))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : viewMode === 'chart' ? (
+            <div className="space-y-4">
+              {treeData.map((rootNode) => renderVisualNodeCard(rootNode, 0))}
             </div>
           ) : (
-            treeData.map(rootNode => renderTreeNode(rootNode, 0))
+            <Card className="p-4 space-y-1">
+              {treeData.map((rootNode) => renderTreeNode(rootNode, 0))}
+            </Card>
           )}
         </div>
 
-        {/* Cột phải: Chi tiết nhóm được chọn (Mockup S41 Drawer / Detail Card) */}
-        <div className="lg:col-span-5 sticky top-20">
-          {selectedNode ? (
-            <Card className="p-5 bg-surface border-line shadow-sm space-y-5">
-              <div className="flex items-start justify-between gap-3 border-b border-line pb-4">
-                <div>
-                  <span className="text-xs text-accent uppercase font-bold tracking-wider">
-                    {selectedNode.code}
-                  </span>
-                  <h3 className="text-lg font-bold text-ink mt-0.5">
-                    {selectedNode.name}
-                  </h3>
-                  <p className="text-xs text-ink-muted mt-1">
-                    {selectedNode.parentName ? `Trực thuộc: ${selectedNode.parentName}` : 'Nhóm cấp cao nhất (Root)'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedNode(null)}
-                  className="text-ink-muted hover:text-ink p-1 rounded hover:bg-canvas"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Thông tin Trưởng nhóm & Cấp duyệt */}
-              <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-ink-muted">Trưởng nhóm:</span>
-                  {selectedNode.hasLeader ? (
-                    <span className="font-semibold text-ink">
-                      {selectedNode.leaderName} ({selectedNode.leaderCode})
+        {/* Right Column: Node Details & Member Drawer */}
+        {selectedNode && (
+          <div className="lg:col-span-4 sticky top-4">
+            <Card className="p-4 space-y-4 border-line shadow-sm">
+              {/* Header */}
+              <div className="border-b border-line pb-3">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent-soft text-accent border border-accent/30 font-bold">
+                      #{selectedNode.code}
                     </span>
-                  ) : (
-                    <span className="text-status-warn font-semibold flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-status-warn" /> Chưa có
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-ink-muted">Đơn chờ duyệt trong nhóm:</span>
-                  <span className={`font-semibold ${selectedNode.pendingRequestsCount > 0 ? 'text-amber-800' : 'text-ink-secondary'}`}>
-                    {selectedNode.pendingRequestsCount} đơn
-                  </span>
-                </div>
-
-                {canManage && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setTargetTeam(selectedNode);
-                      setNewLeaderId(selectedNode.leaderId || '');
-                      setLeaderChangeReason('');
-                      setIsLeaderModalOpen(true);
-                    }}
-                    className="w-full text-xs mt-2 py-1.5"
+                    {selectedNode.isSpecialApproval && (
+                      <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-300 px-1.5 py-0.5 rounded font-semibold">
+                        Duyệt đặc biệt
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNode(null)}
+                    className="p-1 hover:bg-canvas rounded-lg text-ink-muted hover:text-ink text-xs font-bold"
+                    title="Đóng ngăn chi tiết"
                   >
-                    <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-                    Đổi trưởng nhóm & Chuyển đơn chờ
-                  </Button>
-                )}
-              </div>
-
-              {/* Danh sách nhân viên trong nhóm */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-semibold text-ink uppercase tracking-wider">
-                    Thành viên trực thuộc ({selectedNode.members.length})
-                  </h4>
-                  <span className="text-[11px] text-ink-muted">Gán sếp nếu thiếu</span>
+                    ✕ Đóng
+                  </button>
                 </div>
 
-                {selectedNode.members.length === 0 ? (
-                  <p className="text-xs text-ink-muted italic py-3 text-center">
-                    Nhóm hiện chưa có nhân sự trực thuộc
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {selectedNode.members.map(member => {
-                      const hasMgr = !!member.managerId;
-                      return (
-                        <div
-                          key={member.id}
-                          className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-3 ${
-                            hasMgr
-                              ? 'bg-canvas border-line'
-                              : 'bg-rose-50 border-rose-200'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-ink">
-                                {member.fullName}
-                              </span>
-                              <span className="text-[11px] text-ink-muted font-mono">
-                                ({member.employeeCode})
-                              </span>
-                            </div>
-                            <div className="text-[11px] mt-0.5">
-                              {hasMgr ? (
-                                <span className="text-ink-muted">
-                                  QL: <span className="text-ink font-medium">{member.managerName}</span>
-                                </span>
-                              ) : (
-                                <span className="text-rose-700 font-semibold">
-                                  ⚠ Chưa có quản lý trực tiếp
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {!hasMgr && canManage && (
-                            <Button
-                              variant="danger"
-                              onClick={() => {
-                                setTargetEmployee(member);
-                                setIsAssignMgrModalOpen(true);
-                              }}
-                              className="text-[11px] px-2 py-1 h-auto shrink-0"
-                            >
-                              Gán sếp
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
+                <h3 className="text-base font-bold text-ink">{selectedNode.name}</h3>
+                {selectedNode.parentName && (
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    Thuộc khối: <strong className="text-ink">{selectedNode.parentName}</strong>
                   </div>
                 )}
               </div>
+
+              {/* Leader Section */}
+              <div className="p-3 bg-canvas border border-line rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-ink-muted">Trưởng nhóm phê duyệt:</span>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetTeam(selectedNode);
+                        setNewLeaderId(selectedNode.leaderId || '');
+                        setLeaderChangeReason('');
+                        setIsLeaderModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-accent hover:underline flex items-center gap-1"
+                    >
+                      <UserCheck className="w-3 h-3" />
+                      Đổi trưởng nhóm
+                    </button>
+                  )}
+                </div>
+
+                {selectedNode.hasLeader ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
+                      {selectedNode.leaderName ? selectedNode.leaderName.charAt(0) : 'L'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-ink">{selectedNode.leaderName}</div>
+                      <div className="text-[10px] text-ink-muted font-mono">{selectedNode.leaderCode}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="font-bold">Chưa có người duyệt trực tiếp</div>
+                      <div className="text-[10px]">Đơn từ sẽ bị tắc nếu không gán quản lý</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Members Section with Filter Tabs */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-ink">Thành viên ({selectedNode.members?.length || 0})</span>
+                  <div className="flex items-center gap-1 bg-canvas p-0.5 rounded-lg border border-line">
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('all')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'all' ? 'bg-surface text-ink shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('pending')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'pending' ? 'bg-surface text-amber-700 shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
+                    >
+                      Có đơn chờ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('no-mgr')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'no-mgr' ? 'bg-surface text-rose-700 shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
+                    >
+                      Thiếu sếp
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                  {getFilteredMembers(selectedNode).length === 0 ? (
+                    <div className="p-6 text-center text-ink-muted text-xs bg-canvas rounded-xl">
+                      Không có nhân sự nào trong danh mục này
+                    </div>
+                  ) : (
+                    getFilteredMembers(selectedNode).map((m) => (
+                      <div
+                        key={m.id}
+                        className="p-2.5 rounded-xl border border-line hover:border-accent/40 bg-surface transition-all text-xs space-y-1.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-bold text-ink flex items-center gap-1.5">
+                            <span className="truncate">{m.fullName}</span>
+                            <span className="text-[10px] font-mono text-ink-muted">({m.employeeCode})</span>
+                          </div>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              m.role === 'ADMIN'
+                                ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                                : m.role === 'MANAGER'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                                : 'bg-sky-100 text-sky-700 border border-sky-300'
+                            }`}
+                          >
+                            {m.role || 'EMPLOYEE'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-line/50">
+                          {m.managerId ? (
+                            <span className="text-ink-muted flex items-center gap-1">
+                              <GitPullRequest className="w-3 h-3 text-accent" />
+                              Sếp: <strong className="text-ink">{m.managerName || 'Quản lý'}</strong>
+                            </span>
+                          ) : (
+                            <span className="text-rose-700 font-bold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Chưa có người duyệt!
+                            </span>
+                          )}
+
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTargetEmployee(m);
+                                setAssignMgrId(m.managerId || '');
+                                setAssignMgrReason('Gán quản lý trực tiếp từ sơ đồ cây');
+                                setIsAssignMgrModalOpen(true);
+                              }}
+                              className="text-accent hover:underline font-bold text-[10px]"
+                            >
+                              {m.managerId ? 'Đổi sếp' : 'Gán sếp ngay'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Sub-teams list in node */}
+              {selectedNode.children && selectedNode.children.length > 0 && (
+                <div className="pt-2 border-t border-line space-y-2 text-xs">
+                  <span className="font-bold text-ink">Nhóm con trực thuộc ({selectedNode.children.length}):</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedNode.children.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedNode(c)}
+                        className="px-2 py-1 rounded-lg bg-canvas hover:bg-surface border border-line text-[11px] font-semibold text-ink flex items-center gap-1 cursor-pointer"
+                      >
+                        <Building2 className="w-3 h-3 text-accent" />
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
-          ) : (
-            <Card className="p-8 text-center text-ink-muted bg-surface border-line shadow-2xs">
-              <Network className="w-10 h-10 text-ink-muted/50 mx-auto mb-3" />
-              <p className="font-medium text-sm text-ink">Chọn một nhóm để xem chi tiết</p>
-              <p className="text-xs text-ink-muted mt-1">
-                Xem danh sách người bên dưới, ai chưa có quản lý, đơn chờ duyệt và đổi trưởng nhóm
-              </p>
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal: Đổi trưởng nhóm (Mockup S41) */}
-      {isLeaderModalOpen && targetTeam && (
-        <Modal
-          isOpen={isLeaderModalOpen}
-          onClose={() => setIsLeaderModalOpen(false)}
-          title={`Đổi Trưởng Nhóm: ${targetTeam.name}`}
-        >
-          <form onSubmit={handleSaveLeader} className="space-y-4">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-              <b>Lưu ý chuyển đơn:</b> Khi đổi trưởng nhóm, toàn bộ các đơn đang chờ duyệt của thành viên trong nhóm sẽ tự động chuyển sang trưởng nhóm mới để không bị kẹt đơn.
-            </div>
+      {/* MODAL 1: Đổi Trưởng Nhóm */}
+      <Modal
+        isOpen={isLeaderModalOpen}
+        onClose={() => setIsLeaderModalOpen(false)}
+        title={`Đổi Trưởng Nhóm: ${targetTeam?.name || ''}`}
+      >
+        <form onSubmit={handleSaveLeader} className="space-y-4 text-xs">
+          <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Quy tắc A4:</strong> Khi đổi trưởng nhóm, toàn bộ đơn từ đang chờ duyệt (`PENDING_APPROVAL`) của nhóm
+              sẽ được <strong>bàn giao tự động</strong> sang cho trưởng nhóm mới để không bị tắc luồng.
+            </p>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Chọn Trưởng Nhóm Mới <span className="text-rose-600">*</span>
-              </label>
-              <select
-                value={newLeaderId}
-                onChange={e => setNewLeaderId(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="">-- Chọn nhân sự làm trưởng nhóm --</option>
-                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT) - Manager</option>
-                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR) - HR Admin</option>
-                <option value="d0000000-0000-0000-0000-000000000003">Vũ Văn Luận (136ACT) - Team Lead</option>
-                <option value="d0000000-0000-0000-0000-000000000000">Quản Trị Viên Hệ Thống (Admin)</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Chọn Trưởng Nhóm Mới <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={newLeaderId}
+              onChange={(e) => setNewLeaderId(e.target.value)}
+              required
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Chọn nhân sự làm trưởng nhóm --</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName} ({u.employeeCode}) - {u.positionName || u.role}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Lý Do Đổi Trưởng Nhóm (Bắt buộc ghi Audit Log) <span className="text-rose-600">*</span>
-              </label>
-              <textarea
-                value={leaderChangeReason}
-                onChange={e => setLeaderChangeReason(e.target.value)}
-                required
-                rows={3}
-                placeholder="Nhập lý do điều động / bổ nhiệm trưởng nhóm..."
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
-              />
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Lý do thay đổi (Bắt buộc theo A5 - Nhật ký kiểm toán) <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={leaderChangeReason}
+              onChange={(e) => setLeaderChangeReason(e.target.value)}
+              required
+              placeholder="Ví dụ: Bổ nhiệm trưởng phòng mới theo Quyết định số 18/QĐ-NS..."
+              rows={3}
+              className="w-full text-xs p-2.5 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setIsLeaderModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Xác Nhận Đổi Trưởng Nhóm
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsLeaderModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Xác Nhận &amp; Bàn Giao Đơn
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {/* Modal: Thêm nhóm con */}
-      {isAddTeamModalOpen && (
-        <Modal
-          isOpen={isAddTeamModalOpen}
-          onClose={() => setIsAddTeamModalOpen(false)}
-          title={parentTeamForAdd ? `Thêm Nhóm Con Trực Thuộc: ${parentTeamForAdd.name}` : 'Thêm Nhóm Gốc Mới'}
-        >
-          <form onSubmit={handleCreateTeam} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Tên Nhóm / Phòng Ban <span className="text-rose-600">*</span>
-              </label>
-              <input
-                type="text"
-                value={newTeamName}
-                onChange={e => setNewTeamName(e.target.value)}
-                required
-                placeholder="Ví dụ: Backend Core, AI Intelligence..."
-                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
-              />
-            </div>
+      {/* MODAL 2: Tạo Nhóm Con / Nhóm Mới */}
+      <Modal
+        isOpen={isAddTeamModalOpen}
+        onClose={() => setIsAddTeamModalOpen(false)}
+        title={parentTeamForAdd ? `Thêm Nhóm Con Thuộc: ${parentTeamForAdd.name}` : 'Tạo Nhóm Gốc Mới'}
+      >
+        <form onSubmit={handleCreateTeam} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Tên Nhóm / Phòng Ban <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newTeamName}
+              onChange={(e) => setNewTeamName(e.target.value)}
+              placeholder="Ví dụ: AI Research Team, Khối Vận Hành..."
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Trưởng Nhóm (Có thể để trống để gán sau)
-              </label>
-              <select
-                value={newTeamLeaderId}
-                onChange={e => setNewTeamLeaderId(e.target.value)}
-                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="">-- Chưa có trưởng nhóm (Sẽ hiển thị cảnh báo để bổ sung) --</option>
-                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT)</option>
-                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR)</option>
-                <option value="d0000000-0000-0000-0000-000000000003">Vũ Văn Luận (136ACT)</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Trưởng Nhóm Ban Đầu (Có thể để trống theo A4)
+            </label>
+            <select
+              value={newTeamLeaderId}
+              onChange={(e) => setNewTeamLeaderId(e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Để trống (Chưa có trưởng nhóm) --</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName} ({u.employeeCode})
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setIsAddTeamModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Tạo Nhóm
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsAddTeamModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Tạo Nhóm Ngay
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {/* Modal: Gán sếp cho nhân viên */}
-      {isAssignMgrModalOpen && targetEmployee && (
-        <Modal
-          isOpen={isAssignMgrModalOpen}
-          onClose={() => setIsAssignMgrModalOpen(false)}
-          title={`Gán Quản Lý Trực Tiếp Cho ${targetEmployee.fullName}`}
-        >
-          <form onSubmit={handleAssignManager} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Chọn Quản Lý Trực Tiếp <span className="text-rose-600">*</span>
-              </label>
-              <select
-                value={assignMgrId}
-                onChange={e => setAssignMgrId(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="d0000000-0000-0000-0000-000000000002">NGUYỄN THANH TÙNG (05ACT) - Quản lý kỹ thuật</option>
-                <option value="d0000000-0000-0000-0000-000000000001">Nguyễn Thị Thu Hà (01HR) - HR Admin</option>
-                <option value="d0000000-0000-0000-0000-000000000000">Quản Trị Viên Hệ Thống (Admin)</option>
-              </select>
-            </div>
+      {/* MODAL 3: Gán Quản Lý Cho Nhân Viên */}
+      <Modal
+        isOpen={isAssignMgrModalOpen}
+        onClose={() => setIsAssignMgrModalOpen(false)}
+        title={`Gán Quản Lý Trực Tiếp Cho: ${targetEmployee?.fullName || ''}`}
+      >
+        <form onSubmit={handleAssignManager} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Chọn Người Quản Lý Trực Tiếp <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={assignMgrId}
+              onChange={(e) => setAssignMgrId(e.target.value)}
+              required
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Chọn sếp trực tiếp --</option>
+              {allUsers
+                .filter((u) => u.id !== targetEmployee?.id)
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName} ({u.employeeCode}) - {u.team || 'Chưa nhóm'}
+                  </option>
+                ))}
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-ink-secondary mb-1">
-                Lý Do Gán Quản Lý <span className="text-rose-600">*</span>
-              </label>
-              <input
-                type="text"
-                value={assignMgrReason}
-                onChange={e => setAssignMgrReason(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              />
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Lý do thay đổi (Kiểm toán A5)
+            </label>
+            <input
+              type="text"
+              value={assignMgrReason}
+              onChange={(e) => setAssignMgrReason(e.target.value)}
+              placeholder="Ví dụ: Gán sếp trực tiếp để thông luồng duyệt..."
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => setIsAssignMgrModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" type="submit">
-                Gán Quản Lý
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsAssignMgrModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Lưu &amp; Cập Nhật Sếp
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

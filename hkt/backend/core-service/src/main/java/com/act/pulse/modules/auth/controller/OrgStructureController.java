@@ -221,7 +221,8 @@ public class OrgStructureController {
         if (u.getTeamId() != null) {
             teamName = teamRepository.findById(u.getTeamId()).map(Team::getName).orElse("Chưa có nhóm");
         }
-        String posName = u.getPositionName() != null ? u.getPositionName() : (u.getRole() != null ? u.getRole() : "Chuyên viên");
+        String posName = u.getPositionName() != null ? u.getPositionName()
+                : (u.getRole() != null ? u.getRole() : "Chuyên viên");
         String managerName = "Chưa có";
         String managerCode = "";
         String managerIdStr = "";
@@ -238,7 +239,8 @@ public class OrgStructureController {
                     Optional<User> mgr2Opt = userRepository.findById(mgr1.getManagerId());
                     if (mgr2Opt.isPresent()) {
                         User mgr2 = mgr2Opt.get();
-                        approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName() + " (" + mgr2.getEmployeeCode() + ")";
+                        approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName()
+                                + " (" + mgr2.getEmployeeCode() + ")";
                     } else {
                         approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
                     }
@@ -266,7 +268,8 @@ public class OrgStructureController {
                 .managerCode(managerCode)
                 .managerName(managerName)
                 .approvalChain(approvalChain)
-                .hireDate(u.getHireDate() != null ? u.getHireDate().toString() : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
+                .hireDate(u.getHireDate() != null ? u.getHireDate().toString()
+                        : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
                 .joinDate(u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01")
                 .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
                 .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
@@ -287,7 +290,7 @@ public class OrgStructureController {
         auditLogRepository.save(log);
     }
 
-    @GetMapping(value = {"/org/tree", "/admin/teams/tree", "/admin/departments/tree", "/admin/org-tree"})
+    @GetMapping(value = { "/org/tree", "/admin/teams/tree", "/admin/departments/tree", "/admin/org-tree" })
     @Operation(summary = "Lấy cây sơ đồ tổ chức công ty — nhóm lồng nhau KHÔNG giới hạn số tầng (S41 / CORE-ORG-01)")
     public ApiResponse<List<OrgTreeNodeDto>> getFullOrgTree() {
         // 1. Lấy tất cả teams từ DB
@@ -295,7 +298,8 @@ public class OrgStructureController {
         // 2. Lấy tất cả users từ DB
         List<User> allUsers = userRepository.findAll();
         Map<UUID, User> userMap = new HashMap<>();
-        for (User u : allUsers) userMap.put(u.getId(), u);
+        for (User u : allUsers)
+            userMap.put(u.getId(), u);
 
         // 3. Lấy tất cả pending requests
         List<RequestEntity> pendingRequests = requestRepository.findAll().stream()
@@ -360,8 +364,10 @@ public class OrgStructureController {
             }
 
             String derivedCode = t.getName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
-            if (derivedCode.length() > 10) derivedCode = derivedCode.substring(0, 10);
-            if (derivedCode.isBlank()) derivedCode = "TEAM";
+            if (derivedCode.length() > 10)
+                derivedCode = derivedCode.substring(0, 10);
+            if (derivedCode.isBlank())
+                derivedCode = "TEAM";
 
             OrgTreeNodeDto dto = OrgTreeNodeDto.builder()
                     .id(t.getId().toString())
@@ -428,8 +434,7 @@ public class OrgStructureController {
             @RequestParam(required = false) String team,
             @RequestParam(required = false) String position,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String role
-    ) {
+            @RequestParam(required = false) String role) {
         // 1. Load all teams into map
         Map<UUID, String> teamMap = new HashMap<>();
         teamRepository.findAll().forEach(t -> teamMap.put(t.getId(), t.getName()));
@@ -442,8 +447,10 @@ public class OrgStructureController {
         List<EmployeeDto> resultList = new ArrayList<>();
 
         for (User u : dbUsers) {
-            String teamName = u.getTeamId() != null ? teamMap.getOrDefault(u.getTeamId(), "Chưa có nhóm") : "Chưa có nhóm";
-            String posName = u.getPositionName() != null ? u.getPositionName() : (u.getRole() != null ? u.getRole() : "Chuyên viên");
+            String teamName = u.getTeamId() != null ? teamMap.getOrDefault(u.getTeamId(), "Chưa có nhóm")
+                    : "Chưa có nhóm";
+            String posName = u.getPositionName() != null ? u.getPositionName()
+                    : (u.getRole() != null ? u.getRole() : "Chuyên viên");
 
             // Build approval chain (chuỗi cấp trên: ai duyệt cho ai)
             String approvalChain;
@@ -459,7 +466,8 @@ public class OrgStructureController {
 
                 if (mgr1.getManagerId() != null && userMap.containsKey(mgr1.getManagerId())) {
                     User mgr2 = userMap.get(mgr1.getManagerId());
-                    approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName() + " (" + mgr2.getEmployeeCode() + ")";
+                    approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName()
+                            + " (" + mgr2.getEmployeeCode() + ")";
                 } else {
                     approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
                 }
@@ -485,7 +493,8 @@ public class OrgStructureController {
                     .managerCode(managerCode)
                     .managerName(managerName)
                     .approvalChain(approvalChain)
-                    .hireDate(u.getHireDate() != null ? u.getHireDate().toString() : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
+                    .hireDate(u.getHireDate() != null ? u.getHireDate().toString()
+                            : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
                     .joinDate(u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01")
                     .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
                     .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
@@ -509,7 +518,8 @@ public class OrgStructureController {
 
             boolean matchPosition = true;
             if (position != null && !position.isBlank() && !"ALL".equalsIgnoreCase(position)) {
-                matchPosition = (dto.getPositionName() != null && dto.getPositionName().toLowerCase().contains(position.toLowerCase().trim())) ||
+                matchPosition = (dto.getPositionName() != null
+                        && dto.getPositionName().toLowerCase().contains(position.toLowerCase().trim())) ||
                         (dto.getRole() != null && dto.getRole().equalsIgnoreCase(position.trim()));
             }
 
@@ -544,18 +554,20 @@ public class OrgStructureController {
     @PostMapping("/admin/users")
     @Operation(summary = "Tạo mới nhân viên đơn lẻ & Gửi email kích hoạt Gmail (S40)")
     public ApiResponse<EmployeeDto> createEmployee(@RequestBody(required = false) CreateEmployeeRequest req) {
-        if (req == null) req = new CreateEmployeeRequest();
-        String code = req.getEmployeeCode() != null && !req.getEmployeeCode().isBlank() ?
-                req.getEmployeeCode().trim() : "ACT" + (1000 + (int)(Math.random() * 9000));
-        String fullName = req.getFullName() != null && !req.getFullName().isBlank() ?
-                req.getFullName().trim() : "Nhân viên " + code;
+        if (req == null)
+            req = new CreateEmployeeRequest();
+        String code = req.getEmployeeCode() != null && !req.getEmployeeCode().isBlank() ? req.getEmployeeCode().trim()
+                : "ACT" + (1000 + (int) (Math.random() * 9000));
+        String fullName = req.getFullName() != null && !req.getFullName().isBlank() ? req.getFullName().trim()
+                : "Nhân viên " + code;
 
         // Tự gán nhóm mặc định theo bộ gán ca nếu chưa chọn nhóm
         UUID defaultTeamId = null;
         String teamName = req.getTeam() != null && !req.getTeam().isBlank() ? req.getTeam() : req.getDepartment();
         if (teamName != null && !teamName.isBlank()) {
             for (Team t : teamRepository.findAll()) {
-                if (t.getName().equalsIgnoreCase(teamName.trim()) || teamName.toLowerCase().contains(t.getName().toLowerCase())) {
+                if (t.getName().equalsIgnoreCase(teamName.trim())
+                        || teamName.toLowerCase().contains(t.getName().toLowerCase())) {
                     defaultTeamId = t.getId();
                     teamName = t.getName();
                     break;
@@ -595,25 +607,37 @@ public class OrgStructureController {
         }
         User userToSave;
         String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
-                ? req.getPassword().trim() : "123456";
+                ? req.getPassword().trim()
+                : "123456";
 
         if (existing.isPresent()) {
             userToSave = existing.get();
-            if (req.getFullName() != null && !req.getFullName().isBlank()) userToSave.setFullName(req.getFullName().trim());
-            if (req.getEmail() != null && !req.getEmail().isBlank()) userToSave.setEmail(req.getEmail().trim());
-            if (req.getRole() != null && !req.getRole().isBlank()) userToSave.setRole(req.getRole().toUpperCase().trim());
-            if (req.getPositionName() != null && !req.getPositionName().isBlank()) userToSave.setPositionName(req.getPositionName().trim());
-            if (defaultTeamId != null) userToSave.setTeamId(defaultTeamId);
-            if (defaultShiftId != null) userToSave.setShiftId(defaultShiftId);
-            if (userToSave.getManagerId() == null && defaultManagerId != null) userToSave.setManagerId(defaultManagerId);
+            if (req.getFullName() != null && !req.getFullName().isBlank())
+                userToSave.setFullName(req.getFullName().trim());
+            if (req.getEmail() != null && !req.getEmail().isBlank())
+                userToSave.setEmail(req.getEmail().trim());
+            if (req.getRole() != null && !req.getRole().isBlank())
+                userToSave.setRole(req.getRole().toUpperCase().trim());
+            if (req.getPositionName() != null && !req.getPositionName().isBlank())
+                userToSave.setPositionName(req.getPositionName().trim());
+            if (defaultTeamId != null)
+                userToSave.setTeamId(defaultTeamId);
+            if (defaultShiftId != null)
+                userToSave.setShiftId(defaultShiftId);
+            if (userToSave.getManagerId() == null && defaultManagerId != null)
+                userToSave.setManagerId(defaultManagerId);
         } else {
             userToSave = User.builder()
                     .employeeCode(code)
                     .fullName(fullName)
-                    .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim() : code.toLowerCase() + "@act.vn")
+                    .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim()
+                            : code.toLowerCase() + "@act.vn")
                     .passwordHash(passwordEncoder.encode(rawPassword))
-                    .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim() : "EMPLOYEE")
-                    .positionName(req.getPositionName() != null && !req.getPositionName().isBlank() ? req.getPositionName().trim() : "Chuyên viên")
+                    .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim()
+                            : "EMPLOYEE")
+                    .positionName(req.getPositionName() != null && !req.getPositionName().isBlank()
+                            ? req.getPositionName().trim()
+                            : "Chuyên viên")
                     .teamId(defaultTeamId)
                     .shiftId(defaultShiftId)
                     .managerId(defaultManagerId)
@@ -632,11 +656,14 @@ public class OrgStructureController {
         String emailStatusMessage = "";
         try {
             if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(), userToSave.getEmployeeCode(), rawPassword);
+                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(),
+                        userToSave.getEmployeeCode(), rawPassword);
                 if (emailSent) {
-                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới " + userToSave.getEmail();
+                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới "
+                            + userToSave.getEmail();
                 } else {
-                    emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail() + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
+                    emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail()
+                            + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
                 }
             } else {
                 emailStatusMessage = "Nhân viên chưa có địa chỉ email";
@@ -650,7 +677,9 @@ public class OrgStructureController {
             Notification notif = Notification.builder()
                     .userId(userToSave.getId())
                     .title("Chào mừng thành viên mới đến với ACT PULSE!")
-                    .content("Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: " + userToSave.getEmployeeCode() + ", Mật khẩu mặc định: " + rawPassword + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.")
+                    .content("Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
+                            + userToSave.getEmployeeCode() + ", Mật khẩu mặc định: " + rawPassword
+                            + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.")
                     .type("ONBOARDING")
                     .priority("HIGH")
                     .actionUrl("/profile")
@@ -658,7 +687,8 @@ public class OrgStructureController {
                     .createdAt(LocalDateTime.now())
                     .build();
             notificationRepository.save(notif);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Audit log
         AuditLog audit = AuditLog.builder()
@@ -668,7 +698,8 @@ public class OrgStructureController {
                 .userId(CurrentUser.userId())
                 .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
                 .userName(resolveActorName())
-                .newValue((existing.isPresent() ? "Cập nhật nhân viên " : "Tạo nhân viên ") + userToSave.getFullName() + " (" + userToSave.getEmployeeCode() + ") - Nhóm: " + teamName)
+                .newValue((existing.isPresent() ? "Cập nhật nhân viên " : "Tạo nhân viên ") + userToSave.getFullName()
+                        + " (" + userToSave.getEmployeeCode() + ") - Nhóm: " + teamName)
                 .reason("Tuyển dụng / cập nhật nhân sự")
                 .ipAddress("127.0.0.1")
                 .build();
@@ -688,7 +719,8 @@ public class OrgStructureController {
                 .managerId(userToSave.getManagerId() != null ? userToSave.getManagerId().toString() : null)
                 .managerCode("05ACT")
                 .managerName("Nguyễn Thanh Tùng")
-                .approvalChain(defaultManagerId != null ? "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)" : "⚠ Chưa có quản lý trực tiếp")
+                .approvalChain(defaultManagerId != null ? "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)"
+                        : "⚠ Chưa có quản lý trực tiếp")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
                 .defaultPassword(rawPassword)
@@ -698,15 +730,16 @@ public class OrgStructureController {
                 .hireDate(LocalDate.now().toString())
                 .build();
 
-        return ApiResponse.ok(dto, "Đã tạo nhân viên " + userToSave.getFullName() + " thành công! Mật khẩu mặc định: " + rawPassword + ". " + emailStatusMessage);
+        return ApiResponse.ok(dto, "Đã tạo nhân viên " + userToSave.getFullName() + " thành công! Mật khẩu mặc định: "
+                + rawPassword + ". " + emailStatusMessage);
     }
 
-    @RequestMapping(value = {"/admin/users/{id}/change-manager", "/admin/users/{id}/manager"}, method = {RequestMethod.POST, RequestMethod.PUT})
+    @RequestMapping(value = { "/admin/users/{id}/change-manager", "/admin/users/{id}/manager" }, method = {
+            RequestMethod.POST, RequestMethod.PUT })
     @Operation(summary = "Đổi quản lý trực tiếp của nhân viên — bắt buộc lý do, ghi audit log, chuyển đơn chờ duyệt")
     public ApiResponse<Map<String, Object>> changeManager(
             @PathVariable String id,
-            @RequestBody ChangeManagerRequest req
-    ) {
+            @RequestBody ChangeManagerRequest req) {
         if (req.getReason() == null || req.getReason().trim().isBlank()) {
             throw new RuntimeException("Lý do đổi quản lý là bắt buộc");
         }
@@ -773,15 +806,16 @@ public class OrgStructureController {
         respData.put("transferredRequestsCount", transferredCount);
         respData.put("reason", req.getReason().trim());
 
-        return ApiResponse.ok(respData, "Đổi quản lý thành công! Đã chuyển " + transferredCount + " đơn chờ sang quản lý mới.");
+        return ApiResponse.ok(respData,
+                "Đổi quản lý thành công! Đã chuyển " + transferredCount + " đơn chờ sang quản lý mới.");
     }
 
-    @RequestMapping(value = {"/admin/users/{id}/change-team", "/admin/users/{id}/team"}, method = {RequestMethod.POST, RequestMethod.PUT})
+    @RequestMapping(value = { "/admin/users/{id}/change-team", "/admin/users/{id}/team" }, method = {
+            RequestMethod.POST, RequestMethod.PUT })
     @Operation(summary = "Đổi nhóm của nhân viên — ghi audit log")
     public ApiResponse<Map<String, Object>> changeTeam(
             @PathVariable String id,
-            @RequestBody ChangeTeamRequest req
-    ) {
+            @RequestBody ChangeTeamRequest req) {
         User user = findUserByIdOrCode(id);
         UUID targetTeamId = null;
         String targetTeamName = req.getTeamName();
@@ -789,7 +823,8 @@ public class OrgStructureController {
         if (req.getTeamId() != null && !req.getTeamId().isBlank()) {
             try {
                 targetTeamId = UUID.fromString(req.getTeamId().trim());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         if (targetTeamId == null && targetTeamName != null) {
             for (Team t : teamRepository.findAll()) {
@@ -836,7 +871,8 @@ public class OrgStructureController {
     }
 
     private String resolveClientIp(jakarta.servlet.http.HttpServletRequest request) {
-        if (request == null) return "127.0.0.1";
+        if (request == null)
+            return "127.0.0.1";
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
             return xff.split(",")[0].trim();
@@ -874,9 +910,11 @@ public class OrgStructureController {
         boolean emailSent = false;
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), user.getEmployeeCode(), tempPass);
+                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(),
+                        user.getEmployeeCode(), tempPass);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         AuditLog audit = AuditLog.builder()
                 .action("ADMIN_RESET_PASSWORD")
@@ -893,8 +931,103 @@ public class OrgStructureController {
         auditLogRepository.save(audit);
 
         String msg = "Mật khẩu tạm thời (" + tempPass + ") đã được cấp lại thành công! " +
-                (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail() : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
+                (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail()
+                        : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
         return ApiResponse.ok(true, msg);
+    }
+
+    @GetMapping("/admin/users/{id}")
+    @Operation(summary = "Xem chi tiết hồ sơ nhân viên (S40 / A3)")
+    public ApiResponse<EmployeeDto> getEmployeeDetail(@PathVariable String id) {
+        User u = findUserByIdOrCode(id);
+        return ApiResponse.ok(toEmployeeDto(u), "Lấy thông tin chi tiết nhân viên thành công");
+    }
+
+    @PutMapping("/admin/users/{id}")
+    @Operation(summary = "Chỉnh sửa hồ sơ nhân viên & ghi nhật ký kiểm toán (S40 / A3 / A5)")
+    public ApiResponse<EmployeeDto> updateEmployee(@PathVariable String id, @RequestBody Map<String, Object> req) {
+        User u = findUserByIdOrCode(id);
+        String oldSnapshot = String.format("Tên: %s, Email: %s, Chức danh: %s, Nhóm: %s, Role: %s, Trạng thái: %s, Manager: %s",
+                u.getFullName(), u.getEmail(), u.getPositionName(), u.getTeamId(), u.getRole(), u.getStatus(), u.getManagerId());
+
+        if (req.containsKey("fullName") && req.get("fullName") != null) {
+            u.setFullName(String.valueOf(req.get("fullName")).trim());
+        }
+        if (req.containsKey("email") && req.get("email") != null) {
+            u.setEmail(String.valueOf(req.get("email")).trim());
+        }
+        if (req.containsKey("positionName") && req.get("positionName") != null) {
+            u.setPositionName(String.valueOf(req.get("positionName")).trim());
+        }
+        if (req.containsKey("role") && req.get("role") != null) {
+            String newRole = String.valueOf(req.get("role")).toUpperCase().trim();
+            if (!java.util.Set.of("EMPLOYEE", "MANAGER", "HR_ADMIN", "EXECUTIVE", "ADMIN").contains(newRole)) {
+                throw new RuntimeException("Vai trò không hợp lệ: " + newRole);
+            }
+            // HR_ADMIN không được tự nâng quyền thành ADMIN hoặc đổi vai trò người khác.
+            if (!newRole.equals(u.getRole()) && !"ADMIN".equalsIgnoreCase(CurrentUser.role())) {
+                throw new RuntimeException("Chỉ ADMIN được phép thay đổi vai trò tài khoản");
+            }
+            u.setRole(newRole);
+        }
+        if (req.containsKey("status") && req.get("status") != null) {
+            u.setStatus(String.valueOf(req.get("status")).toUpperCase().trim());
+        }
+        if (req.containsKey("teamId")) {
+            String teamIdStr = String.valueOf(req.get("teamId"));
+            if (teamIdStr != null && !teamIdStr.isBlank() && !"null".equalsIgnoreCase(teamIdStr)) {
+                try {
+                    u.setTeamId(UUID.fromString(teamIdStr.trim()));
+                } catch (Exception ignored) {}
+            } else {
+                u.setTeamId(null);
+            }
+        }
+        if (req.containsKey("managerId")) {
+            String mgrIdStr = String.valueOf(req.get("managerId"));
+            if (mgrIdStr != null && !mgrIdStr.isBlank() && !"null".equalsIgnoreCase(mgrIdStr)) {
+                try {
+                    UUID newMgrId = UUID.fromString(mgrIdStr.trim());
+                    if (!newMgrId.equals(u.getManagerId())) {
+                        u.setManagerId(newMgrId);
+                        // Tự động chuyển các đơn chờ duyệt sang người quản lý mới
+                        List<RequestEntity> pending = requestRepository.findByUserIdAndStatus(u.getId(), "PENDING_APPROVAL");
+                        for (RequestEntity r : pending) {
+                            r.setDecidedBy(newMgrId);
+                            requestRepository.save(r);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            } else {
+                u.setManagerId(null);
+            }
+        }
+
+        userRepository.save(u);
+
+        String reason = req.get("reason") != null && !String.valueOf(req.get("reason")).isBlank()
+                ? String.valueOf(req.get("reason")).trim()
+                : "Cập nhật hồ sơ nhân sự từ trang quản lý S40";
+
+        String newSnapshot = String.format("Tên: %s, Email: %s, Chức danh: %s, Nhóm: %s, Role: %s, Trạng thái: %s, Manager: %s",
+                u.getFullName(), u.getEmail(), u.getPositionName(), u.getTeamId(), u.getRole(), u.getStatus(), u.getManagerId());
+
+        // Ghi Audit Log (A5)
+        AuditLog audit = AuditLog.builder()
+                .action("UPDATE_USER_PROFILE")
+                .entityName("USER")
+                .entityId(u.getId().toString())
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .oldValue(oldSnapshot)
+                .newValue(newSnapshot)
+                .reason(reason)
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        return ApiResponse.ok(toEmployeeDto(u), "Cập nhật thông tin nhân viên thành công!");
     }
 
     @GetMapping("/admin/roles/matrix")
@@ -903,13 +1036,16 @@ public class OrgStructureController {
         Map<String, Object> matrix = Map.of(
                 "roles", List.of("EMPLOYEE", "MANAGER", "HR_ADMIN", "ADMIN"),
                 "permissions", List.of(
-                        Map.of("resource", "ATTENDANCE_CHECKIN", "EMPLOYEE", true, "MANAGER", true, "HR_ADMIN", true, "ADMIN", true),
-                        Map.of("resource", "ATTENDANCE_APPROVALS", "EMPLOYEE", false, "MANAGER", true, "HR_ADMIN", true, "ADMIN", true),
-                        Map.of("resource", "TIMESHEET_EDIT_CELL", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN", true, "ADMIN", true),
-                        Map.of("resource", "RULE_ENGINE_MANAGE", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN", false, "ADMIN", true),
-                        Map.of("resource", "USER_LIFECYCLE_MANAGE", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN", true, "ADMIN", true)
-                )
-        );
+                        Map.of("resource", "ATTENDANCE_CHECKIN", "EMPLOYEE", true, "MANAGER", true, "HR_ADMIN", true,
+                                "ADMIN", true),
+                        Map.of("resource", "ATTENDANCE_APPROVALS", "EMPLOYEE", false, "MANAGER", true, "HR_ADMIN", true,
+                                "ADMIN", true),
+                        Map.of("resource", "TIMESHEET_EDIT_CELL", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN", true,
+                                "ADMIN", true),
+                        Map.of("resource", "RULE_ENGINE_MANAGE", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN", false,
+                                "ADMIN", true),
+                        Map.of("resource", "USER_LIFECYCLE_MANAGE", "EMPLOYEE", false, "MANAGER", false, "HR_ADMIN",
+                                true, "ADMIN", true)));
         return ApiResponse.ok(matrix, "Lấy ma trận phân quyền RBAC thành công");
     }
 
@@ -924,8 +1060,7 @@ public class OrgStructureController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String affectedUser,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
-    ) {
+            @RequestParam(required = false) String endDate) {
         List<AuditLogDto> results = new ArrayList<>();
 
         // 1. Lấy toàn bộ từ DB
@@ -974,23 +1109,29 @@ public class OrgStructureController {
                         || (l.getOldValue() != null && l.getOldValue().toLowerCase().contains(kw))
                         || (l.getNewValue() != null && l.getNewValue().toLowerCase().contains(kw))
                         || (l.getEntityId() != null && l.getEntityId().toLowerCase().contains(kw));
-                if (!m) return false;
+                if (!m)
+                    return false;
             }
             if (actor != null && !actor.isBlank()) {
                 String ac = actor.toLowerCase().trim();
-                if (l.getActorCode() == null || !l.getActorCode().toLowerCase().contains(ac)) return false;
+                if (l.getActorCode() == null || !l.getActorCode().toLowerCase().contains(ac))
+                    return false;
             }
             if (userCode != null && !userCode.isBlank()) {
-                if (l.getActorCode() == null || !l.getActorCode().equalsIgnoreCase(userCode.trim())) return false;
+                if (l.getActorCode() == null || !l.getActorCode().equalsIgnoreCase(userCode.trim()))
+                    return false;
             }
             if (action != null && !action.isBlank()) {
-                if (l.getAction() == null || !l.getAction().equalsIgnoreCase(action.trim())) return false;
+                if (l.getAction() == null || !l.getAction().equalsIgnoreCase(action.trim()))
+                    return false;
             }
             if (entityName != null && !entityName.isBlank()) {
-                if (l.getEntity() == null || !l.getEntity().equalsIgnoreCase(entityName.trim())) return false;
+                if (l.getEntity() == null || !l.getEntity().equalsIgnoreCase(entityName.trim()))
+                    return false;
             }
             if (category != null && !category.isBlank() && !"ALL".equalsIgnoreCase(category)) {
-                if (l.getEntity() == null || !l.getEntity().equalsIgnoreCase(category.trim())) return false;
+                if (l.getEntity() == null || !l.getEntity().equalsIgnoreCase(category.trim()))
+                    return false;
             }
             if (affectedUser != null && !affectedUser.isBlank()) {
                 String aff = affectedUser.toLowerCase().trim();
@@ -999,7 +1140,8 @@ public class OrgStructureController {
                         || (l.getOldValue() != null && l.getOldValue().toLowerCase().contains(aff))
                         || (l.getNewValue() != null && l.getNewValue().toLowerCase().contains(aff))
                         || (l.getReason() != null && l.getReason().toLowerCase().contains(aff));
-                if (!affMatch) return false;
+                if (!affMatch)
+                    return false;
             }
             return true;
         }).collect(Collectors.toList());
@@ -1007,17 +1149,19 @@ public class OrgStructureController {
         return ApiResponse.ok(filtered, "Lấy nhật ký kiểm toán thành công");
     }
 
-    @RequestMapping(value = {"/admin/audit-logs/**", "/audit-logs/**"}, method = {RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
+    @RequestMapping(value = { "/admin/audit-logs/**", "/audit-logs/**" }, method = { RequestMethod.PUT,
+            RequestMethod.DELETE, RequestMethod.PATCH })
     @Operation(summary = "Chặn sửa/xóa nhật ký kiểm toán — bảo vệ tính toàn vẹn append-only (S35)")
     public ResponseEntity<ApiResponse<Void>> blockAuditLogMutation() {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-                .body(ApiResponse.error("Nhật ký kiểm toán là bất biến (append-only), nghiêm cấm mọi hành vi chỉnh sửa hoặc xóa dữ liệu!"));
+                .body(ApiResponse.error(
+                        "Nhật ký kiểm toán là bất biến (append-only), nghiêm cấm mọi hành vi chỉnh sửa hoặc xóa dữ liệu!"));
     }
 
-    @PostMapping(value = {"/attendance/timesheet/override", "/admin/timesheet/override"})
+    @PostMapping(value = { "/attendance/timesheet/override", "/admin/timesheet/override" })
     @Operation(summary = "Sửa 1 ô bảng công thủ công — bắt buộc lý do & ghi audit log (S15/S35)")
     public ApiResponse<Map<String, Object>> overrideTimesheetCell(@RequestBody TimesheetOverrideRequest req,
-                                                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
         if (req.getReason() == null || req.getReason().trim().isBlank()) {
             throw new RuntimeException("Lý do sửa bảng công là bắt buộc");
         }
@@ -1074,7 +1218,8 @@ public class OrgStructureController {
     @PostMapping("/admin/holidays")
     @Operation(summary = "Thêm ngày nghỉ lễ — không cần sửa code")
     public ApiResponse<Holiday> addHoliday(@RequestBody(required = false) Holiday holiday) {
-        if (holiday == null) holiday = new Holiday();
+        if (holiday == null)
+            holiday = new Holiday();
         if (holiday.getHolidayDate() == null) {
             holiday.setHolidayDate(LocalDate.of(2026, 12, 25));
         }
@@ -1090,13 +1235,15 @@ public class OrgStructureController {
     @GetMapping("/admin/users/import-template")
     @Operation(summary = "Tải file mẫu Excel Import Nhân sự chuẩn ACT (CORE-IMPORT-01)")
     public ApiResponse<Map<String, String>> getImportTemplate() {
-        return ApiResponse.ok(Map.of("templateUrl", "/templates/ACT_Employee_Import_Template.xlsx"), "Lấy link file mẫu Excel thành công");
+        return ApiResponse.ok(Map.of("templateUrl", "/templates/ACT_Employee_Import_Template.xlsx"),
+                "Lấy link file mẫu Excel thành công");
     }
 
     @PostMapping("/admin/users/preview-import")
     @Operation(summary = "Upload & Preview Dữ liệu Import Nhân viên (CORE-IMPORT-02)")
     public ApiResponse<Map<String, Object>> previewImport(@RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(Map.of("totalRows", 15, "validRows", 15, "errorRows", 0), "Preview dữ liệu import hợp lệ 100%");
+        return ApiResponse.ok(Map.of("totalRows", 15, "validRows", 15, "errorRows", 0),
+                "Preview dữ liệu import hợp lệ 100%");
     }
 
     @PostMapping("/admin/users/confirm-import")
@@ -1105,31 +1252,36 @@ public class OrgStructureController {
         return ApiResponse.ok(Map.of("importedCount", 15), "Import thành công 15 nhân viên mới");
     }
 
-    @PostMapping(value = {"/admin/teams", "/admin/departments"})
+    @PostMapping(value = { "/admin/teams", "/admin/departments" })
     @Operation(summary = "Thêm mới nhóm / phòng ban (S41 / CORE-ORG-02)")
     public ApiResponse<OrgTreeNodeDto> createTeam(@RequestBody Map<String, Object> payload) {
         String name = payload.get("name") != null ? String.valueOf(payload.get("name")).trim() : null;
         if (name == null || name.isBlank()) {
-            name = payload.get("departmentName") != null ? String.valueOf(payload.get("departmentName")).trim() : "Nhóm mới";
+            name = payload.get("departmentName") != null ? String.valueOf(payload.get("departmentName")).trim()
+                    : "Nhóm mới";
         }
 
         UUID parentId = null;
         if (payload.get("parentId") != null && !String.valueOf(payload.get("parentId")).isBlank()) {
             try {
                 parentId = UUID.fromString(String.valueOf(payload.get("parentId")).trim());
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         UUID leaderId = null;
-        String leaderInput = (String) (payload.get("leaderId") != null ? payload.get("leaderId") : payload.get("managerId"));
+        String leaderInput = (String) (payload.get("leaderId") != null ? payload.get("leaderId")
+                : payload.get("managerId"));
         if (leaderInput != null && !leaderInput.isBlank()) {
             try {
                 User leader = findUserByIdOrCode(leaderInput);
                 leaderId = leader.getId();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
-        boolean specialApproval = Boolean.parseBoolean(String.valueOf(payload.getOrDefault("isSpecialApproval", "false")));
+        boolean specialApproval = Boolean
+                .parseBoolean(String.valueOf(payload.getOrDefault("isSpecialApproval", "false")));
 
         Team team = Team.builder()
                 .name(name)
@@ -1149,8 +1301,10 @@ public class OrgStructureController {
                 .userId(CurrentUser.userId())
                 .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "Admin")
                 .userName(resolveActorName())
-                .newValue("Tạo nhóm mới: " + team.getName() + (parentId != null ? " (Nhóm cha: " + parentId + ")" : " (Nhóm gốc)"))
-                .reason(payload.get("reason") != null ? String.valueOf(payload.get("reason")).trim() : "Thiết lập cơ cấu phòng ban")
+                .newValue("Tạo nhóm mới: " + team.getName()
+                        + (parentId != null ? " (Nhóm cha: " + parentId + ")" : " (Nhóm gốc)"))
+                .reason(payload.get("reason") != null ? String.valueOf(payload.get("reason")).trim()
+                        : "Thiết lập cơ cấu phòng ban")
                 .ipAddress("127.0.0.1")
                 .build();
         auditLogRepository.save(audit);
@@ -1166,8 +1320,10 @@ public class OrgStructureController {
         }
 
         String derivedCode = team.getName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
-        if (derivedCode.length() > 10) derivedCode = derivedCode.substring(0, 10);
-        if (derivedCode.isBlank()) derivedCode = "TEAM";
+        if (derivedCode.length() > 10)
+            derivedCode = derivedCode.substring(0, 10);
+        if (derivedCode.isBlank())
+            derivedCode = "TEAM";
 
         OrgTreeNodeDto dto = OrgTreeNodeDto.builder()
                 .id(team.getId().toString())
@@ -1192,7 +1348,7 @@ public class OrgStructureController {
         return ApiResponse.ok(dto, "Tạo nhóm mới thành công");
     }
 
-    @PutMapping(value = {"/admin/teams/{id}", "/admin/departments/{id}"})
+    @PutMapping(value = { "/admin/teams/{id}", "/admin/departments/{id}" })
     @Operation(summary = "Cập nhật thông tin nhóm / phòng ban (CORE-ORG-02)")
     public ApiResponse<OrgTreeNodeDto> updateTeam(@PathVariable String id, @RequestBody Map<String, Object> payload) {
         UUID teamId;
@@ -1220,7 +1376,8 @@ public class OrgStructureController {
 
         int transferredCount = 0;
         if (payload.containsKey("leaderId") || payload.containsKey("managerId")) {
-            String lInput = (String) (payload.get("leaderId") != null ? payload.get("leaderId") : payload.get("managerId"));
+            String lInput = (String) (payload.get("leaderId") != null ? payload.get("leaderId")
+                    : payload.get("managerId"));
             if (lInput != null && !lInput.isBlank()) {
                 User newLeader = findUserByIdOrCode(lInput);
                 team.setLeaderId(newLeader.getId());
@@ -1231,7 +1388,8 @@ public class OrgStructureController {
                     m.setManagerId(newLeader.getId());
                     userRepository.save(m);
 
-                    List<RequestEntity> pending = requestRepository.findByUserIdAndStatus(m.getId(), "PENDING_APPROVAL");
+                    List<RequestEntity> pending = requestRepository.findByUserIdAndStatus(m.getId(),
+                            "PENDING_APPROVAL");
                     for (RequestEntity r : pending) {
                         r.setDecidedBy(newLeader.getId());
                         requestRepository.save(r);
@@ -1285,15 +1443,15 @@ public class OrgStructureController {
                 .isSpecialApproval(Boolean.TRUE.equals(team.getIsSpecialApproval()))
                 .build();
 
-        return ApiResponse.ok(dto, "Cập nhật nhóm thành công. Đã chuyển " + transferredCount + " đơn chờ sang trưởng nhóm mới.");
+        return ApiResponse.ok(dto,
+                "Cập nhật nhóm thành công. Đã chuyển " + transferredCount + " đơn chờ sang trưởng nhóm mới.");
     }
 
-    @PostMapping(value = {"/admin/teams/{id}/change-leader", "/admin/teams/{id}/leader"})
+    @PostMapping(value = { "/admin/teams/{id}/change-leader", "/admin/teams/{id}/leader" })
     @Operation(summary = "Đổi trưởng nhóm — bắt buộc lý do, chuyển giao toàn bộ đơn chờ duyệt")
     public ApiResponse<Map<String, Object>> changeTeamLeader(
             @PathVariable String id,
-            @RequestBody Map<String, String> body
-    ) {
+            @RequestBody Map<String, String> body) {
         String reason = body.get("reason");
         if (reason == null || reason.trim().isBlank()) {
             throw new RuntimeException("Lý do đổi trưởng nhóm là bắt buộc");
@@ -1320,7 +1478,8 @@ public class OrgStructureController {
         String oldLeaderName = "Chưa có";
         if (team.getLeaderId() != null) {
             User oldL = userRepository.findById(team.getLeaderId()).orElse(null);
-            if (oldL != null) oldLeaderName = oldL.getFullName() + " (" + oldL.getEmployeeCode() + ")";
+            if (oldL != null)
+                oldLeaderName = oldL.getFullName() + " (" + oldL.getEmployeeCode() + ")";
         }
 
         team.setLeaderId(newLeader.getId());
@@ -1366,10 +1525,11 @@ public class OrgStructureController {
         resp.put("transferredRequestsCount", transferredCount);
         resp.put("reason", reason.trim());
 
-        return ApiResponse.ok(resp, "Đổi trưởng nhóm thành công! Đã chuyển " + transferredCount + " đơn chờ sang trưởng nhóm mới.");
+        return ApiResponse.ok(resp,
+                "Đổi trưởng nhóm thành công! Đã chuyển " + transferredCount + " đơn chờ sang trưởng nhóm mới.");
     }
 
-    @DeleteMapping(value = {"/admin/teams/{id}", "/admin/departments/{id}"})
+    @DeleteMapping(value = { "/admin/teams/{id}", "/admin/departments/{id}" })
     @Operation(summary = "Xóa nhóm / phòng ban rỗng")
     public ApiResponse<Boolean> deleteTeam(@PathVariable String id) {
         UUID teamId = UUID.fromString(id.trim());
@@ -1378,7 +1538,8 @@ public class OrgStructureController {
 
         List<Team> childTeams = teamRepository.findByParentId(teamId);
         if (!childTeams.isEmpty()) {
-            throw new RuntimeException("Không thể xóa nhóm đang có nhóm con trực thuộc (" + childTeams.size() + " nhóm con)");
+            throw new RuntimeException(
+                    "Không thể xóa nhóm đang có nhóm con trực thuộc (" + childTeams.size() + " nhóm con)");
         }
         List<User> members = userRepository.findByTeamId(teamId);
         if (!members.isEmpty()) {
@@ -1411,7 +1572,8 @@ public class OrgStructureController {
     }
 
     private String unaccent(String text) {
-        if (text == null) return "";
+        if (text == null)
+            return "";
         String normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD);
         return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .replace("đ", "d").replace("Đ", "D")
@@ -1445,22 +1607,34 @@ public class OrgStructureController {
 
         // If query is empty, return top default quick items
         if (cleanQ.isEmpty()) {
-            results.add(Map.of("title", "Chấm công khuôn mặt", "subtitle", "Thao tác nhanh", "kind", "action", "url", "/attendance/checkin"));
-            results.add(Map.of("title", "Bảng công tổng hợp", "subtitle", "Bảng công 53 cột", "kind", "page", "url", "/attendance/timesheet"));
-            results.add(Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "subtitle", "OKR", "kind", "page", "url", "/okr/assessment"));
-            results.add(Map.of("title", "Quy định Đi muộn, về sớm", "subtitle", "Chính sách · 2 lần/tháng", "kind", "rule", "url", "/admin/policy-doc"));
-            results.add(Map.of("title", "Quy định Phép tồn & chuyển phép", "subtitle", "Chính sách · Hạn 31/03", "kind", "rule", "url", "/admin/policy-doc"));
+            results.add(Map.of("title", "Chấm công khuôn mặt", "subtitle", "Thao tác nhanh", "kind", "action", "url",
+                    "/attendance/checkin"));
+            results.add(Map.of("title", "Bảng công tổng hợp", "subtitle", "Bảng công 53 cột", "kind", "page", "url",
+                    "/attendance/timesheet"));
+            results.add(Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "subtitle", "OKR", "kind", "page", "url",
+                    "/okr/assessment"));
+            results.add(Map.of("title", "Quy định Đi muộn, về sớm", "subtitle", "Chính sách · 2 lần/tháng", "kind",
+                    "rule", "url", "/admin/policy-doc"));
+            results.add(Map.of("title", "Quy định Phép tồn & chuyển phép", "subtitle", "Chính sách · Hạn 31/03", "kind",
+                    "rule", "url", "/admin/policy-doc"));
             return ApiResponse.ok(results, "Tìm kiếm nhanh thành công");
         }
 
         // 1. Search Rules & Policies
         List<Map<String, String>> ruleCatalog = List.of(
-                Map.of("title", "Quy định Đi muộn, về sớm", "keywords", "dieu di muon muon som 60 phut 2 lan", "url", "/admin/policy-doc", "sub", "Chính sách · Quota 2 lần/tháng, tối đa 60 phút"),
-                Map.of("title", "Quy định Phép tồn & chuyển phép năm", "keywords", "phep phep ton nghi phep phep nam 31 03", "url", "/admin/policy-doc", "sub", "Chính sách · Hạn bảo lưu phép tồn đến 31/03"),
-                Map.of("title", "Quy định Làm việc từ xa (WFH)", "keywords", "wfh lam viec tu xa online bao cao", "url", "/admin/policy-doc", "sub", "Chính sách · Tối đa 2 ngày/tuần, báo cáo cuối ngày"),
-                Map.of("title", "Quy định Bổ sung chấm công quên quét", "keywords", "bo sung quen cham cong check in check out", "url", "/attendance/requests", "sub", "Chính sách · Hạn nộp trong vòng 3 ngày làm việc"),
-                Map.of("title", "Cấu hình 19 quy định (Rule Engine)", "keywords", "cau hinh rule engine 19 quy dinh tham so", "url", "/admin/rules", "sub", "Quản trị hệ thống · S16/S17")
-        );
+                Map.of("title", "Quy định Đi muộn, về sớm", "keywords", "dieu di muon muon som 60 phut 2 lan", "url",
+                        "/admin/policy-doc", "sub", "Chính sách · Quota 2 lần/tháng, tối đa 60 phút"),
+                Map.of("title", "Quy định Phép tồn & chuyển phép năm", "keywords",
+                        "phep phep ton nghi phep phep nam 31 03", "url", "/admin/policy-doc", "sub",
+                        "Chính sách · Hạn bảo lưu phép tồn đến 31/03"),
+                Map.of("title", "Quy định Làm việc từ xa (WFH)", "keywords", "wfh lam viec tu xa online bao cao", "url",
+                        "/admin/policy-doc", "sub", "Chính sách · Tối đa 2 ngày/tuần, báo cáo cuối ngày"),
+                Map.of("title", "Quy định Bổ sung chấm công quên quét", "keywords",
+                        "bo sung quen cham cong check in check out", "url", "/attendance/requests", "sub",
+                        "Chính sách · Hạn nộp trong vòng 3 ngày làm việc"),
+                Map.of("title", "Cấu hình 19 quy định (Rule Engine)", "keywords",
+                        "cau hinh rule engine 19 quy dinh tham so", "url", "/admin/rules", "sub",
+                        "Quản trị hệ thống · S16/S17"));
 
         for (Map<String, String> rc : ruleCatalog) {
             String keywords = unaccent(rc.get("keywords") + " " + rc.get("title"));
@@ -1469,8 +1643,7 @@ public class OrgStructureController {
                         "title", rc.get("title"),
                         "subtitle", rc.get("sub"),
                         "kind", "rule",
-                        "url", rc.get("url")
-                ));
+                        "url", rc.get("url")));
             }
         }
 
@@ -1483,11 +1656,11 @@ public class OrgStructureController {
                             "title", "Quy tắc: " + r.getName(),
                             "subtitle", "Tham số hệ thống · Key: " + r.getRuleKey(),
                             "kind", "rule",
-                            "url", "/admin/rules"
-                    ));
+                            "url", "/admin/rules"));
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // 2. Search Users (Scoped strictly by role!)
         try {
@@ -1496,38 +1669,58 @@ public class OrgStructureController {
                 // Scoping check:
                 if (!isHr) {
                     if (isManager) {
-                        if (!managerAllowedUserIds.contains(u.getId())) continue; // Manager CANNOT see outside their team!
+                        if (!managerAllowedUserIds.contains(u.getId()))
+                            continue; // Manager CANNOT see outside their team!
                     } else {
                         // Employee only sees self
-                        if (currentUserId != null && !currentUserId.equals(u.getId())) continue;
+                        if (currentUserId != null && !currentUserId.equals(u.getId()))
+                            continue;
                     }
                 }
 
-                String uText = unaccent(u.getFullName() + " " + u.getEmployeeCode() + " " + (u.getEmail() != null ? u.getEmail() : ""));
+                String uText = unaccent(
+                        u.getFullName() + " " + u.getEmployeeCode() + " " + (u.getEmail() != null ? u.getEmail() : ""));
                 if (uText.contains(cleanQ)) {
                     results.add(Map.of(
                             "title", u.getFullName() + " (" + u.getEmployeeCode() + ")",
-                            "subtitle", "Nhân sự · " + (u.getPositionName() != null ? u.getPositionName() : u.getRole()),
+                            "subtitle",
+                            "Nhân sự · " + (u.getPositionName() != null ? u.getPositionName() : u.getRole()),
                             "kind", "user",
-                            "url", "/admin/employees?search=" + u.getEmployeeCode()
-                    ));
+                            "url", "/admin/employees?search=" + u.getEmployeeCode()));
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // 3. Search Common Screens / Pages
         List<Map<String, String>> screens = List.of(
-                Map.of("title", "Cần làm (Todo Inbox)", "keywords", "can lam todo inbox viec can lam s02", "url", "/todo", "sub", "Điều hướng · Trang mặc định sau đăng nhập"),
-                Map.of("title", "Chấm công khuôn mặt", "keywords", "cham cong check in check out khuôn mat face mobile camera s05", "url", "/attendance/checkin", "sub", "Thao tác nhanh · Camera nhận diện 3 góc"),
-                Map.of("title", "Bảng công tổng hợp 53 cột", "keywords", "bang cong timesheet thang 11 thang 12 luong chot cong s15", "url", "/attendance/timesheet", "sub", "Chấm công & Chốt lương"),
-                Map.of("title", "Tạo đơn xin nghỉ phép / WFH / Đi muộn", "keywords", "tao don xin nghi don tu wfh nghi phep di muon bo sung cong s08", "url", "/attendance/requests", "sub", "Đơn từ cá nhân"),
-                Map.of("title", "Hộp thư phê duyệt cấp dưới", "keywords", "duyet don phe duyet approval approvals s12", "url", "/attendance/approvals", "sub", "Quản lý duyệt đơn"),
-                Map.of("title", "Dashboard OKR cá nhân", "keywords", "okr dashboard muc tieu kr s20", "url", "/okr/dashboard", "sub", "Phân hệ OKR"),
-                Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "keywords", "okr assessment danh gia form 4 box business people s23", "url", "/okr/assessment", "sub", "Đánh giá hiệu suất"),
-                Map.of("title", "Sơ đồ tổ chức phòng ban (Org Tree)", "keywords", "so do to chuc org tree phong ban cay nhom long nhau s41", "url", "/admin/org-tree", "sub", "Quản trị cơ cấu"),
-                Map.of("title", "Nhật ký kiểm toán (Audit Logs)", "keywords", "audit log nhat ky kiem toan lich su thay doi s35", "url", "/admin/audit-logs", "sub", "Nhật ký append-only"),
-                Map.of("title", "Tùy chỉnh thông báo", "keywords", "thong bao tuy chinh cai dat quiet hours gio yen lang s36", "url", "/notifications/preferences", "sub", "Cài đặt cá nhân")
-        );
+                Map.of("title", "Cần làm (Todo Inbox)", "keywords", "can lam todo inbox viec can lam s02", "url",
+                        "/todo", "sub", "Điều hướng · Trang mặc định sau đăng nhập"),
+                Map.of("title", "Chấm công khuôn mặt", "keywords",
+                        "cham cong check in check out khuôn mat face mobile camera s05", "url", "/attendance/checkin",
+                        "sub", "Thao tác nhanh · Camera nhận diện 3 góc"),
+                Map.of("title", "Bảng công tổng hợp 53 cột", "keywords",
+                        "bang cong timesheet thang 11 thang 12 luong chot cong s15", "url", "/attendance/timesheet",
+                        "sub", "Chấm công & Chốt lương"),
+                Map.of("title", "Tạo đơn xin nghỉ phép / WFH / Đi muộn", "keywords",
+                        "tao don xin nghi don tu wfh nghi phep di muon bo sung cong s08", "url", "/attendance/requests",
+                        "sub", "Đơn từ cá nhân"),
+                Map.of("title", "Hộp thư phê duyệt cấp dưới", "keywords", "duyet don phe duyet approval approvals s12",
+                        "url", "/attendance/approvals", "sub", "Quản lý duyệt đơn"),
+                Map.of("title", "Dashboard OKR cá nhân", "keywords", "okr dashboard muc tieu kr s20", "url",
+                        "/okr/dashboard", "sub", "Phân hệ OKR"),
+                Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "keywords",
+                        "okr assessment danh gia form 4 box business people s23", "url", "/okr/assessment", "sub",
+                        "Đánh giá hiệu suất"),
+                Map.of("title", "Sơ đồ tổ chức phòng ban (Org Tree)", "keywords",
+                        "so do to chuc org tree phong ban cay nhom long nhau s41", "url", "/admin/org-tree", "sub",
+                        "Quản trị cơ cấu"),
+                Map.of("title", "Nhật ký kiểm toán (Audit Logs)", "keywords",
+                        "audit log nhat ky kiem toan lich su thay doi s35", "url", "/admin/audit-logs", "sub",
+                        "Nhật ký append-only"),
+                Map.of("title", "Tùy chỉnh thông báo", "keywords",
+                        "thong bao tuy chinh cai dat quiet hours gio yen lang s36", "url", "/notifications/preferences",
+                        "sub", "Cài đặt cá nhân"));
 
         for (Map<String, String> s : screens) {
             String keywords = unaccent(s.get("keywords") + " " + s.get("title"));
@@ -1536,8 +1729,7 @@ public class OrgStructureController {
                         "title", s.get("title"),
                         "subtitle", s.get("sub"),
                         "kind", "page",
-                        "url", s.get("url")
-                ));
+                        "url", s.get("url")));
             }
         }
 
@@ -1558,18 +1750,24 @@ public class OrgStructureController {
 
         List<Map<String, String>> actions = new ArrayList<>();
         actions.add(Map.of("action", "CHECK_IN", "label", "Chấm công vào/ra ngay", "url", "/attendance/checkin"));
-        actions.add(Map.of("action", "SUBMIT_LEAVE", "label", "Tạo đơn xin nghỉ phép / WFH", "url", "/attendance/requests"));
+        actions.add(Map.of("action", "SUBMIT_LEAVE", "label", "Tạo đơn xin nghỉ phép / WFH", "url",
+                "/attendance/requests"));
         actions.add(Map.of("action", "CHECKIN_OKR", "label", "Check-in tiến độ Key Results OKR", "url", "/okr/my-okr"));
-        actions.add(Map.of("action", "VIEW_MY_TIMESHEET", "label", "Xem bảng công của tôi", "url", "/attendance/my-timesheet"));
+        actions.add(Map.of("action", "VIEW_MY_TIMESHEET", "label", "Xem bảng công của tôi", "url",
+                "/attendance/my-timesheet"));
 
         if (isManager || isHr) {
-            actions.add(Map.of("action", "APPROVE_REQUESTS", "label", "Duyệt nhanh đơn từ cấp dưới", "url", "/attendance/approvals"));
-            actions.add(Map.of("action", "TEAM_SCHEDULE", "label", "Xem lịch làm việc nhóm", "url", "/attendance/team-schedule"));
+            actions.add(Map.of("action", "APPROVE_REQUESTS", "label", "Duyệt nhanh đơn từ cấp dưới", "url",
+                    "/attendance/approvals"));
+            actions.add(Map.of("action", "TEAM_SCHEDULE", "label", "Xem lịch làm việc nhóm", "url",
+                    "/attendance/team-schedule"));
         }
 
         if (isHr) {
-            actions.add(Map.of("action", "CONFIG_RULES", "label", "Cấu hình quy định Rule Engine", "url", "/admin/rules"));
-            actions.add(Map.of("action", "VIEW_AUDIT_LOGS", "label", "Xem nhật ký thay đổi hệ thống", "url", "/admin/audit-logs"));
+            actions.add(
+                    Map.of("action", "CONFIG_RULES", "label", "Cấu hình quy định Rule Engine", "url", "/admin/rules"));
+            actions.add(Map.of("action", "VIEW_AUDIT_LOGS", "label", "Xem nhật ký thay đổi hệ thống", "url",
+                    "/admin/audit-logs"));
         }
 
         return ApiResponse.ok(actions, "Lấy danh mục hành động nhanh thành công");
@@ -1579,7 +1777,7 @@ public class OrgStructureController {
     @Operation(summary = "Danh sách thông báo thời gian thực trên Header (CORE-NOTIF-01)")
     public ApiResponse<List<Map<String, Object>>> getNotifications() {
         UUID uid = CurrentUser.userId();
-        List<Notification> dbList = uid != null 
+        List<Notification> dbList = uid != null
                 ? notificationRepository.findByUserIdOrderByCreatedAtDesc(uid)
                 : notificationRepository.findByOrderByCreatedAtDesc();
         if (dbList.isEmpty() && uid != null) {
@@ -1594,7 +1792,8 @@ public class OrgStructureController {
             map.put("content", entity.getContent());
             map.put("type", entity.getType());
             map.put("priority", entity.getPriority());
-            map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent" : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
+            map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent"
+                    : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
             map.put("actionUrl", entity.getActionUrl());
             map.put("read", Boolean.TRUE.equals(entity.getIsRead()));
             map.put("isRead", Boolean.TRUE.equals(entity.getIsRead()));
@@ -1617,7 +1816,8 @@ public class OrgStructureController {
                 notificationRepository.save(notif);
                 return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc");
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return ApiResponse.ok(true, "Đã cập nhật trạng thái");
     }
 
@@ -1626,14 +1826,15 @@ public class OrgStructureController {
     public ApiResponse<Boolean> markAllNotificationsRead() {
         try {
             UUID currentUid = CurrentUser.userId();
-            List<Notification> list = (currentUid != null) 
-                    ? notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(currentUid) 
+            List<Notification> list = (currentUid != null)
+                    ? notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(currentUid)
                     : notificationRepository.findAll();
             for (Notification n : list) {
                 n.setIsRead(true);
             }
             notificationRepository.saveAll(list);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return ApiResponse.ok(true, "Đã đánh dấu tất cả thông báo đã đọc");
     }
 
@@ -1663,7 +1864,8 @@ public class OrgStructureController {
         try {
             UUID uid = UUID.fromString(id);
             notificationRepository.deleteById(uid);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return ApiResponse.ok(true, "Đã xóa thông báo");
     }
 
@@ -1676,8 +1878,10 @@ public class OrgStructureController {
     @PostMapping("/admin/shifts")
     @Operation(summary = "Thêm ca làm việc / ca linh hoạt")
     public ApiResponse<Shift> createShift(@RequestBody Shift shift) {
-        if (shift.getCode() == null || shift.getCode().isBlank()) throw new RuntimeException("Thiếu mã ca");
-        if (shiftRepository.findByCode(shift.getCode()).isPresent()) throw new RuntimeException("Mã ca đã tồn tại");
+        if (shift.getCode() == null || shift.getCode().isBlank())
+            throw new RuntimeException("Thiếu mã ca");
+        if (shiftRepository.findByCode(shift.getCode()).isPresent())
+            throw new RuntimeException("Mã ca đã tồn tại");
         return ApiResponse.ok(shiftRepository.save(shift), "Đã thêm ca làm việc");
     }
 
@@ -1723,6 +1927,7 @@ public class OrgStructureController {
     @GetMapping("/media/preview/{fileId}")
     @Operation(summary = "Trình xem nhanh file minh chứng (OKR-CONV-02)")
     public ApiResponse<Map<String, String>> previewFileRoot(@PathVariable String fileId) {
-        return ApiResponse.ok(Map.of("fileId", fileId, "previewUrl", "/files/preview/" + fileId), "Lấy thông tin file minh chứng thành công");
+        return ApiResponse.ok(Map.of("fileId", fileId, "previewUrl", "/files/preview/" + fileId),
+                "Lấy thông tin file minh chứng thành công");
     }
 }
