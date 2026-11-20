@@ -365,6 +365,7 @@
 - [ ] Cảnh báo xung đột lịch: *"thứ Sáu này 3/5 người đều WFH, đội sẽ thiếu người"*
 - 🟡 *(C7)* Nhóm của tôi có cấu hình riêng: ai trong nhóm thấy được lịch của ai
 - [ ] **Phân quyền xem 4 tầng**: HR cả công ty · Manager cấp dưới trực tiếp · Team lead nhóm mình · Member team mình — không thấy nhóm khác
+- [ ] **Mọi vai trò đều vào được menu Lịch nhóm** (không chặn nhân viên); backend tự giới hạn phạm vi dữ liệu
 - [ ] Xem **tuần/tháng**, chuyển tuần trước/sau, lọc theo nhóm
 - [ ] Hiện đồng thời **WFH · nghỉ phép · đi muộn · công đủ** + đếm người có mặt mỗi ngày
 - [ ] Cảnh báo **xung đột lịch** khi vượt ngưỡng vắng (mặc định 60% nhóm)

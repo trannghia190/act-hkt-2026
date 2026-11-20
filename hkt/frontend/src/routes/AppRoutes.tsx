@@ -127,14 +127,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/attendance/enroll" element={<Navigate to="/auth/enroll-face" replace />} />
       <Route path="/attendance/calendar" element={<CalendarPage />} />
       <Route path="/attendance/my-timesheet" element={<MyTimesheetPage />} />
-      <Route
-        path="/attendance/team-schedule"
-        element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}>
-            <TeamSchedulePage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/attendance/team-schedule" element={<TeamSchedulePage />} />
       <Route path="/attendance/requests" element={<RequestsPage />} />
       <Route path="/attendance/requests/:id" element={<RequestDetailPage />} />
       <Route

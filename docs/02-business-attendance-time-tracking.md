@@ -819,7 +819,7 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 |---|---|
 | **Hộp thư duyệt duyệt** | Danh sách đơn chờ duyệt, filter theo loại/ngày, badge "quá hạn" |
 | **Chi tiết đơn** | Timeline (gửi → duyệt → kết quả), lịch sử, chip điều kiện quyết định (C7) |
-| **Lịch nhóm** | Lịch WFH + nghỉ phép của cả nhóm, cảnh báo "hôm nay 3/5 người nghỉ" |
+| **Lịch nhóm** | Lịch WFH + nghỉ phép của cả nhóm, cảnh báo "hôm nay 3/5 người nghỉ". **Ai cũng xem được** theo phạm vi: HR toàn công ty · Manager cấp dưới · Trưởng nhóm nhóm mình · Nhân viên nhóm mình |
 | **Bảng công nhóm** | Tổng hợp theo tháng, drill-down từng người |
 
 ### 4.3 HR
