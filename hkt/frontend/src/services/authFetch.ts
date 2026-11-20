@@ -64,7 +64,15 @@ export function installAuthFetch(): void {
     }
 
     const token = await refreshAccessToken();
-    if (!token) return response;
+    if (!token) {
+      // Refresh token hết hạn/không thuộc backend hiện tại → buộc đăng nhập lại
+      // thay vì để UI hiển thị lỗi 403 khó hiểu.
+      localStorage.removeItem(STORAGE_KEY);
+      if (!location.pathname.startsWith('/login')) {
+        location.assign('/login?expired=1');
+      }
+      return response;
+    }
     return original(input as RequestInfo, withToken(token));
   };
 }
