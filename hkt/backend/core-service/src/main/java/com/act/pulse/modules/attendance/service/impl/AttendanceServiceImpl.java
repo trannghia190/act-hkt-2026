@@ -94,6 +94,17 @@ public class AttendanceServiceImpl implements AttendanceService {
         final UUID userId = requester.getId();
         final String requesterCode = requester.getEmployeeCode();
 
+        // ── Kiểm tra quá hạn offline (mặc định 24h, Criterion B1 #11) ───────
+        if (Boolean.TRUE.equals(request.getIsOffline()) || request.getOfflinePunchedAt() != null) {
+            int maxOfflineHours = ruleService.getInt("attendance_security", "offline_max_hours", 24);
+            LocalDateTime punchTime = request.getOfflinePunchedAt() != null ? request.getOfflinePunchedAt() : LocalDateTime.now();
+            if (punchTime.isBefore(LocalDateTime.now().minusHours(maxOfflineHours))) {
+                return reject("OFFLINE_EXPIRED",
+                        String.format("Bản ghi chấm công offline đã quá hạn %d giờ. Vui lòng tạo đơn bổ sung công.", maxOfflineHours),
+                        layers, FaceOutcome.skipped());
+            }
+        }
+
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
         // Máy đầu tiên của mỗi người được tự đăng ký (docs/01 §2); máy thứ 2/3 phải chờ HR duyệt.
         String deviceFingerprint = request.getDeviceFingerprint();
@@ -172,13 +183,17 @@ public class AttendanceServiceImpl implements AttendanceService {
         Double distance = null;
         boolean gpsPassed = true;
         String gpsDetail = null;
-        if (request.getLatitude() != null && request.getLongitude() != null) {
+        if (request.getAccuracyMeters() != null && request.getAccuracyMeters().doubleValue() > gpsTolerance && !wfhToday) {
+            gpsPassed = false;
+            gpsDetail = String.format("Độ chính xác GPS (%.0fm) vượt quá sai số cho phép (%dm). Vui lòng di chuyển lại gần cửa sổ hoặc khu vực thông thoáng và thử lại.",
+                    request.getAccuracyMeters().doubleValue(), gpsTolerance);
+        } else if (request.getLatitude() != null && request.getLongitude() != null) {
             distance = haversineMeters(request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
                     OFFICE_LAT, OFFICE_LNG);
             if (distance > geofenceRadius && !wfhToday) {
                 gpsPassed = false;
-                gpsDetail = String.format("Bạn đang %,.0f km so với văn phòng (bán kính cho phép %dm)",
-                        distance / 1000.0, geofenceRadius);
+                gpsDetail = String.format("Bạn đang cách văn phòng %,.0fm (vượt quá bán kính cho phép %dm)",
+                        distance, geofenceRadius);
             }
         }
         layers.add(layer("GPS", "Trong bán kính văn phòng", gpsPassed, gpsDetail));
@@ -281,6 +296,17 @@ public class AttendanceServiceImpl implements AttendanceService {
             }
             entity.setCheckOutAt(now);
             punchAt = now;
+        }
+
+        // ── Kiểm tra quá hạn offline (mặc định 24h) ────────────────────────
+        if (Boolean.TRUE.equals(request.getIsOffline())) {
+            int maxOfflineHours = ruleService.getInt("attendance_security", "offline_max_hours", 24);
+            LocalDateTime punchTime = request.getOfflinePunchedAt() != null ? request.getOfflinePunchedAt() : now;
+            if (punchTime.isBefore(now.minusHours(maxOfflineHours))) {
+                return reject("OFFLINE_EXPIRED",
+                        String.format("Bản ghi chấm công offline đã quá hạn %d giờ. Vui lòng tạo đơn bổ sung công.", maxOfflineHours),
+                        layers, face);
+            }
         }
 
         entity.setStatus("VALID");
@@ -483,5 +509,44 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private LayerResult layer(String code, String label, boolean passed, String detail) {
         return LayerResult.builder().layer(code).label(label).passed(passed).detail(detail).build();
+    }
+
+    @Override
+    public Map<String, Object> getTodayStatus(UUID userId) {
+        Map<String, Object> out = new HashMap<>();
+        if (userId == null) return out;
+
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+
+        Optional<AttendanceLog> todayLog = attendanceLogRepository.findByUserIdAndWorkDate(userId, today);
+        Optional<AttendanceLog> yesterdayLog = attendanceLogRepository.findByUserIdAndWorkDate(userId, yesterday);
+
+        Map<String, Object> todayMap = new HashMap<>();
+        todayMap.put("workDate", today.toString());
+        boolean hasCheckedIn = todayLog.isPresent() && todayLog.get().getCheckInAt() != null;
+        boolean hasCheckedOut = todayLog.isPresent() && todayLog.get().getCheckOutAt() != null;
+        todayMap.put("hasCheckedIn", hasCheckedIn);
+        todayMap.put("hasCheckedOut", hasCheckedOut);
+        todayMap.put("checkInAt", todayLog.map(AttendanceLog::getCheckInAt).orElse(null));
+        todayMap.put("checkOutAt", todayLog.map(AttendanceLog::getCheckOutAt).orElse(null));
+
+        Map<String, Object> yesterdayMap = new HashMap<>();
+        yesterdayMap.put("workDate", yesterday.toString());
+        boolean yCheckIn = yesterdayLog.isPresent() && yesterdayLog.get().getCheckInAt() != null;
+        boolean yCheckOut = yesterdayLog.isPresent() && yesterdayLog.get().getCheckOutAt() != null;
+        yesterdayMap.put("hasCheckedIn", yCheckIn);
+        yesterdayMap.put("hasCheckedOut", yCheckOut);
+        yesterdayMap.put("checkInAt", yesterdayLog.map(AttendanceLog::getCheckInAt).orElse(null));
+        yesterdayMap.put("checkOutAt", yesterdayLog.map(AttendanceLog::getCheckOutAt).orElse(null));
+        // Missing checkout yesterday if checked in but never checked out
+        yesterdayMap.put("missingCheckout", yCheckIn && !yCheckOut);
+
+        boolean faceEnrolled = faceProfileRepository.existsByUserIdAndStatus(userId, "active");
+
+        out.put("today", todayMap);
+        out.put("yesterday", yesterdayMap);
+        out.put("faceEnrolled", faceEnrolled);
+        return out;
     }
 }
