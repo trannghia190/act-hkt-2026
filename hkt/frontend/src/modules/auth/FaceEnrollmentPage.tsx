@@ -220,18 +220,21 @@ export const FaceEnrollmentPage: React.FC = () => {
     e.target.value = '';
   };
 
-  // Submit enrollment (1 Frontal Angle)
+  // Submit enrollment — CHỈ đăng ký cho chính tài khoản đang đăng nhập.
+  // Business: docs/01 "Hồ sơ khuôn mặt" + docs/08 B0 — không cho đăng ký hộ người khác.
   const handleEnrollSubmit = async () => {
     if (!capturedImage) {
       setEnrollMessage('Vui lòng chụp ảnh khuôn mặt chính diện hoặc tải ảnh lên trước khi đăng ký.');
       setEnrollStatus('error');
       return;
     }
-    if (!employeeCode.trim()) {
-      setEnrollMessage('Vui lòng nhập Mã nhân viên.');
+    if (!user?.employeeCode) {
+      setEnrollMessage('Chưa đăng nhập — không xác định được tài khoản để đăng ký khuôn mặt.');
       setEnrollStatus('error');
       return;
     }
+    // Danh tính lấy từ token, KHÔNG nhận từ form.
+    const targetCode = user.employeeCode.trim();
 
     setEnrollStatus('processing');
     setEnrollMessage(null);
@@ -255,9 +258,9 @@ export const FaceEnrollmentPage: React.FC = () => {
         method: 'POST',
         headers: reqHeaders,
         body: JSON.stringify({
-          employee_code: employeeCode.trim(),
-          full_name: fullName.trim() || employeeCode.trim(),
-          department: department.trim() || 'Khối Kỹ Thuật',
+          employee_code: targetCode,
+          full_name: user.fullName || targetCode,
+          department: user.department || 'Khối Kỹ Thuật',
           frontal_image: capturedImage,
           left_image: capturedLeft || undefined,
           right_image: capturedRight || undefined,
@@ -275,7 +278,7 @@ export const FaceEnrollmentPage: React.FC = () => {
           method: 'POST',
           headers: reqHeaders,
           body: JSON.stringify({
-            employeeCode: employeeCode.trim(),
+            employeeCode: targetCode,
             faceDataUrl: capturedImage,
             confidenceScore: 0.98,
             embedding: aiJson.embedding || undefined,
@@ -285,14 +288,12 @@ export const FaceEnrollmentPage: React.FC = () => {
         console.warn('Core auth sync warning:', err);
       }
 
-      // 3. If enrolled user matches logged in user, update AuthContext
-      if (user?.employeeCode && user.employeeCode.toLowerCase() === employeeCode.trim().toLowerCase()) {
-        updateUser({ faceEnrolled: true, status: 'ACTIVE' });
-      }
+      // 3. Cập nhật AuthContext — đã đăng ký cho chính mình
+      updateUser({ faceEnrolled: true, status: 'ACTIVE' });
 
       setEnrollStatus('success');
       setEnrollMessage(
-        aiJson.message || `Đăng ký thành công mẫu khuôn mặt 1 góc cho nhân viên ${fullName} (${employeeCode})!`
+        aiJson.message || `Đăng ký thành công mẫu khuôn mặt cho ${user.fullName || targetCode} (${targetCode})!`
       );
 
       // Refresh list
@@ -315,9 +316,15 @@ export const FaceEnrollmentPage: React.FC = () => {
     setVerifyResult(null);
 
     try {
+      // Kiểm tra khuôn mặt gọi AI service; AI service không yêu cầu token,
+      // nhưng vẫn gửi kèm token để proxy/audit thống nhất.
+      const coreHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        coreHeaders['Authorization'] = `Bearer ${user.accessToken}`;
+      }
       const res = await fetch('/ai-face/api/v1/face/verify-json', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: coreHeaders,
         body: JSON.stringify({
           image: targetImage,
           expected_employee_code: expectedCode.trim() || undefined,
@@ -615,16 +622,18 @@ export const FaceEnrollmentPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-medium text-ink-muted mb-1">
                     Mã nhân viên (Employee Code) <span className="text-red-500">*</span>
-                    {!isAdmin && <span className="text-[10px] text-ink-muted ml-1.5">(Cố định theo tài khoản)</span>}
+                    <span className="text-[10px] text-ink-muted ml-1.5">(cố định theo tài khoản đang đăng nhập)</span>
                   </label>
                   <input
                     type="text"
-                    value={employeeCode}
-                    onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
-                    placeholder="VD: 136ACT, 01HR, 05ACT"
-                    disabled={!isAdmin && !!user?.employeeCode}
-                    className={`w-full text-xs font-mono font-bold px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:border-accent outline-hidden ${!isAdmin && !!user?.employeeCode ? 'opacity-80 cursor-not-allowed bg-canvas-subtle' : ''}`}
+                    value={user?.employeeCode || ''}
+                    readOnly
+                    disabled
+                    className="w-full text-xs font-mono font-bold px-3 py-2 bg-canvas-subtle border border-line rounded-lg text-ink opacity-80 cursor-not-allowed"
                   />
+                  <p className="text-[10px] text-ink-muted mt-1">
+                    Đăng ký khuôn mặt chỉ áp dụng cho chính tài khoản này — không thể đăng ký hộ người khác.
+                  </p>
                 </div>
 
                 <div>
