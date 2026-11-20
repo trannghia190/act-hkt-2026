@@ -303,7 +303,8 @@ erDiagram
 ### Endpoints đơn từ
 | Method | Endpoint | Ghi chú |
 |---|---|---|
-| POST | `/requests` | body `{type, leaveType, workDate, endDate, minutes, reason, payload, draft}` |
+| POST | `/requests` | body `{type, leaveType, workDate, endDate, minutes, reason, payload, draft, replaceConflicts, excludeId}` |
+| POST | `/requests/check-conflicts` | Trả danh sách đơn LEAVE/WFH trùng ngày+buổi (PENDING/APPROVED), có `excludeId` khi sửa |
 | GET | `/requests/my-requests?page&size&from&to&type&status&keyword` | Trả `content/page/size/totalElements/totalPages`; không truyền `page` → list cũ |
 | PUT | `/requests/{id}` | Sửa đơn của mình khi DRAFT/PENDING/REJECTED → PENDING, xoá quyết định cũ |
 | POST | `/requests/{id}/submit` | Gửi duyệt đơn nháp |

@@ -234,7 +234,7 @@ export const RequestsPage: React.FC = () => {
   const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
   const adjustDuration = `Bổ sung giờ ${adjustKind === 'IN' ? 'vào' : 'ra'} (${adjustTime})`;
 
-  const handleCreate = (e: React.FormEvent, asDraft = false) => {
+  const handleCreate = async (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
@@ -341,6 +341,37 @@ export const RequestsPage: React.FC = () => {
       reason: newReq.reason,
       draft: asDraft,
     };
+    let replaceConflicts = false;
+    if (!asDraft && (newReq.type === 'LEAVE' || newReq.type === 'WFH')) {
+      try {
+        const res = await fetch('/api/v1/requests/check-conflicts', {
+          method: 'POST', headers: authHeaders(),
+          body: JSON.stringify({
+            type: newReq.type,
+            workDate: newReq.startDate,
+            endDate: newReq.type === 'LEAVE' ? newReq.endDate : newReq.endDate,
+            payload,
+            excludeId: editingId || undefined,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        const conflicts: any[] = Array.isArray(json?.data) ? json.data : [];
+        if (conflicts.length > 0) {
+          const lines = conflicts.map(c => {
+            const range = c.workDate === c.endDate ? c.workDate : `${c.workDate} → ${c.endDate}`;
+            const status = c.status === 'APPROVED' ? 'đã duyệt' : 'chờ duyệt';
+            return `• ${c.typeName}${c.leaveTypeName ? ` (${c.leaveTypeName})` : ''} ${range} — ${status}`;
+          }).join('\n');
+          const ok = window.confirm(
+            `Đơn mới trùng ngày với ${conflicts.length} đơn đã có:\n${lines}\n\nBạn có muốn HỦY đơn cũ và áp dụng đơn mới không?`
+          );
+          if (!ok) { showToast('Đã giữ đơn cũ — đơn mới chưa được tạo', 'error'); return; }
+          replaceConflicts = true;
+        }
+      } catch { /* nếu kiểm tra lỗi, backend vẫn chặn và trả thông báo */ }
+    }
+    (body as any).replaceConflicts = replaceConflicts;
+
     const sendDates = newReq.type === 'WFH' && leaveUnit === 'DAY'
       ? wfhWorkingDates(newReq.startDate, newReq.endDate)
       : [newReq.startDate];
