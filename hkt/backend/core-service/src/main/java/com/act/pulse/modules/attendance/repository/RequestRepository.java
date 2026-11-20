@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface RequestRepository extends JpaRepository<RequestEntity, UUID> {
     List<RequestEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<RequestEntity> findByUserIdInAndStatusOrderByCreatedAtDesc(Collection<UUID> userIds, String status);
+    List<RequestEntity> findByUserIdAndStatus(UUID userId, String status);
 }
