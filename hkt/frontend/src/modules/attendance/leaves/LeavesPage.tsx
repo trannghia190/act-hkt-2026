@@ -35,6 +35,7 @@ export const LeavesPage: React.FC = () => {
   });
 
   const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<{ code: string; name: string }[]>([]);
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -66,6 +67,7 @@ export const LeavesPage: React.FC = () => {
           expiringOnMarch31: carried }));
       }
     }).catch(() => undefined);
+    fetch('/api/v1/leave-types', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data.map((x: any) => ({ code: x.code, name: x.name }))); }).catch(() => undefined);
     fetch('/api/v1/leaves/my-ledger', { headers }).then(r => r.json()).then(j => {
       if (Array.isArray(j?.data)) {
         setLedger(j.data.map((e: any) => ({
@@ -79,15 +81,16 @@ export const LeavesPage: React.FC = () => {
 
   const [filterType, setFilterType] = useState('Tất cả');
   const [filterYear, setFilterYear] = useState('2026');
+  const leaveTypeName = (code?: string) => leaveTypes.find(t => t.code === code)?.name || code || 'Phép năm';
+  const hasGrantFor = (code?: string) => ledger.some(e => e.type === 'GRANT' && (e.leaveType || 'AL') === (code || 'AL'));
   const ledgerWithBalance = useMemo(() => {
     const asc = [...ledger].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
-    let running = 0;
+    const runningByType: Record<string, number> = {};
     const byId: Record<string, number> = {};
     for (const e of asc) {
-      const affectsAnnual = !e.leaveType || e.leaveType.toUpperCase() === 'AL';
-      if (e.type === 'GRANT' || (e.type === 'ADJUST' && affectsAnnual)) running += e.amount;
-      else if (e.type === 'USED' && affectsAnnual) running += e.amount;
-      byId[e.id] = Math.round(running * 100) / 100;
+      const code = (e.leaveType || 'AL').toUpperCase();
+      runningByType[code] = (runningByType[code] || 0) + e.amount;
+      byId[e.id] = Math.round(runningByType[code] * 100) / 100;
     }
     return ledger.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter }));
   }, [ledger]);
@@ -196,16 +199,21 @@ export const LeavesPage: React.FC = () => {
             <thead>
               <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
                 <th className="py-2.5 px-3">Ngày Ghi Sổ</th>
+                <th className="py-2.5 px-3">Loại Phép</th>
                 <th className="py-2.5 px-3">Nghiệp Vụ Biến Động</th>
                 <th className="py-2.5 px-3">Chi Tiết / Mã Đơn</th>
                 <th className="py-2.5 px-3 text-center">Số Ngày</th>
-                <th className="py-2.5 px-3 text-right">Số Dư Sau Biến Động</th>
+                <th className="py-2.5 px-3 text-right">Số Dư Sau (theo loại)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {filteredLedger.map(entry => (
                 <tr key={entry.id} className="hover:bg-canvas/40 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{entry.date}</td>
+                  <td className="py-2.5 px-3">
+                    <div className="font-semibold text-ink">{leaveTypeName(entry.leaveType)}</div>
+                    <div className="font-mono text-[10px] text-ink-muted">{entry.leaveType || 'AL'}</div>
+                  </td>
                   <td className="py-2.5 px-3">
                     <Badge variant={entry.type === 'GRANT' ? 'ok' : entry.type === 'ADJUST' ? 'warn' : 'gray'}>
                       {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : 'Sử dụng phép'}
@@ -215,8 +223,10 @@ export const LeavesPage: React.FC = () => {
                   <td className={`py-2.5 px-3 text-center font-bold ${entry.amount > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-ink">
-                    {entry.balanceAfter} ngày
+                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-rose-700' : 'text-ink'}`}>
+                    {hasGrantFor(entry.leaveType)
+                      ? `${entry.balanceAfter} ngày`
+                      : `Đã dùng ${Math.abs(entry.balanceAfter)} ngày`}
                   </td>
                 </tr>
               ))}

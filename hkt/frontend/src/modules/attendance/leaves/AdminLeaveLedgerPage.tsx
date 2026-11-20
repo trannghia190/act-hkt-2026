@@ -22,6 +22,7 @@ interface EnterpriseLeaveLedgerItem {
 export const AdminLeaveLedgerPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [employees, setEmployees] = useState<any[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<{ code: string; name: string }[]>([]);
   const [selectedCode, setSelectedCode] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
@@ -62,19 +63,21 @@ export const AdminLeaveLedgerPage: React.FC = () => {
             reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
             leaveType: e.leaveType, createdAt: e.createdAt,
           }));
-          let running = 0;
+          const runningByType: Record<string, number> = {};
           const byId: Record<string, number> = {};
           [...mapped].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).forEach(e => {
-            const affectsAnnual = !e.leaveType || String(e.leaveType).toUpperCase() === 'AL';
-            if (e.type === 'GRANT' || (e.type === 'ADJUST' && affectsAnnual)) running += e.amount;
-            else if (e.type === 'USED' && affectsAnnual) running += e.amount;
-            byId[e.id] = Math.round(running * 100) / 100;
+            const code = String(e.leaveType || 'AL').toUpperCase();
+            runningByType[code] = (runningByType[code] || 0) + e.amount;
+            byId[e.id] = Math.round(runningByType[code] * 100) / 100;
           });
           setLedgerEntries(mapped.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter })));
         }
       }).catch(() => undefined);
   };
   useEffect(() => {
+    fetch('/api/v1/leave-types', { headers: authOnly() }).then(r => r.json())
+      .then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data.map((x: any) => ({ code: x.code, name: x.name }))); })
+      .catch(() => undefined);
     fetch('/api/v1/leaves/table', { headers: authOnly() }).then(r => r.json()).then(j => {
       if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); setAdjustEmpCode(prev => prev || j.data[0].employeeCode); } }
     }).catch(() => undefined);
@@ -174,9 +177,10 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                 <th className="py-2.5 px-3">Nhân Viên</th>
                 <th className="py-2.5 px-3">Phòng Ban</th>
                 <th className="py-2.5 px-3">Ngày</th>
+                <th className="py-2.5 px-3">Loại Phép</th>
                 <th className="py-2.5 px-3">Loại Biến Động</th>
                 <th className="py-2.5 px-3 text-center">Số Ngày</th>
-                <th className="py-2.5 px-3 text-right">Số Dư Sau</th>
+                <th className="py-2.5 px-3 text-right">Số Dư Sau (theo loại)</th>
                 <th className="py-2.5 px-3">Lý Do / Căn Cứ</th>
                 <th className="py-2.5 px-3">Người Duyệt</th>
               </tr>
@@ -192,6 +196,10 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                   <td className="py-2.5 px-3 text-ink-secondary text-[11px]">{item.department}</td>
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{item.date}</td>
                   <td className="py-2.5 px-3">
+                    <div className="font-semibold text-ink">{leaveTypes.find(x => x.code === item.leaveType)?.name || item.leaveType || 'Phép năm'}</div>
+                    <div className="font-mono text-[10px] text-ink-muted">{item.leaveType || 'AL'}</div>
+                  </td>
+                  <td className="py-2.5 px-3">
                     {item.type === 'GRANT' && <Badge variant="ok">Cấp phép đầu kỳ</Badge>}
                     {item.type === 'USED' && <Badge variant="warn">Trừ phép đã nghỉ</Badge>}
                     {item.type === 'ADJUST' && <Badge variant="accent">HR Điều chỉnh</Badge>}
@@ -205,7 +213,9 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                     {item.amount > 0 ? `+${item.amount}` : item.amount}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-ink">
-                    {item.balanceAfter} ngày
+                    {ledgerEntries.some(e => e.type === 'GRANT' && (e.leaveType || 'AL') === (item.leaveType || 'AL'))
+                      ? `${item.balanceAfter} ngày`
+                      : `Đã dùng ${Math.abs(item.balanceAfter)} ngày`}
                   </td>
                   <td className="py-2.5 px-3 text-ink text-[11px] max-w-[200px] truncate" title={item.reason}>
                     {item.reason}
