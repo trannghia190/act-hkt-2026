@@ -16,6 +16,7 @@ import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -41,6 +42,7 @@ public class BusinessGapController {
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final ShiftRepository shiftRepository;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -143,23 +145,46 @@ public class BusinessGapController {
         for (int d = 1; d <= targetMonth.lengthOfMonth(); d++) {
             java.time.LocalDate day = targetMonth.atDay(d);
             List<Map<String, Object>> entries = new java.util.ArrayList<>();
-            int wfh = 0, leave = 0, late = 0, present = 0;
+            int wfh = 0, late = 0, present = 0;
+            double leave = 0;
             for (User u : visible) {
                 String kind = null;
+                RequestEntity found = null;
                 for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
                     if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !day.equals(r.getWorkDate())) continue;
                     if ("WFH".equals(r.getRequestType())) kind = "WFH";
                     else if ("LEAVE".equals(r.getRequestType())) kind = "LEAVE";
                     else if ("LATE_EARLY".equals(r.getRequestType())) kind = "LATE";
-                    if (kind != null) break;
+                    if (kind != null) { found = r; break; }
+                }
+                boolean halfDay = false;
+                String halfPeriod = null, workFrom = null, workTo = null;
+                if (found != null && "LEAVE".equals(kind) && found.getPayload() != null) {
+                    try {
+                        Map<?, ?> p = objectMapper.readValue(found.getPayload(), Map.class);
+                        halfPeriod = p.get("half_day_period") == null ? null : String.valueOf(p.get("half_day_period"));
+                        halfDay = halfPeriod != null;
+                        workFrom = p.get("work_window_start") == null ? null : String.valueOf(p.get("work_window_start"));
+                        workTo = p.get("work_window_end") == null ? null : String.valueOf(p.get("work_window_end"));
+                    } catch (Exception ignored) { }
                 }
                 if (kind == null) {
                     kind = "PRESENT";
                     present++;
                 } else if ("WFH".equals(kind)) wfh++;
-                else if ("LEAVE".equals(kind)) leave++;
+                else if ("LEAVE".equals(kind)) leave += halfDay ? 0.5 : 1;
                 else late++;
-                entries.add(Map.of("employeeCode", u.getEmployeeCode(), "fullName", u.getFullName(), "kind", kind));
+                Map<String, Object> entry = new java.util.HashMap<>();
+                entry.put("employeeCode", u.getEmployeeCode());
+                entry.put("fullName", u.getFullName());
+                entry.put("kind", kind);
+                if (halfDay) {
+                    entry.put("halfDay", true);
+                    entry.put("halfDayPeriod", halfPeriod);
+                    entry.put("workWindowStart", workFrom);
+                    entry.put("workWindowEnd", workTo);
+                }
+                entries.add(entry);
             }
             Map<String, Object> row = new java.util.HashMap<>();
             row.put("date", day.toString());

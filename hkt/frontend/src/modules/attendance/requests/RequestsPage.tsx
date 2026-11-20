@@ -17,6 +17,7 @@ export const RequestsPage: React.FC = () => {
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
+  const [halfDayPeriod, setHalfDayPeriod] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
   const [punchLogs, setPunchLogs] = useState<any[]>([]);
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [holidays, setHolidays] = useState<string[]>([]);
@@ -110,7 +111,7 @@ export const RequestsPage: React.FC = () => {
     return count;
   };
 
-  const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
+  const leaveDays = newReq.type === 'LEAVE' ? (leaveUnit === 'HALF_DAY' ? 0.5 : workingDays(newReq.startDate, newReq.endDate)) : 0;
 
   // Hạn nộp & giới hạn ngày lấy từ cấu hình quy định hiện hành.
   const isoDaysFromToday = (offset: number) => {
@@ -151,6 +152,16 @@ export const RequestsPage: React.FC = () => {
   const shiftOutStart = hhmm(myShift?.checkOutStart) || '17:00';
   const shiftOutEnd = hhmm(myShift?.checkOutEnd) || '18:30';
   const shiftHours = myShift?.requiredWorkHours ?? 8;
+  const lunchStartLabel = hhmm(myShift?.lunchBreakStart) || '12:00';
+  const lunchEndLabel = hhmm(myShift?.lunchBreakEnd) || '13:00';
+  const halfDayWindow = leaveUnit === 'HALF_DAY'
+    ? (halfDayPeriod === 'MORNING'
+        ? { from: lunchEndLabel, to: shiftOutStart, text: `nghỉ sáng, làm việc ${lunchEndLabel}–${shiftOutStart}` }
+        : { from: shiftStartLabel, to: lunchStartLabel, text: `nghỉ chiều, làm việc ${shiftStartLabel}–${lunchStartLabel}` })
+    : null;
+  const halfDayHours = halfDayWindow
+    ? Math.round(((toMinutes(halfDayWindow.to) - toMinutes(halfDayWindow.from)) / 60) * 10) / 10
+    : 0;
   const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
     ? (lateEarlyKind === 'LATE'
         ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
@@ -196,10 +207,16 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || 'luan.vu@act-corp.internal',
       team: user?.team || 'Sirius Core',
       type: newReq.type,
-      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? 'nửa ngày' : 'cả ngày'})` : typeNames[newReq.type],
+      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? `nửa ngày, buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}` : 'cả ngày'})` : typeNames[newReq.type],
       startDate: newReq.startDate,
-      endDate: newReq.type === 'LATE_EARLY' ? newReq.startDate : newReq.endDate,
-      durationText: newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
+      endDate: (newReq.type === 'LATE_EARLY' || (newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY')) ? newReq.startDate : newReq.endDate,
+      durationText: newReq.type === 'LATE_EARLY'
+        ? lateEarlyDuration
+        : newReq.type === 'LEAVE'
+        ? (leaveUnit === 'HALF_DAY'
+            ? `0.5 ngày — ${halfDayWindow?.text || 'nửa ngày'}`
+            : `${leaveDays} ngày làm việc`)
+        : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
       approver: approverName,
@@ -207,9 +224,15 @@ export const RequestsPage: React.FC = () => {
     };
 
     const payload = JSON.stringify({
-      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc`
+      duration: newReq.type === 'LEAVE'
+        ? (leaveUnit === 'HALF_DAY' ? `0.5 ngày — ${halfDayWindow?.text || 'nửa ngày'}` : `${leaveDays} ngày làm việc`)
         : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
       unit: newReq.type === 'LEAVE' ? leaveUnit : undefined,
+      ...(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY' ? {
+        half_day_period: halfDayPeriod,
+        work_window_start: halfDayWindow?.from,
+        work_window_end: halfDayWindow?.to,
+      } : {}),
       urgent: false,
       location_allowed: wfhLocation === 'HOME',
       ...(newReq.type === 'LATE_EARLY' ? {
@@ -249,6 +272,8 @@ export const RequestsPage: React.FC = () => {
       }
     })();
     setIsCreateOpen(false);
+    setLeaveUnit('DAY');
+    setHalfDayPeriod('MORNING');
     setNewReq({
       type: 'LEAVE',
       startDate: new Date().toISOString().split('T')[0],
@@ -569,16 +594,35 @@ export const RequestsPage: React.FC = () => {
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <label className="font-medium">Đơn vị
                   <select className="mt-1 w-full p-2 border border-line rounded-lg bg-surface" value={leaveUnit}
-                    onChange={e => setLeaveUnit(e.target.value as 'DAY' | 'HALF_DAY')}>
+                    onChange={e => {
+                      const unit = e.target.value as 'DAY' | 'HALF_DAY';
+                      setLeaveUnit(unit);
+                      if (unit === 'HALF_DAY') setNewReq(prev => ({ ...prev, endDate: prev.startDate }));
+                    }}>
                     <option value="DAY">Cả ngày</option>
-                    <option value="HALF_DAY">Nửa ngày</option>
+                    <option value="HALF_DAY">Nửa ngày (0.5)</option>
                   </select>
                 </label>
                 <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">
                   Số dư phép còn lại: <b>{leaveBalance ? Number(leaveBalance.remaining || 0) : '—'} ngày</b>
                   <div className="text-[10px] mt-0.5">Duyệt 1 cấp bởi quản lý trực tiếp</div>
-                  <div className="text-[10px] mt-0.5">Số ngày làm việc (trừ cuối tuần + lễ): <b>{leaveDays}</b></div>
+                  <div className="text-[10px] mt-0.5">Số ngày trừ quỹ phép: <b>{leaveDays}</b> ngày</div>
                 </div>
+                {leaveUnit === 'HALF_DAY' && (
+                  <label className="font-medium">Buổi nghỉ
+                    <select className="mt-1 w-full p-2 border border-line rounded-lg bg-surface" value={halfDayPeriod}
+                      onChange={e => setHalfDayPeriod(e.target.value as 'MORNING' | 'AFTERNOON')}>
+                      <option value="MORNING">Buổi sáng</option>
+                      <option value="AFTERNOON">Buổi chiều</option>
+                    </select>
+                  </label>
+                )}
+                {leaveUnit === 'HALF_DAY' && halfDayWindow && (
+                  <div className="col-span-2 p-2 rounded-lg bg-canvas border border-line text-[11px] text-ink-secondary">
+                    Nghỉ <b>{halfDayPeriod === 'MORNING' ? 'buổi sáng' : 'buổi chiều'}</b> · thời gian làm việc thực tế hôm đó:
+                    <b> {halfDayWindow.from}–{halfDayWindow.to}</b> ({halfDayHours}h)
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -696,17 +740,19 @@ export const RequestsPage: React.FC = () => {
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
-                <div>
-                  <label className="block font-medium text-ink mb-1">Đến Ngày</label>
-                  <input
-                    type="date"
-                    required
-                    min={newReq.startDate}
-                    value={newReq.endDate}
-                    onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
-                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-                  />
-                </div>
+                {!(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && (
+                  <div>
+                    <label className="block font-medium text-ink mb-1">Đến Ngày</label>
+                    <input
+                      type="date"
+                      required
+                      min={newReq.startDate}
+                      value={newReq.endDate}
+                      onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
+                      className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="text-[11px] bg-canvas border border-line rounded-lg px-2 py-1.5 text-ink-secondary">
