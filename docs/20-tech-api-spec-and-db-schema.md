@@ -321,7 +321,14 @@ erDiagram
 * `GET /timesheets?month=YYYY-MM` — 53 cột, đọc DB (log + đơn duyệt + ngày lễ + ô sửa DB), trả `status` từ `timesheets`.
 * `POST /timesheets/cell`, `/timesheets/bulk` — ghi `timesheet_cells` + `timesheet_audit_logs`; bắt buộc lý do; chặn khi khoá.
 * `POST /timesheets/publish`, `/timesheets/lock` — lưu `timesheets`; lock đếm pending từ `timesheet_disputes`.
-* `POST /disputes` (nhân viên tạo), `GET /disputes`, `GET /disputes/{id}`, `POST /disputes/{id}/resolve` — DB `timesheet_disputes`.
+* `POST /disputes` — nhân viên tạo khiếu nại `{workDate, reason}` → `PENDING`, `deadline = now + 2 ngày`.
+* `GET /disputes?status=` — HR xem tất cả, quản lý xem cấp dưới, nhân viên chỉ xem của mình; **sắp theo hạn tăng dần**; tự chuyển `EXPIRED` khi quá hạn.
+* `GET /disputes/{id}` — chi tiết 3 nguồn **dữ liệu thật**: `log` (attendance_logs: check-in/out, status) · `relatedRequests` (đơn từ phủ ngày khiếu nại) · `currentCell` (ô timesheet_cells HR đang sửa) + `ruleHint` tính theo log.
+* `POST /disputes/{id}/resolve` — chỉ **HR hoặc quản lý trực tiếp**; chặn khi đã xử lý/quá hạn:
+  * `FIX` (cần `symbol`) → upsert `timesheet_cells` + audit ô (`timesheet_audit_logs`).
+  * `MAKEUP` → tạo đơn `ADJUST` PENDING_APPROVAL cho nhân viên.
+  * `REJECT` → bắt buộc `reason`.
+  * Mọi action → audit `RESOLVE_DISPUTE` + notification cho nhân viên.
 * `GET /attendance/my-timesheet?month&employeeCode` — bảng công tháng của tôi hoặc của nhân viên cấp dưới/HR xem; trả `employeeCode/employeeName`.
 * `GET /attendance/my-shift` — ca thật (khung vào/ra, nghỉ trưa, giờ/ngày) để tính đi muộn/về sớm và hiển thị giờ làm.
 
