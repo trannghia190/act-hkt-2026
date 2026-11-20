@@ -61,7 +61,7 @@ DATABASE_URL = os.environ.get(
     "postgresql://postgres:postgres123@localhost:5432/pulse_db",
 )
 SIMILARITY_THRESHOLD = float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
-SFACE_SIMILARITY_THRESHOLD = 0.363
+SFACE_SIMILARITY_THRESHOLD = float(os.environ.get("SFACE_SIMILARITY_THRESHOLD", "0.85"))
 LIVENESS_MOTION_THRESHOLD = float(os.environ.get("FACE_LIVENESS_MOTION", "0.6"))
 
 _db_pool = None
@@ -291,7 +291,7 @@ class VerifyResponse(BaseModel):
     similarity_score: float = 0.0
     quality_passed: bool = True
     is_liveness_verified: bool = False
-    is_proxy_punch_detected: bool = False
+    is_proxy_punch_detected: bool = Field(..., description="Explicitly indicates whether proxy punch is detected")
     error_code: Optional[str] = None
     message: str
 
@@ -318,14 +318,6 @@ class EnrollJsonRequest(BaseModel):
     left_image: Optional[str] = Field(None, description="Left angle face image")
     right_image: Optional[str] = Field(None, description="Right angle face image")
 
-
-class CheckInRequestPayload(BaseModel):
-    employeeCode: Optional[str] = None
-    faceImageBase64: Optional[str] = None
-    wifiBssid: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    type: Optional[str] = "IN"
 
 
 # ====================================================
@@ -681,22 +673,19 @@ def verify_face_json(payload: VerifyJsonRequest):
                 break
 
     # Prioritize expected candidate if above threshold
-    effective_threshold = SFACE_SIMILARITY_THRESHOLD if len(query_vec) == 128 else SIMILARITY_THRESHOLD
+    effective_threshold = float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
     chosen_candidate = best_candidate
     chosen_score = best_score
     if targeted_candidate and targeted_score >= effective_threshold:
         chosen_candidate = targeted_candidate
         chosen_score = targeted_score
 
-    # Fallback for dev/demo if expected employee is specified and test image passed quality
-    if chosen_candidate is None and payload.expected_employee_code:
-        exp_code = payload.expected_employee_code.strip()
-        chosen_candidate = (exp_code, f"Nhân Viên {exp_code}", "Khối Kỹ Thuật")
-        chosen_score = 0.965
+    # Convert raw cosine similarity to normalized confidence score [0.0, 1.0]
+    conf_score = round(float((chosen_score + 1.0) / 2.0 if chosen_score <= 1.0 else chosen_score), 4)
 
-    if chosen_candidate and (chosen_score >= effective_threshold or chosen_score >= 0.80):
+    # Check if candidate meets the strict business threshold (0.85) without arbitrary fallbacks
+    if chosen_candidate and conf_score >= effective_threshold:
         user_id, name, dept = chosen_candidate
-        conf_score = round(min(0.999, max(0.85, (chosen_score + 1.0) / 2.0 if chosen_score <= 1.0 else chosen_score)), 4)
 
         # Check Proxy Punch
         is_proxy_punch = False
@@ -707,30 +696,30 @@ def verify_face_json(payload: VerifyJsonRequest):
                 is_proxy_punch = True
 
         return VerifyResponse(
-            is_matched=True,
-            similarity_score=round(conf_score, 4),
+            is_matched=not is_proxy_punch,
+            similarity_score=conf_score,
             quality_passed=True,
             matched_employee=EmployeeFaceProfile(
                 employee_code=user_id,
                 full_name=name,
                 department=dept or "Khối Kỹ Thuật",
-                confidence_score=round(conf_score, 4),
+                confidence_score=conf_score,
                 is_liveness_verified=liveness_ok,
             ),
             is_liveness_verified=liveness_ok,
             is_proxy_punch_detected=is_proxy_punch,
-            message=f"Nhận diện thành công nhân viên: {name} ({user_id})",
+            message="Phát hiện chấm công hộ! Khuôn mặt không khớp với tài khoản đăng nhập." if is_proxy_punch else f"Nhận diện thành công nhân viên: {name} ({user_id})",
         )
     else:
         return VerifyResponse(
             is_matched=False,
-            similarity_score=round(max(0.0, chosen_score), 4),
+            similarity_score=round(max(0.0, conf_score), 4),
             quality_passed=True,
             is_liveness_verified=liveness_ok,
             matched_employee=None,
             is_proxy_punch_detected=False,
-            error_code="FACE_NOT_RECOGNIZED",
-            message="Khuôn mặt chưa được đăng ký trong hệ thống hoặc độ tương đồng quá thấp.",
+            error_code="FACE_NOT_MATCHED",
+            message=f"Khuôn mặt chưa được đăng ký trong hệ thống hoặc độ tương đồng ({conf_score:.1%}) thấp hơn ngưỡng quy định ({effective_threshold:.0%}).",
         )
 
 
@@ -854,120 +843,6 @@ async def enroll_face_multipart(
     )
     return await enroll_face_json(payload)
 
-
-# ====================================================
-# ATTENDANCE & INTEGRATION COMPATIBILITY ENDPOINTS
-# ====================================================
-@app.post("/api/v1/attendance/check-in", summary="Attendance Check-In", tags=["Attendance"])
-def attendance_check_in(payload: CheckInRequestPayload):
-    code = payload.employeeCode or "136ACT"
-    now_str = datetime.now().isoformat()
-    return {
-        "success": True,
-        "message": f"Chấm công vào ca thành công cho nhân viên {code}",
-        "data": {
-            "status": "VALID",
-            "serverTimestamp": now_str,
-            "message": f"Xác thực khuôn mặt chính chủ thành công! ({code})",
-            "matchedEmployeeCode": code,
-            "matchedFullName": f"Nhân Viên {code}",
-            "similarityScore": 0.985,
-            "isProxyPunchDetected": False,
-        },
-        "timestamp": now_str,
-    }
-
-
-@app.post("/api/v1/attendance/check-out", summary="Attendance Check-Out", tags=["Attendance"])
-def attendance_check_out(payload: CheckInRequestPayload):
-    code = payload.employeeCode or "136ACT"
-    now_str = datetime.now().isoformat()
-    return {
-        "success": True,
-        "message": f"Chấm công ra ca thành công cho nhân viên {code}",
-        "data": {
-            "status": "VALID",
-            "serverTimestamp": now_str,
-            "message": f"Xác thực khuôn mặt ra ca thành công! ({code})",
-            "matchedEmployeeCode": code,
-            "matchedFullName": f"Nhân Viên {code}",
-            "similarityScore": 0.985,
-            "isProxyPunchDetected": False,
-        },
-        "timestamp": now_str,
-    }
-
-
-@app.get("/api/v1/attendance/today-status", summary="Get Today Punch Status", tags=["Attendance"])
-def attendance_today_status(employee_code: Optional[str] = "136ACT"):
-    now_str = datetime.now().isoformat()
-    return {
-        "success": True,
-        "message": "Trạng thái chấm công hôm nay",
-        "data": {
-            "employeeCode": employee_code,
-            "hasCheckedIn": True,
-            "checkInTime": "08:15:22",
-            "hasCheckedOut": False,
-            "checkOutTime": None,
-            "status": "CHECKED_IN",
-            "shift": "Ca Chuẩn (08:30 - 17:30)",
-            "serverTimestamp": now_str,
-        },
-        "timestamp": now_str,
-    }
-
-
-@app.post("/api/v1/auth/enroll-face", summary="Core Auth Face Enrollment", tags=["Biometrics"])
-def auth_enroll_face(payload: Dict[str, Any] = Body(...)):
-    code = payload.get("employeeCode") or "136ACT"
-    img_data = payload.get("frontalImage") or payload.get("faceDataUrl")
-    if img_data and len(img_data) > 100:
-        try:
-            img = decode_image_from_base64_or_bytes(img_data)
-            feat, err = extract_face_embedding(img)
-            if feat is not None:
-                with sqlite3.connect(SQLITE_DB_FILE) as conn:
-                    conn.execute(
-                        """
-                        INSERT INTO face_identities (tenant_id, user_id, full_name, embedding)
-                        VALUES ('default', ?, ?, ?)
-                        ON CONFLICT(tenant_id, user_id) DO UPDATE SET
-                            embedding = excluded.embedding,
-                            created_at = CURRENT_TIMESTAMP
-                        """,
-                        (code, f"Nhân Viên {code}", feat.tobytes()),
-                    )
-                    conn.commit()
-        except Exception as e:
-            logger.warning("Core face enroll error: %s", e)
-
-    return {
-        "success": True,
-        "message": f"Đăng ký mẫu khuôn mặt cho nhân viên {code} thành công!",
-        "data": True,
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-@app.get("/api/v1/auth/smtp-status", summary="SMTP Status", tags=["System"])
-def smtp_status():
-    return {
-        "success": True,
-        "message": "Trạng thái cấu hình SMTP",
-        "data": {"configured": True, "host": "smtp.gmail.com", "port": 587, "username": "act-hr@internal"},
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
-@app.get("/api/v1/todos/my-inbox", summary="Get Todo Inbox", tags=["System"])
-def get_todos():
-    return {
-        "success": True,
-        "message": "Danh sách việc cần làm",
-        "data": [],
-        "timestamp": datetime.now().isoformat(),
-    }
 
 
 if __name__ == "__main__":
