@@ -6,6 +6,7 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.*;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
@@ -33,6 +34,7 @@ public class TimesheetController {
     private final AttendanceLogRepository attendanceLogRepository;
     private final RequestRepository requestRepository;
     private final HolidayRepository holidayRepository;
+    private final TeamRepository teamRepository;
     private final RuleService ruleService;
     private final AuditLogRepository auditLogRepository;
 
@@ -93,17 +95,47 @@ public class TimesheetController {
                 if (ov != null) daySymbol.put(d, ov);
             }
 
+            // Đếm theo ký hiệu gốc của từng ô để export khớp file HR (Pine 53 cột).
+            Map<String, Integer> symCount = new HashMap<>();
+            double totalDays = 0;
+            for (String s : daySymbol.values()) {
+                if (s == null || s.isBlank()) continue;
+                String base = s.trim().replace("*", "").replace("?", "").trim();
+                int slash = base.indexOf('/');
+                String numeric = slash >= 0 ? base.substring(slash + 1) : base;
+                try {
+                    totalDays += Double.parseDouble(numeric);
+                } catch (NumberFormatException e) {
+                    symCount.merge(base.toUpperCase(), 1, Integer::sum);
+                }
+            }
+
+            String teamName = u.getTeamId() == null ? null
+                    : teamRepository.findById(u.getTeamId()).map(Team::getName).orElse(null);
+            String managerCode = u.getManagerId() == null ? null
+                    : userRepository.findById(u.getManagerId()).map(User::getEmployeeCode).orElse(null);
+
             Map<String, Object> row = new HashMap<>();
             row.put("employeeCode", u.getEmployeeCode());
             row.put("fullName", u.getFullName());
             row.put("positionName", u.getPositionName());
+            row.put("teamName", teamName);
+            row.put("managerCode", managerCode);
             row.put("days", daySymbol);
             row.put("standardDays", workingDays);
             row.put("actualDays", Math.min(present, workingDays));
-            row.put("wfhDays", wfh);
-            row.put("leaveDays", leave);
+            row.put("wfhDays", symCount.getOrDefault("R", wfh));
+            row.put("leaveDays", symCount.getOrDefault("AL", leave));
             row.put("lateCount", late);
-            row.put("holidayDays", holidayCount);
+            row.put("holidayDays", symCount.getOrDefault("NL", holidayCount));
+            row.put("sickDays", symCount.getOrDefault("S", 0));
+            row.put("sickBhDays", symCount.getOrDefault("S-BH", symCount.getOrDefault("SBH", 0)));
+            row.put("compDays", symCount.getOrDefault("RO", 0));
+            row.put("unpaidDays", symCount.getOrDefault("UP", 0));
+            row.put("maternityDays", symCount.getOrDefault("ML", 0));
+            row.put("paternityDays", symCount.getOrDefault("PL", 0));
+            row.put("specialLeaveDays", symCount.getOrDefault("CL", 0));
+            row.put("totalDays", totalDays);
             row.put("remainingLeave", ruleService.getInt("leave_accrual", "base_days_per_year", 12) - leave);
             rows.add(row);
         }

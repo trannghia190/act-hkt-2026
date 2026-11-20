@@ -33,7 +33,7 @@ export const ApprovalsPage: React.FC = () => {
   const mapRequest = (r: any): AttendanceRequestItem => {
     const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
     return {
-      id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: '',
+      id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
       team: r.team || '', type: r.requestType, typeName: typeNames[r.requestType] || r.requestType,
       startDate: r.workDate || '', endDate: r.workDate || '', durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
       reason: r.reason || '', status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
@@ -76,7 +76,7 @@ export const ApprovalsPage: React.FC = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        toEmail: approvingItem.requesterEmail || 'luan.vu@act-corp.internal',
+        toEmail: approvingItem.requesterEmail,
         fullName: approvingItem.requesterName,
         requestId: approvingItem.id,
         requestType: approvingItem.typeName,
@@ -103,7 +103,7 @@ export const ApprovalsPage: React.FC = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        toEmail: rejectingItem.requesterEmail || 'luan.vu@act-corp.internal',
+        toEmail: rejectingItem.requesterEmail,
         fullName: rejectingItem.requesterName,
         requestId: rejectingItem.id,
         requestType: rejectingItem.typeName,

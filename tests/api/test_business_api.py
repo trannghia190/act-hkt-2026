@@ -184,6 +184,63 @@ check("trạng thái sau khoá = locked", (data.get("data") or {}).get("status")
 status, data = call("GET", "/disputes")
 check("GET /disputes", status == 200 and len(data.get("data") or []) >= 1)
 
+# 10. Loại nghỉ: chống trùng mã với thông điệp thân thiện (không lộ lỗi SQL)
+def login_as(code):
+    _, d = call("POST", "/auth/login", {"employeeCodeOrEmail": code, "password": "123456"}, token=False)
+    return (d.get("data") or {}).get("accessToken")
+
+emp_token = TOKEN
+HR_TOKEN = login_as("01HR")
+check("login HR 01HR", bool(HR_TOKEN))
+TOKEN = HR_TOKEN
+status, data = call("POST", "/admin/leave-types", {"code": "AL", "name": "Trùng mã", "defaultDays": 1, "unit": "DAY", "submitWithinDays": 3}, expect=400)
+check("trùng mã loại nghỉ bị chặn với thông điệp rõ", status == 400 and "đã tồn tại" in (data.get("message") or ""), str(data.get("message"))[:80])
+
+# 11. Bảng công trả đủ dữ liệu cho 17 cột tổng hợp kiểu Pine
+status, data = call("GET", "/timesheets")
+rows = (data.get("data") or {}).get("rows") or []
+required = {"teamName", "managerCode", "totalDays", "sickDays", "sickBhDays", "compDays",
+            "unpaidDays", "maternityDays", "paternityDays", "specialLeaveDays", "remainingLeave"}
+check("bảng công có đủ trường cho 17 cột tổng hợp", bool(rows) and required.issubset(rows[0].keys()),
+      f"missing {required - set(rows[0].keys()) if rows else required}")
+
+# 12. Bảng phép có tên nhóm để lọc/hiển thị
+status, data = call("GET", "/leaves/table")
+lt_rows = data.get("data") or []
+check("bảng phép có teamName", bool(lt_rows) and all("teamName" in r for r in lt_rows))
+
+# 13. Từ chối khiếu nại: bắt buộc lý do + nhân viên nhận thông báo
+status, data = call("POST", "/disputes/DC-02/resolve", {"action": "REJECT"}, expect=400)
+check("từ chối khiếu nại thiếu lý do bị chặn", status == 400)
+status, data = call("POST", "/disputes/DC-02/resolve", {"action": "REJECT", "reason": "Bảng công đã khớp log"}, expect=200)
+check("từ chối khiếu nại có lý do", status == 200 and (data.get("data") or {}).get("status") == "REJECTED")
+status, data = call("GET", "/notifications")
+notifs = data.get("data") or []
+check("thông báo từ chối khiếu nại được lưu DB", any("từ chối" in (n.get("title") or "").lower() for n in notifs),
+      f"got {len(notifs)} notifications")
+
+# 14. Hộp thư duyệt trả kèm tên/mã nhân viên
+MGR_TOKEN = login_as("05ACT")
+check("login manager 05ACT", bool(MGR_TOKEN))
+TOKEN = MGR_TOKEN
+status, data = call("GET", "/requests/inbox")
+inbox = data.get("data") or []
+check("hộp thư duyệt có tên + mã nhân viên", all(r.get("employeeCode") and r.get("employeeName") for r in inbox) if inbox else True)
+
+# 15. Vòng đời đơn nháp: lưu nháp → gửi duyệt → hủy
+TOKEN = emp_token
+status, data = call("POST", "/requests", {"type": "LEAVE", "leaveType": "AL", "workDate": "2030-01-07",
+                                          "reason": "Kiểm thử vòng đời đơn nháp", "payload": "{}", "draft": True})
+draft = data.get("data") or {}
+check("lưu nháp tạo DRAFT", status == 200 and draft.get("status") == "DRAFT")
+draft_id = draft.get("id")
+if draft_id:
+    status, data = call("POST", f"/requests/{draft_id}/submit")
+    check("gửi duyệt đơn nháp", status == 200 and (data.get("data") or {}).get("status") == "PENDING_APPROVAL")
+    status, data = call("POST", f"/requests/{draft_id}/withdraw")
+    check("hủy đơn nháp/chờ duyệt", status == 200 and (data.get("data") or {}).get("status") == "WITHDRAWN")
+TOKEN = emp_token
+
 print()
 if FAILED:
     print(f"❌ {len(FAILED)} test failed")

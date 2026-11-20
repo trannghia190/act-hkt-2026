@@ -196,6 +196,14 @@ export const RequestsPage: React.FC = () => {
     loadRequests();
   };
 
+  const handleSubmitDraft = async (id: string) => {
+    const res = await fetch(`/api/v1/requests/${id}/submit`, { method: 'POST', headers: authHeaders() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(json?.message || 'Gửi duyệt thất bại'); return; }
+    showToast('Đã gửi đơn nháp tới quản lý');
+    loadRequests();
+  };
+
   // C-cố Feature: Auto-fill form directly from punch logs (docs/02 §C-cố - S07)
   const handleAutoFillMissedPunch = (kind: 'OUT' | 'LATE') => {
     const latest = punchLogs.find(l => (kind === 'OUT' ? l.checkInAt && !l.checkOutAt : l.checkInAt)) || punchLogs[0];
@@ -339,6 +347,9 @@ export const RequestsPage: React.FC = () => {
         </div>
 
         <div className="text-xs text-ink-muted">
+          <div className="text-[11px] text-ink-muted">
+            Quota: đi muộn {requests.filter(r => r.type === 'LATE_EARLY' && r.status !== 'REJECTED').length}/2 · bổ sung {requests.filter(r => r.type === 'ADJUST' && r.status !== 'REJECTED').length}/5 · WFH đã gửi tuần này {requests.filter(r => r.type === 'WFH' && r.status === 'PENDING').length}/2
+          </div>
           Tổng cộng: <strong className="text-ink">{filtered.length}</strong> đơn
         </div>
       </div>
@@ -387,12 +398,19 @@ export const RequestsPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-ink-secondary">{req.approver}</td>
                   <td className="py-3 px-4">
+                    {req.status === 'DRAFT' && <Badge variant="gray">Nháp — chưa gửi</Badge>}
                     {req.status === 'PENDING' && <Badge variant="warn">Chờ duyệt</Badge>}
                     {req.status === 'APPROVED' && <Badge variant="ok">Đã duyệt</Badge>}
                     {req.status === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
+                    {req.status === 'WITHDRAWN' && <Badge variant="gray">Đã hủy</Badge>}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    {req.status === 'PENDING' ? (
+                    {req.status === 'DRAFT' ? (
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="primary" size="sm" onClick={() => handleSubmitDraft(req.id)}>Gửi duyệt</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy</Button>
+                      </div>
+                    ) : req.status === 'PENDING' ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -570,6 +588,9 @@ export const RequestsPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-2 border-t border-line">
             <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
               Hủy
+            </Button>
+            <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
+              Lưu nháp
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER')}>
               Gửi Đơn Phê Duyệt
