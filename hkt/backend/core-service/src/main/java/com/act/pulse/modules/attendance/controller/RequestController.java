@@ -64,9 +64,6 @@ public class RequestController {
             if (workDate.isBefore(LocalDate.now().plusDays(1)) && !Boolean.TRUE.equals(body.getUrgent())) {
                 throw new RuntimeException("WFH phải đăng ký trước ít nhất 1 ngày làm việc");
             }
-            if (Boolean.FALSE.equals(body.getLocationAllowed())) {
-                throw new RuntimeException("Vị trí đăng ký WFH không được phép");
-            }
         }
 
         if ("LATE_EARLY".equals(body.getType())) {
