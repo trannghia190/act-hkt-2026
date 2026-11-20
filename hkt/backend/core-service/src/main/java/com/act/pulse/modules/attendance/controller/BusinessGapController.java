@@ -827,12 +827,57 @@ public class BusinessGapController {
     @PostMapping("/disputes/{id}/resolve")
     @Operation(summary = "Xử lý khiếu nại: sửa ô / tạo đơn bổ sung / từ chối (bắt buộc lý do)")
     public ApiResponse<Map<String, Object>> resolveDispute(@PathVariable String id, @RequestBody Map<String, String> body) {
+        return ApiResponse.ok(applyResolve(id, body), "Đã xử lý khiếu nại");
+    }
+
+    @PostMapping("/disputes/bulk-resolve")
+    @Operation(summary = "Xử lý hàng loạt khiếu nại (P1) — cùng action/lý do, bỏ qua đơn không hợp lệ")
+    public ApiResponse<Map<String, Object>> bulkResolve(@RequestBody Map<String, Object> body) {
+        Object rawIds = body.get("ids");
+        if (!(rawIds instanceof List) || ((List<?>) rawIds).isEmpty()) {
+            throw new RuntimeException("Phải chọn ít nhất 1 khiếu nại");
+        }
+        String action = String.valueOf(body.getOrDefault("action", "REJECT"));
+        String reason = body.get("reason") == null ? null : String.valueOf(body.get("reason"));
+        String symbol = body.get("symbol") == null ? null : String.valueOf(body.get("symbol"));
+        int resolved = 0;
+        List<Map<String, Object>> skipped = new ArrayList<>();
+        for (Object raw : (List<?>) rawIds) {
+            String id = String.valueOf(raw);
+            Map<String, String> one = new HashMap<>();
+            one.put("action", action);
+            if (reason != null) one.put("reason", reason);
+            if (symbol != null) one.put("symbol", symbol);
+            try {
+                applyResolve(id, one);
+                resolved++;
+            } catch (RuntimeException e) {
+                Map<String, Object> s = new HashMap<>();
+                s.put("id", id);
+                s.put("message", e.getMessage());
+                skipped.add(s);
+            }
+        }
+        Map<String, Object> out = new HashMap<>();
+        out.put("resolved", resolved);
+        out.put("skipped", skipped);
+        return ApiResponse.ok(out, "Đã xử lý " + resolved + "/" + ((List<?>) rawIds).size() + " khiếu nại");
+    }
+
+    private Map<String, Object> applyResolve(String id, Map<String, String> body) {
         TimesheetDispute d = timesheetDisputeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại: " + id));
         if (!canManageDispute(d)) throw new RuntimeException("Chỉ HR hoặc quản lý trực tiếp mới được xử lý khiếu nại");
         String action = body.getOrDefault("action", "REJECT");
-        if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
+        if (!("FIX".equals(action) || "MAKEUP".equals(action) || "REJECT".equals(action))) {
+            throw new RuntimeException("Hành động không hợp lệ: " + action);
+        }
+        String reason = body.get("reason");
+        if ("REJECT".equals(action) && (reason == null || reason.isBlank())) {
             throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
+        }
+        if (!"REJECT".equals(action) && (reason == null || reason.isBlank())) {
+            throw new RuntimeException("Xử lý khiếu nại phải nhập lý do");
         }
         if ("EXPIRED".equals(d.getStatus())) {
             throw new RuntimeException("Khiếu nại đã quá hạn 2 ngày — tự đóng, không xử lý được");
@@ -846,7 +891,6 @@ public class BusinessGapController {
             throw new RuntimeException("Khiếu nại đã quá hạn 2 ngày — tự đóng, không xử lý được");
         }
 
-        // 3 cách xử lý có hiệu lực thật
         if ("FIX".equals(action)) {
             String symbol = body.get("symbol");
             if (symbol == null || symbol.isBlank()) throw new RuntimeException("Sửa ô phải chọn ký hiệu công mới");
@@ -855,6 +899,9 @@ public class BusinessGapController {
                     .findByUserIdAndPeriodMonthAndPeriodYear(d.getUserId(), ym.getMonthValue(), ym.getYear())
                     .orElseGet(() -> timesheetRepository.save(Timesheet.builder()
                             .userId(d.getUserId()).periodMonth(ym.getMonthValue()).periodYear(ym.getYear()).status("draft").build()));
+            if ("locked".equals(sheet.getStatus())) {
+                throw new RuntimeException("Kỳ công " + ym + " đã khoá — không sửa được ô");
+            }
             TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
                     .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
             String oldSymbol = cell.getSymbol();
@@ -863,12 +910,12 @@ public class BusinessGapController {
             cell = timesheetCellRepository.save(cell);
             timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
                     .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol.trim())
-                    .reason("Xử lý khiếu nại " + id + ": " + body.getOrDefault("reason", ""))
+                    .reason("Xử lý khiếu nại " + id + ": " + reason)
                     .changedBy(CurrentUser.userId()).build());
         } else if ("MAKEUP".equals(action)) {
             RequestEntity makeup = RequestEntity.builder()
                     .userId(d.getUserId()).requestType("ADJUST").workDate(d.getWorkDate())
-                    .reason("Bổ sung công theo khiếu nại " + id + ": " + body.getOrDefault("reason", ""))
+                    .reason("Bổ sung công theo khiếu nại " + id + ": " + reason)
                     .payload("{}").status("PENDING_APPROVAL").build();
             makeup.setCreatedAt(LocalDateTime.now());
             makeup.setUpdatedAt(LocalDateTime.now());
@@ -878,26 +925,26 @@ public class BusinessGapController {
         d.setStatus("REJECT".equals(action) ? "REJECTED" : "RESOLVED");
         d.setResolutionAction(action);
         d.setResolvedBy(CurrentUser.userId());
-        d.setResolvedAt(java.time.LocalDateTime.now());
+        d.setResolvedAt(LocalDateTime.now());
         timesheetDisputeRepository.save(d);
 
         AuditLog log = AuditLog.builder().action("RESOLVE_DISPUTE").entityName("DISPUTE").entityId(id)
-                .userId(CurrentUser.userId()).reason(body.get("reason")).newValue(action).build();
-        log.setCreatedAt(java.time.LocalDateTime.now());
+                .userId(CurrentUser.userId()).reason(reason).newValue(action).build();
+        log.setCreatedAt(LocalDateTime.now());
         auditLogRepository.save(log);
 
         notificationRepository.save(Notification.builder()
                 .userId(d.getUserId())
                 .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
                 .content("Khiếu nại ngày " + d.getWorkDate() + ": " + d.getReason()
-                        + ". Lý do xử lý: " + body.get("reason"))
+                        + ". Lý do xử lý: " + reason)
                 .type("DISPUTE")
                 .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
                 .actionUrl("/attendance/disputes/" + id)
                 .isRead(false)
                 .build());
 
-        return ApiResponse.ok(disputeMap(d), "Đã xử lý khiếu nại");
+        return disputeMap(d);
     }
 
     private static final Map<String, Map<String, Object>> USER_PREFERENCES = new ConcurrentHashMap<>();
