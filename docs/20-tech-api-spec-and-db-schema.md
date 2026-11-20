@@ -312,7 +312,7 @@ erDiagram
 | POST | `/requests/{id}/attachments` | multipart `file`, nhiều lần cho nhiều file;ảnh/PDF ≤10MB |
 | GET | `/requests/{id}/attachments` | Danh sách file (chủ đơn/quản lý/HR) |
 | GET | `/requests/{id}/attachments/{attachmentId}` | Tải file thật |
-| GET | `/requests/{id}` | Chi tiết + timeline + `endDate`, `leaveTypeName`, `approverName`, `attachmentCount` |
+| GET | `/requests/{id}` | Chi tiết + timeline + `endDate`, `leaveTypeName`, `approverName`, `attachmentCount`, `durationText`, `editHistory` |
 | GET | `/requests/inbox` | Kèm `employeeCode/Name`, `endDate`, `leaveTypeName`, `attachmentCount` |
 | POST | `/requests/{id}/approve` | Chặn nếu loại nghỉ cần giấy tờ mà chưa có file |
 | POST | `/requests/{id}/reject` | Bắt buộc lý do |

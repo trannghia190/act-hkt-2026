@@ -244,14 +244,15 @@ public class RequestController {
         LocalDate today = LocalDate.now();
         LocalDate weekStart = today.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = weekStart.plusDays(6);
-        long lateUsed = 0, adjustUsed = 0, wfhWeekUsed = 0;
+        long lateUsed = 0, adjustUsed = 0;
+        double wfhWeekUsed = 0;
         for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
             boolean counted = "PENDING_APPROVAL".equals(r.getStatus()) || "APPROVED".equals(r.getStatus());
             if (!counted || r.getWorkDate() == null) continue;
             boolean sameMonth = r.getWorkDate().getMonth() == today.getMonth() && r.getWorkDate().getYear() == today.getYear();
             if ("LATE_EARLY".equals(r.getRequestType()) && sameMonth) lateUsed++;
             if ("ADJUST".equals(r.getRequestType()) && sameMonth) adjustUsed++;
-            if ("WFH".equals(r.getRequestType()) && !r.getWorkDate().isBefore(weekStart) && !r.getWorkDate().isAfter(weekEnd)) wfhWeekUsed++;
+            if ("WFH".equals(r.getRequestType())) wfhWeekUsed += wfhDaysInRange(r, weekStart, weekEnd);
         }
         Map<String, Object> out = new HashMap<>();
         out.put("lateUsed", lateUsed);
@@ -411,6 +412,19 @@ public class RequestController {
         out.put("request", r);
         out.put("timeline", timeline);
         out.put("impact", r.getMinutes() != null ? "Trừ " + r.getMinutes() + " phút công" : "Không đổi bảng công");
+        out.put("durationText", computedDuration(r));
+        java.util.List<Map<String, Object>> editHistory = new java.util.ArrayList<>();
+        for (AuditLog log : auditLogRepository.findByEntityIdOrderByCreatedAtAsc(id.toString())) {
+            if (!"EDIT_REQUEST".equals(log.getAction())) continue;
+            Map<String, Object> h = new HashMap<>();
+            h.put("at", String.valueOf(log.getCreatedAt()));
+            h.put("actor", log.getUserCode() == null ? "Nhân viên" : log.getUserCode());
+            h.put("oldValue", log.getOldValue());
+            h.put("newValue", log.getNewValue());
+            h.put("reason", log.getReason());
+            editHistory.add(h);
+        }
+        out.put("editHistory", editHistory);
         out.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
         out.put("attachmentCount", requestAttachmentRepository.countByRequestId(id));
         userRepository.findById(r.getUserId()).ifPresent(u -> {
@@ -530,6 +544,35 @@ public class RequestController {
         return ApiResponse.ok(requestRepository.save(r), "Đã rút đơn");
     }
 
+    private String computedDuration(RequestEntity r) {
+        if ("LEAVE".equals(r.getRequestType())) {
+            boolean half = r.getPayload() != null && r.getPayload().contains("half_day_period");
+            double days = leaveDayCount(r);
+            if (half) return "0.5 ngày — " + (r.getPayload() != null && r.getPayload().contains("MORNING") ? "buổi sáng" : "buổi chiều");
+            return String.format(java.util.Locale.US, "%.1f ngày làm việc", days);
+        }
+        if ("WFH".equals(r.getRequestType())) {
+            boolean half = r.getPayload() != null && r.getPayload().contains("half_day_period");
+            if (half) return "0.5 ngày — WFH " + (r.getPayload() != null && r.getPayload().contains("MORNING") ? "buổi sáng" : "buổi chiều");
+            LocalDate start = r.getWorkDate();
+            LocalDate end = r.getEndDate() == null ? start : r.getEndDate();
+            double days = wfhDaysInRange(start, end, false, start, end);
+            return String.format(java.util.Locale.US, "%.1f ngày làm việc", days);
+        }
+        if (r.getMinutes() != null) return r.getMinutes() + " phút";
+        try {
+            Map<?, ?> p = objectMapper.readValue(r.getPayload() == null ? "{}" : r.getPayload(), Map.class);
+            return p.get("duration") == null ? null : String.valueOf(p.get("duration"));
+        } catch (Exception e) { return null; }
+    }
+
+    private String requestSnapshot(RequestEntity r) {
+        return "type=" + r.getRequestType() + " · leaveType=" + r.getLeaveType()
+                + " · ngày=" + r.getWorkDate()
+                + (r.getEndDate() != null && !r.getEndDate().equals(r.getWorkDate()) ? "→" + r.getEndDate() : "")
+                + " · phút=" + r.getMinutes() + " · lý do=" + r.getReason();
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Nhân viên sửa đơn đang chờ duyệt hoặc đã bị từ chối rồi gửi lại")
     public ApiResponse<RequestEntity> updateRequest(@PathVariable UUID id, @RequestBody CreateRequest body) {
@@ -538,6 +581,7 @@ public class RequestController {
         if (!"PENDING_APPROVAL".equals(r.getStatus()) && !"REJECTED".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
             throw new RuntimeException("Chỉ sửa được đơn nháp, đang chờ duyệt hoặc bị từ chối");
         }
+        String beforeSnapshot = requestSnapshot(r);
         if (body.getType() != null) r.setRequestType(body.getType());
         if (body.getLeaveType() != null) r.setLeaveType(body.getLeaveType());
         if (body.getWorkDate() != null) r.setWorkDate(body.getWorkDate());
@@ -568,6 +612,20 @@ public class RequestController {
             cancelConflicts(conflicts, (r.getRequestType() == null ? "đơn sửa" : r.getRequestType())
                     + " " + (r.getWorkDate() == null ? "" : r.getWorkDate()));
         }
+
+        // Cập nhật lại thời lượng trong payload theo khoảng ngày mới để không bị stale.
+        try {
+            Map<String, Object> payloadMap = objectMapper.readValue(r.getPayload() == null ? "{}" : r.getPayload(), Map.class);
+            String duration = computedDuration(r);
+            if (duration != null) payloadMap.put("duration", duration);
+            r.setPayload(objectMapper.writeValueAsString(payloadMap));
+        } catch (Exception ignored) { }
+
+        AuditLog editLog = AuditLog.builder().action("EDIT_REQUEST").entityName("REQUEST").entityId(r.getId().toString())
+                .userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
+                .oldValue(beforeSnapshot).newValue(requestSnapshot(r)).reason("Chỉnh sửa đơn").build();
+        editLog.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(editLog);
 
         r.setStatus("PENDING_APPROVAL");
         r.setDecidedBy(null);

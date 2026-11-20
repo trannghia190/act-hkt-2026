@@ -63,6 +63,7 @@ graph TD
 * Cột hiển thị: Mã đơn · Loại đơn (tên loại nghỉ, không dùng mã S/AL) · **Ngày áp dụng** (1 ngày hoặc khoảng) · **Ngày tạo** · Thời lượng · Lý do · Người phê duyệt · Trạng thái · Thao tác.
 * Nút **Xem chi tiết** mọi dòng → chi tiết đầy đủ + timeline + file đính kèm tải được.
 * **Sửa đơn** khi đang `PENDING_APPROVAL` hoặc `REJECTED` (`PUT /requests/{id}`): cập nhật nội dung, đưa về chờ duyệt, xoá quyết định cũ; giữ file đã có và cho thêm file.
+* Mỗi lần sửa ghi **audit `EDIT_REQUEST`** (trước/sau) + cập nhật lại **thời lượng** trong payload theo ngày mới; trang chi tiết (nhân viên và quản lý) hiển thị **Lịch sử chỉnh sửa**.
 * Nháp: `Lưu nháp` → `Gửi duyệt` / `Hủy`; đơn bị từ chối có "Sửa & gửi lại".
 
 ## 2. Quota Engine & Trạng Thái Đơn: Lưu Nháp vs Gửi Đơn
