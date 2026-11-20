@@ -119,3 +119,16 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 
 * Tính năng xuất file Excel sinh tệp `.xlsx` có đúng cấu trúc 53 cột, tên sheet, định dạng ô và tiêu đề như tệp gốc `doc/Rule chấm công.xlsx`.
 * Phòng Kế toán / Tiền lương chỉ cần nạp thẳng file xuất từ hệ thống vào phần mềm tính lương hiện có mà không phải mất công ánh xạ (mapping) thủ công lại cột hay sửa chữa định dạng.
+
+---
+
+## Cập nhật triển khai — 20/11/2026
+
+* **Trạng thái kỳ công lưu DB:** `timesheets` (1 dòng/người/tháng) giữ `draft | published | locked`, `published_at`, `dispute_deadline`, `locked_at`. Publish/lock tạo/cập nhật dòng cho toàn bộ nhân sự; trạng thái không mất khi restart.
+* **Sửa ô lưu DB:** `timesheet_cells` (unique theo timesheet+ngày, `is_manual=true`) + `timesheet_audit_logs` (old/new/reason/changed_by). Không còn map RAM.
+* **Khiếu nại lưu DB:** `timesheet_disputes`; đếm ngược hạn, quá hạn tự EXPIRED; nút Chốt & khóa đếm pending từ DB.
+* **Ký hiệu nửa ngày:** nghỉ phép nửa ngày = `AL/0.50`; WFH nửa ngày = `R/0.50`; `leaveDays`/`wfhDays` cộng 0.5, không cộng sai vào tổng ngày công.
+* **Nghỉ nhiều ngày:** dùng `requests.work_date → end_date`, trải ký hiệu AL cho từng ngày làm việc trong kỳ.
+* **Đi muộn/về sớm & bổ sung công đã duyệt:** cập nhật `attendance_logs.check_in_at/check_out_at`, `status=VALID` khi đủ cặp giờ → bảng công tính theo giờ thật.
+* **Export 53 cột:** 5 thông tin + 31 ngày + 17 tổng hợp, tên cột theo mẫu Pine, ký hiệu gốc; CSV UTF-8.
+* **Bảng công cá nhân (S11):** đọc `attendance_logs` + `requests` đã duyệt + `my-shift` + `holidays`, tính công chuẩn/thực tế/OT/đi muộn theo ca; không còn mock.
