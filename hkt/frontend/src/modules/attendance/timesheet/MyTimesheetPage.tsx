@@ -86,7 +86,8 @@ export const MyTimesheetPage: React.FC = () => {
       if (!log && !leave && !wfh && !lateEarly && !holiday) continue;
 
       let payload: any = {};
-      try { payload = leave?.payload ? JSON.parse(leave.payload) : {}; } catch { payload = {}; }
+      const anyApproved = leave || wfh || lateEarly;
+      try { payload = anyApproved?.payload ? JSON.parse(anyApproved.payload) : {}; } catch { payload = {}; }
       let latePayload: any = {};
       try { latePayload = lateEarly?.payload ? JSON.parse(lateEarly.payload) : {}; } catch { latePayload = {}; }
 
@@ -116,7 +117,9 @@ export const MyTimesheetPage: React.FC = () => {
         note = `Nghỉ ${leave.leaveType || 'phép'}${half}${payload.work_window_start ? ` · làm ${payload.work_window_start}–${payload.work_window_end}` : ''}`;
       } else if (wfh) {
         status = 'WFH';
-        note = 'Làm việc từ xa (WFH) đã duyệt';
+        note = payload.half_day_period
+          ? `WFH buổi ${payload.half_day_period === 'MORNING' ? 'sáng' : 'chiều'} · làm việc ${payload.work_window_start || '—'}–${payload.work_window_end || '—'}`
+          : 'Làm việc từ xa (WFH) cả ngày';
       } else if (lateEarly) {
         status = lateMinutes > 0 ? 'LATE' : 'FULL';
         note = latePayload.late_early === 'EARLY' ? 'Về sớm đã duyệt' : 'Đi muộn đã duyệt';
@@ -149,7 +152,8 @@ export const MyTimesheetPage: React.FC = () => {
   }, [monthDates, logs, approvedRequests, holidays, selectedMonth, shiftLabel, shiftStart, shiftEnd, lunchHours]);
 
   const standardDays = monthDates.filter(d => d.weekday !== 0 && d.weekday !== 6 && !holidays.includes(d.iso)).length;
-  const actualDays = records.filter(r => r.status === 'FULL' || r.status === 'LATE' || r.status === 'WFH').length;
+  const actualDays = records.reduce((sum, r) => sum
+    + (r.status === 'FULL' || r.status === 'LATE' ? 1 : r.status === 'WFH' ? (r.note.includes('buổi') ? 0.5 : 1) : 0), 0);
   const leaveDays = records.reduce((sum, r) => sum + (r.status === 'LEAVE' ? (r.note.includes('buổi') ? 0.5 : 1) : 0), 0);
   const lateCount = approvedRequests.filter(r => r.requestType === 'LATE_EARLY').length;
   const otHours = records.reduce((sum, r) => sum + (r.hoursWorked > requiredHours ? r.hoursWorked - requiredHours : 0), 0);

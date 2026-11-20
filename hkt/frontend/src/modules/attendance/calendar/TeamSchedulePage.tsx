@@ -103,13 +103,13 @@ export const TeamSchedulePage: React.FC = () => {
                   {e.fullName} <span className="text-xs text-ink-muted">({e.employeeCode})</span>
                   {e.halfDay && (
                     <span className="block text-[11px] text-sky-700 mt-0.5">
-                      Nghỉ buổi {e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}
+                      {e.kind === 'WFH' ? 'WFH buổi' : 'Nghỉ buổi'} {e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}
                       {e.workWindowStart && e.workWindowEnd ? ` · làm việc ${e.workWindowStart}–${e.workWindowEnd}` : ''}
                     </span>
                   )}
                 </span>
                 <span className={`text-[11px] px-2 py-0.5 rounded border ${KIND_LABEL[e.kind]?.cls || ''}`}>
-                  {e.halfDay ? (e.halfDayPeriod === 'MORNING' ? 'Nghỉ sáng' : 'Nghỉ chiều') : (KIND_LABEL[e.kind]?.text || e.kind)}
+                  {e.halfDay ? (e.kind === 'WFH' ? 'WFH ' : 'Nghỉ ') + (e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều') : (KIND_LABEL[e.kind]?.text || e.kind)}
                 </span>
               </div>
             ))}

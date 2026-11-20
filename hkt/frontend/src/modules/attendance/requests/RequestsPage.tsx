@@ -19,9 +19,7 @@ export const RequestsPage: React.FC = () => {
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
   const [halfDayPeriod, setHalfDayPeriod] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
   const [punchLogs, setPunchLogs] = useState<any[]>([]);
-  const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [holidays, setHolidays] = useState<string[]>([]);
-  const [wfhLocation, setWfhLocation] = useState<'HOME' | 'OTHER'>('HOME');
   const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
   const [lateEarlyTime, setLateEarlyTime] = useState('08:45');
   const [myShift, setMyShift] = useState<any>(null);
@@ -207,15 +205,23 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || 'luan.vu@act-corp.internal',
       team: user?.team || 'Sirius Core',
       type: newReq.type,
-      typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? `nửa ngày, buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}` : 'cả ngày'})` : typeNames[newReq.type],
+      typeName: newReq.type === 'LEAVE'
+        ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? `nửa ngày, buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}` : 'cả ngày'})`
+        : newReq.type === 'WFH'
+        ? `Làm việc từ xa (WFH)${leaveUnit === 'HALF_DAY' ? ` (nửa ngày, buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'})` : ''}`
+        : typeNames[newReq.type],
       startDate: newReq.startDate,
-      endDate: (newReq.type === 'LATE_EARLY' || (newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY')) ? newReq.startDate : newReq.endDate,
+      endDate: (newReq.type === 'LATE_EARLY' || ((newReq.type === 'LEAVE' || newReq.type === 'WFH') && leaveUnit === 'HALF_DAY')) ? newReq.startDate : newReq.endDate,
       durationText: newReq.type === 'LATE_EARLY'
         ? lateEarlyDuration
         : newReq.type === 'LEAVE'
         ? (leaveUnit === 'HALF_DAY'
             ? `0.5 ngày — ${halfDayWindow?.text || 'nửa ngày'}`
             : `${leaveDays} ngày làm việc`)
+        : newReq.type === 'WFH'
+        ? (leaveUnit === 'HALF_DAY'
+            ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}, làm việc ${halfDayWindow?.from}–${halfDayWindow?.to}`
+            : '1.0 ngày làm việc')
         : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
@@ -223,18 +229,22 @@ export const RequestsPage: React.FC = () => {
       createdAt: nowStr
     };
 
+    const wfhHalf = newReq.type === 'WFH' && leaveUnit === 'HALF_DAY';
+    const halfType = newReq.type === 'LEAVE' || newReq.type === 'WFH';
     const payload = JSON.stringify({
       duration: newReq.type === 'LEAVE'
         ? (leaveUnit === 'HALF_DAY' ? `0.5 ngày — ${halfDayWindow?.text || 'nửa ngày'}` : `${leaveDays} ngày làm việc`)
+        : newReq.type === 'WFH'
+        ? (wfhHalf ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}, làm việc ${halfDayWindow?.from}–${halfDayWindow?.to}`
+                   : '1.0 ngày làm việc')
         : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
-      unit: newReq.type === 'LEAVE' ? leaveUnit : undefined,
-      ...(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY' ? {
+      unit: halfType ? leaveUnit : undefined,
+      ...(halfType && leaveUnit === 'HALF_DAY' ? {
         half_day_period: halfDayPeriod,
         work_window_start: halfDayWindow?.from,
         work_window_end: halfDayWindow?.to,
       } : {}),
       urgent: false,
-      location_allowed: wfhLocation === 'HOME',
       ...(newReq.type === 'LATE_EARLY' ? {
         late_early: lateEarlyKind,
         time: lateEarlyTime,
@@ -251,21 +261,12 @@ export const RequestsPage: React.FC = () => {
       reason: newReq.reason,
       draft: asDraft,
     };
-    const weeks = newReq.type === 'WFH' ? Math.max(1, Math.min(8, repeatWeeks)) : 1;
     (async () => {
       try {
-        for (let i = 0; i < weeks; i += 1) {
-          const d = new Date(newReq.startDate);
-          d.setDate(d.getDate() + i * 7);
-          const iso = d.toISOString().slice(0, 10);
-          const res = await fetch('/api/v1/requests', {
-            method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ ...body, workDate: iso, payload: JSON.stringify({ ...JSON.parse(body.payload), repeat_week: i + 1 }) }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
-        }
-        showToast(asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy' : (weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công'));
+        const res = await fetch('/api/v1/requests', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
+        showToast(asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy' : 'Đã gửi đơn thành công');
         loadRequests();
       } catch (e: any) {
         showToast(e?.message || 'Gửi đơn thất bại');
@@ -629,20 +630,32 @@ export const RequestsPage: React.FC = () => {
 
           {newReq.type === 'WFH' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
-              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc — ngày sớm nhất <strong>{minDateForSelected}</strong>.</div>
-              <label className="block text-[11px]">
-                Địa điểm WFH
-                <select className="mt-1 w-full border border-blue-200 rounded p-1" value={wfhLocation} onChange={e => setWfhLocation(e.target.value as 'HOME' | 'OTHER')}>
-                  <option value="HOME">Nhà riêng — được phép</option>
-                  <option value="OTHER">Địa điểm khác — bị cấm</option>
-                </select>
-              </label>
-              {wfhLocation === 'OTHER' && <div className="text-rose-700 font-semibold">Địa điểm này bị cấm WFH — không thể gửi đơn.</div>}
-              <label className="flex items-center gap-2 text-[11px]">
-                Lặp hàng tuần trong
-                <input type="number" min={1} max={8} className="w-16 border border-blue-200 rounded p-1" value={repeatWeeks} onChange={e => setRepeatWeeks(Number(e.target.value) || 1)} />
-                tuần (lẻ hoặc lịch cố định)
-              </label>
+              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; đăng ký trước ít nhất 1 ngày làm việc — ngày sớm nhất <strong>{minDateForSelected}</strong>. Không giới hạn địa điểm.</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-[11px]">Đơn vị
+                  <select className="mt-1 w-full border border-blue-200 rounded p-1" value={leaveUnit}
+                    onChange={e => {
+                      const unit = e.target.value as 'DAY' | 'HALF_DAY';
+                      setLeaveUnit(unit);
+                      if (unit === 'HALF_DAY') setNewReq(prev => ({ ...prev, endDate: prev.startDate }));
+                    }}>
+                    <option value="DAY">Cả ngày</option>
+                    <option value="HALF_DAY">Nửa ngày (0.5)</option>
+                  </select>
+                </label>
+                {leaveUnit === 'HALF_DAY' && (
+                  <label className="block text-[11px]">Buổi
+                    <select className="mt-1 w-full border border-blue-200 rounded p-1" value={halfDayPeriod}
+                      onChange={e => setHalfDayPeriod(e.target.value as 'MORNING' | 'AFTERNOON')}>
+                      <option value="MORNING">Buổi sáng</option>
+                      <option value="AFTERNOON">Buổi chiều</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+              {leaveUnit === 'HALF_DAY' && halfDayWindow && (
+                <div>WFH nửa ngày: về mặt công được tính <b>0.5 ngày</b>; phần còn lại làm việc <b>{halfDayWindow.from}–{halfDayWindow.to}</b>.</div>
+              )}
             </div>
           )}
 
@@ -816,7 +829,7 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER') || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
+            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
               Gửi Đơn Phê Duyệt
             </Button>
           </div>
