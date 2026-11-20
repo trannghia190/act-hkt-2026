@@ -64,29 +64,46 @@ export const RequestDetailPage: React.FC = () => {
       </div>
       {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
       {req && (
-        <div className="bg-surface border border-line rounded-xl p-4 space-y-2">
-          <div className="text-sm font-semibold">{req.requestType} {req.leaveType ? `· ${req.leaveType}` : ''} · {req.workDate || '—'}</div>
+        <div className="bg-surface border border-line rounded-xl p-4 space-y-2.5">
           {(() => {
-            try {
-              const p = JSON.parse(req.payload || '{}');
-              if (p.half_day_period) {
-                return <div className="text-[11px] text-sky-700 mt-0.5">
-                  Nửa ngày — nghỉ {p.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}
-                  {p.work_window_start && p.work_window_end ? ` · làm việc ${p.work_window_start}–${p.work_window_end}` : ''}
-                </div>;
-              }
-              if (req.minutes) return <div className="text-[11px] text-ink-muted mt-0.5">{req.minutes} phút đi muộn/về sớm</div>;
-            } catch { /* ignore */ }
-            return null;
+            const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
+            const statusNames: Record<string, string> = { DRAFT: 'Nháp — chưa gửi', PENDING_APPROVAL: 'Chờ quản lý duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', WITHDRAWN: 'Đã hủy' };
+            let p: any = {};
+            try { p = JSON.parse(req.payload || '{}'); } catch { p = {}; }
+            return (
+              <>
+                <div className="text-sm font-semibold">
+                  {typeNames[req.requestType] || req.requestType}{req.leaveType ? ` — ${req.leaveType}` : ''}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div><span className="text-ink-muted">Mã đơn:</span> <span className="font-mono">{req.id}</span></div>
+                  <div><span className="text-ink-muted">Nhân viên:</span> <b>{data.employeeName || '—'}</b> {data.employeeCode ? `(${data.employeeCode})` : ''}</div>
+                  <div><span className="text-ink-muted">Ngày áp dụng:</span> <b>{req.workDate || '—'}</b></div>
+                  <div><span className="text-ink-muted">Thời lượng:</span> <b>{p.duration || (req.minutes ? `${req.minutes} phút` : '—')}</b></div>
+                  {p.half_day_period && (
+                    <div><span className="text-ink-muted">Buổi:</span> <b>{p.half_day_period === 'MORNING' ? 'Buổi sáng' : 'Buổi chiều'}</b>
+                      {p.work_window_start && p.work_window_end ? ` · làm việc ${p.work_window_start}–${p.work_window_end}` : ''}</div>
+                  )}
+                  <div><span className="text-ink-muted">Gửi lúc:</span> {req.createdAt ? new Date(req.createdAt).toLocaleString('vi-VN') : '—'}</div>
+                  <div><span className="text-ink-muted">Người xử lý:</span> {data.approverName || '—'}</div>
+                  <div><span className="text-ink-muted">Xử lý lúc:</span> {req.decidedAt ? new Date(req.decidedAt).toLocaleString('vi-VN') : '—'}</div>
+                  <div><span className="text-ink-muted">Trạng thái:</span> <b>{statusNames[req.status] || req.status}</b></div>
+                </div>
+                <div className="text-xs"><span className="text-ink-muted">Lý do:</span> {req.reason || '—'}</div>
+                {req.decisionComment && (
+                  <div className="text-xs text-accent bg-accent-soft/40 border border-accent-line rounded p-2">
+                    <b>Ý kiến của quản lý:</b> {req.decisionComment}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Trong quota</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Nộp đúng hạn</span>
+                  <span className="px-2 py-0.5 rounded bg-canvas text-ink-muted border border-line">Ảnh hưởng: {data.impact}</span>
+                </div>
+              </>
+            );
           })()}
-          <div className="text-xs text-ink-muted">Lý do: {req.reason || '—'}</div>
-          <div className="text-xs">Trạng thái: <b>{req.status}</b></div>
-          <div className="flex flex-wrap gap-2 text-[11px]">
-            <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Trong quota</span>
-            <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Nộp đúng hạn</span>
-            <span className="px-2 py-0.5 rounded bg-canvas text-ink-muted border border-line">Ảnh hưởng: {data.impact}</span>
-          </div>
-          <Link to="/attendance/my-timesheet" className="text-xs text-accent underline">Xem bảng công bị tác động →</Link>
+          <Link to="/attendance/my-timesheet" className="text-xs text-accent underline block">Xem bảng công bị tác động →</Link>
         </div>
       )}
       <div className="bg-surface border border-line rounded-xl p-4">

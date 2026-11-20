@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.*;
+import org.springframework.data.domain.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -181,8 +183,41 @@ public class RequestController {
 
     @GetMapping("/my-requests")
     @Operation(summary = "Đơn của tôi (S08)")
-    public ApiResponse<List<RequestEntity>> myRequests() {
-        return ApiResponse.ok(requestRepository.findByUserIdOrderByCreatedAtDesc(CurrentUser.userId()), "Đơn của tôi");
+    public ApiResponse<Object> myRequests(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword
+    ) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) throw new RuntimeException("Chưa đăng nhập");
+        if (page == null) {
+            return ApiResponse.ok(requestRepository.findByUserIdOrderByCreatedAtDesc(userId), "Đơn của tôi");
+        }
+        int safeSize = Math.max(1, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        String dbStatus = "PENDING".equals(status) ? "PENDING_APPROVAL" : status;
+        String kw = keyword == null ? "" : keyword.trim();
+        String typeFilter = type == null || type.isBlank() || "ALL".equals(type) ? null : type;
+        String statusFilter = dbStatus == null || dbStatus.isBlank() || "ALL".equals(dbStatus) ? null : dbStatus;
+        org.springframework.data.jpa.domain.Specification<RequestEntity> spec =
+                (root, query, cb) -> cb.equal(root.get("userId"), userId);
+        if (from != null) spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("workDate"), from));
+        if (to != null) spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("workDate"), to));
+        if (typeFilter != null) spec = spec.and((root, query, cb) -> cb.equal(root.get("requestType"), typeFilter));
+        if (statusFilter != null) spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), statusFilter));
+        if (!kw.isBlank()) spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("reason")), "%" + kw.toLowerCase() + "%"));
+        Page<RequestEntity> result = requestRepository.findAll(spec, pageable);
+        Map<String, Object> out = new HashMap<>();
+        out.put("content", result.getContent());
+        out.put("page", result.getNumber());
+        out.put("size", result.getSize());
+        out.put("totalElements", result.getTotalElements());
+        out.put("totalPages", result.getTotalPages());
+        return ApiResponse.ok(out, "Đơn của tôi");
     }
 
     @GetMapping("/inbox")
@@ -221,7 +256,7 @@ public class RequestController {
     @GetMapping("/{id}")
     @Operation(summary = "Chi tiết đơn + timeline (S13)")
     public ApiResponse<Map<String, Object>> detail(@PathVariable UUID id) {
-        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        RequestEntity r = canAccessRequest(id);
         java.util.List<Map<String, Object>> timeline = new java.util.ArrayList<>();
         timeline.add(Map.of("at", String.valueOf(r.getCreatedAt()), "actor", "Nhân viên", "action", "Gửi đơn"));
         if (r.getDecidedAt() != null) {
@@ -237,6 +272,9 @@ public class RequestController {
             out.put("employeeCode", u.getEmployeeCode());
             out.put("employeeName", u.getFullName());
         });
+        if (r.getDecidedBy() != null) {
+            userRepository.findById(r.getDecidedBy()).ifPresent(u -> out.put("approverName", u.getFullName()));
+        }
         return ApiResponse.ok(out, "Chi tiết đơn");
     }
 
