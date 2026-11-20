@@ -114,7 +114,7 @@ export const MyTimesheetPage: React.FC = () => {
       if (leave) {
         status = 'LEAVE';
         const half = payload.half_day_period ? ` — buổi ${payload.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}` : '';
-        note = `Nghỉ ${leave.leaveType || 'phép'}${half}${payload.work_window_start ? ` · làm ${payload.work_window_start}–${payload.work_window_end}` : ''}`;
+        note = `Nghỉ phép${half}${payload.work_window_start ? ` · làm ${payload.work_window_start}–${payload.work_window_end}` : ''}`;
       } else if (wfh) {
         status = 'WFH';
         note = payload.half_day_period

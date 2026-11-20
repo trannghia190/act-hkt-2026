@@ -50,6 +50,11 @@ public class RequestController {
     private final RequestAttachmentRepository requestAttachmentRepository;
     private final ObjectMapper objectMapper;
 
+    private String leaveTypeName(String code) {
+        if (code == null) return null;
+        return leaveTypeRepository.findByCode(code).map(lt -> lt.getName()).orElse(code);
+    }
+
     @PostMapping
     @Operation(summary = "Tạo đơn (nháp hoặc gửi) — S07/S30/S31/WFH")
     public ApiResponse<RequestEntity> create(@RequestBody CreateRequest body) {
@@ -212,7 +217,13 @@ public class RequestController {
         if (!kw.isBlank()) spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("reason")), "%" + kw.toLowerCase() + "%"));
         Page<RequestEntity> result = requestRepository.findAll(spec, pageable);
         Map<String, Object> out = new HashMap<>();
-        out.put("content", result.getContent());
+        List<Map<String, Object>> content = new ArrayList<>();
+        for (RequestEntity r : result.getContent()) {
+            Map<String, Object> m = objectMapper.convertValue(r, Map.class);
+            m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
+            content.add(m);
+        }
+        out.put("content", content);
         out.put("page", result.getNumber());
         out.put("size", result.getSize());
         out.put("totalElements", result.getTotalElements());
@@ -241,6 +252,7 @@ public class RequestController {
             m.put("createdAt", r.getCreatedAt());
             m.put("appliedParameters", r.getAppliedParameters());
             m.put("payload", r.getPayload());
+            m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
             m.put("attachmentCount", requestAttachmentRepository.countByRequestId(r.getId()));
             userRepository.findById(r.getUserId()).ifPresent(u -> {
                 m.put("employeeCode", u.getEmployeeCode());
@@ -267,6 +279,7 @@ public class RequestController {
         out.put("request", r);
         out.put("timeline", timeline);
         out.put("impact", r.getMinutes() != null ? "Trừ " + r.getMinutes() + " phút công" : "Không đổi bảng công");
+        out.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
         out.put("attachmentCount", requestAttachmentRepository.countByRequestId(id));
         userRepository.findById(r.getUserId()).ifPresent(u -> {
             out.put("employeeCode", u.getEmployeeCode());
