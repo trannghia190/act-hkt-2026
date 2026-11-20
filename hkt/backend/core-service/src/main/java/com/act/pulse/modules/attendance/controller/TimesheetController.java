@@ -91,14 +91,25 @@ public class TimesheetController {
             int late = 0;
             double leave = 0, wfh = 0;
             for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
-                if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !YearMonth.from(r.getWorkDate()).equals(ym)) continue;
+                if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null) continue;
+                boolean rangeType = "LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType());
+                LocalDate rangeEnd = r.getEndDate() == null ? r.getWorkDate() : r.getEndDate();
+                boolean inMonth = YearMonth.from(r.getWorkDate()).equals(ym)
+                        || (rangeType && !YearMonth.from(rangeEnd).isBefore(ym) && !YearMonth.from(r.getWorkDate()).isAfter(ym));
+                if (!inMonth) continue;
                 int d = r.getWorkDate().getDayOfMonth();
                 switch (r.getRequestType()) {
                     case "WFH" -> {
                         boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
-                        daySymbol.put(d, halfDay ? "R/0.50" : "R");
-                        wfh += halfDay ? 0.5 : 1;
-                        present += halfDay ? 0.5 : 1;
+                        LocalDate start = r.getWorkDate();
+                        LocalDate end = halfDay || r.getEndDate() == null ? start : r.getEndDate();
+                        for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
+                            if (!YearMonth.from(cur).equals(ym)) continue;
+                            if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
+                            daySymbol.put(cur.getDayOfMonth(), halfDay ? "R/0.50" : "R");
+                            wfh += halfDay ? 0.5 : 1;
+                            present += halfDay ? 0.5 : 1;
+                        }
                     }
                     case "LEAVE" -> {
                         boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
