@@ -112,7 +112,7 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * Sổ cái HR (`/attendance/leave-ledger`) hiển thị cùng running balance; bộ lọc Phép năm/Phép ốm dựa trên `leaveType` (AL/S), không dựa vào mô tả.
 
 ### Kiểm chứng C6c — 20/11/2026
-* **Card theo loại nghỉ:** `GET /leaves/my-balance.byType` trả toàn bộ loại nghỉ active (code/name/used/defaultDays); UI render 16 card + progress cho loại có định mức (AL…).
+* **Card số dư:** UI hiển thị tổng phép/đã dùng/còn lại + progress; các thẻ riêng Phép tồn, Phép ốm (S), Phép thâm niên. Không hiển thị thêm bảng “Số dư theo loại nghỉ” (API `byType` chỉ dùng nội bộ nếu cần).
 * **Tổng phép còn lại** = `annualRemaining + carriedRemaining`; tự cập nhật sau điều chỉnh/duyệt đơn (đã test +1, -0.5).
 * **Phép tồn** có card riêng + trạng thái `AVAILABLE / CAPPED / EXPIRED` theo `leave_carryover` (`max_keep_from`, `max_keep_days`, `expire_from`); test đổi rule: AVAILABLEcarry1.5 · CAPPEDcarry1 (expired0.5) · EXPIREDcarry0.
 * **Cộng phép ngày15:** endpoint `POST /cron/monthly-leave-accrual` cộng1 ngày, chạy lại không cộng trùng; user vào sau ngày15 (test 20/11) **không** được cộng tháng đó.
