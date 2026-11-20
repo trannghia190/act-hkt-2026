@@ -125,7 +125,7 @@ public class LeaveController {
             BigDecimal annualGrant = BigDecimal.ZERO, annualUsed = BigDecimal.ZERO, sickUsed = BigDecimal.ZERO;
             BigDecimal seniorityGrant = BigDecimal.ZERO, otherUsed = BigDecimal.ZERO;
             for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
-                boolean seniority = e.getReason() != null && e.getReason().contains("thâm niên");
+                boolean seniority = e.getReason() != null && e.getReason().toLowerCase().contains("thâm niên");
                 if ("GRANT".equals(e.getAction())) {
                     if (seniority) seniorityGrant = seniorityGrant.add(e.getAmount());
                     else annualGrant = annualGrant.add(e.getAmount());
@@ -154,28 +154,42 @@ public class LeaveController {
             return Map.of("granted", 0, "used", 0, "remaining", 0,
                     "annualRemaining", 0, "carriedRemaining", 0);
         }
-        BigDecimal annualGrant = BigDecimal.ZERO, carryGrant = BigDecimal.ZERO;
-        BigDecimal used = BigDecimal.ZERO;
+        BigDecimal annualGrant = BigDecimal.ZERO, carryGrant = BigDecimal.ZERO, seniorityGrant = BigDecimal.ZERO;
+        BigDecimal used = BigDecimal.ZERO, adjust = BigDecimal.ZERO, sickUsed = BigDecimal.ZERO;
+        java.util.Set<String> deductTypes = leaveTypeRepository.findAll().stream()
+                .filter(lt -> Boolean.TRUE.equals(lt.getDeductsAnnualLeave()))
+                .map(lt -> lt.getCode().toUpperCase()).collect(java.util.stream.Collectors.toSet());
+        deductTypes.add("AL");
         for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
-            boolean carry = e.getReason() != null
-                    && (e.getReason().contains("bảo lưu") || e.getReason().contains("tồn"));
-            boolean seniority = e.getReason() != null && e.getReason().contains("thâm niên");
-            if ("GRANT".equals(e.getAction()) && !seniority) {
-                if (carry) carryGrant = carryGrant.add(e.getAmount());
+            String reasonLower = e.getReason() == null ? "" : e.getReason().toLowerCase();
+            boolean carry = reasonLower.contains("bảo lưu") || reasonLower.contains("tồn");
+            boolean seniority = reasonLower.contains("thâm niên");
+            boolean affectsAnnual = e.getLeaveType() == null || deductTypes.contains(e.getLeaveType().toUpperCase());
+            if ("GRANT".equals(e.getAction())) {
+                if (seniority) seniorityGrant = seniorityGrant.add(e.getAmount());
+                else if (carry) carryGrant = carryGrant.add(e.getAmount());
                 else annualGrant = annualGrant.add(e.getAmount());
             } else if ("USED".equals(e.getAction())) {
-                used = used.add(e.getAmount());
+                if (e.getLeaveType() != null && "S".equalsIgnoreCase(e.getLeaveType())) sickUsed = sickUsed.add(e.getAmount().abs());
+                if (affectsAnnual) used = used.add(e.getAmount().abs());
+            } else if ("ADJUST".equals(e.getAction()) && affectsAnnual) {
+                adjust = adjust.add(e.getAmount());
             }
         }
-        BigDecimal usedFromCarry = used.min(carryGrant);
+        BigDecimal usedFromCarry = used.min(carryGrant.max(BigDecimal.ZERO));
         BigDecimal carriedRemaining = carryGrant.subtract(usedFromCarry);
-        BigDecimal annualRemaining = annualGrant.subtract(used.subtract(usedFromCarry));
+        BigDecimal annualRemaining = annualGrant.add(seniorityGrant).add(adjust).subtract(used.subtract(usedFromCarry));
         Map<String, Object> map = new HashMap<>();
-        map.put("granted", annualGrant.add(carryGrant));
+        map.put("granted", annualGrant.add(carryGrant).add(seniorityGrant));
         map.put("used", used);
         map.put("remaining", annualRemaining.add(carriedRemaining));
         map.put("annualRemaining", annualRemaining);
         map.put("carriedRemaining", carriedRemaining);
+        map.put("seniority", seniorityGrant);
+        map.put("adjust", adjust);
+        map.put("sickUsed", sickUsed);
+        map.put("baseAnnual", annualGrant);
+        map.put("carriedGrant", carryGrant);
         return map;
     }
 }

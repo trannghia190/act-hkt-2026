@@ -97,3 +97,16 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * Sổ phép (`leave_ledger`) **append-only**: chỉ thêm dòng `GRANT/USED/EXPIRED/ADJUST`, không sửa/xoá;
   điều chỉnh tay phải có lý do + người thực hiện.
 * Màn hình: S32 (quản lý loại nghỉ) · S34 (sổ phép) · S09 (số dư + tổng phép còn lại).
+
+---
+
+## Cập nhật triển khai — 20/11/2026
+
+* **Nguồn số dư là `leave_ledger` (append-only)**:
+  * `GRANT` dương: phép năm chuẩn, phép tồn (reason chứa "bảo lưu"/"tồn"), thâm niên (reason chứa "thâm niên") — so khớp **không phân biệt hoa/thường**.
+  * `USED` **âm**: mỗi lần duyệt đơn nghỉ tạo 1 dòng; nửa ngày = `-0.5`; nhiều ngày = số ngày làm việc (bỏ cuối tuần + lễ).
+  * `ADJUST` ±: HR điều chỉnh tay, có lý do/người thực hiện.
+* Nghỉ ốm (S) vẫn có dòng USED để tra cứu nhưng **không trừ phép năm**; phép ốm có thẻ riêng.
+* `GET /leaves/my-balance` trả `granted, used, remaining, annualRemaining, carriedRemaining, seniority, adjust, sickUsed, baseAnnual, carriedGrant`.
+* `GET /leaves/my-ledger` trả lịch sử; UI tính **số dư chạy** theo đúng quy tắc trên để cột “Số dư sau” khớp thẻ tổng.
+* Sổ cái HR (`/attendance/leave-ledger`) hiển thị cùng running balance; bộ lọc Phép năm/Phép ốm dựa trên `leaveType` (AL/S), không dựa vào mô tả.

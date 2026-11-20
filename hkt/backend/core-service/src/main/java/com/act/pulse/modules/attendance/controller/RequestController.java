@@ -6,7 +6,12 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
+import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
+import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
+import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
+import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import java.math.BigDecimal;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
@@ -48,6 +53,8 @@ public class RequestController {
     private final NotificationRepository notificationRepository;
     private final AttendanceLogRepository attendanceLogRepository;
     private final RequestAttachmentRepository requestAttachmentRepository;
+    private final LeaveLedgerRepository leaveLedgerRepository;
+    private final HolidayRepository holidayRepository;
     private final ObjectMapper objectMapper;
 
     private String leaveTypeName(String code) {
@@ -464,6 +471,20 @@ public class RequestController {
         return ApiResponse.ok(result, "Đã duyệt " + result.size() + " đơn");
     }
 
+    private double leaveDayCount(RequestEntity r) {
+        if (r.getPayload() != null && r.getPayload().contains("half_day_period")) return 0.5;
+        LocalDate start = r.getWorkDate();
+        LocalDate end = r.getEndDate() == null ? start : r.getEndDate();
+        if (start == null) return 0;
+        java.util.Set<LocalDate> holidays = new java.util.HashSet<>();
+        for (Holiday h : holidayRepository.findAll()) holidays.add(h.getHolidayDate());
+        double days = 0;
+        for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
+            if (cur.getDayOfWeek().getValue() < 6 && !holidays.contains(cur)) days += 1;
+        }
+        return days;
+    }
+
     private ApiResponse<RequestEntity> decide(UUID id, boolean approve, String comment) {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         User owner = userRepository.findById(r.getUserId()).orElseThrow();
@@ -477,11 +498,34 @@ public class RequestController {
                 && requestAttachmentRepository.countByRequestId(id) == 0) {
             throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm — nhân viên cần tải file trước khi duyệt");
         }
+        boolean wasApproved = "APPROVED".equals(r.getStatus());
         r.setStatus(approve ? "APPROVED" : "REJECTED");
         r.setDecidedBy(me);
         r.setDecidedAt(LocalDateTime.now());
         r.setDecisionComment(comment);
         RequestEntity saved = requestRepository.save(r);
+
+        if (approve && "LEAVE".equals(r.getRequestType()) && !wasApproved) {
+            double days = leaveDayCount(r);
+            if (days > 0) {
+                BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(owner.getId()).stream()
+                        .map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal amount = BigDecimal.valueOf(-days);
+                leaveLedgerRepository.save(LeaveLedgerEntry.builder()
+                        .userId(owner.getId())
+                        .leaveType(r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                        .action("USED")
+                        .amount(amount)
+                        .balanceAfter(prev.add(amount))
+                        .reason("Duyệt đơn nghỉ " + (r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                                + " ngày " + r.getWorkDate()
+                                + (r.getEndDate() != null && !r.getEndDate().equals(r.getWorkDate()) ? " → " + r.getEndDate() : "")
+                                + (days == 0.5 ? " (nửa ngày)" : ""))
+                        .performedBy(me)
+                        .performedBySystem(false)
+                        .build());
+            }
+        }
 
         // Đơn đi muộn/về sớm được duyệt → cập nhật giờ vào/ra tương ứng trong bảng công.
         if (approve && ("LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType()))
