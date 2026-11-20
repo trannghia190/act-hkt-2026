@@ -25,15 +25,27 @@ public class AttendanceController {
      */
     @PostMapping("/check-in")
     @Operation(summary = "Chấm công vào ca — xác thực khuôn mặt + WiFi/Geofence/thiết bị/ca")
-    public ApiResponse<CheckInResponse> checkIn(@Valid @RequestBody CheckInRequest request) {
+    public ApiResponse<CheckInResponse> checkIn(@Valid @RequestBody CheckInRequest request,
+                                                jakarta.servlet.http.HttpServletRequest httpRequest) {
+        resolveClientIp(request, httpRequest);
         return ApiResponse.ok(attendanceService.checkIn(CurrentUser.userId(), request), "Chấm công thành công");
     }
 
     /** Chấm công RA — cùng bộ kiểm tra với chấm công vào. */
     @PostMapping("/check-out")
     @Operation(summary = "Chấm công ra ca — cùng bộ 5 lớp xác thực")
-    public ApiResponse<CheckInResponse> checkOut(@Valid @RequestBody CheckInRequest request) {
+    public ApiResponse<CheckInResponse> checkOut(@Valid @RequestBody CheckInRequest request,
+                                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
+        resolveClientIp(request, httpRequest);
         return ApiResponse.ok(attendanceService.checkOut(CurrentUser.userId(), request), "Chấm công ra ca thành công");
+    }
+
+    private void resolveClientIp(CheckInRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
+        if (httpRequest != null && (request.getIpAddress() == null || request.getIpAddress().isBlank())) {
+            String xff = httpRequest.getHeader("X-Forwarded-For");
+            String ip = (xff != null && !xff.isBlank()) ? xff.split(",")[0].trim() : httpRequest.getRemoteAddr();
+            request.setIpAddress(ip);
+        }
     }
 
     /** Trạng thái chấm công hôm nay và hôm qua — phục vụ S05m và cảnh báo thiếu check-out hôm qua (B2). */

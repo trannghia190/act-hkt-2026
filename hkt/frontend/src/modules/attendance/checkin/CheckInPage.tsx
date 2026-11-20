@@ -235,6 +235,29 @@ export const CheckInPage: React.FC = () => {
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
+  const getRealGeoPosition = (): Promise<{ latitude: number | null; longitude: number | null; accuracy: number | null; error?: string }> => {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined' || !navigator.geolocation) {
+        resolve({ latitude: null, longitude: null, accuracy: null, error: 'Trình duyệt không hỗ trợ Geolocation' });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          console.warn('HTML5 Geolocation error:', err.code, err.message);
+          resolve({ latitude: null, longitude: null, accuracy: null, error: err.message });
+        },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+      );
+    });
+  };
+
   const getDeviceFingerprint = (): string => {
     const raw = [
       navigator.userAgent,
@@ -340,60 +363,11 @@ export const CheckInPage: React.FC = () => {
       const frames = await captureFrames(3);
       const imageBase64 = frames[frames.length - 1];
 
-      // 1) Verify Face AI Service (Criterion B1 #5, #6)
-      const faceResponse = await fetch('/ai-face/api/v1/face/verify-json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64, liveness_frames: frames }),
-      });
+      // Get real device GPS position from browser
+      const geo = await getRealGeoPosition();
 
-      if (!faceResponse.ok) {
-        throw new Error(`AI Face Service trả lỗi ${faceResponse.status}`);
-      }
-      const faceData = await faceResponse.json();
-
-      if (!faceData.is_liveness_verified || !faceData.is_matched) {
-        const nextAttempts = faceAttemptsRemaining - 1;
-        setFaceAttemptsRemaining(nextAttempts);
-        setParallelSteps((prev) =>
-          prev.map((s) => (s.name === 'face' ? { ...s, status: 'failed' } : s))
-        );
-        setCheckInStep('error');
-        setErrorType('FACE_MISMATCH');
-        vibrate([50, 60, 50]);
-
-        if (nextAttempts <= 0) {
-          setIsLockedByAttempts(true);
-          setErrorMessage(
-            '⛔ Bạn đã thử sai 3 lần liên tiếp. Khóa phiên chấm công — vui lòng liên hệ HR để được hỗ trợ kiểm tra hoặc reset hồ sơ khuôn mặt.'
-          );
-        } else {
-          const score = faceData.similarity_score ? (faceData.similarity_score * 100).toFixed(1) : '58.0';
-          setErrorMessage(
-            `Khuôn mặt không khớp hoặc chưa đạt liveness (Độ khớp: ${score}% < 85%). Thử lại (còn ${nextAttempts}/3 lượt).`
-          );
-        }
-        setIsScanning(false);
-        return;
-      }
-
-      // Anti-proxy punch verification (Criterion B5 #1)
-      const detectedCode = faceData.matched_employee?.employee_code as string | undefined;
-      const detectedName = faceData.matched_employee?.full_name as string | undefined;
+      // Core Service Verification (Runs 5 layers atomically)
       const loggedInCode = user?.employeeCode;
-
-      if (loggedInCode && detectedCode && detectedCode.toLowerCase() !== loggedInCode.toLowerCase()) {
-        setCheckInStep('error');
-        setErrorType('FACE_MISMATCH');
-        setErrorMessage(
-          `🚨 CHỐNG CHẤM CÔNG HỘ: Người trước camera là ${detectedName} (${detectedCode}), KHÔNG KHỚP tài khoản đang đăng nhập ${loggedInCode}. Hệ thống đã từ chối.`
-        );
-        vibrate([50, 60, 50]);
-        setIsScanning(false);
-        return;
-      }
-
-      // 2) Core Service Verification
       const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       const token = (() => {
         try {
@@ -413,10 +387,10 @@ export const CheckInPage: React.FC = () => {
           faceImageBase64: imageBase64,
           livenessFrames: frames,
           deviceFingerprint: getDeviceFingerprint(),
-          wifiBssid: 'ACT_OFFICE_5G',
-          latitude: 21.0285,
-          longitude: 105.8542,
-          accuracyMeters: 12,
+          wifiBssid: '', // Browser has no Wi-Fi SSID API; server verifies real client IP address
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+          accuracyMeters: geo.accuracy,
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
         }),
       });
@@ -437,10 +411,20 @@ export const CheckInPage: React.FC = () => {
         }
         if (serverResult?.rejectReason === 'OUTSIDE_GEOFENCE') {
           setErrorType('GPS_GEOFENCE');
+        } else if (serverResult?.rejectReason === 'GPS_ACCURACY') {
+          setErrorType('GPS_ACCURACY');
         } else if (serverResult?.rejectReason === 'OUTSIDE_NETWORK') {
           setErrorType('NETWORK');
-        } else if (serverResult?.rejectReason === 'FACE_NOT_MATCHED') {
+        } else if (serverResult?.rejectReason === 'FACE_NOT_MATCHED' || serverResult?.rejectReason === 'PROXY_PUNCH_DETECTED') {
           setErrorType('FACE_MISMATCH');
+          if (serverResult?.faceAttemptsRemaining !== undefined) {
+            setFaceAttemptsRemaining(serverResult.faceAttemptsRemaining);
+            if (serverResult.faceAttemptsRemaining <= 0) {
+              setIsLockedByAttempts(true);
+            }
+          }
+        } else if (serverResult?.rejectReason === 'DEVICE_NOT_APPROVED') {
+          setErrorType('DEVICE');
         }
         setErrorMessage(
           serverResult?.message || coreJson?.message || `Máy chủ từ chối chấm công (HTTP ${coreResponse.status})`
@@ -454,7 +438,7 @@ export const CheckInPage: React.FC = () => {
       setParallelSteps((prev) => prev.map((s) => ({ ...s, status: 'passed' })));
 
       const now = new Date();
-      const scoreNum = serverResult.similarityScore ?? faceData.similarity_score ?? 0.98;
+      const scoreNum = serverResult.similarityScore ?? 0.98;
       const record: AttendancePunchRecord = {
         id: `PUNCH-${Date.now()}`,
         employeeCode: serverResult.matchedEmployeeCode || loggedInCode || '—',
@@ -465,8 +449,8 @@ export const CheckInPage: React.FC = () => {
         similarity: scoreNum,
         livenessScore: 1.0,
         status: checkType === 'IN' ? 'HỢP LỆ (VÀO CA)' : 'HỢP LỆ (RA CA)',
-        bssid: 'ACT_OFFICE_5G',
-        coordinates: '21.0285° N, 105.8542° E (15m)',
+        bssid: 'Mạng văn phòng (IP hợp lệ)',
+        coordinates: geo.latitude && geo.longitude ? `${geo.latitude.toFixed(4)}° N, ${geo.longitude.toFixed(4)}° E` : 'Đã xác thực vị trí',
       };
 
       setCheckResult(record);
@@ -705,6 +689,29 @@ export const CheckInPage: React.FC = () => {
                   className="px-3 py-1.5 rounded-lg bg-accent text-white font-semibold text-xs shadow-xs hover:bg-accent-hover"
                 >
                   Tạo đơn WFH
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/attendance/rules')}
+                  className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
+                >
+                  Cấu hình GPS văn phòng (Rule Engine)
+                </button>
+                <Button variant="outline" size="sm" onClick={handleReset}>
+                  Thử lại
+                </Button>
+              </div>
+            )}
+
+            {/* Outside Network Remedies */}
+            {errorType === 'NETWORK' && (
+              <div className="pt-2 border-t border-rose-200 flex flex-wrap gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => navigate('/attendance/rules')}
+                  className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
+                >
+                  Cấu hình dải IP văn phòng (Rule Engine)
                 </button>
                 <Button variant="outline" size="sm" onClick={handleReset}>
                   Thử lại

@@ -58,10 +58,10 @@ print(f"Logged in as 136ACT. Token acquired.")
 
 # --- B1: Mobile Punch (Web Responsive + Biometric) ---
 print("\n[B1] Mobile Punch Tests:")
-# B1.4: 5 parallel check steps
+# B1.4: 5 parallel check steps (simulating punch from outside network e.g. 4G/home)
 status, punch_res = call("POST", "/attendance/check-in", {
     "latitude": 21.0285, "longitude": 105.8542, "accuracyMeters": 15.0,
-    "deviceFingerprint": "mobile-safari-fp", "ipAddress": "127.0.0.1"
+    "deviceFingerprint": "mobile-safari-fp", "ipAddress": "203.113.152.1"
 }, token=token)
 data = punch_res.get("data") or {}
 layers = data.get("layers") or []

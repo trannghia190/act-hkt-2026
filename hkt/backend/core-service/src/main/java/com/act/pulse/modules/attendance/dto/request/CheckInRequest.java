@@ -17,6 +17,7 @@ public class CheckInRequest {
     private String type; // CHECK_IN or CHECK_OUT
 
     private String wifiBssid;
+    private String ipAddress;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private BigDecimal accuracyMeters;
