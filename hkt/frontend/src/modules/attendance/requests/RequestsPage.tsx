@@ -119,6 +119,7 @@ export const RequestsPage: React.FC = () => {
     return d.toLocaleDateString('en-CA');
   };
   const lateSubmitDays = Number(rulesCfg?.late_early?.submit_within_days ?? 3);
+  const lateMinutesMax = Number(rulesCfg?.late_early?.max_minutes ?? 60);
   const adjustDeadlineDays = Number(rulesCfg?.makeup?.deadline_working_days ?? 3);
   const selectedLeaveCfg = leaveTypes.find((lt: any) => lt.code === newReq.leaveType);
   const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
@@ -155,7 +156,7 @@ export const RequestsPage: React.FC = () => {
         ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
         : toMinutes(SHIFT_END) - toMinutes(lateEarlyTime))
     : 0;
-  const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= 60;
+  const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax;
   const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
 
   const handleCreate = (e: React.FormEvent, asDraft = false) => {
@@ -651,10 +652,19 @@ export const RequestsPage: React.FC = () => {
                   <input
                     type="time"
                     required
+                    min={lateEarlyKind === 'LATE'
+                      ? `${String(Math.floor((toMinutes(SHIFT_START) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 1) % 60).padStart(2, '0')}`
+                      : `${String(Math.floor((toMinutes(SHIFT_END) - lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - lateMinutesMax) % 60).padStart(2, '0')}`}
+                    max={lateEarlyKind === 'LATE'
+                      ? `${String(Math.floor((toMinutes(SHIFT_START) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + lateMinutesMax) % 60).padStart(2, '0')}`
+                      : `${String(Math.floor((toMinutes(SHIFT_END) - 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 1) % 60).padStart(2, '0')}`}
                     value={lateEarlyTime}
                     onChange={e => setLateEarlyTime(e.target.value)}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
+                  <div className="text-[10px] text-ink-muted mt-1">
+                    Tối đa {lateMinutesMax} phút/lần (cấu hình late_early.max_minutes)
+                  </div>
                 </div>
                 <div className={`p-2 rounded-lg border text-[11px] ${
                   lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-rose-50 border-rose-200 text-rose-700'
@@ -666,9 +676,9 @@ export const RequestsPage: React.FC = () => {
                   <div className="mt-0.5">
                     {lateEarlyMinutes > 0 && lateEarlyMinutes <= 60
                       ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
-                      : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa 60 phút).</>}
+                      : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa {lateMinutesMax} phút).</>}
                   </div>
-                  <div className="mt-1 text-ink-secondary">Hạn nộp: trong vòng <b>{lateSubmitDays} ngày</b> kể từ ngày xảy ra · chọn từ {isoDaysFromToday(-lateSubmitDays)}.</div>
+                  <div className="mt-1 text-ink-secondary">Hạn nộp: trong vòng <b>{lateSubmitDays} ngày</b> kể từ ngày xảy ra · chọn từ {isoDaysFromToday(-lateSubmitDays)} · tối đa <b>{lateMinutesMax} phút/lần</b>.</div>
                 </div>
               </div>
             </>
