@@ -65,6 +65,12 @@ public class OrgStructureController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private com.act.pulse.common.service.EmailService emailService;
+
+    @Autowired
+    private com.act.pulse.modules.auth.service.AuthService authService;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -128,6 +134,7 @@ public class OrgStructureController {
         private String department;
         private String positionName;
         private String role;
+        private String password;
         private boolean generateRandomPassword;
     }
 
@@ -584,6 +591,9 @@ public class OrgStructureController {
             existing = userRepository.findByEmail(req.getEmail().trim());
         }
         User userToSave;
+        String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
+                ? req.getPassword().trim() : "123456";
+
         if (existing.isPresent()) {
             userToSave = existing.get();
             if (req.getFullName() != null && !req.getFullName().isBlank()) userToSave.setFullName(req.getFullName().trim());
@@ -598,7 +608,7 @@ public class OrgStructureController {
                     .employeeCode(code)
                     .fullName(fullName)
                     .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim() : code.toLowerCase() + "@act.vn")
-                    .passwordHash(passwordEncoder.encode("123456"))
+                    .passwordHash(passwordEncoder.encode(rawPassword))
                     .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim() : "EMPLOYEE")
                     .positionName(req.getPositionName() != null && !req.getPositionName().isBlank() ? req.getPositionName().trim() : "Chuyên viên")
                     .teamId(defaultTeamId)
@@ -613,6 +623,13 @@ public class OrgStructureController {
         }
 
         userRepository.save(userToSave);
+
+        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
+        try {
+            if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
+                emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(), userToSave.getEmployeeCode(), rawPassword);
+            }
+        } catch (Exception ignored) {}
 
         // Audit log
         AuditLog audit = AuditLog.builder()
@@ -811,21 +828,22 @@ public class OrgStructureController {
     @PostMapping("/admin/users/{id}/reset-password")
     @Operation(summary = "Admin cấp lại mật khẩu & Mở khóa Brute-Force (S40-C)")
     public ApiResponse<Boolean> adminResetPassword(@PathVariable String id) {
-        User user = null;
-        try {
-            user = findUserByIdOrCode(id);
-        } catch (Exception ignored) {}
-        if (user == null) {
-            user = userRepository.findByEmployeeCodeIgnoreCase("Admin")
-                    .orElseGet(() -> userRepository.findAll().stream().findFirst().orElse(null));
-        }
-        if (user == null) {
-            throw new RuntimeException("Không tìm thấy nhân viên: " + id);
-        }
+        User user = findUserByIdOrCode(id);
+        String tempPass = "123456";
         user.setMustChangePassword(true);
         user.setStatus("ACTIVE");
-        user.setPasswordHash(passwordEncoder.encode("123456"));
+        user.setPasswordHash(passwordEncoder.encode(tempPass));
         userRepository.save(user);
+
+        // Thu hồi toàn bộ phiên đăng nhập cũ
+        authService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD");
+
+        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP
+        try {
+            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), user.getEmployeeCode(), tempPass);
+            }
+        } catch (Exception ignored) {}
 
         AuditLog audit = AuditLog.builder()
                 .action("ADMIN_RESET_PASSWORD")
@@ -835,7 +853,7 @@ public class OrgStructureController {
                 .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
                 .userName(resolveActorName())
                 .oldValue("Mật khẩu cũ (đã mã hóa)")
-                .newValue("Cấp lại mật khẩu mới & Mở khóa tài khoản: 123456")
+                .newValue("Cấp lại mật khẩu mới: " + tempPass)
                 .reason("Admin reset mật khẩu theo yêu cầu hỗ trợ")
                 .ipAddress("127.0.0.1")
                 .build();

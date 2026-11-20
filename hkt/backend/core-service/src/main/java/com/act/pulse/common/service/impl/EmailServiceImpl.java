@@ -193,6 +193,62 @@ public class EmailServiceImpl implements EmailService {
     }
 
     // =========================================================================
+    // 2.1. PASSWORD CHANGED / RESET CONFIRMATION VIA GMAIL
+    // =========================================================================
+    @Override
+    public void sendPasswordChangedSuccessEmail(String toEmail, String fullName, String changeType) {
+        String subject = "[ACT PULSE] Xác Nhận Thay Đổi Mật Khẩu Tài Khoản Thành Công";
+        String preheader = "Mật khẩu tài khoản ACT PULSE của " + fullName + " vừa được cập nhật thành công.";
+        String timeStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
+            <p style="color: #334155;">Hệ thống ACT PULSE xin thông báo: Mật khẩu truy cập hệ thống của Anh/Chị đã được <strong>cập nhật thành công</strong>.</p>
+
+            <!-- Success Box -->
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="font-size: 13px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #166534; width: 150px; font-weight: 600;">Hình thức thay đổi:</td>
+                        <td style="padding: 6px 0; font-weight: 700; color: #047857;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #166534; font-weight: 600;">Thời điểm ghi nhận:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #166534; font-weight: 600;">Hộp thư nhận thông báo:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Session Revocation Notice -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 12px; color: #64748b; line-height: 1.6;">
+                <strong>🔒 Cơ chế bảo vệ phiên đăng nhập:</strong><br>
+                Theo chính sách bảo mật của ACT PULSE, khi mật khẩu thay đổi, <strong>toàn bộ các phiên làm việc cũ</strong> trên các thiết bị và trình duyệt khác đều tự động bị vô hiệu hóa và thu hồi. Vui lòng sử dụng mật khẩu mới để đăng nhập lại.
+            </div>
+
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; margin-top: 14px; font-size: 12px; color: #991b1b; line-height: 1.5;">
+                <strong>⚠️ Cảnh báo an ninh:</strong> Nếu Anh/Chị <strong>KHÔNG</strong> thực hiện yêu cầu thay đổi mật khẩu này, hãy liên hệ ngay lập tức với Quản trị viên hệ thống hoặc Bộ phận Nhân sự để khóa tài khoản khẩn cấp.
+            </div>
+            """, fullName, changeType != null ? changeType : "Đổi mật khẩu người dùng", timeStr, toEmail);
+
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #065f46 0%%, #059669 100%%)",
+                "SECURITY",
+                "Mật Khẩu Đã Được Thay Đổi",
+                "Xác nhận thay đổi bảo mật tài khoản thành công",
+                body,
+                "ĐĂNG NHẬP BẰNG MẬT KHẨU MỚI →",
+                "http://localhost:3000/login"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    // =========================================================================
     // 3. REQUEST DECISION NOTIFICATION (APPROVED / REJECTED)
     // =========================================================================
     @Override
