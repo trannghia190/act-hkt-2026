@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -12,6 +13,12 @@ export const RequestsPage: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
@@ -74,23 +81,50 @@ export const RequestsPage: React.FC = () => {
       typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveType}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '',
       endDate: r.workDate || '',
-      durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
+      durationText: (() => {
+        try {
+          const p = JSON.parse(r.payload || '{}');
+          if (p.duration) return String(p.duration);
+          if (p.half_day_period) return `0.5 ngày — buổi ${p.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}`;
+        } catch { /* ignore */ }
+        return r.minutes ? `${r.minutes} phút` : '1.0 ngày';
+      })(),
       reason: r.reason || '',
       status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
-      approver: r.decisionComment || '—',
+      approver: r.decidedAt ? 'Quản lý đã xử lý' : '—',
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
     } as AttendanceRequestItem;
   };
 
   const loadRequests = () => {
-    fetch('/api/v1/requests/my-requests', { headers: authHeaders() })
+    const params = new URLSearchParams({ page: String(page), size: String(pageSize) });
+    if (filterType !== 'ALL') params.set('type', filterType);
+    if (filterStatus !== 'ALL') params.set('status', filterStatus);
+    if (searchKeyword.trim()) params.set('keyword', searchKeyword.trim());
+    if (dateFrom) params.set('from', dateFrom);
+    if (dateTo) params.set('to', dateTo);
+    fetch(`/api/v1/requests/my-requests?${params.toString()}`, { headers: authHeaders() })
       .then(r => r.json())
-      .then(j => { if (Array.isArray(j?.data)) setRequests(j.data.map(mapRequest)); })
+      .then(j => {
+        const d = j?.data;
+        if (Array.isArray(d?.content)) {
+          setRequests(d.content.map(mapRequest));
+          setTotalPages(Math.max(1, Number(d.totalPages || 1)));
+          setTotalElements(Number(d.totalElements || 0));
+        } else if (Array.isArray(d)) {
+          setRequests(d.map(mapRequest));
+          setTotalPages(1);
+          setTotalElements(d.length);
+        }
+      })
       .catch(() => undefined);
   };
 
-  useEffect(loadRequests, []);
+  useEffect(() => {
+    const timer = setTimeout(loadRequests, 250);
+    return () => clearTimeout(timer);
+  }, [page, filterType, filterStatus, searchKeyword, dateFrom, dateTo]);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -417,20 +451,7 @@ export const RequestsPage: React.FC = () => {
     setIsCreateOpen(true);
   };
 
-  // Filter requests
-  const filtered = requests.filter(r => {
-    if (filterType !== 'ALL' && r.type !== filterType) return false;
-    if (filterStatus !== 'ALL' && r.status !== filterStatus) return false;
-    if (searchKeyword.trim()) {
-      const q = searchKeyword.toLowerCase();
-      const match = r.id.toLowerCase().includes(q) ||
-                    r.reason.toLowerCase().includes(q) ||
-                    r.typeName.toLowerCase().includes(q) ||
-                    r.approver.toLowerCase().includes(q);
-      if (!match) return false;
-    }
-    return true;
-  });
+  const filtered = requests;
 
   return (
     <div className="space-y-6">
@@ -500,16 +521,16 @@ export const RequestsPage: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="text"
-            placeholder="Tìm theo mã đơn, lý do..."
+            placeholder="Tìm theo lý do..."
             value={searchKeyword}
-            onChange={e => setSearchKeyword(e.target.value)}
+            onChange={e => { setSearchKeyword(e.target.value); setPage(0); }}
             className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-accent"
           />
 
           <span className="text-xs text-ink-muted">Loại đơn:</span>
           <select
             value={filterType}
-            onChange={e => setFilterType(e.target.value)}
+            onChange={e => { setFilterType(e.target.value); setPage(0); }}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
           >
             <option value="ALL">Tất cả loại đơn</option>
@@ -522,7 +543,7 @@ export const RequestsPage: React.FC = () => {
           <span className="text-xs text-ink-muted ml-1">Trạng thái:</span>
           <select
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
+            onChange={e => { setFilterStatus(e.target.value); setPage(0); }}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
           >
             <option value="ALL">Tất cả trạng thái</option>
@@ -530,13 +551,23 @@ export const RequestsPage: React.FC = () => {
             <option value="APPROVED">Đã phê duyệt</option>
             <option value="REJECTED">Bị từ chối</option>
           </select>
+
+          <span className="text-xs text-ink-muted ml-1">Khoảng ngày:</span>
+          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); }}
+            className="text-xs px-2 py-1.5 rounded-lg border border-line bg-canvas text-ink" />
+          <span className="text-xs text-ink-muted">→</span>
+          <input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(0); }}
+            className="text-xs px-2 py-1.5 rounded-lg border border-line bg-canvas text-ink" />
+          {(dateFrom || dateTo) && (
+            <button type="button" className="text-[11px] text-accent underline" onClick={() => { setDateFrom(''); setDateTo(''); setPage(0); }}>Xoá lọc ngày</button>
+          )}
         </div>
 
         <div className="text-xs text-ink-muted">
           <div className="text-[11px] text-ink-muted">
             Quota: đi muộn {requests.filter(r => r.type === 'LATE_EARLY' && r.status !== 'REJECTED').length}/2 · bổ sung {requests.filter(r => r.type === 'ADJUST' && r.status !== 'REJECTED').length}/5 · WFH đã gửi tuần này {requests.filter(r => r.type === 'WFH' && r.status === 'PENDING').length}/2
           </div>
-          Tổng cộng: <strong className="text-ink">{filtered.length}</strong> đơn
+          Tổng cộng: <strong className="text-ink">{totalElements}</strong> đơn
         </div>
       </div>
 
@@ -566,9 +597,9 @@ export const RequestsPage: React.FC = () => {
               filtered.map(req => (
                 <tr key={req.id} className="hover:bg-canvas/40 transition-colors">
                   <td className="py-3 px-4 font-mono font-medium text-ink">{req.id}</td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-ink">{req.typeName}</span>
-                    <div className="text-[10px] text-ink-muted">Gửi lúc: {req.createdAt}</div>
+                  <td className="py-3 px-4 min-w-[180px]">
+                    <span className="font-semibold text-ink whitespace-normal leading-snug block">{req.typeName}</span>
+                    <div className="text-[10px] text-ink-muted mt-0.5">Gửi lúc: {req.createdAt}</div>
                   </td>
                   <td className="py-3 px-4 font-mono text-ink-secondary">
                     {req.startDate} {req.startDate !== req.endDate ? `→ ${req.endDate}` : ''}
@@ -590,7 +621,10 @@ export const RequestsPage: React.FC = () => {
                     {req.status === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
                     {req.status === 'WITHDRAWN' && <Badge variant="gray">Đã hủy</Badge>}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    <Link to={`/attendance/requests/${req.id}`} className="inline-block mr-2 text-[11px] px-2 py-1 rounded border border-line text-accent hover:bg-accent-soft">
+                      Xem chi tiết
+                    </Link>
                     {req.status === 'DRAFT' ? (
                       <div className="flex justify-end gap-1.5">
                         <Button variant="primary" size="sm" onClick={() => handleSubmitDraft(req.id)}>Gửi duyệt</Button>
@@ -619,6 +653,15 @@ export const RequestsPage: React.FC = () => {
             )}
           </tbody>
         </table>
+        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-secondary">
+          <span>Trang <b>{page + 1}</b> / {totalPages} · {totalElements} đơn</span>
+          <div className="flex items-center gap-1.5">
+            <button type="button" disabled={page <= 0} onClick={() => setPage(p => Math.max(0, p - 1))}
+              className="px-2.5 py-1 rounded border border-line disabled:opacity-40">← Trước</button>
+            <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              className="px-2.5 py-1 rounded border border-line disabled:opacity-40">Sau →</button>
+          </div>
+        </div>
       </div>
 
       {/* Create Modal */}
