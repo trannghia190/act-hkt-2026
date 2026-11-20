@@ -87,17 +87,26 @@ public class RequestController {
         // ── WFH: quota 2 lần/tuần · cho phép đăng ký lùi tối đa submit_within_days ngày ──
         if ("WFH".equals(body.getType())) {
             LocalDate workDate = body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate();
-            LocalDate weekStart = workDate.with(DayOfWeek.MONDAY);
-            LocalDate weekEnd = weekStart.plusDays(6);
-            long weekly = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                    .filter(r -> "WFH".equals(r.getRequestType()))
-                    .filter(r -> !"REJECTED".equals(r.getStatus()) && !"WITHDRAWN".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus()))
-                    .filter(r -> r.getWorkDate() != null && !r.getWorkDate().isBefore(weekStart) && !r.getWorkDate().isAfter(weekEnd))
-                    .count();
-            if (weekly >= 2) throw new RuntimeException("Đã đăng ký đủ 2 ngày WFH trong tuần này — lần thứ 3 bị chặn");
+            LocalDate rangeEnd = body.getEndDate() == null ? workDate : body.getEndDate();
             int backfillDays = ruleService.getInt("wfh", "submit_within_days", 3);
             if (workDate.isBefore(LocalDate.now().minusDays(backfillDays))) {
                 throw new RuntimeException("WFH chỉ đăng ký được trong vòng " + backfillDays + " ngày trước (kể cả hôm nay)");
+            }
+            int max = ruleService.getInt("wfh", "max_count", 2);
+            boolean half = body.getPayload() != null && body.getPayload().contains("half_day_period");
+            // Quota theo tuần, tính theo SỐ NGÀY làm việc (đơn nhiều ngày vẫn là 1 request).
+            for (LocalDate ws = workDate.with(DayOfWeek.MONDAY); !ws.isAfter(rangeEnd); ws = ws.plusDays(7)) {
+                LocalDate we = ws.plusDays(6);
+                double existing = 0;
+                for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+                    if (!"WFH".equals(r.getRequestType())) continue;
+                    if (!("PENDING_APPROVAL".equals(r.getStatus()) || "APPROVED".equals(r.getStatus()))) continue;
+                    existing += wfhDaysInRange(r, ws, we);
+                }
+                double adding = wfhDaysInRange(workDate, rangeEnd, half, ws, we);
+                if (existing + adding > max) {
+                    throw new RuntimeException("Vượt quota WFH " + max + " ngày/tuần (tuần " + ws + ": đã " + existing + ", thêm " + adding + ")");
+                }
             }
         }
 
@@ -659,6 +668,35 @@ public class RequestController {
             canceled++;
         }
         return canceled;
+    }
+
+    private boolean isWorkday(LocalDate day) {
+        if (day.getDayOfWeek().getValue() >= 6) return false;
+        for (Holiday h : holidayRepository.findAll()) if (day.equals(h.getHolidayDate())) return false;
+        return true;
+    }
+
+    private double wfhDaysInRange(RequestEntity r, LocalDate from, LocalDate to) {
+        if (r.getWorkDate() == null) return 0;
+        LocalDate start = r.getWorkDate().isBefore(from) ? from : r.getWorkDate();
+        LocalDate end = (r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()).isAfter(to) ? to
+                : (r.getEndDate() == null ? r.getWorkDate() : r.getEndDate());
+        boolean half = r.getPayload() != null && r.getPayload().contains("half_day_period");
+        double days = 0;
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            if (isWorkday(d)) days += half ? 0.5 : 1;
+        }
+        return days;
+    }
+
+    private double wfhDaysInRange(LocalDate start0, LocalDate end0, boolean half, LocalDate from, LocalDate to) {
+        LocalDate start = start0.isBefore(from) ? from : start0;
+        LocalDate end = end0.isAfter(to) ? to : end0;
+        double days = 0;
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            if (isWorkday(d)) days += half ? 0.5 : 1;
+        }
+        return days;
     }
 
     private double leaveDayCount(RequestEntity r) {

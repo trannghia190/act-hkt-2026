@@ -345,7 +345,7 @@ export const RequestsPage: React.FC = () => {
       leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
       payload,
       workDate: newReq.startDate,
-      endDate: newReq.type === 'LEAVE' ? newReq.endDate : newReq.startDate,
+      endDate: (newReq.type === 'LEAVE' || (newReq.type === 'WFH' && leaveUnit === 'DAY')) ? newReq.endDate : newReq.startDate,
       minutes: newReq.type === 'LATE_EARLY' ? lateEarlyMinutes : undefined,
       reason: newReq.reason,
       draft: asDraft,
@@ -381,31 +381,8 @@ export const RequestsPage: React.FC = () => {
     }
     (body as any).replaceConflicts = replaceConflicts;
 
-    const sendDates = newReq.type === 'WFH' && leaveUnit === 'DAY'
-      ? wfhWorkingDates(newReq.startDate, newReq.endDate)
-      : [newReq.startDate];
-    if (newReq.type === 'WFH' && sendDates.length === 0) {
-      showToast('Khoảng ngày đã chọn không có ngày làm việc', 'error');
-      return;
-    }
-    // Chặn trước nếu vượt quota 2 ngày WFH/tuần (backend cũng chặn từng đơn).
-    if (newReq.type === 'WFH' && !editingId) {
-      const weekKey = (iso: string) => {
-        const d = new Date(iso + 'T00:00:00');
-        const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-        return monday.toLocaleDateString('en-CA');
-      };
-      const existing = requests.filter(r => r.type === 'WFH' && !['REJECTED', 'WITHDRAWN', 'DRAFT'].includes(r.status));
-      const newByWeek: Record<string, number> = {};
-      sendDates.forEach(iso => { const k = weekKey(iso); newByWeek[k] = (newByWeek[k] || 0) + 1; });
-      for (const [week, count] of Object.entries(newByWeek)) {
-        const used = existing.filter(r => r.startDate && weekKey(r.startDate) === week).length;
-        if (used + count > 2) {
-          showToast(`Vượt quota WFH: tuần ${week} đã dùng ${used}/2 ngày, đơn này thêm ${count} ngày`, 'error');
-          return;
-        }
-      }
-    }
+    // WFH là MỘT đơn cho cả khoảng ngày; quota theo tuần được backend kiểm tra theo số ngày làm việc.
+    const sendDates = [newReq.startDate];
     (async () => {
       const createdIds: string[] = [];
       try {
