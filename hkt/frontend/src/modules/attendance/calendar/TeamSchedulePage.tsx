@@ -7,7 +7,7 @@ interface DayRow {
   late: number;
   present: number;
   teamSize: number;
-  entries: { employeeCode: string; fullName: string; kind: 'WFH' | 'LEAVE' | 'LATE' | 'PRESENT' }[];
+  entries: { employeeCode: string; fullName: string; kind: 'WFH' | 'LEAVE' | 'LATE' | 'PRESENT'; halfDay?: boolean; halfDayPeriod?: 'MORNING' | 'AFTERNOON' | null; workWindowStart?: string | null; workWindowEnd?: string | null }[];
 }
 
 const KIND_LABEL: Record<string, { text: string; cls: string }> = {
@@ -99,8 +99,18 @@ export const TeamSchedulePage: React.FC = () => {
           <div className="grid sm:grid-cols-2 gap-2">
             {dayEntries.entries.map((e: any) => (
               <div key={e.employeeCode} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 text-sm">
-                <span>{e.fullName} <span className="text-xs text-ink-muted">({e.employeeCode})</span></span>
-                <span className={`text-[11px] px-2 py-0.5 rounded border ${KIND_LABEL[e.kind]?.cls || ''}`}>{KIND_LABEL[e.kind]?.text || e.kind}</span>
+                <span>
+                  {e.fullName} <span className="text-xs text-ink-muted">({e.employeeCode})</span>
+                  {e.halfDay && (
+                    <span className="block text-[11px] text-sky-700 mt-0.5">
+                      Nghỉ buổi {e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}
+                      {e.workWindowStart && e.workWindowEnd ? ` · làm việc ${e.workWindowStart}–${e.workWindowEnd}` : ''}
+                    </span>
+                  )}
+                </span>
+                <span className={`text-[11px] px-2 py-0.5 rounded border ${KIND_LABEL[e.kind]?.cls || ''}`}>
+                  {e.halfDay ? (e.halfDayPeriod === 'MORNING' ? 'Nghỉ sáng' : 'Nghỉ chiều') : (KIND_LABEL[e.kind]?.text || e.kind)}
+                </span>
               </div>
             ))}
           </div>

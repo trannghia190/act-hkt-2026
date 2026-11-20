@@ -42,6 +42,14 @@ export default defineConfig({
       '/api': {
         target: CORE_URL,
         changeOrigin: true,
+        // Bỏ Origin/Referer khi proxy để backend không áp CORS theo domain tunnel
+        // (ngrok/cloudflare). Auth vẫn do JWT trong X-Auth-Token đảm bảo.
+        configure: (proxy: any) => {
+          proxy.on('proxyReq', (proxyReq: any) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
       },
     },
   },

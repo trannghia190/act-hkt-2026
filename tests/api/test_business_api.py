@@ -170,7 +170,8 @@ check("sửa ô thiếu lý do bị chặn", status == 400)
 status, data = call("POST", "/timesheets/bulk", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
 check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).get("updated") == 2)
 
-# Còn khiếu nại chưa xử lý → khoá bị chặn
+# Còn khiếu nại chưa xử lý → khoá bị chặn (tạo 1 khiếu nại mới để test lặp lại được)
+call("POST", "/disputes", {"workDate": date.today().isoformat(), "reason": "Đối chiếu log — test lock"})
 status, data = call("POST", "/timesheets/lock", expect=400)
 check("khoá bị chặn khi còn khiếu nại", status == 400)
 _, dl = call("GET", "/disputes")

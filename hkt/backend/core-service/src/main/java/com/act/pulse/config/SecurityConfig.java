@@ -91,8 +91,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Cho phép mọi cổng localhost (run-local.sh có thể chọn 3001/3002… khi 3000 bận).
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        // Localhost mọi cổng + các domain tunnel dùng để demo công khai.
+        // Auth dùng Bearer/X-Auth-Token (không cookie) nên CORS không phải lớp bảo vệ chính.
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*", "http://127.0.0.1:*",
+                "https://*.ngrok-free.app", "https://*.ngrok-free.dev",
+                "https://*.ngrok.app", "https://*.ngrok.io",
+                "https://*.trycloudflare.com", "https://*.loca.lt", "https://*.ts.net"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "X-Auth-Token", "Content-Type", "X-Device-Fingerprint"));
         configuration.setAllowCredentials(true);

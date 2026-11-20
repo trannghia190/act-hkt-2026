@@ -35,7 +35,16 @@ export const ApprovalsPage: React.FC = () => {
     return {
       id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
       team: r.team || '', type: r.requestType, typeName: typeNames[r.requestType] || r.requestType,
-      startDate: r.workDate || '', endDate: r.workDate || '', durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
+      startDate: r.workDate || '', endDate: r.workDate || '', durationText: (() => {
+        try {
+          const p = JSON.parse(r.payload || '{}');
+          if (p.half_day_period) {
+            return `0.5 ngày — nghỉ ${p.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}`
+              + (p.work_window_start && p.work_window_end ? ` (làm ${p.work_window_start}–${p.work_window_end})` : '');
+          }
+        } catch { /* ignore */ }
+        return r.minutes ? `${r.minutes} phút` : '1.0 ngày';
+      })(),
       reason: r.reason || '', status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
       approver: '—', createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
