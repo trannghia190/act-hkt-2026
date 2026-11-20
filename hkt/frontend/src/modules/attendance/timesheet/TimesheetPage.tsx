@@ -173,7 +173,7 @@ export const TimesheetPage: React.FC = () => {
       })
     );
     setIsBulkEditOpen(false);
-    showToast(`Đã sửa hàng loạt thành công cho ${selectedIds.length} nhân sự (Tính năng C4)!`);
+    showToast(`Đã cập nhật bảng công cho ${selectedIds.length} nhân sự`);
     setSelectedIds([]);
   };
 
@@ -305,7 +305,7 @@ export const TimesheetPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="primary" size="sm" onClick={() => setIsBulkEditOpen(true)}>
-              Sửa Hàng Loạt (C4)
+              Sửa hàng loạt
             </Button>
             <Button variant="outline" size="sm" onClick={() => setSelectedIds([])}>
               Bỏ chọn
@@ -516,7 +516,7 @@ export const TimesheetPage: React.FC = () => {
       <Modal
         isOpen={isBulkEditOpen}
         onClose={() => setIsBulkEditOpen(false)}
-        title={`Sửa Hàng Loạt Bảng Công Cho ${selectedIds.length} Nhân Sự (C4)`}
+        title={`Sửa hàng loạt bảng công cho ${selectedIds.length} nhân sự`}
       >
         <form onSubmit={handleBulkApply} className="space-y-4 text-xs">
           <div>
