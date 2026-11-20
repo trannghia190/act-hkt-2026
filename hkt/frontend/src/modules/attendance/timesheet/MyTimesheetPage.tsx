@@ -54,6 +54,7 @@ export const MyTimesheetPage: React.FC = () => {
   }, []);
 
   const shiftStart = shiftHhmm(shift?.checkInStart);
+  const shiftInEnd = shiftHhmm(shift?.checkInEnd);
   const shiftEnd = shiftHhmm(shift?.checkOutStart);
   const shiftLabel = shift ? `${shift.name || shift.code} (${shiftStart}–${shiftEnd})` : 'Ca chuẩn';
   const lunchHours = shift?.lunchBreakStart && shift?.lunchBreakEnd
@@ -104,8 +105,8 @@ export const MyTimesheetPage: React.FC = () => {
       }
 
       let lateMinutes = 0;
-      if (log?.checkInAt) lateMinutes = Math.max(0, toMin(checkIn) - toMin(shiftStart));
-      if (latePayload.late_early === 'LATE' && latePayload.time) lateMinutes = Math.max(0, toMin(String(latePayload.time).slice(0, 5)) - toMin(shiftStart));
+      if (log?.checkInAt) lateMinutes = Math.max(0, toMin(checkIn) - toMin(shiftInEnd));
+      if (latePayload.late_early === 'LATE' && latePayload.time) lateMinutes = Math.max(0, toMin(String(latePayload.time).slice(0, 5)) - toMin(shiftInEnd));
       if (latePayload.late_early === 'EARLY' && latePayload.time) {
         lateMinutes = Math.max(lateMinutes, toMin(shiftEnd) - toMin(String(latePayload.time).slice(0, 5)));
       }
@@ -151,7 +152,7 @@ export const MyTimesheetPage: React.FC = () => {
       });
     }
     return out;
-  }, [monthDates, logs, approvedRequests, holidays, selectedMonth, shiftLabel, shiftStart, shiftEnd, lunchHours]);
+  }, [monthDates, logs, approvedRequests, holidays, selectedMonth, shiftLabel, shiftStart, shiftInEnd, shiftEnd, lunchHours]);
 
   const standardDays = monthDates.filter(d => d.weekday !== 0 && d.weekday !== 6 && !holidays.includes(d.iso)).length;
   const actualDays = records.reduce((sum, r) => sum
