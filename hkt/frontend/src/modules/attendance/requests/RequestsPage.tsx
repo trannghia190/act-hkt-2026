@@ -702,8 +702,19 @@ export const RequestsPage: React.FC = () => {
             {leaveNeedsAttachment && (
               <div className={`mt-2 p-2 rounded-lg border text-[11px] ${attachments.length ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
                 <div className="font-semibold">Bắt buộc đính kèm giấy tờ cho loại nghỉ này</div>
+                <div className="text-[10px] text-ink-secondary mt-0.5">Có thể chọn nhiều file một lần, hoặc bấm lại để thêm từng file.</div>
                 <input type="file" multiple accept="image/*,application/pdf" className="mt-1 block w-full text-[11px]"
-                  onChange={e => setAttachments(Array.from(e.target.files || []))} />
+                  onChange={e => {
+                    const picked = Array.from(e.target.files || []);
+                    setAttachments(prev => {
+                      const next = [...prev];
+                      picked.forEach(f => {
+                        if (!next.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) next.push(f);
+                      });
+                      return next;
+                    });
+                    e.target.value = '';
+                  }} />
                 {attachments.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {attachments.map((f, i) => (
