@@ -644,6 +644,7 @@ Các bảng/cột đã bổ sung và đang dùng trong code (Flyway V2–V14):
 | `timesheet_audit_logs` | Đang dùng | Audit từng lần sửa ô (old/new/reason/changed_by) |
 | `okr_reviews` | Đang dùng | Form 4 Box tự đánh giá + điểm quản lý chấm |
 | `leave_types.config`, `submit_within_days`, `requires_attachment`, `unit`, `is_paid`, `deducts_annual_leave` | Đang dùng | Cấu hình loại nghỉ 3 tầng |
+| `leave_ledger` | Đang dùng | GRANT (chuẩn/tồn/thâm niên), USED âm khi duyệt nghỉ, ADJUST ±; số dư tính lại từ ledger |
 | `notifications` | Đang dùng | Thông báo DB cho nhân viên (duyệt/từ chối/khiếu nại) |
 
 **Ghi chú quan trọng:** `requests` hiện dùng `work_date` + `end_date` (không còn `start_date`); `payload` là JSONB chứa `unit`, `half_day_period`, `work_window_*`, `late_early`, `time`, `adjust_kind`, `duration`. Mọi trạng thái bảng công/khiếu nại/todo/OKR review đều đọc-ghi DB, không còn lưu RAM.

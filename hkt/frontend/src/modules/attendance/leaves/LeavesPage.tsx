@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -10,6 +10,8 @@ interface LeaveLedgerEntry {
   description: string;
   amount: number;
   balanceAfter: number;
+  leaveType?: string;
+  createdAt?: string;
 }
 
 export const LeavesPage: React.FC = () => {
@@ -23,6 +25,10 @@ export const LeavesPage: React.FC = () => {
     expiringOnMarch31: 0,
     annualRemaining: 0,
     carriedRemaining: 0,
+    sickUsed: 0,
+    adjust: 0,
+    baseAnnual: 0,
+    carriedGrant: 0,
   });
 
   const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
@@ -36,13 +42,18 @@ export const LeavesPage: React.FC = () => {
         const used = Number(j.data.used || 0);
         const carried = Number(j.data.carriedRemaining ?? 0);
         const annual = Number(j.data.annualRemaining ?? 0);
-        const seniority = Math.max(0, granted - 12 - carried);
-        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted, used,
+        const seniority = Number(j.data.seniority ?? 0);
+        const adjust = Number(j.data.adjust ?? 0);
+        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted + adjust, used,
           remaining: Number(j.data.remaining || 0),
           annualRemaining: annual,
           carriedRemaining: carried,
           carriedOver: carried,
           seniorityBonus: seniority,
+          adjust,
+          sickUsed: Number(j.data.sickUsed ?? 0),
+          baseAnnual: Number(j.data.baseAnnual ?? 0),
+          carriedGrant: Number(j.data.carriedGrant ?? 0),
           expiringOnMarch31: carried }));
       }
     }).catch(() => undefined);
@@ -50,7 +61,7 @@ export const LeavesPage: React.FC = () => {
       if (Array.isArray(j?.data)) {
         setLedger(j.data.map((e: any) => ({
           id: e.id, date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
-          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0),
+          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0), leaveType: e.leaveType, createdAt: e.createdAt,
           balanceAfter: Number(e.balanceAfter || 0),
         })));
       }
@@ -59,10 +70,23 @@ export const LeavesPage: React.FC = () => {
 
   const [filterType, setFilterType] = useState('Tất cả');
   const [filterYear, setFilterYear] = useState('2026');
-  const filteredLedger = ledger.filter(entry => {
+  const ledgerWithBalance = useMemo(() => {
+    const asc = [...ledger].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    let running = 0;
+    const byId: Record<string, number> = {};
+    for (const e of asc) {
+      const affectsAnnual = !e.leaveType || e.leaveType.toUpperCase() === 'AL';
+      if (e.type === 'GRANT' || (e.type === 'ADJUST' && affectsAnnual)) running += e.amount;
+      else if (e.type === 'USED' && affectsAnnual) running += e.amount;
+      byId[e.id] = Math.round(running * 100) / 100;
+    }
+    return ledger.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter }));
+  }, [ledger]);
+
+  const filteredLedger = ledgerWithBalance.filter(entry => {
     if (filterYear !== 'Tất cả' && !entry.date.endsWith(filterYear)) return false;
     if (filterType === 'Tất cả') return true;
-    if (filterType === 'Phép năm') return entry.description.toLowerCase().includes('phép năm') || entry.type === 'GRANT';
+    if (filterType === 'Phép năm') return entry.leaveType === 'AL';
     if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
     if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
     if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
@@ -103,7 +127,7 @@ export const LeavesPage: React.FC = () => {
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Tổng Phép Năm Được Hưởng</div>
           <div className="text-2xl font-bold text-ink mt-1">{balance.totalEntitlement} ngày</div>
-          <div className="text-[11px] text-ink-secondary mt-1">{balance.grantedCurrentYear - balance.carriedOver - balance.seniorityBonus} chuẩn + {balance.carriedOver} tồn + {balance.seniorityBonus} thâm niên</div>
+          <div className="text-[11px] text-ink-secondary mt-1">{balance.baseAnnual} chuẩn + {balance.carriedGrant} tồn + {balance.seniorityBonus} thâm niên{balance.adjust ? ` + ${balance.adjust} điều chỉnh` : ''}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -128,7 +152,7 @@ export const LeavesPage: React.FC = () => {
 
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép ốm (S)</div>
-          <div className="text-2xl font-bold text-ink mt-1">0 ngày</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.sickUsed} ngày</div>
           <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
         </div>
 
@@ -172,8 +196,8 @@ export const LeavesPage: React.FC = () => {
                 <tr key={entry.id} className="hover:bg-canvas/40 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{entry.date}</td>
                   <td className="py-2.5 px-3">
-                    <Badge variant={entry.type === 'GRANT' ? 'ok' : 'gray'}>
-                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : 'Sử dụng phép'}
+                    <Badge variant={entry.type === 'GRANT' ? 'ok' : entry.type === 'ADJUST' ? 'warn' : 'gray'}>
+                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : 'Sử dụng phép'}
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3 font-medium text-ink">{entry.description}</td>

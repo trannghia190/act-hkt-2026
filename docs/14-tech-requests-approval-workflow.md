@@ -39,7 +39,7 @@ graph TD
 * **Cả ngày hoặc nửa ngày (0.5)**; nửa ngày chọn **buổi sáng/chiều**, hiển thị khung giờ làm việc thực tế còn lại theo ca.
 * Ngày bắt đầu/kết thúc lưu thật vào `requests.work_date/end_date`; nhiều ngày hiển thị `dd/mm/yyyy → dd/mm/yyyy`.
 * **Giấy tờ đính kèm**: loại nghỉ có `requires_attachment` bắt buộc ≥1 file (nhiều file được);ảnh/PDF, mỗi file ≤10MB; lưu nội dung thật trong `request_attachments.data (bytea)`. UI chặn gửi khi thiếu file; server chặn duyệt nếu chưa có file.
-* Duyệt 1 cấp bởi quản lý trực tiếp (không qua HR).
+* Duyệt 1 cấp bởi quản lý trực tiếp (không qua HR). Khi duyệt → ghi 1 dòng `USED` âm vào `leave_ledger`: số ngày = số ngày làm việc (bỏ cuối tuần/lễ), nửa ngày = 0.5; nghỉ ốm (S) có dòng nhưng **không trừ phép năm**.
 
 ### 1.4. Đơn Làm Việc Từ Xa (Work From Home — S10)
 * **Không giới hạn địa điểm WFH**, **không có lịch lặp tuần**.

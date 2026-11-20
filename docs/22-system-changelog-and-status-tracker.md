@@ -55,6 +55,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 * Đi muộn/về sớm: 1 ngày, chọn đi muộn/về sớm + giờ thực tế; giới hạn phút theo `late_early.max_minutes`.
 * Bổ sung chấm công: 1 ngày trong hạn (không ngày tương lai), chọn giờ vào/ra, bỏ ô thời lượng.
 * Nghỉ phép nửa ngày = 0.5 + buổi sáng/chiều + khung giờ làm thực tế; `end_date` lưu DB và hiển thị khoảng ngày.
+* Duyệt nghỉ phép ghi `leave_ledger` USED (nửa ngày 0.5); nghỉ ốm không trừ phép năm; số dư/sổ phép tính từ ledger, lọc AL/S theo loại.
 * Đơn từ hiển thị tên loại nghỉ (Nghỉ ốm) thay mã S/AL; danh sách phân trang server-side, lọc khoảng ngày, cột Ngày tạo, nút Xem chi tiết, Sửa đơn khi chờ duyệt/bị từ chối.
 * Đính kèm giấy tờ: nhiều fileảnh/PDF, lưu bytea DB, chặn gửi/duyệt khi thiếu.
 

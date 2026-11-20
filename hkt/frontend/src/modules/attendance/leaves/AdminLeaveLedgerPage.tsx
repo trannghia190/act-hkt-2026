@@ -15,6 +15,8 @@ interface EnterpriseLeaveLedgerItem {
   balanceAfter: number;
   reason: string;
   approvedBy: string;
+  leaveType?: string;
+  createdAt?: string;
 }
 
 export const AdminLeaveLedgerPage: React.FC = () => {
@@ -52,12 +54,24 @@ export const AdminLeaveLedgerPage: React.FC = () => {
     if (!code) return;
     fetch(`/api/v1/leaves/ledger/by-code/${encodeURIComponent(code)}`, { headers: authOnly() })
       .then(r => r.json()).then(j => {
-        if (Array.isArray(j?.data)) setLedgerEntries(j.data.map((e: any) => ({
-          id: e.id, employeeCode: code, employeeName: employees.find(x => x.employeeCode === code)?.fullName || code,
-          department: '', date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
-          type: e.action, amount: Number(e.amount || 0), balanceAfter: Number(e.balanceAfter || 0),
-          reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
-        })));
+        if (Array.isArray(j?.data)) {
+          const mapped = j.data.map((e: any) => ({
+            id: e.id, employeeCode: code, employeeName: employees.find(x => x.employeeCode === code)?.fullName || code,
+            department: '', date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
+            type: e.action, amount: Number(e.amount || 0), balanceAfter: Number(e.balanceAfter || 0),
+            reason: e.reason || e.leaveType, approvedBy: e.performedBySystem ? 'Hệ thống' : 'HR',
+            leaveType: e.leaveType, createdAt: e.createdAt,
+          }));
+          let running = 0;
+          const byId: Record<string, number> = {};
+          [...mapped].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).forEach(e => {
+            const affectsAnnual = !e.leaveType || String(e.leaveType).toUpperCase() === 'AL';
+            if (e.type === 'GRANT' || (e.type === 'ADJUST' && affectsAnnual)) running += e.amount;
+            else if (e.type === 'USED' && affectsAnnual) running += e.amount;
+            byId[e.id] = Math.round(running * 100) / 100;
+          });
+          setLedgerEntries(mapped.map(e => ({ ...e, balanceAfter: byId[e.id] ?? e.balanceAfter })));
+        }
       }).catch(() => undefined);
   };
   useEffect(() => {
