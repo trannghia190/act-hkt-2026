@@ -5,15 +5,49 @@ export const RequestDetailPage: React.FC = () => {
   const { id } = useParams();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
 
+  const token = () => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken || ''; } catch { return ''; } };
+  const loadAttachments = () => {
+    fetch(`/api/v1/requests/${id}/attachments`, { headers: token() ? { Authorization: `Bearer ${token()}` } : {} })
+      .then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setAttachments(j.data); })
+      .catch(() => undefined);
+  };
   useEffect(() => {
-    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
-    fetch(`/api/v1/requests/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    fetch(`/api/v1/requests/${id}`, { headers: token() ? { Authorization: `Bearer ${token()}` } : {} })
       .then(r => r.json()).then(j => { if (j?.data) setData(j.data); else setError(j?.message || 'Không tải được đơn'); })
       .catch(() => setError('Không tải được đơn'));
+    loadAttachments();
   }, [id]);
 
   const req = data?.request;
+  const me = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); } catch { return {}; } })();
+  const canUpload = data?.employeeCode && me?.employeeCode === data.employeeCode
+    && (req?.status === 'PENDING_APPROVAL' || req?.status === 'DRAFT');
+
+  const download = async (att: any) => {
+    const res = await fetch(`/api/v1/requests/${id}/attachments/${att.id}`, { headers: token() ? { Authorization: `Bearer ${token()}` } : {} });
+    if (!res.ok) { setError('Không tải được file đính kèm'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = att.fileName || 'attachment';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch(`/api/v1/requests/${id}/attachments`, {
+      method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: fd,
+    });
+    const json = await res.json().catch(() => ({}));
+    setUploading(false);
+    if (!res.ok) { setError(json?.message || 'Tải file thất bại'); return; }
+    loadAttachments();
+  };
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
@@ -47,6 +81,25 @@ export const RequestDetailPage: React.FC = () => {
           <Link to="/attendance/my-timesheet" className="text-xs text-accent underline">Xem bảng công bị tác động →</Link>
         </div>
       )}
+      <div className="bg-surface border border-line rounded-xl p-4">
+        <div className="text-sm font-bold mb-2">Giấy tờ đính kèm ({attachments.length})</div>
+        {attachments.length === 0 && <div className="text-xs text-ink-muted">Chưa có file đính kèm.</div>}
+        <ul className="space-y-1.5">
+          {attachments.map((a: any) => (
+            <li key={a.id} className="flex items-center justify-between gap-2 text-xs border border-line rounded-lg px-3 py-2">
+              <span>📎 {a.fileName} <span className="text-ink-muted">({Math.round((a.sizeBytes || 0) / 1024)} KB)</span></span>
+              <button className="text-accent underline" onClick={() => download(a)}>Tải file</button>
+            </li>
+          ))}
+        </ul>
+        {canUpload && (
+          <label className="mt-2 block text-[11px]">
+            <span className="font-semibold">Đính kèm thêm (ảnh/PDF)</span>
+            <input type="file" accept="image/*,application/pdf" disabled={uploading} className="mt-1 block w-full"
+              onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
+          </label>
+        )}
+      </div>
       {data?.timeline && (
         <div className="bg-surface border border-line rounded-xl p-4">
           {data.timeline.map((t: any, i: number) => (

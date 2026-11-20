@@ -18,6 +18,7 @@ export const RequestsPage: React.FC = () => {
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
   const [halfDayPeriod, setHalfDayPeriod] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [punchLogs, setPunchLogs] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
   const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
@@ -134,6 +135,7 @@ export const RequestsPage: React.FC = () => {
   const lateMinutesMax = Number(rulesCfg?.late_early?.max_minutes ?? 60);
   const adjustDeadlineDays = Number(rulesCfg?.makeup?.deadline_working_days ?? 3);
   const selectedLeaveCfg = leaveTypes.find((lt: any) => lt.code === newReq.leaveType);
+  const leaveNeedsAttachment = newReq.type === 'LEAVE' && Boolean(selectedLeaveCfg?.requiresAttachment);
   const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
   const minDateFor = (type: string) => {
     if (type === 'WFH') return isoDaysFromToday(1);
@@ -185,6 +187,10 @@ export const RequestsPage: React.FC = () => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
+    if (leaveNeedsAttachment && attachments.length === 0) {
+      showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi');
+      return;
+    }
 
     const leaveNames: Record<string, string> = { AL: 'Phép năm', S: 'Nghỉ ốm', NL: 'Nghỉ lễ tết', RO: 'Nghỉ bù', CL: 'Việc riêng có lương', ML: 'Thai sản', PL: 'Nghỉ khi có vợ sinh', UP: 'Không lương', HIEU: 'Hiếu hỉ', TANG: 'Tang gia' };
     const typeNames: Record<string, string> = {
@@ -302,6 +308,7 @@ export const RequestsPage: React.FC = () => {
       }
     }
     (async () => {
+      const createdIds: string[] = [];
       try {
         for (const iso of sendDates) {
           const res = await fetch('/api/v1/requests', {
@@ -309,11 +316,27 @@ export const RequestsPage: React.FC = () => {
           });
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
+          if (json?.data?.id) createdIds.push(json.data.id);
         }
-        showToast(asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
-          : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'));
+        let uploadFailed = false;
+        for (const requestId of createdIds) {
+          for (const file of attachments) {
+            const fd = new FormData();
+            fd.append('file', file);
+            const up = await fetch(`/api/v1/requests/${requestId}/attachments`, {
+              method: 'POST', headers: authHeaders(), body: fd,
+            });
+            if (!up.ok) { uploadFailed = true; break; }
+          }
+          if (uploadFailed) break;
+        }
+        showToast(uploadFailed
+          ? 'Đơn đã tạo nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
+          : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
+              : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công')));
         loadRequests();
         setIsCreateOpen(false);
+        setAttachments([]);
         setLeaveUnit('DAY');
         setHalfDayPeriod('MORNING');
         setNewReq({
@@ -670,6 +693,24 @@ export const RequestsPage: React.FC = () => {
                 )}
               </div>
             )}
+            {leaveNeedsAttachment && (
+              <div className={`mt-2 p-2 rounded-lg border text-[11px] ${attachments.length ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+                <div className="font-semibold">Bắt buộc đính kèm giấy tờ cho loại nghỉ này</div>
+                <input type="file" multiple accept="image/*,application/pdf" className="mt-1 block w-full text-[11px]"
+                  onChange={e => setAttachments(Array.from(e.target.files || []))} />
+                {attachments.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {attachments.map((f, i) => (
+                      <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                        <span>📎 {f.name} ({Math.round(f.size / 1024)} KB)</span>
+                        <button type="button" className="text-rose-700" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>Bỏ</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {attachments.length === 0 && <div className="mt-0.5 text-rose-700">Chưa có file — chưa thể gửi đơn.</div>}
+              </div>
+            )}
           </div>
 
           {newReq.type === 'WFH' && (
@@ -879,7 +920,7 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
+            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (leaveNeedsAttachment && attachments.length === 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
               Gửi Đơn Phê Duyệt
             </Button>
           </div>
