@@ -216,7 +216,7 @@ export const LeavesPage: React.FC = () => {
                   </td>
                   <td className="py-2.5 px-3">
                     <Badge variant={entry.type === 'GRANT' ? 'ok' : entry.type === 'ADJUST' ? 'warn' : 'gray'}>
-                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : 'Sử dụng phép'}
+                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : entry.type === 'EXPIRED' ? 'Hết hạn phép tồn' : 'Sử dụng phép'}
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3 font-medium text-ink">{entry.description}</td>
