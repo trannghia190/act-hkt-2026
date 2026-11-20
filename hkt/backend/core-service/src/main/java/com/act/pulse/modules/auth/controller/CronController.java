@@ -79,9 +79,9 @@ public class CronController {
         for (var user : userRepository.findAll()) {
             if (user.getJoinedDate() == null) continue;
             int years = today.getYear() - user.getJoinedDate().getYear();
-            if (today.getDayOfYear() >= user.getJoinedDate().getDayOfYear()) {
-                // đủ năm
-            } else {
+            if (today.getMonthValue() < user.getJoinedDate().getMonthValue()
+                    || (today.getMonthValue() == user.getJoinedDate().getMonthValue()
+                        && today.getDayOfMonth() < user.getJoinedDate().getDayOfMonth())) {
                 years--;
             }
             if (years < 2 || years % 2 != 0) continue;
