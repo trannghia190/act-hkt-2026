@@ -37,15 +37,23 @@ export const RequestDetailPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const upload = async (file: File) => {
+  const uploadMany = async (files: File[]) => {
+    if (!files.length) return;
     setUploading(true);
-    const fd = new FormData(); fd.append('file', file);
-    const res = await fetch(`/api/v1/requests/${id}/attachments`, {
-      method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: fd,
-    });
-    const json = await res.json().catch(() => ({}));
+    setError(null);
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/v1/requests/${id}/attachments`, {
+        method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: fd,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(`Tải file "${file.name}" thất bại: ${json?.message || 'lỗi không xác định'}`);
+        break;
+      }
+    }
     setUploading(false);
-    if (!res.ok) { setError(json?.message || 'Tải file thất bại'); return; }
     loadAttachments();
   };
   return (
@@ -95,8 +103,9 @@ export const RequestDetailPage: React.FC = () => {
         {canUpload && (
           <label className="mt-2 block text-[11px]">
             <span className="font-semibold">Đính kèm thêm (ảnh/PDF)</span>
-            <input type="file" accept="image/*,application/pdf" disabled={uploading} className="mt-1 block w-full"
-              onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
+            <input type="file" multiple accept="image/*,application/pdf" disabled={uploading} className="mt-1 block w-full"
+              onChange={e => { const files = Array.from(e.target.files || []); if (files.length) uploadMany(files); e.currentTarget.value = ''; }} />
+            <span className="text-ink-muted">Có thể chọn 1 hoặc nhiều file ảnh/PDF (mỗi file tối đa 10MB).</span>
           </label>
         )}
       </div>
