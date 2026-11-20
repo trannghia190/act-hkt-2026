@@ -117,4 +117,4 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * **Phép tồn** có card riêng + trạng thái `AVAILABLE / CAPPED / EXPIRED` theo `leave_carryover` (`max_keep_from`, `max_keep_days`, `expire_from`); test đổi rule: AVAILABLEcarry1.5 · CAPPEDcarry1 (expired0.5) · EXPIREDcarry0.
 * **Cộng phép ngày15:** endpoint `POST /cron/monthly-leave-accrual` cộng1 ngày, chạy lại không cộng trùng; user vào sau ngày15 (test 20/11) **không** được cộng tháng đó.
 * **Thâm niên:** sửa so sánh năm theo tháng/ngày (không dùng day-of-year do năm nhuận); test user vào20/11/2024 → cộng1 ngày đúng ngày tròn, tách khỏi kỳ cộng tháng15.
-* **Sổ phép:** filter theo loại (AL/S/…) và năm lọc đúng số dòng; cột số dư sau = running balance khớp thẻ tổng.
+* **Sổ phép:** filter theo loại (AL/S/…) và năm lọc đúng số dòng. Mỗi dòng hiển thị **Loại phép** (tên + code) và **số dư chạy theo đúng loại đó**: AL = quỹ phép năm; S = số ngày nghỉ ốm đã dùng (không trộn với quỹ AL). Áp dụng cả Sổ phép cá nhân và Sổ cái HR.
