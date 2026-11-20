@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -10,6 +10,8 @@ interface TimesheetRow {
   fullName: string;
   department: string;
   team: string;
+  positionName?: string | null;
+  managerCode?: string | null;
   standardDays: number;
   actualWorkDays: number;
   paidLeaveDays: number;
@@ -21,6 +23,15 @@ interface TimesheetRow {
   otWeekendHours: number;
   totalPayrollDays: number;
   status: 'OPEN' | 'HR_LOCKED';
+  sickDays: number;
+  sickBhDays: number;
+  compDays: number;
+  unpaidDays: number;
+  maternityDays: number;
+  paternityDays: number;
+  specialLeaveDays: number;
+  totalDays: number;
+  remainingLeave: number;
 }
 
 export const TimesheetPage: React.FC = () => {
@@ -36,30 +47,86 @@ export const TimesheetPage: React.FC = () => {
   const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [dayOverrides, setDayOverrides] = useState<Record<string, string>>({});
+  const [sheetStatus, setSheetStatus] = useState<string>('draft');
+  const [savedViews, setSavedViews] = useState<{ name: string; f: any }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('pulse_timesheet_views') || '[]'); } catch { return []; }
+  });
+  const currentFilters = { filterDept, quickFilter, searchQuery, month: selectedMonth };
+  const applyView = (v: any) => {
+    setFilterDept(v.filterDept ?? 'ALL'); setQuickFilter(v.quickFilter ?? 'ALL');
+    setSearchQuery(v.searchQuery ?? ''); if (v.month) setSelectedMonth(v.month);
+  };
+  useEffect(() => {
+    const qs = new URLSearchParams(location.search).get('view');
+    if (qs) { try { applyView(JSON.parse(decodeURIComponent(qs))); } catch { /* ignore */ } }
+  }, []);
+  const saveView = () => {
+    const name = window.prompt('Tên view (VD: Mobile · đi muộn)', 'View của tôi');
+    if (!name) return;
+    const next = [...savedViews.filter(v => v.name !== name), { name, f: currentFilters }];
+    setSavedViews(next); localStorage.setItem('pulse_timesheet_views', JSON.stringify(next));
+    showToast('Đã lưu view — mở lại bằng 1 click');
+  };
+  const shareView = async () => {
+    const url = `${location.origin}${location.pathname}?view=${encodeURIComponent(JSON.stringify(currentFilters))}`;
+    try { await navigator.clipboard.writeText(url); showToast('Đã copy link chia sẻ view'); } catch { window.prompt('Copy link chia sẻ:', url); }
+  };
+  const [conflictMsg, setConflictMsg] = useState<string | null>(null);
+  const authh = (): Record<string, string> => { try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; } };
+  const loadSheet = () => {
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    fetch(`/api/v1/timesheets?month=${ym}`, { headers: authh() })
+      .then(r => r.json())
+      .then(j => {
+        const d = j?.data; if (!d) return;
+        setSheetStatus(d.status || 'draft');
+        setIsLocked(d.status === 'locked');
+        const mapped: TimesheetRow[] = (d.rows || []).map((r: any, i: number) => ({
+          id: String(i + 1), code: r.employeeCode, fullName: r.fullName, department: r.teamName || '—',
+          team: r.teamName || '—', positionName: r.positionName || '—', managerCode: r.managerCode || '',
+          standardDays: r.standardDays ?? 0, actualWorkDays: r.actualDays ?? 0,
+          paidLeaveDays: r.leaveDays ?? 0, holidayDays: r.holidayDays ?? 0, wfhDays: r.wfhDays ?? 0,
+          lateCount: r.lateCount ?? 0, penaltyLatePercent: 0, otWeekdayHours: 0, otWeekendHours: 0,
+          totalPayrollDays: r.actualDays ?? 0, status: d.status === 'locked' ? 'HR_LOCKED' : 'OPEN',
+          sickDays: r.sickDays ?? 0, sickBhDays: r.sickBhDays ?? 0, compDays: r.compDays ?? 0,
+          unpaidDays: r.unpaidDays ?? 0, maternityDays: r.maternityDays ?? 0,
+          paternityDays: r.paternityDays ?? 0, specialLeaveDays: r.specialLeaveDays ?? 0,
+          totalDays: r.totalDays ?? 0, remainingLeave: r.remainingLeave ?? 0,
+        }));
+        const ov: Record<string, string> = {};
+        (d.rows || []).forEach((r: any, i: number) => {
+          Object.entries(r.days || {}).forEach(([day, sym]) => { ov[`${i + 1}-${day}`] = String(sym); });
+        });
+        setDayOverrides(ov);
+        setRows(mapped);
+      })
+      .catch(() => undefined);
+  };
+  useEffect(loadSheet, [selectedMonth]);
 
   // 31 cột ngày + 17 cột tổng hợp = 53 cột dữ liệu (đúng file Pine thật)
   const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  const daySymbol = (row: TimesheetRow, day: number): string => {
-    const override = dayOverrides[`${row.id}-${day}`];
-    if (override) return override;
-    if (row.paidLeaveDays > 0 && day === 12) return 'AL';
-    if (row.wfhDays > 0 && day === 11) return 'R';
-    if (row.lateCount > 0 && day === 5) return '1.00*';
-    const weekday = new Date(2026, 10, day).getDay();
-    if (weekday === 0 || weekday === 6) return '';
-    return '1.00';
-  };
+  // Chỉ hiển thị ký hiệu gốc do API trả về (attendance_logs + đơn đã duyệt + ngày lễ).
+  // Không tự bịa công cho ngày không có dữ liệu.
+  const daySymbol = (row: TimesheetRow, day: number): string => dayOverrides[`${row.id}-${day}`] || '';
 
-  const editDayCell = (row: TimesheetRow, day: number) => {
+  const monthOf = () => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; };
+
+  const editDayCell = async (row: TimesheetRow, day: number) => {
+    if (isLocked) { showToast('Kỳ công đã khoá — không sửa được ô'); return; }
     const current = daySymbol(row, day) || '(trống)';
-    const next = window.prompt(
-      `Sửa ô ngày ${day}/11 — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`,
-      daySymbol(row, day),
-    );
+    const next = window.prompt(`Sửa ô ngày ${day} — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`, daySymbol(row, day));
     if (next === null) return;
+    const reason = window.prompt('Lý do sửa (bắt buộc):', 'HR đối chiếu log chấm công');
+    if (!reason || !reason.trim()) return;
+    const res = await fetch(`/api/v1/timesheets/cell?month=${monthOf()}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authh() },
+      body: JSON.stringify({ employeeCode: row.code, day, symbol: next, reason: reason.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Sửa ô thất bại'); return; }
     setDayOverrides((prev) => ({ ...prev, [`${row.id}-${day}`]: next }));
-
     // Ghi nhật ký kiểm toán Append-Only vào backend
     fetch('/api/v1/attendance/timesheet/override', {
       method: 'POST',
@@ -83,98 +150,8 @@ export const TimesheetPage: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const [rows, setRows] = useState<TimesheetRow[]>([
-    {
-      id: '1',
-      code: 'ACT0001',
-      fullName: 'Trịnh Văn Quản Trị',
-      department: 'Ban Giám Đốc',
-      team: 'Executive Board',
-      standardDays: 22,
-      actualWorkDays: 22,
-      paidLeaveDays: 0,
-      holidayDays: 0,
-      wfhDays: 0,
-      lateCount: 0,
-      penaltyLatePercent: 0,
-      otWeekdayHours: 0,
-      otWeekendHours: 0,
-      totalPayrollDays: 22,
-      status: 'OPEN'
-    },
-    {
-      id: '2',
-      code: 'ACT0012',
-      fullName: 'Lê Thị Thu Hà',
-      department: 'Phòng Nhân Sự',
-      team: 'HR Operations',
-      standardDays: 22,
-      actualWorkDays: 21,
-      paidLeaveDays: 1,
-      holidayDays: 0,
-      wfhDays: 0,
-      lateCount: 0,
-      penaltyLatePercent: 0,
-      otWeekdayHours: 4,
-      otWeekendHours: 0,
-      totalPayrollDays: 22.5,
-      status: 'OPEN'
-    },
-    {
-      id: '3',
-      code: 'ACT0045',
-      fullName: 'Phạm Minh Tuấn',
-      department: 'Trung tâm Công nghệ',
-      team: 'Sirius',
-      standardDays: 22,
-      actualWorkDays: 20,
-      paidLeaveDays: 1,
-      holidayDays: 0,
-      wfhDays: 2,
-      lateCount: 1,
-      penaltyLatePercent: 0,
-      otWeekdayHours: 8,
-      otWeekendHours: 4,
-      totalPayrollDays: 23.2,
-      status: 'OPEN'
-    },
-    {
-      id: '4',
-      code: 'ACT0142',
-      fullName: 'Nguyễn Văn Minh',
-      department: 'Trung tâm Công nghệ',
-      team: 'Sirius',
-      standardDays: 22,
-      actualWorkDays: 19.5,
-      paidLeaveDays: 1.5,
-      holidayDays: 0,
-      wfhDays: 1,
-      lateCount: 2,
-      penaltyLatePercent: 0,
-      otWeekdayHours: 2,
-      otWeekendHours: 0,
-      totalPayrollDays: 21.2,
-      status: 'OPEN'
-    },
-    {
-      id: '5',
-      code: 'ACT0089',
-      fullName: 'Trần Thị Thu Thảo',
-      department: 'Khối Kinh Doanh & Tiếp Thị',
-      team: 'Mobile App',
-      standardDays: 22,
-      actualWorkDays: 20,
-      paidLeaveDays: 0,
-      holidayDays: 0,
-      wfhDays: 2,
-      lateCount: 4,
-      penaltyLatePercent: 5,
-      otWeekdayHours: 0,
-      otWeekendHours: 0,
-      totalPayrollDays: 21.9,
-      status: 'OPEN'
-    }
-  ]);
+  // Dữ liệu thật luôn lấy từ API — không dùng dữ liệu mẫu giả.
+  const [rows, setRows] = useState<TimesheetRow[]>([]);
 
   const handleSaveCellOverride = () => {
     if (!editingCell) return;
@@ -205,10 +182,17 @@ export const TimesheetPage: React.FC = () => {
     showToast(`Đã cập nhật thủ công ô công cho ${editingCell.row.fullName} và ghi nhật ký thay đổi`);
   };
 
-  const handleBulkApply = (e: React.FormEvent) => {
+  const handleBulkApply = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(bulkAdjustment.amount);
     if (isNaN(amountNum) || selectedIds.length === 0) return;
+    const codes = displayedRows.filter(r => selectedIds.includes(r.id)).map(r => r.code);
+    const res = await fetch(`/api/v1/timesheets/bulk?month=${monthOf()}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authh() },
+      body: JSON.stringify({ employeeCodes: codes, day: 1, symbol: String(amountNum), reason: bulkAdjustment.reason }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Sửa hàng loạt thất bại'); return; }
 
     setRows(prev =>
       prev.map(r => {
@@ -223,7 +207,7 @@ export const TimesheetPage: React.FC = () => {
       })
     );
     setIsBulkEditOpen(false);
-    showToast(`Đã sửa hàng loạt thành công cho ${selectedIds.length} nhân sự (Tính năng C4)!`);
+    showToast(`Đã cập nhật bảng công cho ${selectedIds.length} nhân sự`);
     setSelectedIds([]);
   };
 
@@ -252,33 +236,58 @@ export const TimesheetPage: React.FC = () => {
     return true;
   });
 
-  const handleLockPayroll = () => {
+  const handleLockPayroll = async () => {
+    if (!window.confirm('Khoá kỳ công tháng này? Sau khi khoá là bản cuối cùng, không sửa được nữa.')) return;
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    const res = await fetch(`/api/v1/timesheets/lock?month=${ym}`, { method: 'POST', headers: authh() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Khoá kỳ công thất bại'); return; }
     setIsLocked(true);
+    setSheetStatus('locked');
     setRows(prev => prev.map(r => ({ ...r, status: 'HR_LOCKED' })));
+    showToast('Đã khoá kỳ công — bản cuối cùng');
+  };
+
+  const handlePublish = async () => {
+    const ym = (() => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; })();
+    const res = await fetch(`/api/v1/timesheets/publish?month=${ym}`, { method: 'POST', headers: authh() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setConflictMsg(json?.message || 'Công bố thất bại'); return; }
+    setSheetStatus('published');
+    showToast(`Đã công bố — khiếu nại đến ${json?.data?.disputeDeadline ?? ''}`);
   };
 
   const handleExportExcel = () => {
+    const [mm, yyyy] = selectedMonth.split('/');
+    const weekdays = ['CN', 'T Hai', 'T Ba', 'T Tư', 'T Năm', 'T Sáu', 'T Bảy'];
+    // Đúng 53 cột theo file HR thật: 5 thông tin + 31 ngày + 17 tổng hợp (AK–BA).
     const headers = [
-      'STT', 'Mã NV', 'Họ Tên', 'Chức vụ', 'Nhóm',
-      ...monthDays.map(d => `Ngày ${d}`),
-      'Công chuẩn', 'Công thực tế', 'Nghỉ phép (AL)', 'WFH (R)', 'Đi muộn', 'Trừ đi muộn',
-      'OT ngày thường', 'OT cuối tuần', 'Tổng công QĐ lương', 'Trạng thái',
-      'Nghỉ lễ (NL)', 'Nghỉ không lương (UP)', 'Nghỉ ốm (S)', 'Nghỉ bù (RO)', 'Thai sản (ML)',
-      'Tổng ngày nghỉ', 'Phép còn lại',
+      'STT', 'Mã NV/Code', 'Họ và Tên/Full Name', 'Chức vụ/Position', 'Nhóm/Team',
+      ...monthDays.map(d => `${d} - ${weekdays[new Date(Number(yyyy), Number(mm) - 1, d).getDay()]}`),
+      'Quản lý trực tiếp', 'Làm việc tại nhà/R', 'Tổng ngày công', 'Nghỉ lễ/NL', 'Ngày phép/AL',
+      'Nghỉ chế độ/CL', 'Nghỉ ốm/S', 'Nghỉ ốm BH', 'Nghỉ bù/RO', 'Nghỉ không lương/UP',
+      'Nghỉ thai sản/ML', 'Nghỉ việc riêng khi có vợ sinh/PL', 'Tổng/Total',
+      'Tổng số ngày phép còn lại', 'Số ngày làm việc thực tế',
+      'Số ngày phép sử dụng, nghỉ bù, nghỉ đặc biệt', 'Số ngày nghỉ không hưởng lương',
     ];
-    const exportRows = rows.map((r, idx) => [
-      idx + 1, r.code, `"${r.fullName}"`, `"Nhân viên"`, `"${r.team}"`,
-      ...monthDays.map(d => `"${daySymbol(r, d)}"`),
-      r.standardDays, r.actualWorkDays, r.paidLeaveDays, r.wfhDays, r.lateCount,
-      `${r.penaltyLatePercent}%`, r.otWeekdayHours, r.otWeekendHours, r.totalPayrollDays,
-      r.status === 'HR_LOCKED' ? 'Đã khóa' : 'Đang mở',
-      r.holidayDays, 0, 0, 0, 0,
-      r.paidLeaveDays + r.holidayDays, (12 - r.paidLeaveDays).toFixed(1),
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...exportRows.map(r => r.join(','))].join('\n');
+    const exportRows = rows.map((r, idx) => {
+      const total = r.totalDays + r.holidayDays + r.paidLeaveDays + r.specialLeaveDays + r.sickDays
+        + r.sickBhDays + r.compDays + r.unpaidDays + r.maternityDays + r.paternityDays;
+      return [
+        idx + 1, r.code, `"${r.fullName}"`, `"${r.positionName || ''}"`, `"${r.team}"`,
+        ...monthDays.map(d => `"${daySymbol(r, d)}"`),
+        r.managerCode || '', r.wfhDays, r.totalDays, r.holidayDays, r.paidLeaveDays,
+        r.specialLeaveDays, r.sickDays, r.sickBhDays, r.compDays, r.unpaidDays,
+        r.maternityDays, r.paternityDays, total, r.remainingLeave,
+        r.totalDays, r.holidayDays + r.paidLeaveDays + r.specialLeaveDays + r.sickDays + r.compDays,
+        r.sickBhDays + r.unpaidDays + r.maternityDays + r.paternityDays,
+      ];
+    });
+    const csvHeaders = headers.map(h => (/[,"]/.test(h) ? `"${h.replace(/"/g, '""')}"` : h));
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [csvHeaders.join(','), ...exportRows.map(r => r.join(','))].join('\n');
     const link = document.createElement('a');
     link.href = encodeURI(csvContent);
-    link.download = `Master_Timesheet_53Cols_${selectedMonth.replace('/', '_')}.csv`;
+    link.download = `Pine_Timekeeping_Report_${selectedMonth.replace('/', '_')}.csv`;
     link.click();
   };
 
@@ -289,7 +298,7 @@ export const TimesheetPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Tổng Hợp Công &amp; Chốt Lương (Master Timesheet)</h1>
-            <Badge variant="accent">S15</Badge>
+            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá' : sheetStatus === 'published' ? 'Đang khiếu nại' : 'Bản nháp'}</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Bảng điều khiển 45 chỉ tiêu công, tự động tính trừ chuyên cần theo luật, cộng công thêm giờ (OT) và cho phép HR điều chỉnh kèm lưu vết
@@ -298,6 +307,9 @@ export const TimesheetPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportExcel}>
             📥 Xuất Excel (53 Cột)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePublish} disabled={isLocked || sheetStatus === 'published'}>
+            📣 {sheetStatus === 'published' ? 'Đã công bố' : 'Công bố bảng công'}
           </Button>
           <Button
             variant={isLocked ? 'secondary' : 'primary'}
@@ -309,6 +321,8 @@ export const TimesheetPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {conflictMsg && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">{conflictMsg}</div>}
 
       {/* Toast Alert */}
       {toastMsg && (
@@ -325,7 +339,7 @@ export const TimesheetPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="primary" size="sm" onClick={() => setIsBulkEditOpen(true)}>
-              Sửa Hàng Loạt (C4)
+              Sửa hàng loạt
             </Button>
             <Button variant="outline" size="sm" onClick={() => setSelectedIds([])}>
               Bỏ chọn
@@ -351,16 +365,16 @@ export const TimesheetPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-ink-muted mr-2">Phòng ban:</label>
+            <label className="text-ink-muted mr-2">Nhóm:</label>
             <select
               value={filterDept}
               onChange={e => setFilterDept(e.target.value)}
               className="p-1.5 border border-line rounded-lg bg-canvas font-medium"
             >
-              <option value="ALL">Tất cả Phòng Ban</option>
-              <option value="Trung tâm Công nghệ">Trung tâm Công nghệ</option>
-              <option value="Phòng Nhân Sự">Phòng Nhân Sự</option>
-              <option value="Khối Kinh Doanh & Tiếp Thị">Khối Kinh Doanh & Tiếp Thị</option>
+              <option value="ALL">Tất cả nhóm</option>
+              {Array.from(new Set(rows.map(r => r.team).filter(t => t && t !== '—'))).map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
 
@@ -412,6 +426,19 @@ export const TimesheetPage: React.FC = () => {
             >
               🔻 Thiếu công
             </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+            {searchQuery && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Từ khoá: {searchQuery} <button onClick={() => setSearchQuery('')}>✕</button></span>}
+            {filterDept !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Nhóm: {filterDept} <button onClick={() => setFilterDept('ALL')}>✕</button></span>}
+            {quickFilter !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Lọc: {quickFilter} <button onClick={() => setQuickFilter('ALL')}>✕</button></span>}
+            <button onClick={saveView} className="px-2 py-1 rounded-full border border-line">💾 Lưu view</button>
+            <button onClick={shareView} className="px-2 py-1 rounded-full border border-line">🔗 Chia sẻ</button>
+            <select onChange={e => { const v = savedViews.find(x => x.name === e.target.value); if (v) applyView(v.f); }}
+              className="px-2 py-1 rounded-full border border-line bg-surface" defaultValue="">
+              <option value="" disabled>View đã lưu…</option>
+              {savedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+            </select>
           </div>
         </div>
       </Card>
@@ -475,7 +502,7 @@ export const TimesheetPage: React.FC = () => {
                   <td className="py-2 px-2 font-medium text-ink sticky left-[136px] bg-surface z-10 border-r border-line">
                     {r.fullName}
                   </td>
-                  <td className="py-2 px-2 text-ink-secondary">Nhân viên</td>
+                  <td className="py-2 px-2 text-ink-secondary">{r.positionName || '—'}</td>
                   <td className="py-2 px-2 text-ink-secondary border-r border-line">{r.team}</td>
                   {monthDays.map((d) => {
                     const symbol = daySymbol(r, d);
@@ -506,12 +533,12 @@ export const TimesheetPage: React.FC = () => {
                     <Badge variant={r.status === 'HR_LOCKED' ? 'gray' : 'ok'}>{r.status === 'HR_LOCKED' ? 'Đã khóa' : 'Đang mở'}</Badge>
                   </td>
                   <td className="py-2 px-2 text-center">{r.holidayDays}</td>
-                  <td className="py-2 px-2 text-center">0</td>
-                  <td className="py-2 px-2 text-center">0</td>
-                  <td className="py-2 px-2 text-center">0</td>
-                  <td className="py-2 px-2 text-center">0</td>
-                  <td className="py-2 px-2 text-center">{r.paidLeaveDays + r.holidayDays}</td>
-                  <td className="py-2 px-2 text-center font-semibold">{(12 - r.paidLeaveDays).toFixed(1)}</td>
+                  <td className="py-2 px-2 text-center">{r.unpaidDays}</td>
+                  <td className="py-2 px-2 text-center">{r.sickDays}</td>
+                  <td className="py-2 px-2 text-center">{r.compDays}</td>
+                  <td className="py-2 px-2 text-center">{r.maternityDays}</td>
+                  <td className="py-2 px-2 text-center">{r.paidLeaveDays + r.holidayDays + r.sickDays + r.compDays + r.unpaidDays + r.maternityDays + r.paternityDays + r.specialLeaveDays}</td>
+                  <td className="py-2 px-2 text-center font-semibold">{r.remainingLeave.toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
@@ -523,7 +550,7 @@ export const TimesheetPage: React.FC = () => {
       <Modal
         isOpen={isBulkEditOpen}
         onClose={() => setIsBulkEditOpen(false)}
-        title={`Sửa Hàng Loạt Bảng Công Cho ${selectedIds.length} Nhân Sự (C4)`}
+        title={`Sửa hàng loạt bảng công cho ${selectedIds.length} nhân sự`}
       >
         <form onSubmit={handleBulkApply} className="space-y-4 text-xs">
           <div>
@@ -595,7 +622,7 @@ export const TimesheetPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log S35) <span className="text-rose-600">*</span></label>
+              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log) <span className="text-rose-600">*</span></label>
               <textarea
                 rows={3}
                 placeholder="Ví dụ: Bổ sung công 0.5 ngày theo xác nhận trực tiếp của Trưởng phòng..."

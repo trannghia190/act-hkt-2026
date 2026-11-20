@@ -17,7 +17,6 @@ export const MyDevicesPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S27 · Thiết bị của tôi</div>
         <h1 className="text-xl font-bold text-ink mt-1">Thiết bị đăng ký & hồ sơ khuôn mặt</h1>
         <p className="text-xs text-ink-muted mt-1">Mặc định 2 thiết bị/người. Thiết bị mới cần HR duyệt trước khi chấm công.</p>
       </div>

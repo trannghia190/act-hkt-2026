@@ -107,7 +107,6 @@ export const OKRApprovalsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu &amp; Check-in OKR Nhóm</h1>
-            <Badge variant="accent">S42</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Phê duyệt bộ Mục tiêu (Objectives) và Kết quả then chốt (Key Results) của thành viên trong nhóm, kiểm tra trọng số đủ 100%

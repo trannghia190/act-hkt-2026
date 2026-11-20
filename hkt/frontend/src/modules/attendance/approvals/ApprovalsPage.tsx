@@ -33,7 +33,7 @@ export const ApprovalsPage: React.FC = () => {
   const mapRequest = (r: any): AttendanceRequestItem => {
     const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
     return {
-      id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: '',
+      id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
       team: r.team || '', type: r.requestType, typeName: typeNames[r.requestType] || r.requestType,
       startDate: r.workDate || '', endDate: r.workDate || '', durationText: r.minutes ? `${r.minutes} phút` : '1.0 ngày',
       reason: r.reason || '', status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
@@ -76,7 +76,7 @@ export const ApprovalsPage: React.FC = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        toEmail: approvingItem.requesterEmail || 'luan.vu@act-corp.internal',
+        toEmail: approvingItem.requesterEmail,
         fullName: approvingItem.requesterName,
         requestId: approvingItem.id,
         requestType: approvingItem.typeName,
@@ -103,7 +103,7 @@ export const ApprovalsPage: React.FC = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        toEmail: rejectingItem.requesterEmail || 'luan.vu@act-corp.internal',
+        toEmail: rejectingItem.requesterEmail,
         fullName: rejectingItem.requesterName,
         requestId: rejectingItem.id,
         requestType: rejectingItem.typeName,
@@ -154,7 +154,6 @@ export const ApprovalsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Phê Duyệt Đơn Nhóm (Manager Approvals)</h1>
-            <Badge variant="accent">S12</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Duyệt hàng loạt đơn xin nghỉ phép, làm từ xa (WFH), làm thêm giờ (OT) và giải trình vi phạm của nhân viên cấp dưới
@@ -232,6 +231,14 @@ export const ApprovalsPage: React.FC = () => {
             onChange={e => setSearchKeyword(e.target.value)}
             className="text-xs px-3 py-1.5 rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent w-64"
           />
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+            <option value="ALL">Tất cả loại</option>
+            <option value="LEAVE">Nghỉ phép</option>
+            <option value="WFH">WFH</option>
+            <option value="LATE_EARLY">Đi muộn / về sớm</option>
+            <option value="ADJUST">Bổ sung công</option>
+          </select>
+          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink" />
         </div>
       </div>
 

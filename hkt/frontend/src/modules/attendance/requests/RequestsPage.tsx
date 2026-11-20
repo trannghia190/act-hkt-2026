@@ -21,6 +21,10 @@ export const RequestsPage: React.FC = () => {
   const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [holidays, setHolidays] = useState<string[]>([]);
   const [wfhLocation, setWfhLocation] = useState<'HOME' | 'OTHER'>('HOME');
+  const [lateEarlyKind, setLateEarlyKind] = useState<'LATE' | 'EARLY'>('LATE');
+  const [lateEarlyTime, setLateEarlyTime] = useState('08:45');
+  const [myShift, setMyShift] = useState<any>(null);
+  const [rulesCfg, setRulesCfg] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -29,6 +33,20 @@ export const RequestsPage: React.FC = () => {
     fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => { if (j?.data) setLeaveBalance(j.data); }).catch(() => undefined);
     fetch('/api/v1/attendance/my-timesheet', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setPunchLogs(j.data); }).catch(() => undefined);
     fetch('/api/v1/admin/holidays', { headers }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setHolidays(j.data.map((h: any) => h.holidayDate)); }).catch(() => undefined);
+    fetch('/api/v1/rules', { headers }).then(r => r.json()).then(j => {
+      const map: Record<string, any> = {};
+      (j?.data || []).forEach((r: any) => { try { map[r.ruleKey] = JSON.parse(r.currentValue || '{}'); } catch { /* ignore */ } });
+      setRulesCfg(map);
+    }).catch(() => undefined);
+    fetch('/api/v1/attendance/my-shift', { headers }).then(r => r.json()).then(j => {
+      if (j?.data && j.data.code) {
+        setMyShift(j.data);
+        const start = String(j.data.checkInStart || '08:00').slice(0, 5);
+        const [h, m] = start.split(':').map(Number);
+        const total = h * 60 + m + 15;
+        setLateEarlyTime(`${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
+      }
+    }).catch(() => undefined);
   }, []);
 
   const [newReq, setNewReq] = useState({
@@ -37,7 +55,7 @@ export const RequestsPage: React.FC = () => {
     endDate: new Date().toISOString().split('T')[0],
     duration: '1.0 ngày',
     leaveType: 'AL',
-    reason: '',
+    reason: 'Việc cá nhân',
   });
 
   const authHeaders = (): Record<string, string> => {
@@ -94,9 +112,57 @@ export const RequestsPage: React.FC = () => {
 
   const leaveDays = newReq.type === 'LEAVE' ? workingDays(newReq.startDate, newReq.endDate) : 0;
 
-  const handleCreate = (e: React.FormEvent) => {
+  // Hạn nộp & giới hạn ngày lấy từ cấu hình quy định hiện hành.
+  const isoDaysFromToday = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('en-CA');
+  };
+  const lateSubmitDays = Number(rulesCfg?.late_early?.submit_within_days ?? 3);
+  const lateMinutesMax = Number(rulesCfg?.late_early?.max_minutes ?? 60);
+  const adjustDeadlineDays = Number(rulesCfg?.makeup?.deadline_working_days ?? 3);
+  const selectedLeaveCfg = leaveTypes.find((lt: any) => lt.code === newReq.leaveType);
+  const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+  const minDateFor = (type: string) => {
+    if (type === 'WFH') return isoDaysFromToday(1);
+    if (type === 'LATE_EARLY') return isoDaysFromToday(-lateSubmitDays);
+    if (type === 'ADJUST') return isoDaysFromToday(-adjustDeadlineDays);
+    return isoDaysFromToday(-leaveSubmitDays);
+  };
+  const minDateForSelected = minDateFor(newReq.type);
+  const handleTypeChange = (type: 'LEAVE' | 'WFH' | 'LATE_EARLY' | 'ADJUST') => {
+    const min = minDateFor(type);
+    setNewReq(prev => {
+      const start = prev.startDate < min ? min : prev.startDate;
+      return { ...prev, type, startDate: start, endDate: start };
+    });
+  };
+
+  // Đi muộn/về sớm: 1 ngày, chọn giờ vào/ra thực tế; số phút tính theo ca thật của nhân viên.
+  const hhmm = (value?: string) => (value || '').slice(0, 5);
+  const toMinutes = (hhmmValue: string) => {
+    const [h, m] = (hhmmValue || '').split(':').map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
+  };
+  const SHIFT_START = hhmm(myShift?.checkInStart) || '08:00';
+  const SHIFT_END = hhmm(myShift?.checkOutStart) || '17:00';
+  const shiftStartLabel = hhmm(myShift?.checkInStart) || '08:00';
+  const shiftInEnd = hhmm(myShift?.checkInEnd) || '09:30';
+  const shiftOutStart = hhmm(myShift?.checkOutStart) || '17:00';
+  const shiftOutEnd = hhmm(myShift?.checkOutEnd) || '18:30';
+  const shiftHours = myShift?.requiredWorkHours ?? 8;
+  const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
+    ? (lateEarlyKind === 'LATE'
+        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
+        : toMinutes(SHIFT_END) - toMinutes(lateEarlyTime))
+    : 0;
+  const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax;
+  const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
+
+  const handleCreate = (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
+    if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
 
     const leaveNames: Record<string, string> = { AL: 'Phép năm', S: 'Nghỉ ốm', NL: 'Nghỉ lễ tết', RO: 'Nghỉ bù', CL: 'Việc riêng có lương', ML: 'Thai sản', PL: 'Nghỉ khi có vợ sinh', UP: 'Không lương', HIEU: 'Hiếu hỉ', TANG: 'Tang gia' };
     const typeNames: Record<string, string> = {
@@ -132,8 +198,8 @@ export const RequestsPage: React.FC = () => {
       type: newReq.type,
       typeName: newReq.type === 'LEAVE' ? `Nghỉ phép — ${leaveNames[newReq.leaveType] || 'Phép năm'} (${leaveUnit === 'HALF_DAY' ? 'nửa ngày' : 'cả ngày'})` : typeNames[newReq.type],
       startDate: newReq.startDate,
-      endDate: newReq.endDate,
-      durationText: newReq.duration,
+      endDate: newReq.type === 'LATE_EARLY' ? newReq.startDate : newReq.endDate,
+      durationText: newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
       approver: approverName,
@@ -141,19 +207,26 @@ export const RequestsPage: React.FC = () => {
     };
 
     const payload = JSON.stringify({
-      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc` : newReq.duration,
+      duration: newReq.type === 'LEAVE' ? `${leaveDays} ngày làm việc`
+        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
       unit: newReq.type === 'LEAVE' ? leaveUnit : undefined,
       urgent: false,
       location_allowed: wfhLocation === 'HOME',
+      ...(newReq.type === 'LATE_EARLY' ? {
+        late_early: lateEarlyKind,
+        time: lateEarlyTime,
+        shift_start: SHIFT_START,
+        shift_end: SHIFT_END,
+      } : {}),
     });
     const body = {
       type: newReq.type,
       leaveType: newReq.type === 'LEAVE' ? newReq.leaveType : undefined,
       payload,
       workDate: newReq.startDate,
-      minutes: newReq.type === 'LATE_EARLY' ? (parseInt((newReq.duration || '').replace(/[^0-9]/g, ''), 10) || 0) : undefined,
+      minutes: newReq.type === 'LATE_EARLY' ? lateEarlyMinutes : undefined,
       reason: newReq.reason,
-      draft: false,
+      draft: asDraft,
     };
     const weeks = newReq.type === 'WFH' ? Math.max(1, Math.min(8, repeatWeeks)) : 1;
     (async () => {
@@ -169,7 +242,7 @@ export const RequestsPage: React.FC = () => {
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
         }
-        showToast(weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công');
+        showToast(asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy' : (weeks > 1 ? `Đã gửi ${weeks} tuần WFH` : 'Đã gửi đơn thành công'));
         loadRequests();
       } catch (e: any) {
         showToast(e?.message || 'Gửi đơn thất bại');
@@ -182,7 +255,7 @@ export const RequestsPage: React.FC = () => {
       endDate: new Date().toISOString().split('T')[0],
       duration: '1.0 ngày',
       leaveType: 'AL',
-      reason: ''
+      reason: 'Việc cá nhân'
     });
     showToast(`Đã gửi đơn ${newId} thành công tới cấp phê duyệt`);
   };
@@ -196,33 +269,53 @@ export const RequestsPage: React.FC = () => {
     loadRequests();
   };
 
-  // C-cố Feature: Auto-fill form directly from punch logs (docs/02 §C-cố - S07)
-  const handleAutoFillMissedPunch = (kind: 'OUT' | 'LATE') => {
-    const latest = punchLogs.find(l => (kind === 'OUT' ? l.checkInAt && !l.checkOutAt : l.checkInAt)) || punchLogs[0];
-    const logDate = latest?.workDate || (kind === 'OUT' ? '2026-11-17' : '2026-11-05');
+  const handleSubmitDraft = async (id: string) => {
+    const res = await fetch(`/api/v1/requests/${id}/submit`, { method: 'POST', headers: authHeaders() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(json?.message || 'Gửi duyệt thất bại'); return; }
+    showToast('Đã gửi đơn nháp tới quản lý');
+    loadRequests();
+  };
+
+  // Gợi ý điền đơn từ log chấm công thật (không hiển thị mô tả nội bộ của task).
+  const fmtDay = (iso: string) => {
+    const [y, m, d] = (iso || '').split('-');
+    return d && m ? `${d}/${m}` : '';
+  };
+  const timeOf = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const lateMinutesOf = (log: any) => {
+    if (!log?.checkInAt) return 0;
+    const d = new Date(log.checkInAt);
+    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_START));
+  };
+  const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt && l.workDate >= isoDaysFromToday(-adjustDeadlineDays));
+  const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0 && l.workDate >= isoDaysFromToday(-lateSubmitDays));
+  const anomalyCount = (missingCheckoutLog ? 1 : 0) + (lateLog ? 1 : 0);
+
+  const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
+    const logDate = log?.workDate || '';
     if (kind === 'OUT') {
       setNewReq({
-        type: 'ADJUST',
-        startDate: logDate,
-        endDate: logDate,
-        duration: 'Ca chiều (17:30)',
-        leaveType: 'AL',
-        reason: 'Tự động trích xuất từ log: Quên quẹt thẻ chấm công ra lúc 17:30 ngày 17/11 do bận họp với khách hàng'
+        type: 'ADJUST', startDate: logDate, endDate: logDate, duration: 'Bổ sung giờ ra', leaveType: 'AL',
+        reason: `Quên chấm công ra ngày ${fmtDay(logDate)} — đề nghị bổ sung giờ ra theo log chấm công`,
       });
-      setIsCreateOpen(true);
-      showToast('⚡ C-cố: Đã tự động điền đơn bổ sung giờ ra ngày 17/11');
+      showToast(`Đã điền sẵn đơn bổ sung giờ ra ngày ${fmtDay(logDate)}`);
     } else {
+      const mins = lateMinutesOf(log);
+      setLateEarlyKind('LATE');
+      setLateEarlyTime(timeOf(log.checkInAt));
       setNewReq({
-        type: 'ADJUST',
-        startDate: logDate,
-        endDate: logDate,
-        duration: 'Muộn 22 phút (08:52)',
-        leaveType: 'AL',
-        reason: 'Tự động trích xuất từ log: Đi muộn 22 phút ngày 05/11 do sự cố kẹt xe Nguyễn Trãi (Đăng ký trừ vào Quota 1/3 lần)'
+        type: 'ADJUST', startDate: logDate, endDate: logDate,
+        duration: `Muộn ${mins} phút (${timeOf(log.checkInAt)})`, leaveType: 'AL',
+        reason: `Đi muộn ${mins} phút ngày ${fmtDay(logDate)} — nhập lý do cụ thể`,
       });
-      setIsCreateOpen(true);
-      showToast('⚡ C-cố: Đã tự động điền giải trình đi muộn ngày 05/11');
+      showToast(`Đã điền sẵn giải trình đi muộn ngày ${fmtDay(logDate)}`);
     }
+    setIsCreateOpen(true);
   };
 
   // Filter requests
@@ -255,7 +348,6 @@ export const RequestsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Đơn Của Tôi &amp; Đăng Ký Chấm Công</h1>
-            <Badge variant="accent">S08 / S30 / S31</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Theo dõi tiến độ xét duyệt đơn xin nghỉ, đăng ký làm từ xa (WFH tối đa 2 ngày/tuần), làm thêm giờ (OT) và giải trình quên chấm công
@@ -268,38 +360,41 @@ export const RequestsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* C-cố Smart Scanner Banner: Auto-detect punch abnormalities */}
-      <div className="p-3.5 bg-gradient-to-r from-emerald-950/40 to-teal-950/20 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <span className="text-xl">⚡</span>
-          <div>
-            <div className="font-bold text-emerald-400 flex items-center gap-2">
-              <span>Tính năng C-cố: Phát hiện 2 log chấm công bất thường cần làm đơn</span>
-              <Badge variant="accent">S07 / Tự Động</Badge>
+      {anomalyCount > 0 && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <span className="text-lg">⚡</span>
+            <div>
+              <div className="font-semibold text-amber-900">
+                Có {anomalyCount} ngày chấm công cần bổ sung đơn
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Hệ thống đã đọc log chấm công của bạn và điền sẵn ngày, số phút — bạn chỉ cần kiểm tra lại rồi gửi.
+              </p>
             </div>
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              Hệ thống tự động đọc log chấm công thật và điền sẵn ngày + số phút chính xác (tiết kiệm 100% thời gian nhập liệu).
-            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {missingCheckoutLog && (
+              <button
+                type="button"
+                onClick={() => handleAutoFillPunch('OUT', missingCheckoutLog)}
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+              >
+                + Giờ ra {fmtDay(missingCheckoutLog.workDate)}
+              </button>
+            )}
+            {lateLog && (
+              <button
+                type="button"
+                onClick={() => handleAutoFillPunch('LATE', lateLog)}
+                className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+              >
+                + Đi muộn {lateMinutesOf(lateLog)}p {fmtDay(lateLog.workDate)}
+              </button>
+            )}
           </div>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => handleAutoFillMissedPunch('OUT')}
-            className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25 font-semibold text-[11px] transition-colors cursor-pointer"
-          >
-            + Điền Đơn Thiếu Ra 17/11
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAutoFillMissedPunch('LATE')}
-            className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 font-semibold text-[11px] transition-colors cursor-pointer"
-          >
-            + Điền Đơn Muộn 22p 05/11
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-3 rounded-xl border border-line shadow-2xs">
@@ -339,6 +434,9 @@ export const RequestsPage: React.FC = () => {
         </div>
 
         <div className="text-xs text-ink-muted">
+          <div className="text-[11px] text-ink-muted">
+            Quota: đi muộn {requests.filter(r => r.type === 'LATE_EARLY' && r.status !== 'REJECTED').length}/2 · bổ sung {requests.filter(r => r.type === 'ADJUST' && r.status !== 'REJECTED').length}/5 · WFH đã gửi tuần này {requests.filter(r => r.type === 'WFH' && r.status === 'PENDING').length}/2
+          </div>
           Tổng cộng: <strong className="text-ink">{filtered.length}</strong> đơn
         </div>
       </div>
@@ -387,12 +485,19 @@ export const RequestsPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-ink-secondary">{req.approver}</td>
                   <td className="py-3 px-4">
+                    {req.status === 'DRAFT' && <Badge variant="gray">Nháp — chưa gửi</Badge>}
                     {req.status === 'PENDING' && <Badge variant="warn">Chờ duyệt</Badge>}
                     {req.status === 'APPROVED' && <Badge variant="ok">Đã duyệt</Badge>}
                     {req.status === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
+                    {req.status === 'WITHDRAWN' && <Badge variant="gray">Đã hủy</Badge>}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    {req.status === 'PENDING' ? (
+                    {req.status === 'DRAFT' ? (
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="primary" size="sm" onClick={() => handleSubmitDraft(req.id)}>Gửi duyệt</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy</Button>
+                      </div>
+                    ) : req.status === 'PENDING' ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -401,6 +506,11 @@ export const RequestsPage: React.FC = () => {
                       >
                         Hủy đơn
                       </Button>
+                    ) : req.status === 'REJECTED' ? (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setNewReq({ ...newReq, type: req.type as any, reason: req.reason, startDate: req.startDate || newReq.startDate, endDate: req.endDate || newReq.endDate });
+                        setIsCreateOpen(true);
+                      }}>Sửa & gửi lại</Button>
                     ) : (
                       <span className="text-ink-muted text-[11px]">Đã xử lý</span>
                     )}
@@ -416,7 +526,7 @@ export const RequestsPage: React.FC = () => {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Tạo Đơn Yêu Cầu Mới (S08 / S30 / S31)"
+        title="Tạo Đơn Yêu Cầu Mới"
         maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 text-xs">
@@ -424,39 +534,35 @@ export const RequestsPage: React.FC = () => {
             <label className="block font-medium text-ink mb-1">Loại Đơn Yêu Cầu</label>
             <select
               value={newReq.type}
-              onChange={e => setNewReq({ ...newReq, type: e.target.value as any })}
+              onChange={e => handleTypeChange(e.target.value as any)}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"
             >
-              <option value="LATE_EARLY">🕘 Đi Muộn / Về Sớm (≤ 60 phút)</option>
-              <option value="LEAVE">🌴 Nghỉ Phép (8 loại nghỉ)</option>
-              <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 2 ngày/tuần)</option>
-              <option value="ADJUST">⏱️ Bổ Sung Chấm Công (hạn 3 ngày)</option>
+              <option value="LATE_EARLY">🕘 Đi muộn / Về sớm</option>
+              <option value="LEAVE">🌴 Nghỉ phép</option>
+              <option value="WFH">🏡 Làm việc từ xa (WFH)</option>
+              <option value="ADJUST">⏱️ Bổ sung chấm công</option>
             </select>
-            {(newReq.type === 'LATE_EARLY' || newReq.type === 'LEAVE') && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {['Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình'].map((r) => (
-                  <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
-                    className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
             {newReq.type === 'LEAVE' && (
               <div className="mt-2">
                 <label className="block font-medium text-ink mb-1">Loại nghỉ</label>
                 <select
                   value={newReq.leaveType}
-                  onChange={e => setNewReq({ ...newReq, leaveType: e.target.value })}
+                  onChange={e => {
+                    const code = e.target.value;
+                    const days = Number(leaveTypes.find((lt: any) => lt.code === code)?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+                    const min = isoDaysFromToday(-days);
+                    setNewReq(prev => ({ ...prev, leaveType: code, startDate: prev.startDate < min ? min : prev.startDate }));
+                  }}
                   className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
                 >
                   {leaveTypes.length === 0 && <option value="AL">Phép năm (AL)</option>}
                   {leaveTypes.map((lt: any) => (
-                    <option key={lt.code} value={lt.code}>
-                      {lt.name} ({lt.code}){lt.requiresAttachment ? ' · cần giấy tờ' : ''}
-                    </option>
+                    <option key={lt.code} value={lt.code}>{lt.name}</option>
                   ))}
                 </select>
+                {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.requiresAttachment && (
+                  <div className="text-[10px] text-amber-700 mt-1">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>
+                )}
               </div>
             )}
             {newReq.type === 'LEAVE' && (
@@ -470,7 +576,7 @@ export const RequestsPage: React.FC = () => {
                 </label>
                 <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">
                   Số dư phép còn lại: <b>{leaveBalance ? Number(leaveBalance.remaining || 0) : '—'} ngày</b>
-                  <div className="text-[10px] mt-0.5">Hạn gửi: {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.submitWithinDays ?? 3} ngày · duyệt1 cấp bởi quản lý</div>
+                  <div className="text-[10px] mt-0.5">Duyệt 1 cấp bởi quản lý trực tiếp</div>
                   <div className="text-[10px] mt-0.5">Số ngày làm việc (trừ cuối tuần + lễ): <b>{leaveDays}</b></div>
                 </div>
               </div>
@@ -479,7 +585,7 @@ export const RequestsPage: React.FC = () => {
 
           {newReq.type === 'WFH' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
-              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc.</div>
+              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; phải đăng ký trước ít nhất1 ngày làm việc — ngày sớm nhất <strong>{minDateForSelected}</strong>.</div>
               <label className="block text-[11px]">
                 Địa điểm WFH
                 <select className="mt-1 w-full border border-blue-200 rounded p-1" value={wfhLocation} onChange={e => setWfhLocation(e.target.value as 'HOME' | 'OTHER')}>
@@ -496,49 +602,146 @@ export const RequestsPage: React.FC = () => {
             </div>
           )}
 
-          {newReq.type === 'ADJUST' && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[11px] leading-relaxed">
-              <strong>Hạn nộp:</strong> Bổ sung chấm công phải gửi trong vòng <strong>3 ngày</strong> kể từ ngày quên chấm (tính theo ngày, không theo giờ).
-            </div>
+
+          {newReq.type === 'ADJUST' && (() => {
+            const min = isoDaysFromToday(-adjustDeadlineDays);
+            return (
+              <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
+                Hạn nộp: trong vòng <b>{adjustDeadlineDays} ngày</b> kể từ ngày quên chấm — lịch chỉ cho chọn từ <b>{min}</b>.
+              </div>
+            );
+          })()}
+
+          {newReq.type === 'LATE_EARLY' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    min={isoDaysFromToday(-lateSubmitDays)}
+                    value={newReq.startDate}
+                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink mb-1">Hình thức</label>
+                  <select
+                    value={lateEarlyKind}
+                    onChange={e => {
+                      const kind = e.target.value as 'LATE' | 'EARLY';
+                      setLateEarlyKind(kind);
+                      setLateEarlyTime(kind === 'LATE'
+                        ? `${String(Math.floor((toMinutes(SHIFT_START) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 15) % 60).padStart(2, '0')}`
+                        : `${String(Math.floor((toMinutes(SHIFT_END) - 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 15) % 60).padStart(2, '0')}`);
+                    }}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                  >
+                    <option value="LATE">Đi muộn — cập nhật giờ vào</option>
+                    <option value="EARLY">Về sớm — cập nhật giờ ra</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">
+                    {lateEarlyKind === 'LATE' ? 'Giờ vào thực tế' : 'Giờ ra thực tế'}
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    min={lateEarlyKind === 'LATE'
+                      ? `${String(Math.floor((toMinutes(SHIFT_START) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 1) % 60).padStart(2, '0')}`
+                      : `${String(Math.floor((toMinutes(SHIFT_END) - lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - lateMinutesMax) % 60).padStart(2, '0')}`}
+                    max={lateEarlyKind === 'LATE'
+                      ? `${String(Math.floor((toMinutes(SHIFT_START) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + lateMinutesMax) % 60).padStart(2, '0')}`
+                      : `${String(Math.floor((toMinutes(SHIFT_END) - 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 1) % 60).padStart(2, '0')}`}
+                    value={lateEarlyTime}
+                    onChange={e => setLateEarlyTime(e.target.value)}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                  <div className="text-[10px] text-ink-muted mt-1">
+                    Tối đa {lateMinutesMax} phút/lần (cấu hình late_early.max_minutes)
+                  </div>
+                </div>
+                <div className={`p-2 rounded-lg border text-[11px] ${
+                  lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-rose-50 border-rose-200 text-rose-700'
+                }`}>
+                  {myShift?.name || 'Ca chuẩn'}
+                  <div className="mt-0.5">
+                    Vào <b>{shiftStartLabel}–{shiftInEnd}</b> · ra <b>{shiftOutStart}–{shiftOutEnd}</b> · {shiftHours}h/ngày
+                  </div>
+                  <div className="mt-0.5">
+                    {lateEarlyMinutes > 0 && lateEarlyMinutes <= 60
+                      ? <>Tính <b>{lateEarlyMinutes} phút</b> {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} — sẽ cập nhật vào bảng công sau khi duyệt.</>
+                      : <>Giờ đã chọn không tạo ra thời gian {lateEarlyKind === 'LATE' ? 'đi muộn' : 'về sớm'} hợp lệ (tối đa {lateMinutesMax} phút).</>}
+                  </div>
+                  <div className="mt-1 text-ink-secondary">Hạn nộp: trong vòng <b>{lateSubmitDays} ngày</b> kể từ ngày xảy ra · chọn từ {isoDaysFromToday(-lateSubmitDays)} · tối đa <b>{lateMinutesMax} phút/lần</b>.</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-ink mb-1">Từ Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    min={minDateForSelected}
+                    value={newReq.startDate}
+                    onChange={e => setNewReq({ ...newReq, startDate: e.target.value, endDate: e.target.value < newReq.endDate ? e.target.value : newReq.endDate })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink mb-1">Đến Ngày</label>
+                  <input
+                    type="date"
+                    required
+                    min={newReq.startDate}
+                    value={newReq.endDate}
+                    onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="text-[11px] bg-canvas border border-line rounded-lg px-2 py-1.5 text-ink-secondary">
+                {newReq.type === 'LEAVE' && <>Hạn gửi loại nghỉ này: <b>{leaveSubmitDays} ngày</b> kể từ ngày nghỉ — chọn từ <b>{minDateForSelected}</b>.</>}
+              </div>
+
+              <div>
+                <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
+                  value={newReq.duration}
+                  onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
+                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                />
+              </div>
+            </>
           )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-medium text-ink mb-1">Từ Ngày</label>
-              <input
-                type="date"
-                required
-                value={newReq.startDate}
-                onChange={e => setNewReq({ ...newReq, startDate: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-ink mb-1">Đến Ngày</label>
-              <input
-                type="date"
-                required
-                value={newReq.endDate}
-                onChange={e => setNewReq({ ...newReq, endDate: e.target.value })}
-                className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
-            <input
-              type="text"
-              required
-              placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
-              value={newReq.duration}
-              onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
-              className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-            />
-          </div>
 
           <div>
             <label className="block font-medium text-ink mb-1">Lý Do Chi Tiết &amp; Minh Chứng</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(newReq.type === 'ADJUST'
+                ? ['Việc cá nhân', 'Quên chấm công', 'Lỗi thiết bị', 'Mất kết nối mạng']
+                : newReq.type === 'WFH'
+                ? ['Việc cá nhân', 'Cần tập trung công việc', 'Nhà có việc', 'Họp online']
+                : ['Việc cá nhân', 'Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình']
+              ).map((r) => (
+                <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
+                  className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
             <textarea
               rows={3}
               required
@@ -553,7 +756,10 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
               Hủy
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER')}>
+            <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
+              Lưu nháp
+            </Button>
+            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (newReq.type === 'WFH' && wfhLocation === 'OTHER') || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
               Gửi Đơn Phê Duyệt
             </Button>
           </div>

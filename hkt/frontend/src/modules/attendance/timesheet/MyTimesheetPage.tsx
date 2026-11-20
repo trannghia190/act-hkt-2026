@@ -44,7 +44,6 @@ export const MyTimesheetPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Công Cá Nhân Của Tôi (My Timesheet)</h1>
-            <Badge variant="accent">S11</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Minh bạch từng ngày công thực tế, tính toán số giờ làm việc, dung sai đi muộn và giờ làm thêm OT chốt lương

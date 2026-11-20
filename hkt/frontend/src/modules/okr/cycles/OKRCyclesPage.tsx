@@ -9,7 +9,6 @@ const PHASES = [
 export const OKRCyclesPage: React.FC = () => (
   <div className="max-w-3xl mx-auto space-y-4">
     <div className="bg-canvas border border-line rounded-xl p-6">
-      <div className="text-xs text-accent font-semibold">S44 · HR</div>
       <h1 className="text-xl font-bold text-ink mt-1">Quản lý chu kỳ OKR — 5 phase</h1>
       <p className="text-xs text-ink-muted mt-1">Thang điểm 1–5 · không xếp loại A/B/C/D · hạn chót theo ngày cụ thể.</p>
     </div>

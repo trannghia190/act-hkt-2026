@@ -9,6 +9,7 @@ export interface AuthUser {
   team?: string;
   avatarUrl?: string;
   accessToken?: string;
+  refreshToken?: string;
   faceEnrolled?: boolean;
   mustChangePassword?: boolean;
   status?: string;

@@ -21,6 +21,10 @@
 #   PORT=3000
 #   SHARE_USER=actdemo SHARE_PASS=...   (ngrok basic auth; pass tự sinh nếu trống)
 #   SHARE_BASIC_AUTH=0                  (tắt basic auth của ngrok — KHÔNG khuyến khích)
+#
+# App gửi JWT qua header X-Auth-Token (không dùng Authorization) nên chạy
+# song song được với ngrok --basic-auth. Nếu bật basic auth, trình duyệt hỏi
+# user/pass trước khi vào trang đăng nhập app.
 #   NGROK_DOMAIN=ten-mien.ngrok.app     (domain tĩnh đã claim trên ngrok)
 #
 # LƯU Ý BẢO MẬT: URL public cho phép bất kỳ ai có link vào trang đăng nhập.

@@ -49,6 +49,7 @@ export const ShiftHolidayPage: React.FC = () => {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [editing, setEditing] = useState<Shift | null>(null);
+  const [isShiftOpen, setIsShiftOpen] = useState(false);
   const [form, setForm] = useState<Shift>(emptyShift);
   const [holidayForm, setHolidayForm] = useState<Holiday>({ name: '', holidayDate: '', isPaid: true });
   const [toast, setToast] = useState<string | null>(null);
@@ -61,8 +62,8 @@ export const ShiftHolidayPage: React.FC = () => {
   useEffect(load, []);
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
 
-  const openAdd = () => { setEditing(null); setForm(emptyShift); };
-  const openEdit = (s: Shift) => { setEditing(s); setForm({ ...s }); };
+  const openAdd = () => { setEditing(null); setForm(emptyShift); setIsShiftOpen(true); };
+  const openEdit = (s: Shift) => { setEditing(s); setForm({ ...s }); setIsShiftOpen(true); };
 
   const saveShift = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +81,7 @@ export const ShiftHolidayPage: React.FC = () => {
     const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body) });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Lưu ca thất bại'); return; }
-    setEditing(null); setForm(emptyShift); setError(null); showToast('Đã lưu ca làm việc'); load();
+    setEditing(null); setForm(emptyShift); setIsShiftOpen(false); setError(null); showToast('Đã lưu ca làm việc'); load();
   };
 
   const addHoliday = async (e: React.FormEvent) => {
@@ -92,13 +93,12 @@ export const ShiftHolidayPage: React.FC = () => {
     setHolidayForm({ name: '', holidayDate: '', isPaid: true }); setError(null); showToast('Đã thêm ngày lễ'); load();
   };
 
-  const modalOpen = editing !== null || form !== emptyShift;
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S26 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Ca làm việc & lịch nghỉ lễ</h1>
         <p className="text-xs text-ink-muted mt-1">Ca thường / ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · bộ gán ca theo nhóm + chức danh · geofence + dải IP · ngày lễ theo năm.</p>
         <div className="flex gap-2 mt-3">
@@ -155,8 +155,8 @@ export const ShiftHolidayPage: React.FC = () => {
         </div>
       )}
 
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => { setEditing(null); setForm(emptyShift); }}>
+      {isShiftOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>
           <form className="bg-surface rounded-xl p-5 w-full max-w-2xl space-y-3 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()} onSubmit={saveShift}>
             <h3 className="text-base font-bold">{editing ? 'Sửa ca' : 'Thêm ca'}</h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -190,7 +190,7 @@ export const ShiftHolidayPage: React.FC = () => {
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.requiresHrApproval} onChange={e => setForm({ ...form, requiresHrApproval: e.target.checked })} /> Cần HR duyệt</label>
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(null); setForm(emptyShift); }}>Huỷ</button>
+              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>Huỷ</button>
               <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu ca</button>
             </div>
           </form>

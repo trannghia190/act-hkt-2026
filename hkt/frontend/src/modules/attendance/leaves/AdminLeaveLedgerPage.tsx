@@ -27,72 +27,13 @@ export const AdminLeaveLedgerPage: React.FC = () => {
 
   // Adjust leave modal state
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
-  const [adjustEmpCode, setAdjustEmpCode] = useState('ACT0142');
+  const [adjustEmpCode, setAdjustEmpCode] = useState('');
+  const [adjustError, setAdjustError] = useState<string | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('1.0');
   const [adjustReason, setAdjustReason] = useState('Điều chỉnh thưởng thêm phép cống hiến dự án Q3');
 
-  const [ledgerEntries, setLedgerEntries] = useState<EnterpriseLeaveLedgerItem[]>([
-    {
-      id: 'LEDGER-2026-0091',
-      employeeCode: 'ACT0142',
-      employeeName: 'Nguyễn Văn Minh',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      date: '18/11/2026',
-      type: 'USED',
-      amount: -1.0,
-      balanceAfter: 12.0,
-      reason: 'Nghỉ phép năm cá nhân (Đơn REQ-2026-0030)',
-      approvedBy: 'Phạm Minh Tuấn (Manager)',
-    },
-    {
-      id: 'LEDGER-2026-0089',
-      employeeCode: 'ACT0088',
-      employeeName: 'Trần Thị Thu Hà',
-      department: 'AI & Khoa Học Dữ Liệu (Optimus)',
-      date: '15/11/2026',
-      type: 'USED',
-      amount: -0.5,
-      balanceAfter: 14.5,
-      reason: 'Nghỉ nửa ngày khám sức khỏe (Đơn REQ-2026-0028)',
-      approvedBy: 'Lê Hoàng Long (Director)',
-    },
-    {
-      id: 'LEDGER-2026-0085',
-      employeeCode: 'ACT0092',
-      employeeName: 'Hoàng Quốc Bảo',
-      department: 'Hạ Tầng & An Ninh (Zeus)',
-      date: '10/11/2026',
-      type: 'ADJUST',
-      amount: +1.0,
-      balanceAfter: 15.0,
-      reason: 'Cấp bù ngày phép trực sự cố On-call cuối tuần',
-      approvedBy: 'Admin Hệ Thống',
-    },
-    {
-      id: 'LEDGER-2026-0074',
-      employeeCode: 'ACT0045',
-      employeeName: 'Phạm Minh Tuấn',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      date: '01/01/2026',
-      type: 'GRANT',
-      amount: +17.0,
-      balanceAfter: 17.0,
-      reason: 'Cấp phép năm 2026: Chuẩn 12.0 + Tồn 2025 4.0 + Thâm niên 1.0',
-      approvedBy: 'Hệ Thống Tự Động',
-    },
-    {
-      id: 'LEDGER-2026-0073',
-      employeeCode: 'ACT0156',
-      employeeName: 'Lê Hải Đăng',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      date: '01/01/2026',
-      type: 'GRANT',
-      amount: +15.5,
-      balanceAfter: 15.5,
-      reason: 'Cấp phép năm 2026: Chuẩn 12.0 + Tồn 2025 3.5',
-      approvedBy: 'Hệ Thống Tự Động',
-    },
-  ]);
+  // Sổ cái luôn lấy từ API — không dùng dữ liệu mẫu.
+  const [ledgerEntries, setLedgerEntries] = useState<EnterpriseLeaveLedgerItem[]>([]);
 
   const filteredEntries = ledgerEntries.filter((item) => {
     const matchSearch =
@@ -121,7 +62,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
   };
   useEffect(() => {
     fetch('/api/v1/leaves/table', { headers: authOnly() }).then(r => r.json()).then(j => {
-      if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); } }
+      if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); setAdjustEmpCode(prev => prev || j.data[0].employeeCode); } }
     }).catch(() => undefined);
   }, []);
   useEffect(() => { if (selectedCode) loadLedger(selectedCode); }, [selectedCode, employees.length]);
@@ -129,24 +70,20 @@ export const AdminLeaveLedgerPage: React.FC = () => {
   const handleAdjustLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(adjustAmount);
-    if (isNaN(amountNum)) return;
-
-    const newEntry: EnterpriseLeaveLedgerItem = {
-      id: `LEDGER-2026-${String(ledgerEntries.length + 95).padStart(4, '0')}`,
-      employeeCode: adjustEmpCode,
-      employeeName: adjustEmpCode === 'ACT0142' ? 'Nguyễn Văn Minh' : 'Nhân Viên ACT',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      date: new Date().toLocaleDateString('vi-VN'),
-      type: 'ADJUST',
-      amount: amountNum,
-      balanceAfter: 12.0 + amountNum,
-      reason: adjustReason,
-      approvedBy: 'HR Admin (Thủ công)',
-    };
-
-    await fetch('/api/v1/leaves/adjust', { method: 'POST', headers: authJson(), body: JSON.stringify({ employeeCode: adjustEmpCode, amount: amountNum, reason: adjustReason, leaveType: 'AL' }) });
+    if (isNaN(amountNum) || !adjustEmpCode.trim()) { setAdjustError('Nhập mã nhân viên và số ngày hợp lệ'); return; }
+    if (!adjustReason.trim()) { setAdjustError('Phải nhập căn cứ / lý do điều chỉnh'); return; }
+    setAdjustError(null);
+    const res = await fetch('/api/v1/leaves/adjust', {
+      method: 'POST', headers: authJson(),
+      body: JSON.stringify({ employeeCode: adjustEmpCode.trim(), amount: amountNum, reason: adjustReason.trim(), leaveType: 'AL' }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setAdjustError(json?.message || 'Điều chỉnh số dư phép thất bại'); return; }
     setIsAdjustModalOpen(false);
-    loadLedger(adjustEmpCode);
+    setAdjustAmount('1.0');
+    setAdjustReason('Điều chỉnh thưởng thêm phép cống hiến dự án Q3');
+    loadLedger(adjustEmpCode.trim());
+    alert('Đã ghi sổ cái điều chỉnh phép — có lưu vết người thực hiện');
   };
 
   return (
@@ -156,7 +93,6 @@ export const AdminLeaveLedgerPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Sổ Cái Biến Động Phép Toàn Doanh Nghiệp</h1>
-            <Badge variant="accent">S34</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Quản trị sổ cái biến động ngày phép của toàn bộ nhân sự, tra cứu lịch sử cấp phép, trừ phép và điều chỉnh thủ công
@@ -271,10 +207,11 @@ export const AdminLeaveLedgerPage: React.FC = () => {
       {/* Adjust Leave Modal */}
       <Modal
         isOpen={isAdjustModalOpen}
-        onClose={() => setIsAdjustModalOpen(false)}
+        onClose={() => { setIsAdjustModalOpen(false); setAdjustError(null); }}
         title="Điều Chỉnh Số Dư Phép Năm (HR Admin)"
       >
         <form onSubmit={handleAdjustLeave} className="space-y-4 text-xs">
+          {adjustError && <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">{adjustError}</div>}
           <div>
             <label className="block text-ink font-semibold mb-1">Mã nhân viên cần điều chỉnh</label>
             <input

@@ -5,6 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/** Thông báo gửi cho nhân viên (bảng notifications có sẵn từ V1). */
 @Entity
 @Table(name = "notifications")
 @Getter
@@ -12,7 +13,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class NotificationEntity {
+public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -28,30 +29,24 @@ public class NotificationEntity {
     private String content;
 
     @Column(name = "type", nullable = false, length = 50)
-    private String type; // ATTENDANCE, REQUEST, OKR, SYSTEM
+    private String type;
 
     @Column(name = "priority", length = 20)
-    @Builder.Default
-    private String priority = "MEDIUM"; // HIGH, MEDIUM, LOW
+    private String priority;
 
     @Column(name = "action_url", length = 255)
     private String actionUrl;
 
     @Column(name = "is_read")
-    @Builder.Default
-    private Boolean isRead = false;
+    private Boolean isRead;
 
     @Column(name = "created_at")
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (isRead == null) {
-            isRead = false;
-        }
+    void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (isRead == null) isRead = false;
+        if (priority == null) priority = "MEDIUM";
     }
 }

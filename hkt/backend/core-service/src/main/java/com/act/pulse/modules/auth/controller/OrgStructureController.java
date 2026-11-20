@@ -4,16 +4,16 @@ import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.Holiday;
+import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
-import com.act.pulse.modules.attendance.entity.NotificationEntity;
-import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.entity.Rule;
 import com.act.pulse.modules.attendance.repository.RuleRepository;
 import com.act.pulse.modules.auth.entity.User;
@@ -1510,10 +1510,16 @@ public class OrgStructureController {
     @Operation(summary = "Danh sách thông báo thời gian thực trên Header (CORE-NOTIF-01)")
     public ApiResponse<List<Map<String, Object>>> getNotifications() {
         try {
-            List<NotificationEntity> dbList = notificationRepository.findByOrderByCreatedAtDesc();
+            UUID uid = CurrentUser.userId();
+            List<Notification> dbList = uid != null 
+                    ? notificationRepository.findByUserIdOrderByCreatedAtDesc(uid)
+                    : notificationRepository.findByOrderByCreatedAtDesc();
+            if (dbList.isEmpty() && uid != null) {
+                dbList = notificationRepository.findByOrderByCreatedAtDesc();
+            }
             if (!dbList.isEmpty()) {
                 List<Map<String, Object>> result = new ArrayList<>();
-                for (NotificationEntity entity : dbList) {
+                for (Notification entity : dbList) {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", entity.getId().toString());
                     map.put("title", entity.getTitle());
@@ -1524,7 +1530,9 @@ public class OrgStructureController {
                     map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent" : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
                     map.put("actionUrl", entity.getActionUrl());
                     map.put("read", Boolean.TRUE.equals(entity.getIsRead()));
+                    map.put("isRead", Boolean.TRUE.equals(entity.getIsRead()));
                     map.put("timestamp", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "Vừa xong");
+                    map.put("createdAt", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "");
                     result.add(map);
                 }
                 return ApiResponse.ok(result, "Lấy thông báo thành công từ DB");
@@ -1539,9 +1547,9 @@ public class OrgStructureController {
     public ApiResponse<Boolean> markNotificationRead(@PathVariable String id) {
         try {
             UUID uid = UUID.fromString(id);
-            Optional<NotificationEntity> notifOpt = notificationRepository.findById(uid);
+            Optional<Notification> notifOpt = notificationRepository.findById(uid);
             if (notifOpt.isPresent()) {
-                NotificationEntity notif = notifOpt.get();
+                Notification notif = notifOpt.get();
                 notif.setIsRead(true);
                 notificationRepository.save(notif);
                 return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc trong DB");
@@ -1563,8 +1571,11 @@ public class OrgStructureController {
     @Operation(summary = "Đánh dấu tất cả thông báo đã đọc (CORE-NOTIF-02)")
     public ApiResponse<Boolean> markAllNotificationsRead() {
         try {
-            List<NotificationEntity> list = notificationRepository.findAll();
-            for (NotificationEntity n : list) {
+            UUID currentUid = CurrentUser.userId();
+            List<Notification> list = (currentUid != null) 
+                    ? notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(currentUid) 
+                    : notificationRepository.findAll();
+            for (Notification n : list) {
                 n.setIsRead(true);
             }
             notificationRepository.saveAll(list);
@@ -1580,13 +1591,13 @@ public class OrgStructureController {
 
     @PostMapping("/notifications")
     @Operation(summary = "Thêm thông báo mới vào Database")
-    public ApiResponse<NotificationEntity> createNotification(@RequestBody Map<String, Object> body) {
+    public ApiResponse<Notification> createNotification(@RequestBody Map<String, Object> body) {
         UUID uid = CurrentUser.userId();
         if (uid == null) {
             List<User> users = userRepository.findAll();
             uid = !users.isEmpty() ? users.get(0).getId() : UUID.randomUUID();
         }
-        NotificationEntity entity = NotificationEntity.builder()
+        Notification entity = Notification.builder()
                 .userId(uid)
                 .title((String) body.getOrDefault("title", "Thông báo mới"))
                 .content((String) body.getOrDefault("content", "Nội dung thông báo mới"))

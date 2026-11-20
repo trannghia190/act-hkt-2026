@@ -48,7 +48,6 @@ export const AdminDevicesPage: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-4">
       {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S28 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Quản lý thiết bị — duyệt & thu hồi</h1>
         <p className="text-xs text-ink-muted mt-1">Mặc định2 thiết bị/người; máy thứ3 trở đi cần lý do. Mọi thao tác ghi nhật ký thay đổi.</p>
       </div>

@@ -183,7 +183,6 @@ export const OKRReportsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR & Điểm Đánh Giá (9 Trường Dữ Liệu)</h1>
-            <Badge variant="accent">S25</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Bảng dữ liệu chuẩn phục vụ Hội Đồng Lương Thưởng: 9 trường thông tin cốt lõi, hệ số thưởng hiệu suất và xuất file Excel
