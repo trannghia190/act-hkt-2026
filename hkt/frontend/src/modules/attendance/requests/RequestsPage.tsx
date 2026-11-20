@@ -505,10 +505,10 @@ export const RequestsPage: React.FC = () => {
               onChange={e => setNewReq({ ...newReq, type: e.target.value as any })}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"
             >
-              <option value="LATE_EARLY">🕘 Đi Muộn / Về Sớm (≤ 60 phút)</option>
-              <option value="LEAVE">🌴 Nghỉ Phép (8 loại nghỉ)</option>
-              <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 2 ngày/tuần)</option>
-              <option value="ADJUST">⏱️ Bổ Sung Chấm Công (hạn 3 ngày)</option>
+              <option value="LATE_EARLY">🕘 Đi muộn / Về sớm</option>
+              <option value="LEAVE">🌴 Nghỉ phép</option>
+              <option value="WFH">🏡 Làm việc từ xa (WFH)</option>
+              <option value="ADJUST">⏱️ Bổ sung chấm công</option>
             </select>
             {newReq.type === 'LEAVE' && (
               <div className="mt-2">
@@ -520,11 +520,12 @@ export const RequestsPage: React.FC = () => {
                 >
                   {leaveTypes.length === 0 && <option value="AL">Phép năm (AL)</option>}
                   {leaveTypes.map((lt: any) => (
-                    <option key={lt.code} value={lt.code}>
-                      {lt.name} ({lt.code}){lt.requiresAttachment ? ' · cần giấy tờ' : ''}
-                    </option>
+                    <option key={lt.code} value={lt.code}>{lt.name}</option>
                   ))}
                 </select>
+                {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.requiresAttachment && (
+                  <div className="text-[10px] text-amber-700 mt-1">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>
+                )}
               </div>
             )}
             {newReq.type === 'LEAVE' && (
