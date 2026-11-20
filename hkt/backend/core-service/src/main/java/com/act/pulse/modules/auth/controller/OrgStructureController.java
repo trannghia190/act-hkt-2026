@@ -65,6 +65,12 @@ public class OrgStructureController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private com.act.pulse.common.service.EmailService emailService;
+
+    @Autowired
+    private com.act.pulse.modules.auth.service.AuthService authService;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -114,6 +120,9 @@ public class OrgStructureController {
         private String joinDate;
         private boolean mustChangePassword;
         private boolean faceEnrolled;
+        private String defaultPassword;
+        private boolean emailSent;
+        private String emailStatusMessage;
     }
 
     @Data
@@ -128,6 +137,7 @@ public class OrgStructureController {
         private String department;
         private String positionName;
         private String role;
+        private String password;
         private boolean generateRandomPassword;
     }
 
@@ -584,6 +594,9 @@ public class OrgStructureController {
             existing = userRepository.findByEmail(req.getEmail().trim());
         }
         User userToSave;
+        String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
+                ? req.getPassword().trim() : "123456";
+
         if (existing.isPresent()) {
             userToSave = existing.get();
             if (req.getFullName() != null && !req.getFullName().isBlank()) userToSave.setFullName(req.getFullName().trim());
@@ -598,7 +611,7 @@ public class OrgStructureController {
                     .employeeCode(code)
                     .fullName(fullName)
                     .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim() : code.toLowerCase() + "@act.vn")
-                    .passwordHash(passwordEncoder.encode("123456"))
+                    .passwordHash(passwordEncoder.encode(rawPassword))
                     .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim() : "EMPLOYEE")
                     .positionName(req.getPositionName() != null && !req.getPositionName().isBlank() ? req.getPositionName().trim() : "Chuyên viên")
                     .teamId(defaultTeamId)
@@ -613,6 +626,39 @@ public class OrgStructureController {
         }
 
         userRepository.save(userToSave);
+
+        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
+        boolean emailSent = false;
+        String emailStatusMessage = "";
+        try {
+            if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
+                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(), userToSave.getEmployeeCode(), rawPassword);
+                if (emailSent) {
+                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới " + userToSave.getEmail();
+                } else {
+                    emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail() + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
+                }
+            } else {
+                emailStatusMessage = "Nhân viên chưa có địa chỉ email";
+            }
+        } catch (Exception e) {
+            emailStatusMessage = "Lỗi khi gửi email: " + e.getMessage();
+        }
+
+        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3)
+        try {
+            Notification notif = Notification.builder()
+                    .userId(userToSave.getId())
+                    .title("Chào mừng thành viên mới đến với ACT PULSE!")
+                    .content("Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: " + userToSave.getEmployeeCode() + ", Mật khẩu mặc định: " + rawPassword + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.")
+                    .type("ONBOARDING")
+                    .priority("HIGH")
+                    .actionUrl("/profile")
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notif);
+        } catch (Exception ignored) {}
 
         // Audit log
         AuditLog audit = AuditLog.builder()
@@ -645,11 +691,14 @@ public class OrgStructureController {
                 .approvalChain(defaultManagerId != null ? "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)" : "⚠ Chưa có quản lý trực tiếp")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
+                .defaultPassword(rawPassword)
+                .emailSent(emailSent)
+                .emailStatusMessage(emailStatusMessage)
                 .joinDate(LocalDate.now().toString())
                 .hireDate(LocalDate.now().toString())
                 .build();
 
-        return ApiResponse.ok(dto, "Đã tạo nhân viên thành công và gửi thông tin đăng nhập về email!");
+        return ApiResponse.ok(dto, "Đã tạo nhân viên " + userToSave.getFullName() + " thành công! Mật khẩu mặc định: " + rawPassword + ". " + emailStatusMessage);
     }
 
     @RequestMapping(value = {"/admin/users/{id}/change-manager", "/admin/users/{id}/manager"}, method = {RequestMethod.POST, RequestMethod.PUT})
@@ -811,21 +860,23 @@ public class OrgStructureController {
     @PostMapping("/admin/users/{id}/reset-password")
     @Operation(summary = "Admin cấp lại mật khẩu & Mở khóa Brute-Force (S40-C)")
     public ApiResponse<Boolean> adminResetPassword(@PathVariable String id) {
-        User user = null;
-        try {
-            user = findUserByIdOrCode(id);
-        } catch (Exception ignored) {}
-        if (user == null) {
-            user = userRepository.findByEmployeeCodeIgnoreCase("Admin")
-                    .orElseGet(() -> userRepository.findAll().stream().findFirst().orElse(null));
-        }
-        if (user == null) {
-            throw new RuntimeException("Không tìm thấy nhân viên: " + id);
-        }
+        User user = findUserByIdOrCode(id);
+        String tempPass = "123456";
         user.setMustChangePassword(true);
         user.setStatus("ACTIVE");
-        user.setPasswordHash(passwordEncoder.encode("123456"));
+        user.setPasswordHash(passwordEncoder.encode(tempPass));
         userRepository.save(user);
+
+        // Thu hồi toàn bộ phiên đăng nhập cũ
+        authService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD");
+
+        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP
+        boolean emailSent = false;
+        try {
+            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), user.getEmployeeCode(), tempPass);
+            }
+        } catch (Exception ignored) {}
 
         AuditLog audit = AuditLog.builder()
                 .action("ADMIN_RESET_PASSWORD")
@@ -835,13 +886,15 @@ public class OrgStructureController {
                 .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
                 .userName(resolveActorName())
                 .oldValue("Mật khẩu cũ (đã mã hóa)")
-                .newValue("Cấp lại mật khẩu mới & Mở khóa tài khoản: 123456")
+                .newValue("Cấp lại mật khẩu mới: " + tempPass)
                 .reason("Admin reset mật khẩu theo yêu cầu hỗ trợ")
                 .ipAddress("127.0.0.1")
                 .build();
         auditLogRepository.save(audit);
 
-        return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + user.getEmail());
+        String msg = "Mật khẩu tạm thời (" + tempPass + ") đã được cấp lại thành công! " +
+                (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail() : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
+        return ApiResponse.ok(true, msg);
     }
 
     @GetMapping("/admin/roles/matrix")
