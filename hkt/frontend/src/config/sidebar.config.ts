@@ -52,6 +52,7 @@ export const COMMON_GROUPS: NavGroup[] = [
         ],
       },
       { id: 'cal', label: 'Lịch công', path: '/attendance/calendar', icon: 'Calendar', screenId: 'S06' },
+      { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
       { id: 'balance', label: 'Số dư phép', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
       { id: 'mytime', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
     ],
@@ -82,7 +83,6 @@ export const MANAGER_GROUPS: NavGroup[] = [
     groupName: 'Quản lý',
     items: [
       { id: 'approve', label: 'Duyệt đơn', path: '/attendance/approvals', icon: 'CheckCircle', badgeKey: 'approve', badgeColor: 'danger', screenId: 'S12' },
-      { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
       { id: 'review', label: 'Review OKR nhóm', path: '/okr/team-review', icon: 'MessageSquare', screenId: 'S24' },
     ],
   },
