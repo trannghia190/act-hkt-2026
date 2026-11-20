@@ -45,6 +45,8 @@ interface TimesheetData {
   unpaidDays: number;
   totalDays: number;
   remainingLeave: number;
+  employeeCode?: string;
+  employeeName?: string;
   days: DayItem[];
 }
 
@@ -64,6 +66,8 @@ export const MyTimesheetPage: React.FC = () => {
   const now = new Date();
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const selectedMonth = searchParams.get('month') || currentMonthStr;
+  const viewedEmployeeCode = searchParams.get('employeeCode') || '';
+  const isOwnTimesheet = !viewedEmployeeCode || viewedEmployeeCode === user?.employeeCode;
 
   const [data, setData] = useState<TimesheetData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +88,7 @@ export const MyTimesheetPage: React.FC = () => {
   const loadData = () => {
     setLoading(true);
     setError(null);
-    fetch(`/api/v1/attendance/my-timesheet?month=${selectedMonth}`, { headers: authHeaders() })
+    fetch(`/api/v1/attendance/my-timesheet?month=${selectedMonth}${viewedEmployeeCode ? `&employeeCode=${encodeURIComponent(viewedEmployeeCode)}` : ''}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((j) => {
         if (j?.data && Array.isArray(j.data.days)) {
@@ -128,7 +132,9 @@ export const MyTimesheetPage: React.FC = () => {
   }, [selectedMonth, user]);
 
   const handleMonthChange = (newMonth: string) => {
-    setSearchParams({ month: newMonth });
+    const next: Record<string, string> = { month: newMonth };
+    if (viewedEmployeeCode) next.employeeCode = viewedEmployeeCode;
+    setSearchParams(next);
   };
 
   const handlePrevMonth = () => {
@@ -210,7 +216,7 @@ export const MyTimesheetPage: React.FC = () => {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-1">
             <span>📑</span> Bảng Công Cá Nhân (S11)
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Công Cá Nhân Của Tôi</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">{isOwnTimesheet ? 'Bảng Công Cá Nhân Của Tôi' : `Bảng Công Của ${data?.employeeName || viewedEmployeeCode}`}</h1>
           <p className="text-xs text-ink-muted mt-1">
             Tổng hợp dữ liệu công nhật, đối soát ký hiệu chuẩn và thực hiện khiếu nại trong thời hạn quy định.
           </p>
@@ -441,7 +447,7 @@ export const MyTimesheetPage: React.FC = () => {
                 )}
                 {data?.days.map((r) => {
                   const isIssue = r.status === 'LATE' || r.status === 'INCOMPLETE' || r.status === 'ABSENT';
-                  const canDisputeThisDay = data.canDispute && !r.isWeekend && !r.dispute;
+                  const canDisputeThisDay = isOwnTimesheet && data.canDispute && !r.isWeekend && !r.dispute;
 
                   return (
                     <tr
