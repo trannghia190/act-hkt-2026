@@ -160,7 +160,7 @@ export const RequestsPage: React.FC = () => {
     const e = new Date(end + 'T00:00:00');
     let count = 0;
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().slice(0, 10);
+      const iso = d.toLocaleDateString('en-CA');
       const day = d.getDay();
       if (day !== 0 && day !== 6 && !holidays.includes(iso)) count += 1;
     }
@@ -175,7 +175,7 @@ export const RequestsPage: React.FC = () => {
     if (!start || !end || end < start) return [];
     const out: string[] = [];
     for (let d = new Date(start + 'T00:00:00'); d <= new Date(end + 'T00:00:00'); d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().slice(0, 10);
+      const iso = d.toLocaleDateString('en-CA');
       const day = d.getDay();
       if (day !== 0 && day !== 6 && !holidays.includes(iso)) out.push(iso);
     }
