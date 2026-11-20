@@ -16,6 +16,11 @@ import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
+import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.TimesheetRepository;
+import com.act.pulse.modules.attendance.entity.Holiday;
+import com.act.pulse.modules.attendance.entity.Timesheet;
+import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,14 +50,280 @@ public class BusinessGapController {
     private final NotificationRepository notificationRepository;
     private final ShiftRepository shiftRepository;
     private final TimesheetDisputeRepository timesheetDisputeRepository;
+    private final HolidayRepository holidayRepository;
+    private final TimesheetRepository timesheetRepository;
+    private final RuleService ruleService;
     private final ObjectMapper objectMapper;
 
-    @GetMapping("/attendance/my-timesheet")
-    @Operation(summary = "Bảng công của tôi (S11)")
-    public ApiResponse<List<AttendanceLog>> myTimesheet(@RequestParam(required = false) String month) {
+    @GetMapping({"/attendance/my-timesheet", "/attendance/calendar", "/attendance/monthly-calendar"})
+    @Operation(summary = "Bảng công / Lịch công cá nhân theo tháng (S06, S11)")
+    public ApiResponse<Map<String, Object>> myTimesheet(
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) Integer year) {
         UUID userId = CurrentUser.userId();
-        if (userId == null) return ApiResponse.ok(List.of(), "Chưa đăng nhập");
-        return ApiResponse.ok(attendanceLogRepository.findByUserIdOrderByWorkDateDesc(userId), "Bảng công của tôi");
+        if (userId == null) {
+            return ApiResponse.ok(Map.of("days", List.of(), "logs", List.of(), "message", "Chưa đăng nhập"), "Chưa đăng nhập");
+        }
+
+        java.time.YearMonth ym = java.time.YearMonth.now();
+        if (month != null && !month.isBlank()) {
+            if (month.contains("-")) {
+                try { ym = java.time.YearMonth.parse(month.trim()); } catch (Exception ignored) {}
+            } else if (year != null) {
+                try { ym = java.time.YearMonth.of(year, Integer.parseInt(month.trim())); } catch (Exception ignored) {}
+            } else {
+                try { ym = java.time.YearMonth.of(ym.getYear(), Integer.parseInt(month.trim())); } catch (Exception ignored) {}
+            }
+        } else if (period != null && !period.isBlank()) {
+            try { ym = java.time.YearMonth.parse(period.trim()); } catch (Exception ignored) {}
+        } else if (year != null) {
+            ym = java.time.YearMonth.of(year, ym.getMonthValue());
+        }
+
+        int daysInMonth = ym.lengthOfMonth();
+        java.time.LocalDate start = ym.atDay(1);
+        java.time.LocalDate end = ym.atEndOfMonth();
+
+        List<AttendanceLog> logs = attendanceLogRepository.findByUserIdAndWorkDateBetweenOrderByWorkDateAsc(userId, start, end);
+        Map<java.time.LocalDate, AttendanceLog> logByDate = new HashMap<>();
+        for (AttendanceLog l : logs) {
+            if (l.getWorkDate() != null) logByDate.put(l.getWorkDate(), l);
+        }
+
+        List<RequestEntity> allRequests = requestRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        Map<java.time.LocalDate, List<RequestEntity>> requestsByDate = new HashMap<>();
+        for (RequestEntity r : allRequests) {
+            if ("APPROVED".equals(r.getStatus()) && r.getWorkDate() != null
+                    && !r.getWorkDate().isBefore(start) && !r.getWorkDate().isAfter(end)) {
+                requestsByDate.computeIfAbsent(r.getWorkDate(), k -> new ArrayList<>()).add(r);
+            }
+        }
+
+        Set<java.time.LocalDate> holidays = new HashSet<>();
+        for (Holiday h : holidayRepository.findAll()) {
+            if (h.getHolidayDate() != null && !h.getHolidayDate().isBefore(start) && !h.getHolidayDate().isAfter(end)) {
+                holidays.add(h.getHolidayDate());
+            }
+        }
+
+        Map<java.time.LocalDate, TimesheetDispute> disputesByDate = new HashMap<>();
+        for (TimesheetDispute d : timesheetDisputeRepository.findAllByOrderByCreatedAtDesc()) {
+            if (userId.equals(d.getUserId()) && d.getWorkDate() != null
+                    && !d.getWorkDate().isBefore(start) && !d.getWorkDate().isAfter(end)) {
+                disputesByDate.putIfAbsent(d.getWorkDate(), d);
+            }
+        }
+
+        // Rules
+        int publishDay = ruleService.getInt("payroll_period", "publish_day", 11);
+        int disputeWindow = ruleService.getInt("payroll_period", "dispute_window_days", 2);
+
+        // Timesheet period status
+        final int targetMonth = ym.getMonthValue();
+        final int targetYear = ym.getYear();
+        List<Timesheet> userSheets = timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, targetMonth, targetYear)
+                .map(List::of)
+                .orElse(List.of());
+        List<Timesheet> sheets = !userSheets.isEmpty() ? userSheets : timesheetRepository.findByPeriodMonthAndPeriodYear(targetMonth, targetYear);
+        String status = sheets.isEmpty() ? "draft" : sheets.get(0).getStatus();
+
+        java.time.LocalDate deadline = java.time.LocalDate.of(ym.getYear(), ym.getMonthValue(), Math.min(daysInMonth, publishDay + disputeWindow));
+        java.time.LocalDate today = java.time.LocalDate.now();
+
+        String periodStatus;
+        boolean canDispute;
+        if ("locked".equalsIgnoreCase(status)) {
+            periodStatus = "LOCKED";
+            canDispute = false;
+        } else if ("published".equalsIgnoreCase(status)) {
+            if (today.isAfter(deadline)) {
+                periodStatus = "EXPIRED";
+                canDispute = false;
+            } else {
+                periodStatus = "DISPUTABLE";
+                canDispute = true;
+            }
+        } else { // draft
+            if (today.getDayOfMonth() < publishDay && java.time.YearMonth.now().equals(ym)) {
+                periodStatus = "UNPUBLISHED";
+                canDispute = false;
+            } else {
+                periodStatus = "DRAFT";
+                canDispute = false;
+            }
+        }
+
+        // Calculate days and metrics
+        double standardDays = 0;
+        double actualDays = 0;
+        double wfhDays = 0;
+        double leaveDays = 0;
+        int lateCount = 0;
+        int holidayDays = holidays.size();
+        int sickDays = 0;
+        int compDays = 0;
+        int unpaidDays = 0;
+
+        List<Map<String, Object>> daysList = new ArrayList<>();
+        String[] weekdayNames = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
+
+        for (int d = 1; d <= daysInMonth; d++) {
+            java.time.LocalDate date = ym.atDay(d);
+            int dow = date.getDayOfWeek().getValue(); // 1 = Mon, 7 = Sun
+            boolean isWeekend = (dow >= 6);
+            boolean isHoliday = holidays.contains(date);
+
+            if (!isWeekend && !isHoliday) {
+                standardDays += 1.0;
+            }
+
+            AttendanceLog log = logByDate.get(date);
+            List<RequestEntity> reqs = requestsByDate.getOrDefault(date, List.of());
+            RequestEntity leaveReq = reqs.stream().filter(r -> "LEAVE".equals(r.getRequestType())).findFirst().orElse(null);
+            RequestEntity wfhReq = reqs.stream().filter(r -> "WFH".equals(r.getRequestType())).findFirst().orElse(null);
+            RequestEntity lateReq = reqs.stream().filter(r -> "LATE_EARLY".equals(r.getRequestType())).findFirst().orElse(null);
+
+            String checkInStr = (log != null && log.getCheckInAt() != null)
+                    ? log.getCheckInAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : null;
+            String checkOutStr = (log != null && log.getCheckOutAt() != null)
+                    ? log.getCheckOutAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : null;
+
+            double hoursWorked = 0;
+            if (log != null && log.getCheckInAt() != null && log.getCheckOutAt() != null) {
+                long minutes = java.time.Duration.between(log.getCheckInAt(), log.getCheckOutAt()).toMinutes();
+                long net = Math.max(0, minutes - 60);
+                hoursWorked = Math.round((net / 60.0) * 10.0) / 10.0;
+            }
+
+            int lateMinutes = 0;
+            if (log != null && log.getCheckInAt() != null) {
+                java.time.LocalTime cin = log.getCheckInAt().toLocalTime();
+                if (cin.isAfter(java.time.LocalTime.of(8, 30))) {
+                    lateMinutes = (int) java.time.Duration.between(java.time.LocalTime.of(8, 30), cin).toMinutes();
+                }
+            }
+
+            String dayStatus;
+            String statusText;
+            String symbol;
+
+            if (isHoliday) {
+                dayStatus = "HOLIDAY";
+                statusText = "Ngày lễ";
+                symbol = "NL";
+            } else if (leaveReq != null) {
+                dayStatus = "LEAVE";
+                String lt = leaveReq.getLeaveType() != null ? leaveReq.getLeaveType() : "AL";
+                boolean halfDay = leaveReq.getPayload() != null && leaveReq.getPayload().contains("half_day_period");
+                leaveDays += halfDay ? 0.5 : 1.0;
+                if ("S".equalsIgnoreCase(lt)) sickDays++;
+                else if ("RO".equalsIgnoreCase(lt)) compDays++;
+                else if ("UP".equalsIgnoreCase(lt)) unpaidDays++;
+                symbol = halfDay ? lt + "/0.50" : lt;
+                statusText = "Nghỉ phép (" + symbol + ")";
+            } else if (wfhReq != null) {
+                dayStatus = "WFH";
+                boolean halfDay = wfhReq.getPayload() != null && wfhReq.getPayload().contains("half_day_period");
+                wfhDays += halfDay ? 0.5 : 1.0;
+                actualDays += halfDay ? 0.5 : 1.0;
+                symbol = halfDay ? "R/0.50" : "R";
+                statusText = "Làm việc từ xa (WFH)";
+            } else if (log != null) {
+                if (log.getCheckInAt() != null && log.getCheckOutAt() != null) {
+                    if (lateMinutes > 0 && lateReq == null) {
+                        dayStatus = "LATE";
+                        lateCount++;
+                        actualDays += 1.0;
+                        symbol = "1.00";
+                        statusText = "Đi muộn " + lateMinutes + " phút";
+                    } else {
+                        dayStatus = "ON_TIME";
+                        actualDays += 1.0;
+                        symbol = "1.00";
+                        statusText = "Đúng giờ (" + hoursWorked + "h)";
+                    }
+                } else if (log.getCheckInAt() != null) {
+                    dayStatus = "INCOMPLETE";
+                    actualDays += 0.5;
+                    symbol = "0.50";
+                    statusText = "Thiếu giờ ra";
+                } else {
+                    dayStatus = "INCOMPLETE";
+                    symbol = "0.50";
+                    statusText = "Thiếu giờ vào";
+                }
+            } else if (isWeekend) {
+                dayStatus = "WEEKEND";
+                statusText = "Nghỉ cuối tuần";
+                symbol = "—";
+            } else if (date.isAfter(today)) {
+                dayStatus = "FUTURE";
+                statusText = "Kế hoạch";
+                symbol = "—";
+            } else {
+                dayStatus = "ABSENT";
+                statusText = "Vắng mặt / Không có log";
+                symbol = "V";
+            }
+
+            TimesheetDispute dispute = disputesByDate.get(date);
+            Map<String, Object> disputeInfo = null;
+            if (dispute != null) {
+                disputeInfo = Map.of(
+                        "id", dispute.getId(),
+                        "status", dispute.getStatus(),
+                        "reason", dispute.getReason()
+                );
+            }
+
+            Map<String, Object> dayMap = new HashMap<>();
+            dayMap.put("day", d);
+            dayMap.put("date", date.toString());
+            dayMap.put("weekday", weekdayNames[dow - 1]);
+            dayMap.put("isWeekend", isWeekend);
+            dayMap.put("isHoliday", isHoliday);
+            dayMap.put("checkIn", checkInStr);
+            dayMap.put("checkOut", checkOutStr);
+            dayMap.put("hoursWorked", hoursWorked);
+            dayMap.put("lateMinutes", lateMinutes);
+            dayMap.put("status", dayStatus);
+            dayMap.put("statusText", statusText);
+            dayMap.put("symbol", symbol);
+            dayMap.put("dispute", disputeInfo);
+            daysList.add(dayMap);
+        }
+
+        double totalDays = actualDays + leaveDays;
+        int baseLeave = ruleService.getInt("leave_accrual", "base_days_per_year", 12);
+        double remainingLeave = Math.max(0, baseLeave - leaveDays);
+
+        Map<String, Object> out = new HashMap<>();
+        out.put("month", ym.toString());
+        out.put("daysInMonth", daysInMonth);
+        out.put("status", status);
+        out.put("periodStatus", periodStatus);
+        out.put("canDispute", canDispute);
+        out.put("publishDay", publishDay);
+        out.put("disputeDeadline", deadline.toString());
+
+        // 11 KPI / metrics fields
+        out.put("standardDays", standardDays);
+        out.put("actualDays", actualDays);
+        out.put("wfhDays", wfhDays);
+        out.put("leaveDays", leaveDays);
+        out.put("lateCount", lateCount);
+        out.put("holidayDays", holidayDays);
+        out.put("sickDays", sickDays);
+        out.put("compDays", compDays);
+        out.put("unpaidDays", unpaidDays);
+        out.put("totalDays", totalDays);
+        out.put("remainingLeave", remainingLeave);
+
+        out.put("days", daysList);
+        out.put("logs", logs);
+
+        return ApiResponse.ok(out, "Bảng công " + ym);
     }
 
     /**
@@ -271,22 +542,79 @@ public class BusinessGapController {
     @Operation(summary = "Thiết bị của tôi (S27)")
     public ApiResponse<List<DeviceRegistration>> myDevices() {
         UUID userId = CurrentUser.userId();
-        return ApiResponse.ok(userId == null ? List.of() : deviceRegistrationRepository.findByUserIdAndIsApprovedTrue(userId), "Thiết bị của tôi");
+        return ApiResponse.ok(userId == null ? List.of() : deviceRegistrationRepository.findByUserIdOrderByCreatedAtDesc(userId), "Thiết bị của tôi");
     }
 
     @PostMapping("/devices/request")
     @Operation(summary = "Yêu cầu thêm thiết bị (S29)")
-    public ApiResponse<DeviceRegistration> requestDevice(@RequestBody DeviceRequest request) {
-        DeviceRegistration device = DeviceRegistration.builder()
-                .userId(CurrentUser.userId())
-                .deviceFingerprint(request.getFingerprint())
-                .deviceModel(request.getDeviceName())
-                .osVersion("Web")
-                .isApproved(false)
-                .build();
-        device.setCreatedAt(LocalDateTime.now());
+    public ApiResponse<DeviceRegistration> requestDevice(
+            @RequestBody DeviceRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
+        }
+        if (request.getReason() == null || request.getReason().trim().isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Bắt buộc nhập lý do khi yêu cầu thêm thiết bị");
+        }
+
+        // Kiểm tra mạng nội bộ công ty (Criterion B6 #5)
+        String wifi = request.getWifiBssid();
+        String remoteAddr = httpRequest.getRemoteAddr();
+        String fwd = httpRequest.getHeader("X-Forwarded-For");
+        String officeHeader = httpRequest.getHeader("X-Office-Network");
+        boolean isOffice = (wifi != null && (wifi.toLowerCase().contains("act_office") || wifi.toLowerCase().contains("act-office")))
+                || "true".equalsIgnoreCase(officeHeader)
+                || isLocalOrOfficeIp(remoteAddr)
+                || isLocalOrOfficeIp(fwd);
+
+        if (!isOffice) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Yêu cầu thêm thiết bị chỉ nhận từ mạng nội bộ công ty");
+        }
+
+        String fp = (request.getFingerprint() != null && !request.getFingerprint().isBlank())
+                ? request.getFingerprint()
+                : "web-" + UUID.randomUUID().toString().substring(0, 8);
+
+        DeviceRegistration device = deviceRegistrationRepository.findByDeviceFingerprint(fp)
+                .orElseGet(() -> DeviceRegistration.builder()
+                        .userId(userId)
+                        .deviceFingerprint(fp)
+                        .build());
+
+        device.setUserId(userId);
+        device.setDeviceModel(request.getDeviceName() != null ? request.getDeviceName() : "Web Device");
+        device.setOsVersion("Web");
+        device.setIsApproved(false);
+        device.setExpiresAt(LocalDateTime.now().plusDays(30));
         device.setUpdatedAt(LocalDateTime.now());
-        return ApiResponse.ok(deviceRegistrationRepository.save(device), "Đã gửi yêu cầu — chờ HR duyệt");
+        if (device.getCreatedAt() == null) device.setCreatedAt(LocalDateTime.now());
+
+        DeviceRegistration saved = deviceRegistrationRepository.save(device);
+
+        AuditLog audit = AuditLog.builder()
+                .action("REQUEST_DEVICE")
+                .entityName("DEVICE")
+                .entityId(String.valueOf(saved.getId()))
+                .userId(userId)
+                .userCode(CurrentUser.employeeCode())
+                .newValue("PENDING")
+                .reason(request.getReason())
+                .build();
+        audit.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(audit);
+
+        return ApiResponse.ok(saved, "Đã gửi yêu cầu — chờ HR duyệt");
+    }
+
+    private boolean isLocalOrOfficeIp(String ip) {
+        if (ip == null || ip.isBlank()) return false;
+        String trimmed = ip.trim();
+        return trimmed.equals("127.0.0.1") || trimmed.equals("0:0:0:0:0:0:0:1") || trimmed.equalsIgnoreCase("localhost")
+                || trimmed.startsWith("10.") || trimmed.startsWith("192.168.") || trimmed.startsWith("172.16.");
     }
 
 
@@ -412,9 +740,9 @@ public class BusinessGapController {
 
     @lombok.Data
     public static class DeviceRequest {
-        @NotBlank
         private String fingerprint;
         private String deviceName;
         private String reason;
+        private String wifiBssid;
     }
 }

@@ -25,7 +25,7 @@ public class FaceProfile extends BaseEntity {
 
     /** Vector 512 chiều — lưu dạng pgvector. */
     @Column(name = "embedding", nullable = false, columnDefinition = "vector(512)")
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VECTOR)
+    @Convert(converter = PgVectorConverter.class)
     private float[] embedding;
 
     @Column(name = "model_version", nullable = false, length = 30)

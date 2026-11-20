@@ -35,4 +35,11 @@ public class AttendanceController {
     public ApiResponse<CheckInResponse> checkOut(@Valid @RequestBody CheckInRequest request) {
         return ApiResponse.ok(attendanceService.checkOut(CurrentUser.userId(), request), "Chấm công ra ca thành công");
     }
+
+    /** Trạng thái chấm công hôm nay và hôm qua — phục vụ S05m và cảnh báo thiếu check-out hôm qua (B2). */
+    @GetMapping("/today-status")
+    @Operation(summary = "Trạng thái chấm công hôm nay và hôm qua")
+    public ApiResponse<java.util.Map<String, Object>> todayStatus() {
+        return ApiResponse.ok(attendanceService.getTodayStatus(CurrentUser.userId()), "Trạng thái chấm công");
+    }
 }

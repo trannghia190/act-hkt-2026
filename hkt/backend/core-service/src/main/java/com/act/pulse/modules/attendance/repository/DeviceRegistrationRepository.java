@@ -19,5 +19,7 @@ public interface DeviceRegistrationRepository extends JpaRepository<DeviceRegist
 
     List<DeviceRegistration> findByUserIdAndIsApprovedTrue(UUID userId);
 
+    List<DeviceRegistration> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     long countByUserIdAndIsApprovedTrue(UUID userId);
 }

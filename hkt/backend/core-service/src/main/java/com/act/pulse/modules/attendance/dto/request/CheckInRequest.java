@@ -19,7 +19,9 @@ public class CheckInRequest {
     private String wifiBssid;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private BigDecimal accuracyMeters;
     private Boolean isOffline = false;
+    private java.time.LocalDateTime offlinePunchedAt;
 
     /** Fingerprint thiết bị (canvas + screen + user-agent hash) để đối chiếu thiết bị đã đăng ký. */
     private String deviceFingerprint;
