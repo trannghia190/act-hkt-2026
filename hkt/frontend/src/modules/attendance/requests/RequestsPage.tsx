@@ -27,6 +27,8 @@ export const RequestsPage: React.FC = () => {
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
   const [halfDayPeriod, setHalfDayPeriod] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
+  const [adjustKind, setAdjustKind] = useState<'IN' | 'OUT'>('OUT');
+  const [adjustTime, setAdjustTime] = useState('17:30');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [punchLogs, setPunchLogs] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
@@ -228,6 +230,7 @@ export const RequestsPage: React.FC = () => {
     : 0;
   const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax;
   const lateEarlyDuration = `${lateEarlyKind === 'LATE' ? 'Đi muộn' : 'Về sớm'} ${lateEarlyMinutes} phút (${lateEarlyTime})`;
+  const adjustDuration = `Bổ sung giờ ${adjustKind === 'IN' ? 'vào' : 'ra'} (${adjustTime})`;
 
   const handleCreate = (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
@@ -287,6 +290,8 @@ export const RequestsPage: React.FC = () => {
         ? (leaveUnit === 'HALF_DAY'
             ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}`
             : `${wfhDaysCount} ngày làm việc`)
+        : newReq.type === 'ADJUST'
+        ? adjustDuration
         : newReq.duration,
       reason: newReq.reason,
       status: 'PENDING',
@@ -302,7 +307,8 @@ export const RequestsPage: React.FC = () => {
         : newReq.type === 'WFH'
         ? (wfhHalf ? `0.5 ngày — WFH buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}`
                    : `${wfhDaysCount} ngày làm việc`)
-        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration : newReq.duration,
+        : newReq.type === 'LATE_EARLY' ? lateEarlyDuration
+        : newReq.type === 'ADJUST' ? adjustDuration : newReq.duration,
       unit: halfType ? leaveUnit : undefined,
       ...(halfType && leaveUnit === 'HALF_DAY' ? {
         half_day_period: halfDayPeriod,
@@ -317,6 +323,10 @@ export const RequestsPage: React.FC = () => {
         time: lateEarlyTime,
         shift_start: SHIFT_START,
         shift_end: SHIFT_END,
+      } : {}),
+      ...(newReq.type === 'ADJUST' ? {
+        adjust_kind: adjustKind,
+        time: adjustTime,
       } : {}),
     });
     const body = {
@@ -447,6 +457,10 @@ export const RequestsPage: React.FC = () => {
       setLateEarlyKind(p.late_early === 'EARLY' ? 'EARLY' : 'LATE');
       if (p.time) setLateEarlyTime(String(p.time).slice(0, 5));
     }
+    if (req.type === 'ADJUST') {
+      setAdjustKind(p.adjust_kind === 'IN' ? 'IN' : 'OUT');
+      if (p.time) setAdjustTime(String(p.time).slice(0, 5));
+    }
     setNewReq({
       type: req.type as any,
       startDate: req.startDate,
@@ -480,6 +494,8 @@ export const RequestsPage: React.FC = () => {
   const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
     const logDate = log?.workDate || '';
     if (kind === 'OUT') {
+      setAdjustKind('OUT');
+      setAdjustTime(SHIFT_END);
       setNewReq({
         type: 'ADJUST', startDate: logDate, endDate: logDate, duration: 'Bổ sung giờ ra', leaveType: 'AL',
         reason: `Quên chấm công ra ngày ${fmtDay(logDate)} — đề nghị bổ sung giờ ra theo log chấm công`,
@@ -490,7 +506,7 @@ export const RequestsPage: React.FC = () => {
       setLateEarlyKind('LATE');
       setLateEarlyTime(timeOf(log.checkInAt));
       setNewReq({
-        type: 'ADJUST', startDate: logDate, endDate: logDate,
+        type: 'LATE_EARLY', startDate: logDate, endDate: logDate,
         duration: `Muộn ${mins} phút (${timeOf(log.checkInAt)})`, leaveType: 'AL',
         reason: `Đi muộn ${mins} phút ngày ${fmtDay(logDate)} — nhập lý do cụ thể`,
       });
@@ -847,14 +863,31 @@ export const RequestsPage: React.FC = () => {
           )}
 
 
-          {newReq.type === 'ADJUST' && (() => {
-            const min = isoDaysFromToday(-adjustDeadlineDays);
-            return (
-              <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
-                Hạn nộp: trong vòng <b>{adjustDeadlineDays} ngày</b> kể từ ngày quên chấm — lịch chỉ cho chọn từ <b>{min}</b>.
-              </div>
-            );
-          })()}
+          {newReq.type === 'ADJUST' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block font-medium text-ink">Cần bổ sung
+                <select className="mt-1 w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                  value={adjustKind}
+                  onChange={e => {
+                    const kind = e.target.value as 'IN' | 'OUT';
+                    setAdjustKind(kind);
+                    setAdjustTime(kind === 'IN' ? SHIFT_START : SHIFT_END);
+                  }}>
+                  <option value="IN">Giờ vào (check-in)</option>
+                  <option value="OUT">Giờ ra (check-out)</option>
+                </select>
+              </label>
+              <label className="block font-medium text-ink">Giờ thực tế
+                <input type="time" required className="mt-1 w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
+                  value={adjustTime} onChange={e => setAdjustTime(e.target.value)} />
+              </label>
+            </div>
+          )}
+          {newReq.type === 'ADJUST' && (
+            <div className="p-2 rounded text-[11px] bg-canvas border border-line text-ink-secondary">
+              Chỉ chọn <b>hôm nay hoặc trong {adjustDeadlineDays} ngày trước</b> ({isoDaysFromToday(-adjustDeadlineDays)} → {isoDaysFromToday(0)}). Không nhập thời lượng.
+            </div>
+          )}
 
           {newReq.type === 'LATE_EARLY' ? (
             <>
@@ -935,12 +968,13 @@ export const RequestsPage: React.FC = () => {
                     type="date"
                     required
                     min={minDateForSelected}
+                    max={newReq.type === 'ADJUST' ? isoDaysFromToday(0) : undefined}
                     value={newReq.startDate}
                     onChange={e => setNewReq({ ...newReq, startDate: e.target.value, endDate: e.target.value < newReq.endDate ? e.target.value : newReq.endDate })}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
-                {!(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && !(newReq.type === 'WFH' && leaveUnit === 'HALF_DAY') && (
+                {newReq.type !== 'ADJUST' && !(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && !(newReq.type === 'WFH' && leaveUnit === 'HALF_DAY') && (
                   <div>
                     <label className="block font-medium text-ink mb-1">Đến Ngày</label>
                     <input
@@ -974,7 +1008,7 @@ export const RequestsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ) : (
+              ) : newReq.type === 'ADJUST' ? null : (
                 <div>
                   <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
                   <input
