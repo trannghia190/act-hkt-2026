@@ -28,6 +28,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    out-of-order: true
     locations: classpath:db/migration
 
   # Không dùng Keycloak/OAuth2 — xác thực bằng JWT tự phát hành (HS512).

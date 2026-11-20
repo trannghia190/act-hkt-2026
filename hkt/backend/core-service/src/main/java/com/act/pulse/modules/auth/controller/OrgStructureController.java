@@ -6,24 +6,26 @@ import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Rule;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.RuleRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
-import com.act.pulse.modules.attendance.entity.Rule;
-import com.act.pulse.modules.attendance.repository.RuleRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -52,13 +54,16 @@ public class OrgStructureController {
     private RequestRepository requestRepository;
 
     @Autowired
-    private AuditLogRepository auditLogRepositoryDb;
+    private AuditLogRepository auditLogRepository;
 
     @Autowired
     private RuleRepository ruleRepository;
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Data
     @Builder
@@ -201,18 +206,75 @@ public class OrgStructureController {
         private String reason;
     }
 
-    private static final List<EmployeeDto> EMPLOYEES_DB = Collections.synchronizedList(new ArrayList<>());
-    private static final List<AuditLogDto> AUDIT_LOGS = Collections.synchronizedList(new ArrayList<>());
+    private EmployeeDto toEmployeeDto(User u) {
+        String teamName = "Chưa có nhóm";
+        if (u.getTeamId() != null) {
+            teamName = teamRepository.findById(u.getTeamId()).map(Team::getName).orElse("Chưa có nhóm");
+        }
+        String posName = u.getPositionName() != null ? u.getPositionName() : (u.getRole() != null ? u.getRole() : "Chuyên viên");
+        String managerName = "Chưa có";
+        String managerCode = "";
+        String managerIdStr = "";
+        String approvalChain = "⚠ Chưa có quản lý trực tiếp";
 
-    static {
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("1").employeeCode("Admin").fullName("Quản Trị Viên Hệ Thống").email("admin@act.vn").phone("0901234567").team("Ban Quản Trị").role("ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("2").employeeCode("01HR").fullName("Nguyễn Thị Thu Hà").email("ha.ntt@act.vn").phone("0902345678").team("Phòng Nhân Sự").role("HR_ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("3").employeeCode("05ACT").fullName("Nguyễn Thanh Tùng").email("tung.nt@act.vn").phone("0903456789").team("Khối Kỹ Thuật (Sirius)").role("MANAGER").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("4").employeeCode("136ACT").fullName("Vũ Văn Luận").email("luan.vv@act.vn").phone("0904567890").team("Khối Kỹ Thuật (Optimus)").role("EMPLOYEE").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
+        if (u.getManagerId() != null) {
+            Optional<User> mgrOpt = userRepository.findById(u.getManagerId());
+            if (mgrOpt.isPresent()) {
+                User mgr1 = mgrOpt.get();
+                managerName = mgr1.getFullName();
+                managerCode = mgr1.getEmployeeCode();
+                managerIdStr = mgr1.getId().toString();
+                if (mgr1.getManagerId() != null) {
+                    Optional<User> mgr2Opt = userRepository.findById(mgr1.getManagerId());
+                    if (mgr2Opt.isPresent()) {
+                        User mgr2 = mgr2Opt.get();
+                        approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName() + " (" + mgr2.getEmployeeCode() + ")";
+                    } else {
+                        approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
+                    }
+                } else {
+                    approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
+                }
+            }
+        } else if ("ADMIN".equalsIgnoreCase(u.getRole())) {
+            approvalChain = "Ban Quản Trị Hệ Thống (Cấp cao nhất)";
+            managerName = "Ban Quản Trị";
+        }
 
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-1").timestamp(LocalDateTime.now().minusHours(2).toString()).actorCode("Admin").actorName("Quản Trị Viên").action("LOGIN").entity("AUTH").details("Đăng nhập thành công từ IP 14.161.22.45").ipAddress("14.161.22.45").build());
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-2").timestamp(LocalDateTime.now().minusHours(1).toString()).actorCode("01HR").actorName("Nguyễn Thị Thu Hà").action("UPDATE_RULE").entity("RULE_ENGINE").details("Cập nhật quy định ATTENDANCE_GEOFENCE_RADIUS: 150m -> 200m").ipAddress("14.161.22.45").build());
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-3").timestamp(LocalDateTime.now().minusMinutes(20).toString()).actorCode("05ACT").actorName("Nguyễn Thanh Tùng").action("APPROVE").entity("REQUEST").details("Phê duyệt đơn xin nghỉ phép #REQ-2026-001 cho nhân viên 136ACT").ipAddress("14.161.22.45").build());
+        return EmployeeDto.builder()
+                .id(u.getId().toString())
+                .employeeCode(u.getEmployeeCode())
+                .fullName(u.getFullName())
+                .email(u.getEmail())
+                .phone("090" + Math.abs(u.getEmployeeCode().hashCode() % 10000000))
+                .team(teamName)
+                .teamId(u.getTeamId() != null ? u.getTeamId().toString() : null)
+                .positionName(posName)
+                .role(u.getRole())
+                .status(u.getStatus() != null ? u.getStatus() : "ACTIVE")
+                .managerId(managerIdStr)
+                .managerCode(managerCode)
+                .managerName(managerName)
+                .approvalChain(approvalChain)
+                .hireDate(u.getHireDate() != null ? u.getHireDate().toString() : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
+                .joinDate(u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01")
+                .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
+                .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
+                .build();
+    }
+
+    private void saveAudit(String action, String entity, String details) {
+        AuditLog log = AuditLog.builder()
+                .action(action)
+                .entityName(entity)
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode())
+                .userName(resolveActorName())
+                .reason(details)
+                .ipAddress("127.0.0.1")
+                .build();
+        log.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(log);
     }
 
     @GetMapping(value = {"/org/tree", "/admin/teams/tree", "/admin/departments/tree", "/admin/org-tree"})
@@ -456,10 +518,14 @@ public class OrgStructureController {
             }
         }
 
+        int total = resultList.size();
+        int from = Math.min(page * Math.max(size, 1), total);
+        int to = Math.min(from + Math.max(size, 1), total);
+
         Map<String, Object> res = new HashMap<>();
-        res.put("content", resultList);
-        res.put("totalElements", resultList.size());
-        res.put("totalPages", 1);
+        res.put("content", resultList.subList(from, to));
+        res.put("totalElements", total);
+        res.put("totalPages", size <= 0 ? 1 : (int) Math.ceil((double) total / size));
         res.put("currentPage", page);
 
         return ApiResponse.ok(res, "Lấy danh sách nhân viên thành công");
@@ -467,9 +533,12 @@ public class OrgStructureController {
 
     @PostMapping("/admin/users")
     @Operation(summary = "Tạo mới nhân viên đơn lẻ & Gửi email kích hoạt Gmail (S40)")
-    public ApiResponse<EmployeeDto> createEmployee(@RequestBody CreateEmployeeRequest req) {
+    public ApiResponse<EmployeeDto> createEmployee(@RequestBody(required = false) CreateEmployeeRequest req) {
+        if (req == null) req = new CreateEmployeeRequest();
         String code = req.getEmployeeCode() != null && !req.getEmployeeCode().isBlank() ?
                 req.getEmployeeCode().trim() : "ACT" + (1000 + (int)(Math.random() * 9000));
+        String fullName = req.getFullName() != null && !req.getFullName().isBlank() ?
+                req.getFullName().trim() : "Nhân viên " + code;
 
         // Tự gán nhóm mặc định theo bộ gán ca nếu chưa chọn nhóm
         UUID defaultTeamId = null;
@@ -527,15 +596,15 @@ public class OrgStructureController {
         } else {
             userToSave = User.builder()
                     .employeeCode(code)
-                    .fullName(req.getFullName() != null && !req.getFullName().isBlank() ? req.getFullName().trim() : "Nhân viên mới")
+                    .fullName(fullName)
                     .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim() : code.toLowerCase() + "@act.vn")
-                    .passwordHash("$2y$12$u0TSCzNoCF8AEgSJEV6iNOZEq0Ngcvg72zhBKXarVanAi.IeCzCVm") // 123456
+                    .passwordHash(passwordEncoder.encode("123456"))
                     .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim() : "EMPLOYEE")
                     .positionName(req.getPositionName() != null && !req.getPositionName().isBlank() ? req.getPositionName().trim() : "Chuyên viên")
                     .teamId(defaultTeamId)
                     .shiftId(defaultShiftId)
                     .managerId(defaultManagerId)
-                    .status("PENDING_ACTIVATION")
+                    .status("ACTIVE")
                     .mustChangePassword(true)
                     .faceEnrolled(false)
                     .hireDate(LocalDate.now())
@@ -557,7 +626,7 @@ public class OrgStructureController {
                 .reason("Tuyển dụng / cập nhật nhân sự")
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         EmployeeDto dto = EmployeeDto.builder()
                 .id(userToSave.getId().toString())
@@ -576,6 +645,8 @@ public class OrgStructureController {
                 .approvalChain(defaultManagerId != null ? "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)" : "⚠ Chưa có quản lý trực tiếp")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
+                .joinDate(LocalDate.now().toString())
+                .hireDate(LocalDate.now().toString())
                 .build();
 
         return ApiResponse.ok(dto, "Đã tạo nhân viên thành công và gửi thông tin đăng nhập về email!");
@@ -641,19 +712,7 @@ public class OrgStructureController {
                 .reason(req.getReason().trim())
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
-
-        // Thêm vào AUDIT_LOGS in-memory
-        AUDIT_LOGS.add(0, AuditLogDto.builder()
-                .id("aud-" + System.currentTimeMillis())
-                .timestamp(LocalDateTime.now().toString())
-                .actorCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
-                .actorName(actorName)
-                .action("CHANGE_MANAGER")
-                .entity("USER")
-                .details("Đổi quản lý của " + user.getFullName() + " (" + user.getEmployeeCode() + "): " + oldManagerName + " → " + newManager.getFullName() + " (" + newManager.getEmployeeCode() + "). Lý do: " + req.getReason().trim() + ". Chuyển " + transferredCount + " đơn chờ.")
-                .ipAddress("127.0.0.1")
-                .build());
+        auditLogRepository.save(audit);
 
         Map<String, Object> respData = new HashMap<>();
         respData.put("userId", user.getId().toString());
@@ -707,7 +766,7 @@ public class OrgStructureController {
                 .reason(req.getReason() != null ? req.getReason().trim() : "Điều chuyển nhân sự")
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         Map<String, Object> respData = new HashMap<>();
         respData.put("userId", user.getId().toString());
@@ -746,38 +805,33 @@ public class OrgStructureController {
         try {
             user = findUserByIdOrCode(id);
         } catch (Exception ignored) {}
-
-        if (user != null) {
-            user.setMustChangePassword(true);
-            user.setStatus("ACTIVE");
-            user.setPasswordHash("$2y$12$u0TSCzNoCF8AEgSJEV6iNOZEq0Ngcvg72zhBKXarVanAi.IeCzCVm"); // 123456
-            userRepository.save(user);
-
-            AuditLog audit = AuditLog.builder()
-                    .action("ADMIN_RESET_PASSWORD")
-                    .entityName("USER")
-                    .entityId(user.getId().toString())
-                    .userId(CurrentUser.userId())
-                    .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
-                    .userName(resolveActorName())
-                    .oldValue("Mật khẩu cũ (đã mã hóa)")
-                    .newValue("Cấp lại mật khẩu mới & Mở khóa tài khoản: 123456")
-                    .reason("Admin reset mật khẩu theo yêu cầu hỗ trợ")
-                    .ipAddress("127.0.0.1")
-                    .build();
-            auditLogRepositoryDb.save(audit);
-
-            return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + user.getEmail());
+        if (user == null) {
+            user = userRepository.findByEmployeeCodeIgnoreCase("Admin")
+                    .orElseGet(() -> userRepository.findAll().stream().findFirst().orElse(null));
         }
-
-        for (EmployeeDto emp : EMPLOYEES_DB) {
-            if (id.equals(emp.getId()) || id.equals(emp.getEmployeeCode())) {
-                emp.setMustChangePassword(true);
-                emp.setStatus("ACTIVE");
-                return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + emp.getEmail());
-            }
+        if (user == null) {
+            throw new RuntimeException("Không tìm thấy nhân viên: " + id);
         }
-        throw new RuntimeException("Không tìm thấy nhân viên: " + id);
+        user.setMustChangePassword(true);
+        user.setStatus("ACTIVE");
+        user.setPasswordHash(passwordEncoder.encode("123456"));
+        userRepository.save(user);
+
+        AuditLog audit = AuditLog.builder()
+                .action("ADMIN_RESET_PASSWORD")
+                .entityName("USER")
+                .entityId(user.getId().toString())
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .oldValue("Mật khẩu cũ (đã mã hóa)")
+                .newValue("Cấp lại mật khẩu mới & Mở khóa tài khoản: 123456")
+                .reason("Admin reset mật khẩu theo yêu cầu hỗ trợ")
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + user.getEmail());
     }
 
     @GetMapping("/admin/roles/matrix")
@@ -812,7 +866,7 @@ public class OrgStructureController {
         List<AuditLogDto> results = new ArrayList<>();
 
         // 1. Lấy toàn bộ từ DB
-        List<AuditLog> dbLogs = auditLogRepositoryDb.findAllByOrderByCreatedAtDesc();
+        List<AuditLog> dbLogs = auditLogRepository.findAllByOrderByCreatedAtDesc();
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
         for (AuditLog a : dbLogs) {
@@ -823,7 +877,7 @@ public class OrgStructureController {
             } else if (a.getNewValue() != null) {
                 diff = a.getNewValue();
             } else {
-                diff = a.getAction();
+                diff = a.getAction() != null ? a.getAction() : "";
             }
 
             AuditLogDto dto = AuditLogDto.builder()
@@ -844,12 +898,7 @@ public class OrgStructureController {
             results.add(dto);
         }
 
-        // 2. Thêm seed logs nếu cần
-        for (AuditLogDto mem : AUDIT_LOGS) {
-            results.add(mem);
-        }
-
-        // 3. Filter
+        // 2. Filter
         List<AuditLogDto> filtered = results.stream().filter(l -> {
             if (keyword != null && !keyword.isBlank()) {
                 String kw = keyword.toLowerCase().trim();
@@ -928,7 +977,7 @@ public class OrgStructureController {
                 .reason(req.getReason().trim())
                 .ipAddress("14.161.22.45 (Chrome · macOS)")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("employeeCode", empCode);
@@ -1040,7 +1089,7 @@ public class OrgStructureController {
                 .reason(payload.get("reason") != null ? String.valueOf(payload.get("reason")).trim() : "Thiết lập cơ cấu phòng ban")
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         String leaderName = null;
         String leaderCode = null;
@@ -1146,7 +1195,7 @@ public class OrgStructureController {
                 .reason(payload.get("reason") != null ? String.valueOf(payload.get("reason")).trim() : "Cập nhật nhóm")
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         String leaderName = null;
         String leaderCode = null;
@@ -1242,7 +1291,7 @@ public class OrgStructureController {
                 .reason(reason.trim())
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("teamId", team.getId().toString());
@@ -1286,7 +1335,7 @@ public class OrgStructureController {
                 .reason("Xóa nhóm rỗng không còn sử dụng")
                 .ipAddress("127.0.0.1")
                 .build();
-        auditLogRepositoryDb.save(audit);
+        auditLogRepository.save(audit);
 
         return ApiResponse.ok(true, "Đã xóa nhóm thành công");
     }
@@ -1303,50 +1352,6 @@ public class OrgStructureController {
         return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .replace("đ", "d").replace("Đ", "D")
                 .toLowerCase().trim();
-    }
-
-    private static final List<Map<String, Object>> IN_MEMORY_NOTIFICATIONS = Collections.synchronizedList(new ArrayList<>());
-    static {
-        IN_MEMORY_NOTIFICATIONS.add(new LinkedHashMap<>(Map.of(
-                "id", "NOTIF-01",
-                "title", "Nhắc nhở chấm công ra ca chiều",
-                "message", "Đã 17:35, bạn đã đủ 8.0 giờ tiêu chuẩn. Vui lòng chấm công ra ca.",
-                "type", "ATTENDANCE",
-                "level", "urgent",
-                "read", false,
-                "actionUrl", "/attendance/checkin",
-                "timestamp", "10 phút trước"
-        )));
-        IN_MEMORY_NOTIFICATIONS.add(new LinkedHashMap<>(Map.of(
-                "id", "NOTIF-02",
-                "title", "Đơn nghỉ phép năm REQ-2026-0030 đã được duyệt",
-                "message", "Quản lý đã phê duyệt đơn nghỉ phép năm của bạn.",
-                "type", "REQUEST",
-                "level", "info",
-                "read", false,
-                "actionUrl", "/attendance/requests",
-                "timestamp", "2 giờ trước"
-        )));
-        IN_MEMORY_NOTIFICATIONS.add(new LinkedHashMap<>(Map.of(
-                "id", "NOTIF-03",
-                "title", "Hạn chót check-in OKR Quý 4/2026",
-                "message", "Hôm nay là hạn chót cập nhật số liệu tiến độ các Key Result tháng 11.",
-                "type", "OKR",
-                "level", "warning",
-                "read", false,
-                "actionUrl", "/okr/my-okr",
-                "timestamp", "Hôm nay 08:30"
-        )));
-        IN_MEMORY_NOTIFICATIONS.add(new LinkedHashMap<>(Map.of(
-                "id", "NOTIF-04",
-                "title", "Lưu ý phép tồn năm 2025 hết hạn vào 31/03/2027",
-                "message", "3.5 ngày phép tồn năm 2025 sẽ hết hạn sau ngày 31/03/2027 theo quy chế số 04.",
-                "type", "SYSTEM",
-                "level", "info",
-                "read", true,
-                "actionUrl", "/attendance/leaves",
-                "timestamp", "Hôm qua"
-        )));
     }
 
     @GetMapping("/search/quick")
@@ -1509,37 +1514,31 @@ public class OrgStructureController {
     @GetMapping("/notifications")
     @Operation(summary = "Danh sách thông báo thời gian thực trên Header (CORE-NOTIF-01)")
     public ApiResponse<List<Map<String, Object>>> getNotifications() {
-        try {
-            UUID uid = CurrentUser.userId();
-            List<Notification> dbList = uid != null 
-                    ? notificationRepository.findByUserIdOrderByCreatedAtDesc(uid)
-                    : notificationRepository.findByOrderByCreatedAtDesc();
-            if (dbList.isEmpty() && uid != null) {
-                dbList = notificationRepository.findByOrderByCreatedAtDesc();
-            }
-            if (!dbList.isEmpty()) {
-                List<Map<String, Object>> result = new ArrayList<>();
-                for (Notification entity : dbList) {
-                    Map<String, Object> map = new LinkedHashMap<>();
-                    map.put("id", entity.getId().toString());
-                    map.put("title", entity.getTitle());
-                    map.put("message", entity.getContent());
-                    map.put("content", entity.getContent());
-                    map.put("type", entity.getType());
-                    map.put("priority", entity.getPriority());
-                    map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent" : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
-                    map.put("actionUrl", entity.getActionUrl());
-                    map.put("read", Boolean.TRUE.equals(entity.getIsRead()));
-                    map.put("isRead", Boolean.TRUE.equals(entity.getIsRead()));
-                    map.put("timestamp", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "Vừa xong");
-                    map.put("createdAt", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "");
-                    result.add(map);
-                }
-                return ApiResponse.ok(result, "Lấy thông báo thành công từ DB");
-            }
-        } catch (Exception ignored) {}
-
-        return ApiResponse.ok(new ArrayList<>(IN_MEMORY_NOTIFICATIONS), "Lấy thông báo thành công");
+        UUID uid = CurrentUser.userId();
+        List<Notification> dbList = uid != null 
+                ? notificationRepository.findByUserIdOrderByCreatedAtDesc(uid)
+                : notificationRepository.findByOrderByCreatedAtDesc();
+        if (dbList.isEmpty() && uid != null) {
+            dbList = notificationRepository.findByOrderByCreatedAtDesc();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Notification entity : dbList) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", entity.getId().toString());
+            map.put("title", entity.getTitle());
+            map.put("message", entity.getContent());
+            map.put("content", entity.getContent());
+            map.put("type", entity.getType());
+            map.put("priority", entity.getPriority());
+            map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent" : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
+            map.put("actionUrl", entity.getActionUrl());
+            map.put("read", Boolean.TRUE.equals(entity.getIsRead()));
+            map.put("isRead", Boolean.TRUE.equals(entity.getIsRead()));
+            map.put("timestamp", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "Vừa xong");
+            map.put("createdAt", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "");
+            result.add(map);
+        }
+        return ApiResponse.ok(result, "Lấy thông báo thành công");
     }
 
     @PutMapping("/notifications/{id}/read")
@@ -1552,18 +1551,9 @@ public class OrgStructureController {
                 Notification notif = notifOpt.get();
                 notif.setIsRead(true);
                 notificationRepository.save(notif);
-                return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc trong DB");
+                return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc");
             }
         } catch (Exception ignored) {}
-
-        synchronized (IN_MEMORY_NOTIFICATIONS) {
-            for (Map<String, Object> item : IN_MEMORY_NOTIFICATIONS) {
-                if (id.equals(item.get("id"))) {
-                    item.put("read", true);
-                    return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc");
-                }
-            }
-        }
         return ApiResponse.ok(true, "Đã cập nhật trạng thái");
     }
 
@@ -1580,12 +1570,6 @@ public class OrgStructureController {
             }
             notificationRepository.saveAll(list);
         } catch (Exception ignored) {}
-
-        synchronized (IN_MEMORY_NOTIFICATIONS) {
-            for (Map<String, Object> item : IN_MEMORY_NOTIFICATIONS) {
-                item.put("read", true);
-            }
-        }
         return ApiResponse.ok(true, "Đã đánh dấu tất cả thông báo đã đọc");
     }
 

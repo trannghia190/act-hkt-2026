@@ -4,6 +4,11 @@ import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.modules.okr.dto.request.OKRAssessmentRequest;
 import com.act.pulse.modules.okr.dto.response.OKRReviewResponse;
 import com.act.pulse.modules.okr.service.OKRService;
+import com.act.pulse.modules.okr.entity.OKRReview;
+import com.act.pulse.modules.okr.repository.OKRReviewRepository;
+import com.act.pulse.modules.auth.entity.User;
+import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.common.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,6 +25,8 @@ import java.util.*;
 public class OKRController {
 
     private final OKRService okrService;
+    private final OKRReviewRepository okrReviewRepository;
+    private final UserRepository userRepository;
 
     // --- DTOs ---
     @Data
@@ -109,7 +116,6 @@ public class OKRController {
     }
 
     // In-Memory store for OKRs
-    private static final Map<String, Form4BoxReviewRequest> REVIEWS_DB = Collections.synchronizedMap(new HashMap<>());
     // --- Endpoints ---
 
     @GetMapping("/my-dashboard")
@@ -226,13 +232,22 @@ public class OKRController {
     public ApiResponse<Map<String, Object>> getForm4Box(@RequestParam(defaultValue = "136ACT") String employeeCode) {
         Map<String, Object> form = new HashMap<>();
         form.put("employeeCode", employeeCode);
-        form.put("box1_achievements", "Hoàn thành xuất sắc dự án ACT-HKT 2026 đúng tiến độ. Tối ưu hệ thống đạt uptime 99.9%.");
-        form.put("box2_businessScore", 4);
-        form.put("box2_businessComment", "Đạt và vượt các chỉ tiêu kinh doanh và công nghệ.");
-        form.put("box3_peopleScore", 5);
-        form.put("box3_peopleComment", "Tích cực đào tạo, chia sẻ kiến thức chuyên môn cho các thành viên mới.");
-        form.put("box4_selfProposal", "Nguyện vọng tham gia chương trình đào tạo Tech Lead và chứng chỉ Cloud Architect.");
-        form.put("selfAverageScore", 4.5);
+        int year = java.time.Year.now().getValue();
+        userRepository.findByEmployeeCode(employeeCode)
+                .flatMap(u -> okrReviewRepository.findByUserIdAndCycleYear(u.getId(), year))
+                .ifPresent(r -> {
+                    form.put("reviewId", r.getId().toString());
+                    form.put("box1_achievements", "");
+                    form.put("box2_businessScore", r.getBox2SelfScore());
+                    form.put("box2_businessComment", r.getBox2BusinessText());
+                    form.put("box3_peopleScore", r.getBox3SelfScore());
+                    form.put("box3_peopleComment", r.getBox3PeopleText());
+                    form.put("box4_selfProposal", r.getBox4ProposalNextYear());
+                    form.put("selfAverageScore", r.getFinalAverageScore());
+                    form.put("managerBusinessScore", r.getBox2ManagerScore());
+                    form.put("managerPeopleScore", r.getBox3ManagerScore());
+                    form.put("status", r.getCurrentStep() != null && r.getCurrentStep() >= 5 ? "DA_HOAN_TAT" : "CHO_QL_CHAM");
+                });
         return ApiResponse.ok(form, "Lấy dữ liệu Form 4 Box thành công");
     }
 
@@ -248,7 +263,20 @@ public class OKRController {
         }
 
         double avg = (req.getBox2BusinessScore() + req.getBox3PeopleScore()) / 2.0;
-        REVIEWS_DB.put(req.getEmployeeCode(), req);
+        int year = req.getYear() == null ? java.time.Year.now().getValue() : req.getYear();
+        User user = userRepository.findByEmployeeCode(req.getEmployeeCode() == null ? CurrentUser.employeeCode() : req.getEmployeeCode())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
+        OKRReview review = okrReviewRepository.findByUserIdAndCycleYear(user.getId(), year)
+                .orElseGet(() -> OKRReview.builder().userId(user.getId()).cycleYear(year).build());
+        review.setBox2BusinessText(req.getBox2BusinessComment());
+        review.setBox2SelfScore(req.getBox2BusinessScore());
+        review.setBox3PeopleText(req.getBox3PeopleComment());
+        review.setBox3SelfScore(req.getBox3PeopleScore());
+        review.setBox4ProposalNextYear(req.getBox4SelfProposal());
+        review.setBox2AttachmentUrl(req.getEvidenceAttachmentUrl());
+        review.setFinalAverageScore(java.math.BigDecimal.valueOf(avg));
+        review.setCurrentStep(2);
+        okrReviewRepository.save(review);
 
         Map<String, Object> res = new HashMap<>();
         res.put("selfAverageScore", avg);
@@ -272,6 +300,19 @@ public class OKRController {
         }
 
         double managerAvg = (req.getManagerBusinessScore() + req.getManagerPeopleScore()) / 2.0;
+
+        OKRReview review = null;
+        try { review = okrReviewRepository.findById(java.util.UUID.fromString(id)).orElse(null); } catch (Exception ignored) { }
+        if (review == null && req.getEmployeeCode() != null) {
+            User user = userRepository.findByEmployeeCode(req.getEmployeeCode()).orElse(null);
+            if (user != null) review = okrReviewRepository.findByUserIdAndCycleYear(user.getId(), java.time.Year.now().getValue()).orElse(null);
+        }
+        if (review == null) throw new RuntimeException("Không tìm thấy hồ sơ đánh giá");
+        review.setBox2ManagerScore(req.getManagerBusinessScore());
+        review.setBox3ManagerScore(req.getManagerPeopleScore());
+        review.setFinalAverageScore(java.math.BigDecimal.valueOf(managerAvg));
+        review.setCurrentStep(5);
+        okrReviewRepository.save(review);
 
         Map<String, Object> res = new HashMap<>();
         res.put("managerAverageScore", managerAvg);

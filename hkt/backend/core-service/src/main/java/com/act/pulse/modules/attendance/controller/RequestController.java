@@ -203,6 +203,7 @@ public class RequestController {
             m.put("status", r.getStatus());
             m.put("createdAt", r.getCreatedAt());
             m.put("appliedParameters", r.getAppliedParameters());
+            m.put("payload", r.getPayload());
             userRepository.findById(r.getUserId()).ifPresent(u -> {
                 m.put("employeeCode", u.getEmployeeCode());
                 m.put("employeeName", u.getFullName());

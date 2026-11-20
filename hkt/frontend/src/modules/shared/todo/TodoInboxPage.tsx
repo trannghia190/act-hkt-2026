@@ -140,6 +140,15 @@ export const TodoInboxPage: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    fetch('/api/v1/todos/completed')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setCompletedList(data.data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -151,10 +160,7 @@ export const TodoInboxPage: React.FC = () => {
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
 
   // 3. Completed Tasks History
-  const [completedList, setCompletedList] = useState<string[]>([
-    'Đã chấm công vào lúc 08:22:15 sáng nay',
-    'Đã duyệt đơn xin làm việc tại nhà WFH của Trần Thị Thu Hà',
-  ]);
+  const [completedList, setCompletedList] = useState<string[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
