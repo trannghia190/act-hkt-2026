@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -111,9 +112,13 @@ public class BusinessGapController {
         List<RequestEntity> allRequests = requestRepository.findByUserIdOrderByCreatedAtDesc(userId);
         Map<java.time.LocalDate, List<RequestEntity>> requestsByDate = new HashMap<>();
         for (RequestEntity r : allRequests) {
-            if ("APPROVED".equals(r.getStatus()) && r.getWorkDate() != null
-                    && !r.getWorkDate().isBefore(start) && !r.getWorkDate().isAfter(end)) {
-                requestsByDate.computeIfAbsent(r.getWorkDate(), k -> new ArrayList<>()).add(r);
+            if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null) continue;
+            boolean rangeType = "LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType());
+            LocalDate rEnd = r.getEndDate() == null ? r.getWorkDate() : r.getEndDate();
+            if (!rangeType) rEnd = r.getWorkDate();
+            for (LocalDate cur = r.getWorkDate(); !cur.isAfter(rEnd); cur = cur.plusDays(1)) {
+                if (cur.isBefore(start) || cur.isAfter(end)) continue;
+                requestsByDate.computeIfAbsent(cur, k -> new ArrayList<>()).add(r);
             }
         }
 
@@ -229,6 +234,10 @@ public class BusinessGapController {
                 dayStatus = "HOLIDAY";
                 statusText = "Ngày lễ";
                 symbol = "NL";
+            } else if (isWeekend) {
+                dayStatus = "WEEKEND";
+                statusText = "Ngày nghỉ";
+                symbol = "";
             } else if (leaveReq != null) {
                 dayStatus = "LEAVE";
                 String lt = leaveReq.getLeaveType() != null ? leaveReq.getLeaveType() : "AL";
@@ -446,7 +455,8 @@ public class BusinessGapController {
                     boolean covers = day.equals(r.getWorkDate())
                             || (("LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType())) && r.getEndDate() != null
                                 && !day.isBefore(r.getWorkDate()) && !day.isAfter(r.getEndDate()));
-                    if (covers && "WFH".equals(r.getRequestType()) && day.getDayOfWeek().getValue() >= 6) covers = false;
+                    if (covers && ("WFH".equals(r.getRequestType()) || "LEAVE".equals(r.getRequestType()))
+                            && day.getDayOfWeek().getValue() >= 6) covers = false;
                     if (!covers) continue;
                     if ("WFH".equals(r.getRequestType())) kind = "WFH";
                     else if ("LEAVE".equals(r.getRequestType())) kind = "LEAVE";
