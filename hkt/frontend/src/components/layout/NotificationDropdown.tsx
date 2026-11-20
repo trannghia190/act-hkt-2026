@@ -102,7 +102,7 @@ export const NotificationDropdown: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="text-[11px] text-emerald-500 hover:text-emerald-400 font-medium flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Check className="w-3 h-3" />
                   Đọc tất cả
@@ -117,7 +117,7 @@ export const NotificationDropdown: React.FC = () => {
                 onClick={() => setActiveTab('ALL')}
                 className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
                   activeTab === 'ALL'
-                    ? 'text-emerald-500 border-b-2 border-emerald-500 font-bold'
+                    ? 'text-accent border-b-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -128,7 +128,7 @@ export const NotificationDropdown: React.FC = () => {
                 onClick={() => setActiveTab('UNREAD')}
                 className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
                   activeTab === 'UNREAD'
-                    ? 'text-emerald-500 border-b-2 border-emerald-500 font-bold'
+                    ? 'text-accent border-b-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >

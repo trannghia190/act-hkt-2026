@@ -314,22 +314,22 @@ export const TodoInboxPage: React.FC = () => {
       key={task.id}
       className={`p-4 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:border-line-focus ${
         task.urgency === 'overdue'
-          ? 'border-rose-500/40 bg-rose-500/5'
+          ? 'border-rose-300 bg-rose-50/50'
           : task.urgency === 'soon'
-            ? 'border-amber-500/30 bg-amber-500/5'
+            ? 'border-amber-300 bg-amber-50/50'
             : task.urgency === 'today' || task.urgency === 'normal'
-              ? 'border-emerald-500/30 bg-emerald-500/5'
-              : 'border-sky-500/20 bg-sky-500/5'
+              ? 'border-accent-line bg-accent-soft/40'
+              : 'border-sky-200 bg-sky-50/50'
       }`}
     >
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {task.module === 'timesheet' && <Clock className="w-4 h-4 text-emerald-400" />}
-            {task.module === 'okr' && <Target className="w-4 h-4 text-sky-400" />}
-            {task.module === 'leave' && <Sun className="w-4 h-4 text-amber-400" />}
+            {task.module === 'timesheet' && <Clock className="w-4 h-4 text-accent" />}
+            {task.module === 'okr' && <Target className="w-4 h-4 text-sky-700" />}
+            {task.module === 'leave' && <Sun className="w-4 h-4 text-amber-700" />}
             {task.module !== 'timesheet' && task.module !== 'okr' && task.module !== 'leave' && (
-              <Calendar className="w-4 h-4 text-indigo-400" />
+              <Calendar className="w-4 h-4 text-indigo-700" />
             )}
             <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
               {task.module === 'timesheet' ? 'Chấm Công' : task.module === 'okr' ? 'OKR Mục Tiêu' : 'Phép Năm'}
@@ -359,14 +359,14 @@ export const TodoInboxPage: React.FC = () => {
           <button
             type="button"
             onClick={() => handleCompletePersonalTask(task)}
-            className="text-[11px] text-ink-muted hover:text-emerald-400 transition-colors font-medium cursor-pointer"
+            className="text-[11px] text-ink-muted hover:text-accent transition-colors font-medium cursor-pointer"
           >
             ✓ Đã xong
           </button>
           <button
             type="button"
             onClick={(e) => handleDeletePersonalTask(task.id, e)}
-            className="text-[11px] text-ink-muted hover:text-rose-400 transition-colors cursor-pointer"
+            className="text-[11px] text-ink-muted hover:text-rose-600 transition-colors cursor-pointer"
             title="Xóa bỏ nhiệm vụ"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -414,8 +414,8 @@ export const TodoInboxPage: React.FC = () => {
       </div>
 
       {toastMessage && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
           {toastMessage}
         </div>
       )}
@@ -423,19 +423,19 @@ export const TodoInboxPage: React.FC = () => {
       {/* TOP CARD: Số Phép Còn Lại Hiện Ngay Trên Trang Này (Criteria G1-#4) */}
       <div className="bg-surface border border-line rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-            <Sun className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+            <Sun className="w-6 h-6 text-amber-700" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Số dư phép năm cá nhân còn lại (S02 / C1)</div>
             <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="text-emerald-400 text-lg font-extrabold">{leaveSummary.totalRemaining} ngày</span>
+              <span className="text-accent text-lg font-extrabold">{leaveSummary.totalRemaining} ngày</span>
               <span className="text-xs font-normal text-ink-muted">
-                (Tồn 2025: <strong className="text-amber-400">{leaveSummary.carriedRemaining}</strong> ngày · Phép 2026: {leaveSummary.annualRemaining} ngày)
+                (Tồn 2025: <strong className="text-amber-800 font-semibold">{leaveSummary.carriedRemaining}</strong> ngày · Phép 2026: {leaveSummary.annualRemaining} ngày)
               </span>
             </div>
             <div className="text-[11px] text-ink-muted mt-0.5">
-              Lưu ý: Phép tồn 2025 bảo lưu tối đa đến <strong className="text-amber-400 font-semibold">{leaveSummary.carriedExpiryDate}</strong>
+              Lưu ý: Phép tồn 2025 bảo lưu tối đa đến <strong className="text-amber-800 font-semibold">{leaveSummary.carriedExpiryDate}</strong>
             </div>
           </div>
         </div>
@@ -456,14 +456,14 @@ export const TodoInboxPage: React.FC = () => {
           onClick={() => setActiveTab('PERSONAL')}
           className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'PERSONAL'
-              ? 'border-emerald-500 text-emerald-400'
+              ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Clock className="w-4 h-4" />
           Việc Cần Làm Của Tôi
           {personalTasks.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 font-extrabold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-accent-soft text-accent font-extrabold">
               {personalTasks.length}
             </span>
           )}
@@ -474,14 +474,14 @@ export const TodoInboxPage: React.FC = () => {
           onClick={() => setActiveTab('APPROVALS')}
           className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'APPROVALS'
-              ? 'border-emerald-500 text-emerald-400'
+              ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Inbox className="w-4 h-4" />
           Hộp Thư Phê Duyệt Cấp Dưới
           {approvals.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/15 text-rose-400 font-extrabold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-extrabold">
               {approvals.length}
             </span>
           )}
@@ -492,7 +492,7 @@ export const TodoInboxPage: React.FC = () => {
           onClick={() => setActiveTab('DONE')}
           className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'DONE'
-              ? 'border-emerald-500 text-emerald-400'
+              ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
@@ -510,7 +510,7 @@ export const TodoInboxPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Tìm kiếm công việc, mã đơn, người gửi..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-emerald-500"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
           />
         </div>
         {activeTab === 'PERSONAL' && (
@@ -544,8 +544,8 @@ export const TodoInboxPage: React.FC = () => {
               {overdueTasks.length > 0 && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                    <AlertTriangle className="w-4 h-4 text-status-danger" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-status-danger">
                       ⚠ Quá Hạn ({overdueTasks.length})
                     </h2>
                   </div>
@@ -559,8 +559,8 @@ export const TodoInboxPage: React.FC = () => {
               {soonTasks.length > 0 && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                    <Clock className="w-4 h-4 text-status-warn" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-status-warn">
                       ◷ Sắp Đến Hạn ({soonTasks.length})
                     </h2>
                   </div>
@@ -574,8 +574,8 @@ export const TodoInboxPage: React.FC = () => {
               {todayTasks.length > 0 && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-emerald-400" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    <CalendarDays className="w-4 h-4 text-accent" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-accent">
                       ○ Hôm Nay ({todayTasks.length})
                     </h2>
                   </div>
@@ -589,8 +589,8 @@ export const TodoInboxPage: React.FC = () => {
               {infoTasks.length > 0 && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <Info className="w-4 h-4 text-sky-400" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-sky-400">
+                    <Info className="w-4 h-4 text-sky-700" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-sky-700">
                       ℹ Lưu Ý ({infoTasks.length})
                     </h2>
                   </div>
@@ -627,14 +627,14 @@ export const TodoInboxPage: React.FC = () => {
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 filterPriority === 'red'
                   ? 'bg-rose-500/15 border-rose-500 shadow-xs'
-                  : 'bg-surface border-line hover:border-rose-400'
+                  : 'bg-surface border-line hover:border-rose-300 shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-rose-400">Khẩn cấp (Red Bucket)</span>
+                <span className="text-[11px] font-semibold text-status-danger">Khẩn cấp (Red Bucket)</span>
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               </div>
-              <div className="text-2xl font-bold text-rose-400 mt-0.5">{redCount}</div>
+              <div className="text-2xl font-bold text-status-danger mt-0.5">{redCount}</div>
               <div className="text-[10px] text-ink-muted">&lt; 24h hoặc ca hôm nay</div>
             </button>
 
@@ -642,15 +642,15 @@ export const TodoInboxPage: React.FC = () => {
               onClick={() => setFilterPriority('yellow')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 filterPriority === 'yellow'
-                  ? 'bg-amber-500/15 border-amber-500 shadow-xs'
-                  : 'bg-surface border-line hover:border-amber-400'
+                  ? 'bg-amber-50 border-amber-400 shadow-xs'
+                  : 'bg-surface border-line hover:border-amber-300 shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-amber-400">Cần làm sớm (Yellow)</span>
+                <span className="text-[11px] font-semibold text-status-warn">Cần làm sớm (Yellow)</span>
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
               </div>
-              <div className="text-2xl font-bold text-amber-400 mt-0.5">{yellowCount}</div>
+              <div className="text-2xl font-bold text-status-warn mt-0.5">{yellowCount}</div>
               <div className="text-[10px] text-ink-muted">Hạn 1 - 3 ngày tới</div>
             </button>
 
@@ -658,15 +658,15 @@ export const TodoInboxPage: React.FC = () => {
               onClick={() => setFilterPriority('green')}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                 filterPriority === 'green'
-                  ? 'bg-emerald-500/15 border-emerald-500 shadow-xs'
-                  : 'bg-surface border-line hover:border-emerald-400'
+                  ? 'bg-accent-soft border-accent shadow-xs'
+                  : 'bg-surface border-line hover:border-accent-line shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-emerald-400">Theo lịch (Green)</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-[11px] font-semibold text-accent">Theo lịch (Green)</span>
+                <span className="w-2 h-2 rounded-full bg-accent" />
               </div>
-              <div className="text-2xl font-bold text-emerald-400 mt-0.5">{greenCount}</div>
+              <div className="text-2xl font-bold text-accent mt-0.5">{greenCount}</div>
               <div className="text-[10px] text-ink-muted">Kế hoạch dài hạn &gt; 3 ngày</div>
             </button>
           </div>
@@ -698,7 +698,7 @@ export const TodoInboxPage: React.FC = () => {
                           <Badge variant={item.priority === 'red' ? 'danger' : item.priority === 'yellow' ? 'warn' : 'ok'}>
                             {item.badgeText}
                           </Badge>
-                          <span className="text-[10px] font-mono text-emerald-400">{item.id}</span>
+                          <span className="text-[10px] font-mono text-accent font-semibold">{item.id}</span>
                         </div>
                         <div className="text-xs text-ink-secondary mt-1">{item.subtitle}</div>
                         <div className="flex items-center gap-3 text-[11px] text-ink-muted mt-1.5">

@@ -155,13 +155,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const getKindBadge = (kind: SearchResultItem['kind']) => {
     switch (kind) {
       case 'rule':
-        return <span className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">Quy định</span>;
+        return <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">Quy định</span>;
       case 'user':
-        return <span className="text-[10px] bg-sky-500/15 text-sky-400 border border-sky-500/30 px-1.5 py-0.5 rounded font-bold">Nhân viên</span>;
+        return <span className="text-[10px] bg-sky-50 text-sky-800 border border-sky-200 px-1.5 py-0.5 rounded font-semibold">Nhân viên</span>;
       case 'request':
-        return <span className="text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold">Đơn từ</span>;
+        return <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.5 rounded font-semibold">Đơn từ</span>;
       case 'action':
-        return <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold">Thao tác</span>;
+        return <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">Thao tác</span>;
       default:
         return <span className="text-[10px] bg-canvas text-ink-muted border border-line px-1.5 py-0.5 rounded">Màn hình</span>;
     }
@@ -189,7 +189,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
             onKeyDown={handleInputKeyDown}
             className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
           />
-          {isLoading && <span className="w-3.5 h-3.5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin shrink-0" />}
+          {isLoading && <span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />}
           <kbd className="text-[10px] bg-canvas px-1.5 py-0.5 rounded border border-line text-ink-muted font-mono">ESC</kbd>
         </div>
 
@@ -197,11 +197,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         {!query && (
           <div className="px-3 py-2 bg-canvas/20 border-b border-line flex items-center gap-1.5 overflow-x-auto text-[11px] text-ink-muted">
             <span className="text-[10px] text-ink-muted shrink-0">Gợi ý gõ:</span>
-            <button type="button" onClick={() => setQuery('phep')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-emerald-500 text-ink cursor-pointer">phep</button>
-            <button type="button" onClick={() => setQuery('dieu')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-emerald-500 text-ink cursor-pointer">dieu</button>
-            <button type="button" onClick={() => setQuery('wfh')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-emerald-500 text-ink cursor-pointer">wfh</button>
-            <button type="button" onClick={() => setQuery('cham cong')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-emerald-500 text-ink cursor-pointer">cham cong</button>
-            <button type="button" onClick={() => setQuery('okr')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-emerald-500 text-ink cursor-pointer">okr</button>
+            <button type="button" onClick={() => setQuery('phep')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-accent text-ink cursor-pointer">phep</button>
+            <button type="button" onClick={() => setQuery('dieu')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-accent text-ink cursor-pointer">dieu</button>
+            <button type="button" onClick={() => setQuery('wfh')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-accent text-ink cursor-pointer">wfh</button>
+            <button type="button" onClick={() => setQuery('cham cong')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-accent text-ink cursor-pointer">cham cong</button>
+            <button type="button" onClick={() => setQuery('okr')} className="px-2 py-0.5 bg-canvas rounded border border-line hover:border-accent text-ink cursor-pointer">okr</button>
           </div>
         )}
 
@@ -222,7 +222,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                     onMouseEnter={() => setSelectedIndex(idx)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition-colors group cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-400'
+                        ? 'bg-accent-soft border border-accent-line text-accent shadow-2xs'
                         : 'border border-transparent text-ink hover:bg-canvas'
                     }`}
                   >
@@ -231,7 +231,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                         {item.kind === 'rule' ? '📜' : item.kind === 'user' ? '👤' : item.kind === 'action' ? '⚡' : '📄'}
                       </span>
                       <div className="min-w-0">
-                        <div className={`font-semibold truncate ${isSelected ? 'text-emerald-400 font-bold' : 'text-ink'}`}>
+                        <div className={`font-semibold truncate ${isSelected ? 'text-accent font-bold' : 'text-ink'}`}>
                           {item.title}
                         </div>
                         {item.subtitle && (
@@ -243,7 +243,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
                       {getKindBadge(item.kind)}
-                      {isSelected && <span className="text-[10px] text-emerald-400 font-mono">↵ Mở</span>}
+                      {isSelected && <span className="text-[10px] text-accent font-mono font-bold">↵ Mở</span>}
                     </div>
                   </button>
                 );

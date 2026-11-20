@@ -287,8 +287,8 @@ export const EmployeeManagementPage: React.FC = () => {
             onClick={() => setFilterTeam(chip.val)}
             className={`px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
               filterTeam === chip.val
-                ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                : 'bg-[#15201d] text-[#8fa39d] hover:bg-[#1f2f2b] hover:text-white border border-[#233530]'
+                ? 'bg-accent text-white shadow-xs font-bold'
+                : 'bg-surface text-ink-secondary hover:bg-canvas hover:text-ink border border-line shadow-2xs'
             }`}
           >
             {chip.label}
@@ -387,7 +387,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   <tr key={emp.id} className="hover:bg-canvas/50 transition-colors">
                     <td className="py-3 px-4 font-medium text-ink">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 uppercase ring-1 ring-emerald-500/30">
+                        <div className="w-7 h-7 rounded-full bg-accent-soft text-accent font-bold text-xs flex items-center justify-center shrink-0 uppercase ring-1 ring-accent-line">
                           {emp.fullName.substring(0, 2)}
                         </div>
                         <div className="min-w-0">
@@ -410,11 +410,11 @@ export const EmployeeManagementPage: React.FC = () => {
 
                     <td className="py-3 px-3">
                       {emp.team && emp.team !== 'Chưa có nhóm' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                           {emp.team}
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
                           ⚠ Chưa có nhóm
                         </span>
                       )}
@@ -425,12 +425,12 @@ export const EmployeeManagementPage: React.FC = () => {
                       {emp.approvalChain ? (
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
                           <GitPullRequest className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className={emp.approvalChain.includes('Chưa có') ? 'text-rose-400 font-bold' : ''}>
+                          <span className={emp.approvalChain.includes('Chưa có') ? 'text-rose-700 font-bold' : ''}>
                             {emp.approvalChain}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[11px] text-rose-400 font-bold">⚠ Chưa có quản lý</span>
+                        <span className="text-[11px] text-rose-700 font-bold">⚠ Chưa có quản lý</span>
                       )}
                     </td>
 
@@ -451,7 +451,7 @@ export const EmployeeManagementPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenChangeManager(emp)}
-                          className="px-2 py-1 rounded bg-[#182622] hover:bg-emerald-600 hover:text-white text-emerald-400 text-[11px] font-bold transition-all cursor-pointer border border-emerald-500/30"
+                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
                           title="Đổi người duyệt trực tiếp"
                         >
                           Đổi sếp
@@ -459,7 +459,7 @@ export const EmployeeManagementPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenChangeTeam(emp)}
-                          className="px-2 py-1 rounded bg-[#182622] hover:bg-teal-600 hover:text-white text-teal-400 text-[11px] font-bold transition-all cursor-pointer border border-teal-500/30"
+                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
                           title="Chuyển nhóm làm việc"
                         >
                           Chuyển nhóm
