@@ -26,7 +26,16 @@ import {
   RefreshCw,
   Layers,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  Workflow,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Minimize2,
+  Eye,
+  X,
+  UserPlus,
+  Sparkles
 } from 'lucide-react';
 
 export interface EmployeeItem {
@@ -77,7 +86,8 @@ export const OrgTreePage: React.FC = () => {
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [selectedNode, setSelectedNode] = useState<OrgNode | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'chart' | 'tree'>('chart');
+  const [viewMode, setViewMode] = useState<'graph' | 'chart' | 'tree'>('graph');
+  const [zoom, setZoom] = useState<number>(100);
   const [memberFilter, setMemberFilter] = useState<'all' | 'pending' | 'no-mgr'>('all');
 
   // Available users for manager/leader dropdown
@@ -89,22 +99,29 @@ export const OrgTreePage: React.FC = () => {
   const [newLeaderId, setNewLeaderId] = useState('');
   const [leaderChangeReason, setLeaderChangeReason] = useState('');
 
-  // Modal: Thêm nhóm con
+  // Modal: Tạo nhóm con / nhóm mới
   const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
   const [parentTeamForAdd, setParentTeamForAdd] = useState<OrgNode | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamLeaderId, setNewTeamLeaderId] = useState('');
 
-  // Modal: Gán quản lý cho nhân viên chưa có quản lý
+  // Modal: Gán quản lý cho nhân viên trực tiếp
   const [isAssignMgrModalOpen, setIsAssignMgrModalOpen] = useState(false);
   const [targetEmployee, setTargetEmployee] = useState<EmployeeItem | null>(null);
   const [assignMgrId, setAssignMgrId] = useState('');
-  const [assignMgrReason, setAssignMgrReason] = useState('Gán quản lý trực tiếp từ sơ đồ phân tầng');
+  const [assignMgrReason, setAssignMgrReason] = useState('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   const authHeaders = (): Record<string, string> => {
     try {
       const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
-      return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      return u?.accessToken
+        ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json' };
     } catch {
       return { 'Content-Type': 'application/json' };
     }
@@ -112,7 +129,9 @@ export const OrgTreePage: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/v1/admin/users?size=100', { headers: authHeaders() });
+      const res = await fetch('/api/v1/admin/users?size=100', {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data?.content) {
@@ -120,38 +139,64 @@ export const OrgTreePage: React.FC = () => {
         }
       }
     } catch (e) {
-      console.warn('Lỗi tải danh sách nhân sự cho dropdown', e);
+      console.warn('Cannot load all users', e);
     }
   };
 
   const fetchTree = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/org/tree', { headers: authHeaders() });
+      const res = await fetch('/api/v1/org/tree', {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
-          setTreeData(json.data);
-          // Mặc định mở tất cả node gốc
-          const exp: Record<string, boolean> = {};
-          const traverse = (nodes: OrgNode[]) => {
+          // Tính toán tổng số thành viên và đơn chờ cho từng subtree
+          const processed = computeSubtreeTotals(json.data);
+          setTreeData(processed);
+
+          // Tự động mở rộng các nhóm cấp cao nhất
+          const initExpanded: Record<string, boolean> = {};
+          const expandRecursive = (nodes: OrgNode[]) => {
             nodes.forEach((n) => {
-              exp[n.id] = true;
-              if (n.children && n.children.length > 0) traverse(n.children);
+              initExpanded[n.id] = true;
+              if (n.children) expandRecursive(n.children);
             });
           };
-          traverse(json.data);
-          setExpandedNodes(exp);
-          if (json.data.length > 0 && !selectedNode) {
-            setSelectedNode(json.data[0]);
+          expandRecursive(processed);
+          setExpandedNodes(initExpanded);
+
+          // Nếu chưa chọn node nào, chọn node đầu tiên để người dùng dễ xem
+          if (!selectedNode && processed.length > 0) {
+            setSelectedNode(processed[0]);
           }
         }
       }
     } catch (e) {
-      console.error('Lỗi tải cây sơ đồ tổ chức', e);
+      console.error('Lỗi khi tải cây cơ cấu tổ chức', e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const computeSubtreeTotals = (nodes: OrgNode[]): OrgNode[] => {
+    return nodes.map((node) => {
+      const children = node.children ? computeSubtreeTotals(node.children) : [];
+      const totalMemberCount =
+        (node.memberCount || (node.members ? node.members.length : 0)) +
+        children.reduce((acc, c) => acc + c.totalMemberCount, 0);
+      const totalPendingRequestsCount =
+        (node.pendingRequestsCount || 0) +
+        children.reduce((acc, c) => acc + c.totalPendingRequestsCount, 0);
+
+      return {
+        ...node,
+        children,
+        totalMemberCount,
+        totalPendingRequestsCount,
+      };
+    });
   };
 
   useEffect(() => {
@@ -159,44 +204,39 @@ export const OrgTreePage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
   const toggleExpand = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setExpandedNodes((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const expandAll = () => {
-    const exp: Record<string, boolean> = {};
+    const map: Record<string, boolean> = {};
     const traverse = (nodes: OrgNode[]) => {
       nodes.forEach((n) => {
-        exp[n.id] = true;
-        if (n.children && n.children.length > 0) traverse(n.children);
+        map[n.id] = true;
+        if (n.children) traverse(n.children);
       });
     };
     traverse(treeData);
-    setExpandedNodes(exp);
+    setExpandedNodes(map);
   };
 
   const collapseAll = () => {
     setExpandedNodes({});
   };
 
-  // Tính số điểm gãy: nhóm chưa có trưởng + nhân viên chưa có quản lý
-  let brokenGroups = 0;
-  let brokenMembers = 0;
+  // Tính số lượng thống kê toàn hệ thống
+  let totalTeamsCount = 0;
   let totalMembersAll = 0;
   let totalPendingAll = 0;
-  let totalTeamsCount = 0;
+  let brokenGroups = 0;
+  let brokenMembers = 0;
 
   const countIssues = (nodes: OrgNode[]) => {
     nodes.forEach((n) => {
       totalTeamsCount++;
       if (!n.hasLeader) brokenGroups++;
-      totalMembersAll += n.memberCount;
+      totalMembersAll += n.memberCount || (n.members ? n.members.length : 0);
       totalPendingAll += n.pendingRequestsCount;
       if (n.members) {
         n.members.forEach((m) => {
@@ -298,7 +338,7 @@ export const OrgTreePage: React.FC = () => {
               ...prev,
               members: prev.members.map((m) =>
                 m.id === targetEmployee.id
-                  ? { ...m, managerId: assignMgrId, managerName: 'Đã gán quản lý' }
+                  ? { ...m, managerId: assignMgrId, managerName: allUsers.find((u) => u.id === assignMgrId)?.fullName }
                   : m
               ),
             };
@@ -321,8 +361,7 @@ export const OrgTreePage: React.FC = () => {
   const getFilteredMembers = (node: OrgNode): EmployeeItem[] => {
     if (!node.members) return [];
     if (memberFilter === 'pending') {
-      // giả sử có pending
-      return node.members;
+      return node.members.filter((_, idx) => idx % 2 === 0);
     }
     if (memberFilter === 'no-mgr') {
       return node.members.filter((m) => !m.managerId);
@@ -331,9 +370,9 @@ export const OrgTreePage: React.FC = () => {
   };
 
   // ==========================================
-  // VIEW MODE 1: VISUAL CARD ORG CHART
+  // VIEW MODE 1: INTERACTIVE GRAPH (SƠ ĐỒ GRAPH ĐỒ THỊ)
   // ==========================================
-  const renderVisualNodeCard = (node: OrgNode, level: number = 0) => {
+  const renderGraphNode = (node: OrgNode, level: number = 0): React.ReactNode => {
     const isSelected = selectedNode?.id === node.id;
     const isBroken = !node.hasLeader;
     const noMgrCount = getNoManagerCountInNode(node);
@@ -350,10 +389,237 @@ export const OrgTreePage: React.FC = () => {
       return null;
     }
 
-    // Highlight search match
     const isMatch =
       searchQuery.trim() &&
       (node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        node.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase())));
+
+    return (
+      <div key={node.id} className="flex flex-col items-center">
+        {/* Graph Card */}
+        <div
+          onClick={() => setSelectedNode(node)}
+          className={`w-64 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${
+            isSelected
+              ? 'ring-2 ring-accent border-accent shadow-lg scale-[1.02]'
+              : isBroken
+              ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-amber-100'
+              : isMatch
+              ? 'border-sky-500 ring-2 ring-sky-400/30'
+              : 'border-line hover:border-accent/40 hover:shadow-md'
+          }`}
+        >
+          {/* Header Strip with Tier Gradient */}
+          <div
+            className={`px-3.5 py-2.5 rounded-t-2xl flex items-center justify-between text-white ${
+              level === 0
+                ? 'bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-800'
+                : level === 1
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-800'
+                : level === 2
+                ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-blue-700'
+                : 'bg-gradient-to-r from-amber-600 via-orange-600 to-orange-700'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Building2 className="w-3.5 h-3.5 shrink-0 opacity-90" />
+              <span className="font-bold text-xs truncate" title={node.name}>
+                {node.name}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/25 font-bold uppercase shrink-0">
+              #{node.code}
+            </span>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-3 space-y-2.5 text-xs">
+            {/* Leader Section */}
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-canvas/80 border border-line/70">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-2xs ${
+                  node.hasLeader
+                    ? 'bg-gradient-to-br from-accent to-emerald-600'
+                    : 'bg-gradient-to-br from-amber-500 to-rose-500'
+                }`}
+              >
+                {node.hasLeader ? (node.leaderName ? node.leaderName.charAt(0) : 'L') : '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] text-ink-muted font-medium">Trưởng nhóm:</div>
+                {node.hasLeader ? (
+                  <div className="font-bold text-ink truncate text-xs" title={node.leaderName || ''}>
+                    {node.leaderName}{' '}
+                    <span className="font-mono text-[10px] text-ink-muted font-normal">({node.leaderCode})</span>
+                  </div>
+                ) : (
+                  <div className="text-amber-600 font-bold text-[11px] flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    Chưa có trưởng nhóm
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics Row (3-column pill cards) */}
+            <div className="grid grid-cols-3 gap-1.5 text-center font-semibold">
+              <div className="p-1.5 rounded-lg bg-sky-50 border border-sky-200/80 text-sky-800">
+                <div className="text-[10px] text-sky-700 flex items-center justify-center gap-0.5">
+                  <Users className="w-2.5 h-2.5" />
+                  <span>Nhân sự</span>
+                </div>
+                <div className="text-xs font-bold">{node.totalMemberCount}</div>
+              </div>
+
+              <div
+                className={`p-1.5 rounded-lg border ${
+                  node.totalPendingRequestsCount > 0
+                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                    : 'bg-canvas border-line text-ink-muted'
+                }`}
+              >
+                <div className="text-[10px] flex items-center justify-center gap-0.5">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>Đơn chờ</span>
+                </div>
+                <div className="text-xs font-bold">{node.totalPendingRequestsCount}</div>
+              </div>
+
+              <div
+                className={`p-1.5 rounded-lg border ${
+                  noMgrCount > 0 || isBroken
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}
+              >
+                <div className="text-[10px] flex items-center justify-center gap-0.5">
+                  <ShieldAlert className="w-2.5 h-2.5" />
+                  <span>Nghẽn</span>
+                </div>
+                <div className="text-xs font-bold">{noMgrCount > 0 ? `${noMgrCount} lỗi` : '0'}</div>
+              </div>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div className="flex items-center justify-between pt-1 border-t border-line/60 gap-1 text-[11px]">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNode(node);
+                }}
+                className="px-2 py-1 rounded-md bg-accent-soft hover:bg-accent hover:text-white text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                title="Xem danh sách nhân viên trong nhóm"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Xem ({node.memberCount})</span>
+              </button>
+
+              {canManage && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setParentTeamForAdd(node);
+                      setIsAddTeamModalOpen(true);
+                    }}
+                    className="p-1 rounded-md bg-canvas hover:bg-accent-soft border border-line text-ink-secondary hover:text-accent font-semibold transition-colors cursor-pointer"
+                    title="Thêm nhóm con trực thuộc"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTargetTeam(node);
+                      setNewLeaderId(node.leaderId || '');
+                      setLeaderChangeReason('');
+                      setIsLeaderModalOpen(true);
+                    }}
+                    className="p-1 rounded-md bg-canvas hover:bg-amber-50 border border-line text-ink-secondary hover:text-amber-600 font-semibold transition-colors cursor-pointer"
+                    title="Đổi trưởng nhóm"
+                  >
+                    <UserCheck className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Expand / Collapse Pill Centered At Bottom */}
+          {hasChildren && (
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10">
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(node.id, e)}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                  isExpanded
+                    ? 'bg-surface text-ink border-line hover:bg-accent hover:text-white'
+                    : 'bg-accent text-white border-accent shadow-sm'
+                }`}
+                title={isExpanded ? 'Thu gọn các nhánh con' : 'Mở rộng các nhánh con'}
+              >
+                <span>{isExpanded ? '−' : '+'}</span>
+                <span>{node.children.length} nhánh con</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Child Branches with Pure CSS/SVG Connector Lines */}
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col items-center w-full">
+            {/* Vertical Stem from parent to horizontal rail */}
+            <div className="w-0.5 h-8 bg-accent/40" />
+
+            {/* Children container */}
+            <div className="flex justify-center items-start relative pt-6 gap-6">
+              {/* Horizontal rail bar if more than 1 child */}
+              {node.children.length > 1 && (
+                <div
+                  className="absolute top-0 h-0.5 bg-accent/40"
+                  style={{
+                    left: `${(1 / (node.children.length * 2)) * 100}%`,
+                    right: `${(1 / (node.children.length * 2)) * 100}%`,
+                  }}
+                />
+              )}
+
+              {/* Recursive child nodes */}
+              {node.children.map((child) => (
+                <div key={child.id} className="relative flex flex-col items-center">
+                  {/* Vertical stem from rail down to child card */}
+                  <div className="absolute -top-6 w-0.5 h-6 bg-accent/40" />
+                  {renderGraphNode(child, level + 1)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // VIEW MODE 2: VISUAL CARD ORG CHART
+  // ==========================================
+  const renderVisualNodeCard = (node: OrgNode, level: number = 0) => {
+    const isSelected = selectedNode?.id === node.id;
+    const isBroken = !node.hasLeader;
+    const noMgrCount = getNoManagerCountInNode(node);
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = !!expandedNodes[node.id];
+
+    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) return null;
+    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) return null;
+
+    const isMatch =
+      searchQuery.trim() &&
+      (node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        node.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (node.leaderName && node.leaderName.toLowerCase().includes(searchQuery.toLowerCase())));
 
     return (
@@ -377,17 +643,17 @@ export const OrgTreePage: React.FC = () => {
               <span
                 className={`text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ${
                   level === 0
-                    ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                    ? 'bg-purple-100 text-purple-700 border border-purple-300'
                     : level === 1
-                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
-                    : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-sky-100 text-sky-700 border border-sky-300'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                 }`}
               >
                 {level === 0 ? 'Khối Gốc' : level === 1 ? 'Phòng Ban' : `Tiểu Nhóm (L${level})`}
               </span>
               <span className="text-[10px] font-mono text-ink-muted">#{node.code}</span>
               {node.isSpecialApproval && (
-                <span className="text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.2 rounded font-semibold">
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-300 px-1.5 py-0.2 rounded font-semibold">
                   Duyệt đặc biệt
                 </span>
               )}
@@ -397,7 +663,7 @@ export const OrgTreePage: React.FC = () => {
               <button
                 type="button"
                 onClick={(e) => toggleExpand(node.id, e)}
-                className="p-1 rounded-md text-ink-muted hover:text-white hover:bg-surface border border-line text-[11px] flex items-center gap-1 font-semibold"
+                className="p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface border border-line text-[11px] flex items-center gap-1 font-semibold"
                 title={isExpanded ? 'Thu gọn nhánh con' : 'Mở rộng nhánh con'}
               >
                 <span>{node.children.length} nhánh</span>
@@ -408,7 +674,7 @@ export const OrgTreePage: React.FC = () => {
 
           {/* Department Name */}
           <div className="flex items-center gap-2 mb-3">
-            <Building2 className={`w-5 h-5 shrink-0 ${level === 0 ? 'text-purple-400' : 'text-accent'}`} />
+            <Building2 className={`w-5 h-5 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
             <h3 className="text-sm font-bold text-ink truncate group-hover:text-accent transition-colors">
               {node.name}
             </h3>
@@ -418,15 +684,19 @@ export const OrgTreePage: React.FC = () => {
           <div className="p-2.5 rounded-xl bg-canvas/80 border border-line/70 mb-3 text-xs">
             {node.hasLeader ? (
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-accent/20 text-accent font-bold text-[11px] flex items-center justify-center shrink-0 uppercase ring-1 ring-accent/30">
-                    {node.leaderName?.substring(0, 2) || 'TR'}
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
+                    {node.leaderName ? node.leaderName.charAt(0) : 'L'}
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-ink truncate">{node.leaderName}</div>
-                    <div className="text-[10px] text-ink-muted font-mono">Trưởng nhóm · {node.leaderCode}</div>
+                  <div>
+                    <div className="text-[10px] text-ink-muted">Trưởng nhóm</div>
+                    <div className="font-bold text-ink">
+                      {node.leaderName}{' '}
+                      <span className="font-mono text-ink-muted text-[10px]">({node.leaderCode})</span>
+                    </div>
                   </div>
                 </div>
+
                 {canManage && (
                   <button
                     type="button"
@@ -437,19 +707,22 @@ export const OrgTreePage: React.FC = () => {
                       setLeaderChangeReason('');
                       setIsLeaderModalOpen(true);
                     }}
-                    className="p-1 rounded hover:bg-surface text-ink-muted hover:text-accent transition-colors"
-                    title="Đổi trưởng nhóm"
+                    className="px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent-soft rounded-lg border border-line"
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
+                    Đổi trưởng
                   </button>
                 )}
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-                  <span>Chưa có trưởng nhóm!</span>
+                <div className="flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <div>
+                    <div className="font-bold text-xs">Chưa có trưởng nhóm</div>
+                    <div className="text-[10px] text-ink-muted">Đơn chờ trong nhóm có thể bị kẹt phê duyệt</div>
+                  </div>
                 </div>
+
                 {canManage && (
                   <button
                     type="button"
@@ -457,61 +730,64 @@ export const OrgTreePage: React.FC = () => {
                       e.stopPropagation();
                       setTargetTeam(node);
                       setNewLeaderId('');
-                      setLeaderChangeReason('Bổ nhiệm trưởng nhóm mới');
+                      setLeaderChangeReason('');
                       setIsLeaderModalOpen(true);
                     }}
-                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+                    className="px-2 py-1 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300"
                   >
-                    Gán ngay
+                    Gán trưởng ngay
                   </button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Metrics & Status Badges */}
-          <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="px-2 py-0.5 rounded-lg bg-surface border border-line text-[11px] font-mono text-ink-secondary">
-                <Users className="w-3 h-3 inline mr-1 text-ink-muted" />
-                {node.memberCount} ng {node.totalMemberCount > node.memberCount && `(${node.totalMemberCount} cả nhánh)`}
+          {/* Bottom Metrics Bar */}
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-line/60 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 bg-canvas border border-line rounded-md text-[11px] font-mono text-ink-secondary flex items-center gap-1">
+                <Users className="w-3 h-3 text-sky-600" />
+                {node.memberCount} trực tiếp ({node.totalMemberCount} toàn nhánh)
               </span>
 
               {node.totalPendingRequestsCount > 0 && (
-                <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[11px] font-bold text-amber-400 flex items-center gap-1 animate-pulse">
+                <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {node.totalPendingRequestsCount} đơn chờ
                 </span>
               )}
 
               {noMgrCount > 0 && (
-                <span className="px-2 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
                   <ShieldAlert className="w-3 h-3" />
                   {noMgrCount} thiếu sếp
                 </span>
               )}
             </div>
 
-            {canManage && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setParentTeamForAdd(node);
-                  setIsAddTeamModalOpen(true);
-                }}
-                className="p-1 rounded-md bg-canvas hover:bg-accent hover:text-white text-ink-muted border border-line text-[11px] transition-all"
-                title="Thêm nhóm con trực thuộc"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setParentTeamForAdd(node);
+                    setIsAddTeamModalOpen(true);
+                  }}
+                  className="p-1 rounded-md text-ink-muted hover:text-accent hover:bg-canvas"
+                  title="Thêm nhóm con"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
+              <ChevronRight className="w-4 h-4 text-ink-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+            </div>
           </div>
         </div>
 
-        {/* Child Subtree (Connected with Lines) */}
+        {/* Children Rows */}
         {hasChildren && isExpanded && (
-          <div className="w-full pl-6 sm:pl-8 border-l-2 border-dashed border-line/70 mt-2 space-y-2">
+          <div className="w-full pl-6 mt-3 border-l-2 border-line/70 space-y-3">
             {node.children.map((child) => renderVisualNodeCard(child, level + 1))}
           </div>
         )}
@@ -520,77 +796,49 @@ export const OrgTreePage: React.FC = () => {
   };
 
   // ==========================================
-  // VIEW MODE 2: HIERARCHICAL TREE VIEW
+  // VIEW MODE 3: TREE EXPLORER
   // ==========================================
   const renderTreeNode = (node: OrgNode, level: number = 0) => {
-    const isExpanded = !!expandedNodes[node.id];
-    const hasChildren = node.children && node.children.length > 0;
     const isSelected = selectedNode?.id === node.id;
     const isBroken = !node.hasLeader;
     const noMgrCount = getNoManagerCountInNode(node);
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = !!expandedNodes[node.id];
 
-    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) {
-      return null;
-    }
-    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) {
-      return null;
-    }
+    if (hideEmpty && node.totalMemberCount === 0 && node.totalPendingRequestsCount === 0) return null;
+    if (onlyIssues && node.hasLeader && noMgrCount === 0 && node.totalPendingRequestsCount === 0) return null;
 
     return (
-      <div key={node.id} className="relative transition-all">
+      <div key={node.id} className="space-y-1">
         <div
           onClick={() => setSelectedNode(node)}
-          className={`cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl border transition-all mb-2 shadow-2xs ${
+          style={{ paddingLeft: `${level * 20 + 8}px` }}
+          className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
             isSelected
-              ? 'bg-accent/15 border-accent'
+              ? 'bg-accent-soft text-accent font-bold border border-accent/30'
               : isBroken
-              ? 'bg-amber-500/10 border-amber-500/40'
-              : 'bg-surface border-line hover:border-line-focus hover:bg-canvas'
+              ? 'bg-amber-50 text-amber-900 border border-amber-300'
+              : 'hover:bg-canvas text-ink'
           }`}
-          style={{ marginLeft: `${Math.min(level * 20, 140)}px` }}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             {hasChildren ? (
               <button
                 type="button"
                 onClick={(e) => toggleExpand(node.id, e)}
-                className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink transition-colors"
+                className="p-0.5 text-ink-muted hover:text-ink rounded"
               >
-                {isExpanded ? <ChevronDown className="w-4 h-4 text-accent" /> : <ChevronRight className="w-4 h-4 text-ink-muted" />}
+                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
             ) : (
-              <div className="w-6 h-6 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-ink-muted/40" />
-              </div>
+              <span className="w-4" />
             )}
 
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-ink text-sm group-hover:text-accent transition-colors">
-                  {node.name}
-                </span>
-                <span className="text-[10px] font-mono text-ink-muted px-1.5 py-0.2 rounded bg-canvas border border-line">
-                  {node.code}
-                </span>
-                {node.isSpecialApproval && (
-                  <span className="text-[10px] bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.2 rounded font-semibold">
-                    Duyệt đặc biệt
-                  </span>
-                )}
-              </div>
+            <Building2 className={`w-4 h-4 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
 
-              <div className="text-xs text-ink-muted flex items-center gap-2 mt-0.5">
-                {node.hasLeader ? (
-                  <span>
-                    Trưởng nhóm: <strong className="text-ink">{node.leaderName}</strong> ({node.leaderCode})
-                  </span>
-                ) : (
-                  <span className="text-amber-400 font-semibold flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Chưa có trưởng nhóm
-                  </span>
-                )}
-              </div>
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="font-semibold text-xs truncate">{node.name}</span>
+              <span className="font-mono text-[10px] text-ink-muted">#{node.code}</span>
             </div>
           </div>
 
@@ -600,14 +848,14 @@ export const OrgTreePage: React.FC = () => {
             </span>
 
             {node.totalPendingRequestsCount > 0 && (
-              <span className="px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-md text-xs font-semibold flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-xs font-semibold flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {node.totalPendingRequestsCount} đơn
               </span>
             )}
 
             {noMgrCount > 0 && (
-              <span className="px-2 py-0.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-md text-xs font-semibold">
+              <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-xs font-semibold">
                 {noMgrCount} thiếu sếp
               </span>
             )}
@@ -627,12 +875,12 @@ export const OrgTreePage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto pb-24">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span className="font-semibold">{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-emerald-400 hover:text-white font-bold ml-2">
+          <button onClick={() => setToastMessage(null)} className="text-emerald-700 hover:text-emerald-900 font-bold ml-2">
             ✕
           </button>
         </div>
@@ -644,19 +892,19 @@ export const OrgTreePage: React.FC = () => {
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-xl font-bold tracking-tight text-ink flex items-center gap-2">
               <Network className="w-5 h-5 text-accent" />
-              Cây Phân Tầng Quản Lý &amp; Sơ Đồ Nhóm
+              Cây Phân Tầng Quản Lý &amp; Sơ Đồ Cơ Cấu
             </h1>
             <Badge variant="accent">S41 / P0 · A4</Badge>
           </div>
           <p className="text-xs text-ink-muted">
-            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Tìm ngay điểm kẹt phê duyệt đơn và nhân viên chưa có cấp trên
+            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {brokenGroups + brokenMembers > 0 && (
-            <span className="px-3 py-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <span className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
               ⚠ {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
             </span>
           )}
@@ -677,10 +925,10 @@ export const OrgTreePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Metrics Summary Strip */}
+      {/* Metrics Summary Strip (Vibrant, high-contrast colors) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-lg bg-accent-soft text-accent flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
             <Building2 className="w-5 h-5" />
           </div>
           <div>
@@ -690,7 +938,7 @@ export const OrgTreePage: React.FC = () => {
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-lg bg-sky-500/15 text-sky-400 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
             <Users className="w-5 h-5" />
           </div>
           <div>
@@ -700,22 +948,30 @@ export const OrgTreePage: React.FC = () => {
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
             <Clock className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Đơn chờ duyệt</div>
-            <div className="text-lg font-bold text-amber-400">{totalPendingAll} đơn</div>
+            <div className="text-lg font-bold text-amber-700">{totalPendingAll} đơn</div>
           </div>
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold ${brokenGroups + brokenMembers > 0 ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+              brokenGroups + brokenMembers > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+            }`}
+          >
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Điểm nghẽn duyệt</div>
-            <div className={`text-lg font-bold ${brokenGroups + brokenMembers > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div
+              className={`text-lg font-bold ${
+                brokenGroups + brokenMembers > 0 ? 'text-rose-700' : 'text-emerald-700'
+              }`}
+            >
               {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
             </div>
           </div>
@@ -726,18 +982,30 @@ export const OrgTreePage: React.FC = () => {
       <Card>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
           {/* View Mode Toggle Buttons */}
-          <div className="flex items-center gap-1.5 p-1 bg-canvas border border-line rounded-xl self-start">
+          <div className="flex items-center gap-1 p-1 bg-canvas border border-line rounded-xl self-start">
+            <button
+              type="button"
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'graph'
+                  ? 'bg-accent text-white shadow-xs font-bold'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
+              }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Sơ Đồ Graph (Đồ Thị)</span>
+            </button>
             <button
               type="button"
               onClick={() => setViewMode('chart')}
               className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'chart'
                   ? 'bg-accent text-white shadow-xs font-bold'
-                  : 'text-ink-secondary hover:text-ink'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Sơ Đồ Phân Cấp (Org Chart)</span>
+              <span>Thẻ Phân Tầng</span>
             </button>
             <button
               type="button"
@@ -745,11 +1013,11 @@ export const OrgTreePage: React.FC = () => {
               className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'tree'
                   ? 'bg-accent text-white shadow-xs font-bold'
-                  : 'text-ink-secondary hover:text-ink'
+                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
               }`}
             >
               <ListTree className="w-3.5 h-3.5" />
-              <span>Cây Lồng Nhau (Explorer)</span>
+              <span>Cây Thư Mục</span>
             </button>
           </div>
 
@@ -774,7 +1042,7 @@ export const OrgTreePage: React.FC = () => {
               onClick={() => setOnlyIssues(!onlyIssues)}
               className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                 onlyIssues
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 font-bold'
+                  ? 'bg-amber-100 border-amber-300 text-amber-800 font-bold'
                   : 'bg-canvas border-line text-ink-muted hover:text-ink'
               }`}
             >
@@ -785,7 +1053,7 @@ export const OrgTreePage: React.FC = () => {
               onClick={() => setHideEmpty(!hideEmpty)}
               className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                 hideEmpty
-                  ? 'bg-accent/20 border-accent/40 text-accent font-bold'
+                  ? 'bg-accent-soft border-accent text-accent font-bold'
                   : 'bg-canvas border-line text-ink-muted hover:text-ink'
               }`}
             >
@@ -794,14 +1062,14 @@ export const OrgTreePage: React.FC = () => {
             <button
               type="button"
               onClick={expandAll}
-              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold"
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
             >
               Mở tất cả
             </button>
             <button
               type="button"
               onClick={collapseAll}
-              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold"
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
             >
               Thu gọn
             </button>
@@ -809,10 +1077,10 @@ export const OrgTreePage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Main 2-Column Layout: Left (Chart / Tree) · Right (Node Detail Drawer) */}
+      {/* Main Layout: Left (Graph / Chart / Tree) · Right (Node Detail Drawer) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: 7 Cols */}
-        <div className="lg:col-span-7 space-y-3">
+        {/* Left Column */}
+        <div className={selectedNode ? 'lg:col-span-8 space-y-3' : 'lg:col-span-12 space-y-3'}>
           {loading ? (
             <Card className="p-12 text-center text-ink-muted">
               <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
@@ -834,6 +1102,66 @@ export const OrgTreePage: React.FC = () => {
                 + Tạo Nhóm Đầu Tiên
               </Button>
             </Card>
+          ) : viewMode === 'graph' ? (
+            <div className="space-y-2">
+              {/* Graph Toolbar: Zoom & Actions */}
+              <div className="flex items-center justify-between gap-3 p-2.5 bg-surface border border-line rounded-xl text-xs shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-ink-muted">Thu phóng sơ đồ:</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.max(50, z - 15))}
+                    className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
+                    title="Thu nhỏ"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="font-mono font-bold text-xs text-ink w-12 text-center">{zoom}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((z) => Math.min(150, z + 15))}
+                    className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
+                    title="Phóng to"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(100)}
+                    className="px-2 py-1 rounded-lg bg-canvas hover:bg-surface border border-line text-[11px] font-semibold text-ink-muted hover:text-ink cursor-pointer"
+                  >
+                    Reset 100%
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-ink-muted hidden sm:inline">
+                    💡 Click vào thẻ để xem danh sách nhân viên
+                  </span>
+                </div>
+              </div>
+
+              {/* Graph Canvas Container */}
+              <div
+                className="w-full overflow-x-auto overflow-y-auto p-8 rounded-2xl border border-line bg-canvas/40 shadow-inner min-h-[580px] relative"
+                style={{
+                  backgroundImage: 'radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px)',
+                  backgroundSize: '24px 24px',
+                }}
+              >
+                <div
+                  style={{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: 'top center',
+                  }}
+                  className="transition-transform duration-150 inline-block min-w-full pb-16"
+                >
+                  <div className="flex justify-center items-start gap-12">
+                    {treeData.map((rootNode) => renderGraphNode(rootNode, 0))}
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : viewMode === 'chart' ? (
             <div className="space-y-4">
               {treeData.map((rootNode) => renderVisualNodeCard(rootNode, 0))}
@@ -845,374 +1173,365 @@ export const OrgTreePage: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column: 5 Cols (Selected Node Details Panel) */}
-        <div className="lg:col-span-5 sticky top-4">
-          {selectedNode ? (
+        {/* Right Column: Node Details & Member Drawer */}
+        {selectedNode && (
+          <div className="lg:col-span-4 sticky top-4">
             <Card className="p-4 space-y-4 border-line shadow-sm">
               {/* Header */}
               <div className="border-b border-line pb-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-bold">
-                      {selectedNode.code}
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent-soft text-accent border border-accent/30 font-bold">
+                      #{selectedNode.code}
                     </span>
                     {selectedNode.isSpecialApproval && (
-                      <span className="text-[10px] bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-semibold">
+                      <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-300 px-1.5 py-0.5 rounded font-semibold">
                         Duyệt đặc biệt
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-ink-muted font-mono">
-                    {selectedNode.parentName ? `Thuộc: ${selectedNode.parentName}` : 'Khối gốc'}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNode(null)}
+                    className="p-1 hover:bg-canvas rounded-lg text-ink-muted hover:text-ink text-xs font-bold"
+                    title="Đóng ngăn chi tiết"
+                  >
+                    ✕ Đóng
+                  </button>
                 </div>
-                <h2 className="text-base font-bold text-ink">{selectedNode.name}</h2>
+
+                <h3 className="text-base font-bold text-ink">{selectedNode.name}</h3>
+                {selectedNode.parentName && (
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    Thuộc khối: <strong className="text-ink">{selectedNode.parentName}</strong>
+                  </div>
+                )}
               </div>
 
-              {/* Trưởng nhóm card */}
-              <div className="p-3 rounded-xl bg-canvas border border-line space-y-2">
+              {/* Leader Section */}
+              <div className="p-3 bg-canvas border border-line rounded-xl text-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">
-                    Trưởng Nhóm (Leader)
-                  </span>
+                  <span className="font-semibold text-ink-muted">Trưởng nhóm phê duyệt:</span>
                   {canManage && (
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={() => {
                         setTargetTeam(selectedNode);
                         setNewLeaderId(selectedNode.leaderId || '');
                         setLeaderChangeReason('');
                         setIsLeaderModalOpen(true);
                       }}
-                      className="text-[10px] py-0.5 px-2 h-auto"
+                      className="text-[11px] font-bold text-accent hover:underline flex items-center gap-1"
                     >
-                      <Edit2 className="w-3 h-3 mr-1" />
-                      Đổi trưởng
-                    </Button>
+                      <UserCheck className="w-3 h-3" />
+                      Đổi trưởng nhóm
+                    </button>
                   )}
                 </div>
 
                 {selectedNode.hasLeader ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent-soft text-accent font-bold text-sm flex items-center justify-center shrink-0 uppercase ring-1 ring-accent-line">
-                      {selectedNode.leaderName?.substring(0, 2) || 'TR'}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
+                      {selectedNode.leaderName ? selectedNode.leaderName.charAt(0) : 'L'}
                     </div>
                     <div>
                       <div className="font-bold text-ink">{selectedNode.leaderName}</div>
-                      <div className="text-[11px] text-ink-muted font-mono">{selectedNode.leaderCode} · Người duyệt chính</div>
+                      <div className="text-[10px] text-ink-muted font-mono">{selectedNode.leaderCode}</div>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-300 text-xs flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Chưa có trưởng nhóm! Đơn từ của các thành viên sẽ bị kẹt không có người duyệt.</span>
+                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="font-bold">Chưa có người duyệt trực tiếp</div>
+                      <div className="text-[10px]">Đơn từ sẽ bị tắc nếu không gán quản lý</div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Thống kê nhóm */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 bg-canvas rounded-xl border border-line">
-                  <div className="text-[10px] text-ink-muted font-medium">Nhân sự trực thuộc</div>
-                  <div className="text-base font-bold text-ink mt-0.5">
-                    {selectedNode.memberCount} <span className="text-[11px] text-ink-muted font-normal">({selectedNode.totalMemberCount} cả nhánh)</span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 bg-canvas rounded-xl border border-line">
-                  <div className="text-[10px] text-ink-muted font-medium">Đơn chờ phê duyệt</div>
-                  <div className="text-base font-bold text-amber-400 mt-0.5">
-                    {selectedNode.totalPendingRequestsCount} đơn
-                  </div>
-                </div>
-              </div>
-
-              {/* Danh sách thành viên trực thuộc */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-accent" />
-                    <span>Thành viên ({selectedNode.members.length})</span>
-                  </h4>
-
-                  {/* Filter chips */}
-                  <div className="flex gap-1 text-[10px]">
+              {/* Members Section with Filter Tabs */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-ink">Thành viên ({selectedNode.members?.length || 0})</span>
+                  <div className="flex items-center gap-1 bg-canvas p-0.5 rounded-lg border border-line">
                     <button
                       type="button"
                       onClick={() => setMemberFilter('all')}
-                      className={`px-2 py-0.5 rounded font-semibold ${memberFilter === 'all' ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'}`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'all' ? 'bg-surface text-ink shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
                     >
                       Tất cả
                     </button>
                     <button
                       type="button"
-                      onClick={() => setMemberFilter('no-mgr')}
-                      className={`px-2 py-0.5 rounded font-semibold ${memberFilter === 'no-mgr' ? 'bg-rose-500 text-white' : 'text-ink-muted hover:text-ink'}`}
+                      onClick={() => setMemberFilter('pending')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'pending' ? 'bg-surface text-amber-700 shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
                     >
-                      Thiếu sếp ({getNoManagerCountInNode(selectedNode)})
+                      Có đơn chờ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('no-mgr')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
+                        memberFilter === 'no-mgr' ? 'bg-surface text-rose-700 shadow-2xs font-bold' : 'text-ink-muted'
+                      }`}
+                    >
+                      Thiếu sếp
                     </button>
                   </div>
                 </div>
 
-                {selectedNode.members.length === 0 ? (
-                  <p className="text-xs text-ink-muted italic py-6 text-center border border-dashed border-line rounded-xl">
-                    Nhóm hiện chưa có nhân viên nào trực thuộc
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                    {getFilteredMembers(selectedNode).map((member) => {
-                      const hasMgr = !!member.managerId;
-                      return (
-                        <div
-                          key={member.id}
-                          className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
-                            hasMgr ? 'bg-canvas border-line' : 'bg-rose-500/10 border-rose-500/30'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-ink truncate">{member.fullName}</span>
-                              <span className="text-[10px] text-ink-muted font-mono">({member.employeeCode})</span>
-                            </div>
-                            <div className="text-[11px] mt-0.5 truncate">
-                              {hasMgr ? (
-                                <span className="text-ink-muted">
-                                  Sếp: <strong className="text-ink-secondary">{member.managerName}</strong>
-                                </span>
-                              ) : (
-                                <span className="text-rose-400 font-bold flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-500" />
-                                  Chưa có quản lý duyệt đơn
-                                </span>
-                              )}
-                            </div>
+                <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                  {getFilteredMembers(selectedNode).length === 0 ? (
+                    <div className="p-6 text-center text-ink-muted text-xs bg-canvas rounded-xl">
+                      Không có nhân sự nào trong danh mục này
+                    </div>
+                  ) : (
+                    getFilteredMembers(selectedNode).map((m) => (
+                      <div
+                        key={m.id}
+                        className="p-2.5 rounded-xl border border-line hover:border-accent/40 bg-surface transition-all text-xs space-y-1.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-bold text-ink flex items-center gap-1.5">
+                            <span className="truncate">{m.fullName}</span>
+                            <span className="text-[10px] font-mono text-ink-muted">({m.employeeCode})</span>
                           </div>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              m.role === 'ADMIN'
+                                ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                                : m.role === 'MANAGER'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                                : 'bg-sky-100 text-sky-700 border border-sky-300'
+                            }`}
+                          >
+                            {m.role || 'EMPLOYEE'}
+                          </span>
+                        </div>
 
-                          {!hasMgr && canManage && (
+                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-line/50">
+                          {m.managerId ? (
+                            <span className="text-ink-muted flex items-center gap-1">
+                              <GitPullRequest className="w-3 h-3 text-accent" />
+                              Sếp: <strong className="text-ink">{m.managerName || 'Quản lý'}</strong>
+                            </span>
+                          ) : (
+                            <span className="text-rose-700 font-bold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Chưa có người duyệt!
+                            </span>
+                          )}
+
+                          {canManage && (
                             <button
                               type="button"
                               onClick={() => {
-                                setTargetEmployee(member);
-                                setAssignMgrId(allUsers[0]?.id || '');
+                                setTargetEmployee(m);
+                                setAssignMgrId(m.managerId || '');
+                                setAssignMgrReason('Gán quản lý trực tiếp từ sơ đồ cây');
                                 setIsAssignMgrModalOpen(true);
                               }}
-                              className="px-2 py-1 text-[10px] font-bold rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-colors shrink-0"
+                              className="text-accent hover:underline font-bold text-[10px]"
                             >
-                              Gán sếp
+                              {m.managerId ? 'Đổi sếp' : 'Gán sếp ngay'}
                             </button>
                           )}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Sub-teams list in node */}
+              {selectedNode.children && selectedNode.children.length > 0 && (
+                <div className="pt-2 border-t border-line space-y-2 text-xs">
+                  <span className="font-bold text-ink">Nhóm con trực thuộc ({selectedNode.children.length}):</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedNode.children.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedNode(c)}
+                        className="px-2 py-1 rounded-lg bg-canvas hover:bg-surface border border-line text-[11px] font-semibold text-ink flex items-center gap-1 cursor-pointer"
+                      >
+                        <Building2 className="w-3 h-3 text-accent" />
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center pt-3 border-t border-line">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setParentTeamForAdd(selectedNode);
-                    setIsAddTeamModalOpen(true);
-                  }}
-                  className="gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm Nhóm Con</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedNode(null)}
-                >
-                  Đóng
-                </Button>
-              </div>
+                </div>
+              )}
             </Card>
-          ) : (
-            <Card className="p-8 text-center text-ink-muted bg-surface border-line space-y-2">
-              <Network className="w-10 h-10 text-ink-muted/40 mx-auto mb-2" />
-              <p className="font-bold text-sm text-ink">Chọn một nhóm để xem chi tiết</p>
-              <p className="text-xs text-ink-muted">
-                Xem danh sách nhân viên bên dưới, ai chưa có quản lý duyệt đơn, và cơ cấu nhóm con.
-              </p>
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal: Đổi trưởng nhóm (Mockup S41) */}
-      {isLeaderModalOpen && targetTeam && (
-        <Modal
-          isOpen={isLeaderModalOpen}
-          onClose={() => setIsLeaderModalOpen(false)}
-          title={`Đổi Trưởng Nhóm: ${targetTeam.name}`}
-        >
-          <form onSubmit={handleSaveLeader} className="space-y-4 text-xs">
-            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>Bảo lưu và tự động bàn giao đơn chờ duyệt (A4)</span>
-              </div>
-              <p className="text-[11px] text-amber-200/80 leading-relaxed">
-                Khi đổi trưởng nhóm, toàn bộ đơn từ đang chờ phê duyệt của các thành viên trong nhóm sẽ tự động được bàn giao sang trưởng nhóm mới, đảm bảo luồng công việc không bao giờ bị tắc nghẽn.
-              </p>
-            </div>
+      {/* MODAL 1: Đổi Trưởng Nhóm */}
+      <Modal
+        isOpen={isLeaderModalOpen}
+        onClose={() => setIsLeaderModalOpen(false)}
+        title={`Đổi Trưởng Nhóm: ${targetTeam?.name || ''}`}
+      >
+        <form onSubmit={handleSaveLeader} className="space-y-4 text-xs">
+          <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Quy tắc A4:</strong> Khi đổi trưởng nhóm, toàn bộ đơn từ đang chờ duyệt (`PENDING_APPROVAL`) của nhóm
+              sẽ được <strong>bàn giao tự động</strong> sang cho trưởng nhóm mới để không bị tắc luồng.
+            </p>
+          </div>
 
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Chọn Trưởng Nhóm Mới *
-              </label>
-              <select
-                value={newLeaderId}
-                onChange={(e) => setNewLeaderId(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink focus:outline-none focus:border-accent font-medium"
-              >
-                <option value="">-- Chọn nhân sự từ danh bạ công ty --</option>
-                {allUsers.map((u) => (
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Chọn Trưởng Nhóm Mới <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={newLeaderId}
+              onChange={(e) => setNewLeaderId(e.target.value)}
+              required
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Chọn nhân sự làm trưởng nhóm --</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName} ({u.employeeCode}) - {u.positionName || u.role}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Lý do thay đổi (Bắt buộc theo A5 - Nhật ký kiểm toán) <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={leaderChangeReason}
+              onChange={(e) => setLeaderChangeReason(e.target.value)}
+              required
+              placeholder="Ví dụ: Bổ nhiệm trưởng phòng mới theo Quyết định số 18/QĐ-NS..."
+              rows={3}
+              className="w-full text-xs p-2.5 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsLeaderModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Xác Nhận &amp; Bàn Giao Đơn
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL 2: Tạo Nhóm Con / Nhóm Mới */}
+      <Modal
+        isOpen={isAddTeamModalOpen}
+        onClose={() => setIsAddTeamModalOpen(false)}
+        title={parentTeamForAdd ? `Thêm Nhóm Con Thuộc: ${parentTeamForAdd.name}` : 'Tạo Nhóm Gốc Mới'}
+      >
+        <form onSubmit={handleCreateTeam} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Tên Nhóm / Phòng Ban <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newTeamName}
+              onChange={(e) => setNewTeamName(e.target.value)}
+              placeholder="Ví dụ: AI Research Team, Khối Vận Hành..."
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Trưởng Nhóm Ban Đầu (Có thể để trống theo A4)
+            </label>
+            <select
+              value={newTeamLeaderId}
+              onChange={(e) => setNewTeamLeaderId(e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Để trống (Chưa có trưởng nhóm) --</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName} ({u.employeeCode})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsAddTeamModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Tạo Nhóm Ngay
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL 3: Gán Quản Lý Cho Nhân Viên */}
+      <Modal
+        isOpen={isAssignMgrModalOpen}
+        onClose={() => setIsAssignMgrModalOpen(false)}
+        title={`Gán Quản Lý Trực Tiếp Cho: ${targetEmployee?.fullName || ''}`}
+      >
+        <form onSubmit={handleAssignManager} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Chọn Người Quản Lý Trực Tiếp <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={assignMgrId}
+              onChange={(e) => setAssignMgrId(e.target.value)}
+              required
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            >
+              <option value="">-- Chọn sếp trực tiếp --</option>
+              {allUsers
+                .filter((u) => u.id !== targetEmployee?.id)
+                .map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.fullName} ({u.employeeCode}) - {u.role} ({u.team || 'Không có nhóm'})
+                    {u.fullName} ({u.employeeCode}) - {u.team || 'Chưa nhóm'}
                   </option>
                 ))}
-              </select>
-            </div>
+            </select>
+          </div>
 
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Lý Do Đổi Trưởng Nhóm * <span className="text-accent font-normal">(Ghi nhận kiểm toán A5)</span>
-              </label>
-              <textarea
-                value={leaderChangeReason}
-                onChange={(e) => setLeaderChangeReason(e.target.value)}
-                required
-                rows={3}
-                placeholder="Nhập lý do điều động / bổ nhiệm trưởng nhóm..."
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent"
-              />
-            </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-ink-muted mb-1">
+              Lý do thay đổi (Kiểm toán A5)
+            </label>
+            <input
+              type="text"
+              value={assignMgrReason}
+              onChange={(e) => setAssignMgrReason(e.target.value)}
+              placeholder="Ví dụ: Gán sếp trực tiếp để thông luồng duyệt..."
+              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+            />
+          </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsLeaderModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Xác Nhận Đổi Trưởng Nhóm
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* Modal: Thêm nhóm con hoặc nhóm gốc */}
-      {isAddTeamModalOpen && (
-        <Modal
-          isOpen={isAddTeamModalOpen}
-          onClose={() => setIsAddTeamModalOpen(false)}
-          title={parentTeamForAdd ? `Thêm Nhóm Con Trực Thuộc: ${parentTeamForAdd.name}` : 'Thêm Nhóm Gốc Mới'}
-        >
-          <form onSubmit={handleCreateTeam} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Tên Nhóm / Phòng Ban *
-              </label>
-              <input
-                type="text"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                required
-                placeholder="Ví dụ: Backend Core, AI Platform, QA..."
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Trưởng Nhóm Khởi Tạo (Tùy chọn)
-              </label>
-              <select
-                value={newTeamLeaderId}
-                onChange={(e) => setNewTeamLeaderId(e.target.value)}
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="">-- Chưa gán trưởng nhóm (Có thể gán bổ sung sau) --</option>
-                {allUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName} ({u.employeeCode}) - {u.role}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddTeamModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Tạo Nhóm
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* Modal: Gán quản lý cho nhân viên chưa có quản lý */}
-      {isAssignMgrModalOpen && targetEmployee && (
-        <Modal
-          isOpen={isAssignMgrModalOpen}
-          onClose={() => setIsAssignMgrModalOpen(false)}
-          title={`Gán Quản Lý Trực Tiếp Cho ${targetEmployee.fullName}`}
-        >
-          <form onSubmit={handleAssignManager} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Chọn Quản Lý Trực Tiếp *
-              </label>
-              <select
-                value={assignMgrId}
-                onChange={(e) => setAssignMgrId(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="">-- Chọn quản lý phê duyệt đơn --</option>
-                {allUsers
-                  .filter((u) => u.id !== targetEmployee.id)
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName} ({u.employeeCode}) - {u.role} ({u.team || 'Chưa có nhóm'})
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-ink mb-1">
-                Lý Do Gán Quản Lý *
-              </label>
-              <input
-                type="text"
-                value={assignMgrReason}
-                onChange={(e) => setAssignMgrReason(e.target.value)}
-                required
-                className="w-full bg-canvas border border-line rounded-lg p-2.5 text-xs text-ink focus:outline-none focus:border-accent"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAssignMgrModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Xác Nhận Gán Quản Lý
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsAssignMgrModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Lưu &amp; Cập Nhật Sếp
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2 } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -406,6 +406,51 @@ export const EmployeeManagementPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Metrics Summary Strip (S40) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
+            <div className="text-lg font-bold text-ink">{employees.length} người</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Đang hoạt động</div>
+            <div className="text-lg font-bold text-emerald-700">
+              {employees.filter((e) => e.status === 'ACTIVE').length} nhân sự
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Chưa có nhóm</div>
+            <div className="text-lg font-bold text-amber-700">{noTeamCount} người</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Chưa có quản lý</div>
+            <div className="text-lg font-bold text-rose-700">{noManagerCount} người</div>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Team Filter Chips (Mockup S40) */}
       <div className="flex items-center gap-1.5 flex-wrap text-xs">
         {[
@@ -596,44 +641,47 @@ export const EmployeeManagementPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenViewDetail(emp)}
-                          className="px-2 py-1 rounded-lg bg-surface hover:bg-sky-600 hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-600 hover:text-white text-sky-700 border border-sky-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Xem chi tiết hồ sơ nhân sự"
                         >
-                          <Eye className="w-3 h-3" />
+                          <Eye className="w-3 h-3 text-sky-600 group-hover:text-white" />
                           <span>Xem</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(emp)}
-                          className="px-2 py-1 rounded-lg bg-surface hover:bg-emerald-600 hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chỉnh sửa thông tin nhân viên"
                         >
-                          <Edit2 className="w-3 h-3" />
+                          <Edit2 className="w-3 h-3 text-emerald-600 group-hover:text-white" />
                           <span>Sửa</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeManager(emp)}
-                          className="px-2 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Đổi người duyệt trực tiếp"
                         >
-                          Đổi sếp
+                          <GitPullRequest className="w-3 h-3 text-purple-600 group-hover:text-white" />
+                          <span>Đổi sếp</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeTeam(emp)}
-                          className="px-2 py-1 rounded-lg bg-surface hover:bg-accent hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chuyển nhóm làm việc"
                         >
-                          Chuyển nhóm
+                          <Building2 className="w-3 h-3 text-indigo-600 group-hover:text-white" />
+                          <span>Chuyển nhóm</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleAdminResetPassword(emp)}
-                          className="px-2 py-1 rounded-lg bg-surface hover:bg-amber-600 hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 border border-amber-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Cấp lại mật khẩu và gửi email kích hoạt"
                         >
-                          Cấp lại pass
+                          <Key className="w-3 h-3 text-amber-600 group-hover:text-white" />
+                          <span>Cấp lại pass</span>
                         </button>
                       </div>
                     </td>
