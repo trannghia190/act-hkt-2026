@@ -22,7 +22,7 @@ export const RequestsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAttachmentCount, setEditingAttachmentCount] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
@@ -140,9 +140,9 @@ export const RequestsPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [page, filterType, filterStatus, searchKeyword, dateFrom, dateTo]);
 
-  const showToast = (msg: string) => {
-    setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 3000);
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
   };
 
   const workingDays = (start: string, end: string): number => {
@@ -239,7 +239,7 @@ export const RequestsPage: React.FC = () => {
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
     if (leaveNeedsAttachment && attachments.length === 0 && !(editingId && editingAttachmentCount > 0)) {
-      showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi');
+      showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi', 'error');
       return;
     }
 
@@ -345,7 +345,7 @@ export const RequestsPage: React.FC = () => {
       ? wfhWorkingDates(newReq.startDate, newReq.endDate)
       : [newReq.startDate];
     if (newReq.type === 'WFH' && sendDates.length === 0) {
-      showToast('Khoảng ngày đã chọn không có ngày làm việc');
+      showToast('Khoảng ngày đã chọn không có ngày làm việc', 'error');
       return;
     }
     // Chặn trước nếu vượt quota 2 ngày WFH/tuần (backend cũng chặn từng đơn).
@@ -353,7 +353,7 @@ export const RequestsPage: React.FC = () => {
       const weekKey = (iso: string) => {
         const d = new Date(iso + 'T00:00:00');
         const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-        return monday.toISOString().slice(0, 10);
+        return monday.toLocaleDateString('en-CA');
       };
       const existing = requests.filter(r => r.type === 'WFH' && !['REJECTED', 'WITHDRAWN', 'DRAFT'].includes(r.status));
       const newByWeek: Record<string, number> = {};
@@ -361,7 +361,7 @@ export const RequestsPage: React.FC = () => {
       for (const [week, count] of Object.entries(newByWeek)) {
         const used = existing.filter(r => r.startDate && weekKey(r.startDate) === week).length;
         if (used + count > 2) {
-          showToast(`Vượt quota WFH: tuần ${week} đã dùng ${used}/2 ngày, đơn này thêm ${count} ngày`);
+          showToast(`Vượt quota WFH: tuần ${week} đã dùng ${used}/2 ngày, đơn này thêm ${count} ngày`, 'error');
           return;
         }
       }
@@ -408,7 +408,8 @@ export const RequestsPage: React.FC = () => {
           ? 'Đơn đã cập nhật nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
           : (editingId ? 'Đã cập nhật đơn và gửi lại quản lý'
               : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
-                  : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))));
+                  : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))),
+          uploadFailed ? 'error' : 'success');
         loadRequests();
         setIsCreateOpen(false);
         setEditingId(null);
@@ -425,7 +426,7 @@ export const RequestsPage: React.FC = () => {
           reason: 'Việc cá nhân'
         });
       } catch (e: any) {
-        showToast(e?.message || 'Gửi đơn thất bại');
+        showToast(e?.message || 'Gửi đơn thất bại', 'error');
       }
     })();
   };
@@ -434,7 +435,7 @@ export const RequestsPage: React.FC = () => {
     if (!confirm('Bạn có chắc chắn muốn hủy đơn yêu cầu này?')) return;
     const res = await fetch(`/api/v1/requests/${id}/withdraw`, { method: 'POST', headers: authHeaders() });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) { showToast(json?.message || 'Hủy đơn thất bại'); return; }
+    if (!res.ok) { showToast(json?.message || 'Hủy đơn thất bại', 'error'); return; }
     showToast('Đã hủy đơn yêu cầu');
     loadRequests();
   };
@@ -442,7 +443,7 @@ export const RequestsPage: React.FC = () => {
   const handleSubmitDraft = async (id: string) => {
     const res = await fetch(`/api/v1/requests/${id}/submit`, { method: 'POST', headers: authHeaders() });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) { showToast(json?.message || 'Gửi duyệt thất bại'); return; }
+    if (!res.ok) { showToast(json?.message || 'Gửi duyệt thất bại', 'error'); return; }
     showToast('Đã gửi đơn nháp tới quản lý');
     loadRequests();
   };
@@ -525,10 +526,12 @@ export const RequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Toast */}
-      {successToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <span>✓</span>
-          <span>{successToast}</span>
+      {toast && (
+        <div className={`fixed top-16 right-6 z-[100] text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
+          toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-700'}`}>
+          <span>{toast.type === 'error' ? '⚠️' : '✓'}</span>
+          <span className="whitespace-pre-wrap">{toast.msg}</span>
+          <button type="button" className="ml-2 opacity-80 hover:opacity-100" onClick={() => setToast(null)}>✕</button>
         </div>
       )}
 
