@@ -375,6 +375,7 @@ print_dashboard() {
     echo "    01HR   → HR Admin   (duyệt cấu hình, bảng công, phép toàn công ty)"
     echo "    05ACT  → Manager    (duyệt đơn cấp dưới, lịch nhóm)"
     echo "    136ACT → Nhân viên  (tự chấm công, tạo đơn, xem phép/bảng công)"
+    echo "    137ACT → QA/Nhân viên (tài khoản độc lập: sổ phép mẫu + log thiếu giờ ra hôm qua)"
   fi
   echo "=================================================================="
   echo
