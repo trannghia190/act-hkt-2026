@@ -21,6 +21,10 @@ import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetRepository;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.Timesheet;
+import com.act.pulse.modules.attendance.entity.TimesheetCell;
+import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
+import com.act.pulse.modules.attendance.repository.TimesheetCellRepository;
+import com.act.pulse.modules.attendance.repository.TimesheetCellAuditRepository;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -58,6 +62,8 @@ public class BusinessGapController {
     private final TimesheetDisputeRepository timesheetDisputeRepository;
     private final HolidayRepository holidayRepository;
     private final TimesheetRepository timesheetRepository;
+    private final TimesheetCellRepository timesheetCellRepository;
+    private final TimesheetCellAuditRepository timesheetCellAuditRepository;
     private final RuleService ruleService;
     private final ObjectMapper objectMapper;
 
@@ -676,6 +682,73 @@ public class BusinessGapController {
     }
 
 
+    private boolean canManageDispute(TimesheetDispute d) {
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        if ("HR_ADMIN".equals(role) || "ADMIN".equals(role)) return true;
+        UUID me = CurrentUser.userId();
+        return userRepository.findById(d.getUserId()).map(u -> me.equals(u.getManagerId())).orElse(false);
+    }
+
+    private Map<String, Object> buildDisputeDetail(TimesheetDispute d) {
+        Map<String, Object> result = new HashMap<>(disputeMap(d));
+        // 1) Log chấm công gốc (không sửa được)
+        AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(d.getUserId(), d.getWorkDate()).orElse(null);
+        java.time.format.DateTimeFormatter hhmm = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+        Map<String, Object> logMap = new HashMap<>();
+        logMap.put("date", d.getWorkDate() == null ? null : d.getWorkDate().toString());
+        logMap.put("checkIn", log != null && log.getCheckInAt() != null ? log.getCheckInAt().format(hhmm) : null);
+        logMap.put("checkOut", log != null && log.getCheckOutAt() != null ? log.getCheckOutAt().format(hhmm) : null);
+        logMap.put("status", log == null ? null : log.getStatus());
+        logMap.put("deviceId", log == null ? null : String.valueOf(log.getDeviceId()));
+        result.put("log", logMap);
+        // 2) Đơn từ liên quan tới ngày khiếu nại
+        List<Map<String, Object>> related = new ArrayList<>();
+        if (d.getWorkDate() != null) {
+            for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(d.getUserId())) {
+                if (r.getWorkDate() == null) continue;
+                java.time.LocalDate rEnd = r.getEndDate() == null ? r.getWorkDate() : r.getEndDate();
+                if (!("LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType())
+                        || "LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType()))) continue;
+                if (d.getWorkDate().isBefore(r.getWorkDate()) || d.getWorkDate().isAfter(rEnd)) continue;
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", r.getId().toString());
+                m.put("type", r.getRequestType());
+                m.put("status", r.getStatus());
+                m.put("leaveType", r.getLeaveType());
+                m.put("reason", r.getReason());
+                m.put("minutes", r.getMinutes());
+                related.add(m);
+            }
+        }
+        result.put("relatedRequests", related);
+        // 3) Ô bảng công HR hiện tại
+        String currentCell = "";
+        if (d.getWorkDate() != null) {
+            java.time.YearMonth ym = java.time.YearMonth.from(d.getWorkDate());
+            Timesheet sheet = timesheetRepository
+                    .findByUserIdAndPeriodMonthAndPeriodYear(d.getUserId(), ym.getMonthValue(), ym.getYear())
+                    .orElse(null);
+            if (sheet != null) {
+                currentCell = timesheetCellRepository
+                        .findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
+                        .map(TimesheetCell::getSymbol).orElse("");
+            }
+        }
+        result.put("currentCell", currentCell);
+        // Gợi ý nguyên nhân theo rule
+        String hint;
+        boolean hasApproved = related.stream().anyMatch(m -> "APPROVED".equals(m.get("status")));
+        if (log == null) hint = "Không có log chấm công ngày này — chưa tạo đơn bổ sung công";
+        else if (log.getCheckInAt() != null && log.getCheckOutAt() == null) hint = "Thiếu check-out và chưa tạo đơn bổ sung công";
+        else if (log.getCheckInAt() == null && log.getCheckOutAt() != null) hint = "Thiếu check-in và chưa tạo đơn bổ sung công";
+        else if (hasApproved) hint = "Đã có đơn từ được duyệt trong ngày — kiểm tra lại ký hiệu bảng công";
+        else hint = "Log chấm công đủ cặp giờ — kiểm tra lại ký hiệu bảng công";
+        result.put("ruleHint", hint);
+        result.put("before", "Check-in: " + logMap.get("checkIn") + " · Check-out: " + logMap.get("checkOut"));
+        result.put("after", "Ô bảng công: " + (currentCell.isBlank() ? "(trống)" : currentCell));
+        return result;
+    }
+
     private Map<String, Object> disputeMap(TimesheetDispute d) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", d.getId());
@@ -713,17 +786,30 @@ public class BusinessGapController {
     }
 
     @GetMapping("/disputes")
-    @Operation(summary = "Danh sách khiếu nại (S45)")
-    public ApiResponse<List<Map<String, Object>>> disputes() {
-        List<Map<String, Object>> list = new java.util.ArrayList<>();
-        for (TimesheetDispute d : timesheetDisputeRepository.findAllByOrderByCreatedAtDesc()) {
+    @Operation(summary = "Danh sách khiếu nại (S45) — HR/QL thấy đúng phạm vi, hạn xử lý gần nhất lên đầu")
+    public ApiResponse<List<Map<String, Object>>> disputes(@RequestParam(required = false) String status) {
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        boolean hr = "HR_ADMIN".equals(role) || "ADMIN".equals(role);
+        List<TimesheetDispute> all = timesheetDisputeRepository.findAllByOrderByCreatedAtDesc();
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (TimesheetDispute d : all) {
+            // Phạm vi: HR xem tất cả; quản lý xem cấp dưới; nhân viên chỉ xem của mình.
+            if (!hr && !canManageDispute(d) && !d.getUserId().equals(me)) continue;
             Map<String, Object> m = disputeMap(d);
             if ("EXPIRED".equals(m.get("status")) && "PENDING".equals(d.getStatus())) {
                 d.setStatus("EXPIRED");
                 timesheetDisputeRepository.save(d);
             }
+            if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)
+                    && !status.equalsIgnoreCase(String.valueOf(m.get("status")))) continue;
             list.add(m);
         }
+        // Hạn gần nhất lên đầu (null hạn cuối cùng)
+        list.sort(Comparator.comparing((Map<String, Object> m) -> {
+            Object dl = m.get("deadline");
+            return dl == null ? "9999-12-31" : String.valueOf(dl);
+        }));
         return ApiResponse.ok(list, "Danh sách khiếu nại");
     }
 
@@ -732,11 +818,10 @@ public class BusinessGapController {
     public ApiResponse<Map<String, Object>> dispute(@PathVariable String id) {
         TimesheetDispute d = timesheetDisputeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
-        Map<String, Object> result = disputeMap(d);
-        result.put("before", "Log chấm công gốc — xem tại bảng công ngày " + result.get("date"));
-        result.put("after", "Ô bảng công HR đang sửa");
-        result.put("ruleHint", "Thiếu check-out và chưa tạo đơn bổ sung công");
-        return ApiResponse.ok(result, "Chi tiết khiếu nại");
+        if (!canManageDispute(d) && !d.getUserId().equals(CurrentUser.userId())) {
+            throw new RuntimeException("Không có quyền xem khiếu nại này");
+        }
+        return ApiResponse.ok(buildDisputeDetail(d), "Chi tiết khiếu nại");
     }
 
     @PostMapping("/disputes/{id}/resolve")
@@ -744,10 +829,52 @@ public class BusinessGapController {
     public ApiResponse<Map<String, Object>> resolveDispute(@PathVariable String id, @RequestBody Map<String, String> body) {
         TimesheetDispute d = timesheetDisputeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        if (!canManageDispute(d)) throw new RuntimeException("Chỉ HR hoặc quản lý trực tiếp mới được xử lý khiếu nại");
         String action = body.getOrDefault("action", "REJECT");
         if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
             throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
         }
+        if ("EXPIRED".equals(d.getStatus())) {
+            throw new RuntimeException("Khiếu nại đã quá hạn 2 ngày — tự đóng, không xử lý được");
+        }
+        if ("RESOLVED".equals(d.getStatus()) || "REJECTED".equals(d.getStatus())) {
+            throw new RuntimeException("Khiếu nại này đã được xử lý/đã đóng — không xử lý lại");
+        }
+        if (d.getDeadline() != null && d.getDeadline().isBefore(LocalDateTime.now())) {
+            d.setStatus("EXPIRED");
+            timesheetDisputeRepository.save(d);
+            throw new RuntimeException("Khiếu nại đã quá hạn 2 ngày — tự đóng, không xử lý được");
+        }
+
+        // 3 cách xử lý có hiệu lực thật
+        if ("FIX".equals(action)) {
+            String symbol = body.get("symbol");
+            if (symbol == null || symbol.isBlank()) throw new RuntimeException("Sửa ô phải chọn ký hiệu công mới");
+            java.time.YearMonth ym = java.time.YearMonth.from(d.getWorkDate());
+            Timesheet sheet = timesheetRepository
+                    .findByUserIdAndPeriodMonthAndPeriodYear(d.getUserId(), ym.getMonthValue(), ym.getYear())
+                    .orElseGet(() -> timesheetRepository.save(Timesheet.builder()
+                            .userId(d.getUserId()).periodMonth(ym.getMonthValue()).periodYear(ym.getYear()).status("draft").build()));
+            TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
+                    .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
+            String oldSymbol = cell.getSymbol();
+            cell.setSymbol(symbol.trim());
+            cell.setIsManual(true);
+            cell = timesheetCellRepository.save(cell);
+            timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
+                    .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol.trim())
+                    .reason("Xử lý khiếu nại " + id + ": " + body.getOrDefault("reason", ""))
+                    .changedBy(CurrentUser.userId()).build());
+        } else if ("MAKEUP".equals(action)) {
+            RequestEntity makeup = RequestEntity.builder()
+                    .userId(d.getUserId()).requestType("ADJUST").workDate(d.getWorkDate())
+                    .reason("Bổ sung công theo khiếu nại " + id + ": " + body.getOrDefault("reason", ""))
+                    .payload("{}").status("PENDING_APPROVAL").build();
+            makeup.setCreatedAt(LocalDateTime.now());
+            makeup.setUpdatedAt(LocalDateTime.now());
+            requestRepository.save(makeup);
+        }
+
         d.setStatus("REJECT".equals(action) ? "REJECTED" : "RESOLVED");
         d.setResolutionAction(action);
         d.setResolvedBy(CurrentUser.userId());

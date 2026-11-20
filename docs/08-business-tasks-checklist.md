@@ -379,7 +379,7 @@
 **Nghiệm thu:**
 - [ ] Đặt **3 cột cạnh nhau**: log chấm công gốc (không sửa được) · đơn từ liên quan · bảng công HR đang sửa
 - [ ] **Gợi ý nguyên nhân theo rule** — ví dụ *"thiếu check-out và chưa tạo đơn bổ sung công"*
-- [ ] 3 cách xử lý: sửa ô · tạo đơn bổ sung công · từ chối (bắt buộc lý do)
+- [ ] 3 cách xử lý có hiệu lực thật: sửa ô (bắt buộc ký hiệu+lý do, ghi timesheet_cells) · tạo đơn bổ sung công · từ chối (bắt buộc lý do)
 - [ ] Từ chối → nhân viên **nhận được thông báo**
 - [ ] Nút quay lại → về **danh sách khiếu nại** (E9)
 - [ ] Mọi thao tác xử lý khiếu nại **ghi audit log**
@@ -497,7 +497,7 @@
 **Nghiệm thu:**
 - [ ] Danh sách khiếu nại đang mở, **đếm ngược hạn** cho từng dòng
 - [ ] **Xử lý nhanh ngay trên dòng**: Sửa ô · Tạo đơn bổ sung công · Từ chối (bắt buộc chọn lý do)
-- [ ] Sửa ô trên dòng → có lý do bắt buộc + ghi vào nhật ký thay đổi
+- [ ] Sửa ô trên dòng → bắt buộc **ký hiệu công mới + lý do**, ghi audit ô + audit xử lý khiếu nại
 - [ ] Từ chối → nhân viên **nhận được thông báo**
 - [ ] Click vào 1 dòng → mở **màn hình chi tiết** (D4) để đối chiếu 3 nguồn dữ liệu
 - [ ] Quá hạn 2 ngày → hiện "đã quá hạn" và tự đóng

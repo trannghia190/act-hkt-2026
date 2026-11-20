@@ -92,17 +92,24 @@ for r in existing.get("data") or []:
     if r.get("requestType") == "WFH" and r.get("workDate"):
         d = date.fromisoformat(r["workDate"])
         used_weeks.add(d.isocalendar()[:2])
+def _no_conflict(day):
+    st, js = call("POST", "/requests/check-conflicts", {"type": "WFH", "workDate": str(day), "payload": "{}"})
+    return st == 200 and not (js.get("data") or [])
+
 target = None
 for k in range(1, 53):
     cand = date.today() + timedelta(days=3 + 7 * k)
-    if cand.isocalendar()[:2] not in used_weeks:
-        target = cand
+    monday = cand - timedelta(days=cand.weekday())
+    if monday.isocalendar()[:2] in used_weeks: continue
+    if _no_conflict(monday) and _no_conflict(monday + timedelta(days=1)):
+        target = monday
         break
 assert target is not None, "Không còn tuần trống để test WFH"
+# Quota đếm theo NGÀY: tạo 2 đơn 2 ngày khác nhau trong tuần
 for i in range(2):
-    call("POST", "/requests", {"type": "WFH", "workDate": str(target), "reason": f"WFH test {i}", "payload": "{}"})
-status, data = call("POST", "/requests", {"type": "WFH", "workDate": str(target), "reason": "WFH thứ 3", "payload": "{}"}, expect=400)
-check("WFH thứ 3 trong tuần bị chặn", status == 400 and "2 ngày WFH" in json.dumps(data, ensure_ascii=False), str(data)[:120])
+    call("POST", "/requests", {"type": "WFH", "workDate": str(target + timedelta(days=i)), "reason": f"WFH test {i}", "payload": "{}"})
+status, data = call("POST", "/requests", {"type": "WFH", "workDate": str(target + timedelta(days=2)), "reason": "WFH thứ 3", "payload": "{}"}, expect=400)
+check("WFH ngày thứ 3 trong tuần bị chặn", status == 400 and "quota WFH" in json.dumps(data, ensure_ascii=False), str(data)[:160])
 
 # 5b. Đi muộn: quota 2/tháng → lần thứ 3 bị chặn
 late_target = None
@@ -171,29 +178,34 @@ check("đi muộn quá hạn 3 ngày bị chặn", status == 400)
 status, data = call("POST", "/requests", {"type": "LEAVE", "leaveType": "AL", "workDate": old_date, "reason": "Nghỉ phép", "payload": "{}"}, expect=400)
 check("nghỉ phép quá hạn gửi bị chặn", status == 400)
 
-status, data = call("POST", "/timesheets/publish")
+status, data = call("POST", "/timesheets/publish?month=2049-01")
 check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")
 # Sửa ô + sửa hàng loạt có audit
-status, data = call("POST", "/timesheets/cell", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": "Đối chiếu log"}, expect=200)
+status, data = call("POST", "/timesheets/cell?month=2049-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": "Đối chiếu log"}, expect=200)
 check("sửa ô bảng công có lý do", status == 200 and (data.get("data") or {}).get("edited") is True)
-status, data = call("POST", "/timesheets/cell", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": ""}, expect=400)
+status, data = call("POST", "/timesheets/cell?month=2049-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": ""}, expect=400)
 check("sửa ô thiếu lý do bị chặn", status == 400)
-status, data = call("POST", "/timesheets/bulk", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
+status, data = call("POST", "/timesheets/bulk?month=2049-01", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
 check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).get("updated") == 2)
 
-# Còn khiếu nại chưa xử lý → khoá bị chặn (tạo 1 khiếu nại mới để test lặp lại được)
+# Còn khiếu nại chưa xử lý → khoá bị chặn (dùng token HR để thấy & xử lý mọi khiếu nại)
 call("POST", "/disputes", {"workDate": date.today().isoformat(), "reason": "Đối chiếu log — test lock"})
-status, data = call("POST", "/timesheets/lock", expect=400)
+_, hlog = call("POST", "/auth/login", {"employeeCodeOrEmail": "01HR", "password": "123456"}, token=False)
+hr_early = (hlog.get("data") or {}).get("accessToken")
+_prev_token = TOKEN
+TOKEN = hr_early
+status, data = call("POST", "/timesheets/lock?month=2049-01", expect=400)
 check("khoá bị chặn khi còn khiếu nại", status == 400)
 _, dl = call("GET", "/disputes")
 for d in (dl.get("data") or []):
     if d.get("status") == "PENDING":
-        call("POST", f"/disputes/{d['id']}/resolve", {"action": "FIX", "reason": "Đã đối chiếu log"})
+        call("POST", f"/disputes/{d['id']}/resolve", {"action": "FIX", "symbol": "1.00", "reason": "Đã đối chiếu log"})
 _, dl2 = call("GET", "/disputes")
 check("khiếu nại có hạn xử lý (daysLeft)", all(("daysLeft" in d) or d.get("status") != "PENDING" for d in (dl2.get("data") or [])))
-status, data = call("POST", "/timesheets/lock")
+status, data = call("POST", "/timesheets/lock?month=2049-01")
 check("khoá kỳ công", status == 200 and (data.get("data") or {}).get("status") == "locked")
-status, data = call("GET", "/timesheets")
+TOKEN = _prev_token
+status, data = call("GET", "/timesheets?month=2049-01")
 check("trạng thái sau khoá = locked", (data.get("data") or {}).get("status") == "locked")
 
 # 9. Khiếu nại
@@ -226,9 +238,11 @@ lt_rows = data.get("data") or []
 check("bảng phép có teamName", bool(lt_rows) and all("teamName" in r for r in lt_rows))
 
 # 13. Từ chối khiếu nại: bắt buộc lý do + nhân viên nhận thông báo
-status, data = call("POST", "/disputes/DC-02/resolve", {"action": "REJECT"}, expect=400)
+_, fresh = call("POST", "/disputes", {"workDate": date.today().isoformat(), "reason": "Test từ chối khiếu nại"})
+fresh_id = (fresh.get("data") or {}).get("id")
+status, data = call("POST", f"/disputes/{fresh_id}/resolve", {"action": "REJECT"}, expect=400)
 check("từ chối khiếu nại thiếu lý do bị chặn", status == 400)
-status, data = call("POST", "/disputes/DC-02/resolve", {"action": "REJECT", "reason": "Bảng công đã khớp log"}, expect=200)
+status, data = call("POST", f"/disputes/{fresh_id}/resolve", {"action": "REJECT", "reason": "Bảng công đã khớp log"}, expect=200)
 check("từ chối khiếu nại có lý do", status == 200 and (data.get("data") or {}).get("status") == "REJECTED")
 status, data = call("GET", "/notifications")
 notifs = data.get("data") or []
