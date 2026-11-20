@@ -3,6 +3,16 @@ Documentation    Full Verification: Phân Hệ Nền Tảng Dùng Chung (54 Feat
 Library          RequestsLibrary
 Library          Collections
 Resource         ../resources/variables.robot
+Suite Setup      Authenticate Core Platform Suite
+
+*** Keywords ***
+Authenticate Core Platform Suite
+    Create Session    auth_init_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    &{body}=    Create Dictionary    employeeCodeOrEmail=${ADMIN_CODE}    password=${ADMIN_PASS}
+    ${resp}=    Post Request    auth_init_sess    /auth/login    json=${body}
+    ${token}=    Set Variable    ${resp.json()['data']['accessToken']}
+    &{new_headers}=    Create Dictionary    Content-Type=application/json    Authorization=Bearer ${token}    X-Auth-Token=${token}
+    Set Global Variable    ${COMMON_HEADERS}    ${new_headers}
 
 *** Test Cases ***
 TC_CORE-AUTH-01: Đăng Nhập Tài Khoản Nội Bộ (Internal Non-SSO)

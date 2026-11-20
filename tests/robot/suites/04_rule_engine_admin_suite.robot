@@ -1,6 +1,16 @@
 *** Settings ***
 Documentation    Suite 04: Dynamic Rule Engine (19 Rules), Rollback, Dry-Run Simulation & Administration
 Resource         ../resources/rule_keywords.robot
+Suite Setup      Authenticate Rule Suite
+
+*** Keywords ***
+Authenticate Rule Suite
+    Create Session    auth_init_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    &{body}=    Create Dictionary    employeeCodeOrEmail=${ADMIN_CODE}    password=${ADMIN_PASS}
+    ${resp}=    Post Request    auth_init_sess    /auth/login    json=${body}
+    ${token}=    Set Variable    ${resp.json()['data']['accessToken']}
+    &{new_headers}=    Create Dictionary    Content-Type=application/json    Authorization=Bearer ${token}    X-Auth-Token=${token}
+    Set Global Variable    ${COMMON_HEADERS}    ${new_headers}
 
 *** Test Cases ***
 TC20: Verify Catalog Of 19 Dynamic System Rules
