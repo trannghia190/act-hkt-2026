@@ -627,15 +627,14 @@ export const OrgTreePage: React.FC = () => {
         {/* Node Card */}
         <div
           onClick={() => setSelectedNode(node)}
-          className={`w-full rounded-2xl border transition-all cursor-pointer p-4 shadow-sm hover:shadow-md relative group ${
-            isSelected
-              ? 'bg-gradient-to-br from-emerald-500/10 via-surface to-surface border-accent ring-2 ring-accent/30'
-              : isBroken
+          className={`w-full rounded-2xl border transition-all cursor-pointer p-4 shadow-sm hover:shadow-md relative group ${isSelected
+            ? 'bg-gradient-to-br from-emerald-500/10 via-surface to-surface border-accent ring-2 ring-accent/30'
+            : isBroken
               ? 'bg-gradient-to-br from-amber-500/10 via-surface to-surface border-amber-500/40 hover:border-amber-500/60'
               : isMatch
-              ? 'bg-gradient-to-br from-sky-500/10 via-surface to-surface border-sky-400'
-              : 'bg-surface border-line hover:border-accent/40 hover:bg-canvas/60'
-          }`}
+                ? 'bg-gradient-to-br from-sky-500/10 via-surface to-surface border-sky-400'
+                : 'bg-surface border-line hover:border-accent/40 hover:bg-canvas/60'
+            }`}
         >
           {/* Top Pill Bar */}
           <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -647,7 +646,7 @@ export const OrgTreePage: React.FC = () => {
                     : level === 1
                     ? 'bg-sky-100 text-sky-700 border border-sky-300'
                     : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                }`}
+                  }`}
               >
                 {level === 0 ? 'Khối Gốc' : level === 1 ? 'Phòng Ban' : `Tiểu Nhóm (L${level})`}
               </span>
@@ -819,7 +818,7 @@ export const OrgTreePage: React.FC = () => {
               : isBroken
               ? 'bg-amber-50 text-amber-900 border border-amber-300'
               : 'hover:bg-canvas text-ink'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2 min-w-0">
             {hasChildren ? (
