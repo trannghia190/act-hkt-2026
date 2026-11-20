@@ -18,6 +18,8 @@ public interface AuthService {
 
     boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore);
 
+    boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore, float[] embedding);
+
     /** Reset / delete enrolled face profile for user. */
     boolean resetFace(String employeeCode);
 

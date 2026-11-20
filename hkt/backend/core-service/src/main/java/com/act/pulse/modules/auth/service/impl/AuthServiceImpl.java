@@ -235,6 +235,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore) {
+        return enrollFace(employeeCode, faceDataUrl, confidenceScore, null);
+    }
+
+    @Override
+    @Transactional
+    public boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore, float[] embedding) {
         User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
 
@@ -250,10 +256,20 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(FaceProfile.builder().userId(user.getId()).build());
         fp.setStatus("active");
         fp.setEnrolledAt(LocalDateTime.now());
-        if (fp.getEmbedding() == null) {
-            fp.setEmbedding(new float[512]);
+        if (embedding != null && embedding.length > 0) {
+            float[] finalVector = embedding;
+            if (embedding.length < 512) {
+                finalVector = new float[512];
+                System.arraycopy(embedding, 0, finalVector, 0, embedding.length);
+            }
+            fp.setEmbedding(finalVector);
+            faceProfileRepository.save(fp);
+        } else if (fp.getEmbedding() != null) {
+            // Already has embedding in PostgreSQL
+            faceProfileRepository.save(fp);
+        } else {
+            log.info("Face profile activated without direct embedding vector for employee: {}", employeeCode);
         }
-        faceProfileRepository.save(fp);
 
         log.info("Enrolled face profile for employee: {}", employeeCode);
         return true;

@@ -269,10 +269,8 @@ export const CheckInPage: React.FC = () => {
       const detectedName = faceData.matched_employee?.full_name as string | undefined;
       const loggedInCode = user?.employeeCode;
 
-      // Allow admin or HR role to test check-in for any recognized employee
-      const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN' || loggedInCode?.toLowerCase() === 'admin';
-
-      if (!isAdminOrManager && loggedInCode && detectedCode && detectedCode.toLowerCase() !== loggedInCode.toLowerCase()) {
+      // Chống chấm công hộ: Người trước camera phải là chính chủ tài khoản đang đăng nhập
+      if (loggedInCode && detectedCode && detectedCode.toLowerCase() !== loggedInCode.toLowerCase()) {
         setCheckInStep('error');
         setErrorMessage(
           `🚨 CHẤM CÔNG HỘ: Người trước camera là ${detectedName} (${detectedCode}), KHÔNG KHỚP tài khoản đang đăng nhập ${loggedInCode}. Đã từ chối.`,
@@ -295,8 +293,7 @@ export const CheckInPage: React.FC = () => {
         } catch (_) {}
       }
 
-      // If admin/HR or detected employee is available, prioritize detectedCode
-      const targetEmpCode = (isAdminOrManager && detectedCode) ? detectedCode : (loggedInCode || detectedCode || '136ACT');
+      const targetEmpCode = loggedInCode || user?.employeeCode || '';
 
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
@@ -424,7 +421,8 @@ export const CheckInPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Interactive Environment & Fraud Simulation Bar for QA Testing */}
+        {/* Interactive Environment & Fraud Simulation Bar for QA Testing (Hidden in Production) */}
+        {Boolean((import.meta as any)?.env?.DEV) && (
         <div className="my-3 p-3 bg-canvas-subtle rounded-xl border border-line text-left text-xs space-y-2.5">
           <div className="text-[11px] font-bold text-ink flex items-center justify-between">
             <span className="flex items-center gap-1">🧪 Kịch Bản Kiểm Thử QA (Xác Thực AI &amp; Chống Chấm Công Hộ)</span>
@@ -527,6 +525,7 @@ export const CheckInPage: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Circular Camera Viewport */}
         <div className="relative w-56 h-56 mx-auto my-4 rounded-full border-4 border-dashed border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">

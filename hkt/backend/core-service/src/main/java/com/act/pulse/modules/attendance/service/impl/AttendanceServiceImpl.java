@@ -61,10 +61,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Value("${app.services.ai-face-service-url:http://localhost:8000}")
     private String aiFaceServiceUrl;
 
-    private static final String AI_SERVICE_DOCKER_SERVICE_URL = "http://ai-face-service:8000/api/v1/face/verify-json";
-    private static final String AI_SERVICE_DOCKER_URL = "http://pulse-ai-face-service:8000/api/v1/face/verify-json";
-    private static final String AI_SERVICE_LOCAL_URL = "http://localhost:8000/api/v1/face/verify-json";
-
     /** Danh sách IP mạng nội bộ công ty (rule `attendance_security.require_internal_network`). */
     private static final List<String> OFFICE_NETWORK_PREFIXES = List.of("10.0.", "192.168.", "172.16.");
 
@@ -87,22 +83,13 @@ public class AttendanceServiceImpl implements AttendanceService {
     private CheckInResponse processAttendancePunch(UUID authenticatedUserId, CheckInRequest request, String punchType) {
         List<LayerResult> layers = new ArrayList<>();
 
-        // Resolve user from authenticated token principal, or fallback to request employeeCode for terminals/demo
-        User requester = null;
-        if (authenticatedUserId != null) {
-            requester = userRepository.findById(authenticatedUserId).orElse(null);
+        // Nhân viên lấy từ token đang đăng nhập — KHÔNG tin employeeCode do client gửi lên (docs/01 §2)
+        if (authenticatedUserId == null) {
+            return reject("UNAUTHENTICATED", "Vui lòng đăng nhập để thực hiện chấm công", layers, FaceOutcome.skipped());
         }
-        if (requester == null && request.getEmployeeCode() != null && !request.getEmployeeCode().isBlank()) {
-            String code = request.getEmployeeCode().trim();
-            requester = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code, code).orElse(null);
-        }
+        User requester = userRepository.findById(authenticatedUserId).orElse(null);
         if (requester == null) {
-            // Default demo employee fallback if unspecified
-            requester = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase("136ACT", "136ACT").orElse(null);
-        }
-        if (requester == null) {
-            String targetCode = request.getEmployeeCode() != null ? request.getEmployeeCode() : "chưa xác định";
-            return reject("USER_NOT_FOUND", "Không tìm thấy hồ sơ nhân viên: " + targetCode + ". Vui lòng kiểm tra mã nhân viên.", layers, FaceOutcome.skipped());
+            return reject("USER_NOT_FOUND", "Không tìm thấy hồ sơ người dùng hợp lệ", layers, FaceOutcome.skipped());
         }
         final UUID userId = requester.getId();
         final String requesterCode = requester.getEmployeeCode();
@@ -362,7 +349,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             return new FaceOutcome("failed", null, false, null, null, false, 1, maxAttempts - 1, null);
         }
 
-        JsonNode ai = callAiFaceService(image, request.getLivenessFrames(), requesterCode);
+        JsonNode ai = callAiFaceService(image, request.getLivenessFrames(), requesterCode, threshold);
         if (ai == null) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
                     "Không kết nối được dịch vụ nhận diện khuôn mặt — chưa thể xác thực"));
@@ -426,17 +413,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                 false, 1, maxAttempts - 1, LocalDateTime.now());
     }
 
-    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames, String requesterCode) {
+    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames, String requesterCode, double threshold) {
         String baseUrl = (aiFaceServiceUrl != null && !aiFaceServiceUrl.trim().isEmpty())
                 ? aiFaceServiceUrl.trim().replaceAll("/+$", "")
                 : "http://localhost:8000";
         String primaryUrl = baseUrl + "/api/v1/face/verify-json";
-
-        java.util.LinkedHashSet<String> targets = new java.util.LinkedHashSet<>();
-        targets.add(primaryUrl);
-        targets.add(AI_SERVICE_DOCKER_SERVICE_URL);
-        targets.add(AI_SERVICE_DOCKER_URL);
-        targets.add(AI_SERVICE_LOCAL_URL);
 
         Map<String, Object> body = new HashMap<>();
         body.put("image", base64Image);
@@ -446,21 +427,25 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (livenessFrames != null && !livenessFrames.isEmpty()) {
             body.put("liveness_frames", livenessFrames);
         }
+        body.put("similarity_threshold", threshold);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        for (String url : targets) {
-            try {
-                log.info("Calling AI Face Service at endpoint: {}", url);
-                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                    log.info("Successfully connected to AI Face Service at {}", url);
-                    return objectMapper.readTree(response.getBody());
-                }
-            } catch (Exception e) {
-                log.warn("Không kết nối được AI Face Service tại {}: {}", url, e.getMessage());
+        try {
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(java.time.Duration.ofSeconds(3));
+            factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+            RestTemplate timeoutRestTemplate = new RestTemplate(factory);
+
+            ResponseEntity<String> response = timeoutRestTemplate.postForEntity(primaryUrl, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
             }
+        } catch (Exception ex) {
+            log.warn("AI face service verification failed or timed out (endpoint: {}): {}", primaryUrl, ex.getMessage());
         }
         return null;
     }

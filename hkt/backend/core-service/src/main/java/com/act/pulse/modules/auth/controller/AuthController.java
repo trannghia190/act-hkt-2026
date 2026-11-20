@@ -46,6 +46,7 @@ public class AuthController {
         private String employeeCode;
         private String faceDataUrl;
         private Double confidenceScore;
+        private float[] embedding;
     }
 
     @Data
@@ -135,10 +136,17 @@ public class AuthController {
     @PostMapping("/enroll-face")
     @Operation(summary = "Đăng ký mẫu khuôn mặt lần đầu (Face Enrollment Wizard - S01-B)")
     public ApiResponse<Boolean> enrollFace(@RequestBody EnrollFaceRequest request) {
+        String loggedInCode = CurrentUser.employeeCode();
+        String role = CurrentUser.role();
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(role) || "HR_ADMIN".equalsIgnoreCase(role);
+        if (!isAdmin && loggedInCode != null && !loggedInCode.equalsIgnoreCase(request.getEmployeeCode())) {
+            throw new IllegalArgumentException("Không được đăng ký khuôn mặt cho nhân viên khác. Mã nhân viên phải khớp với tài khoản đăng nhập.");
+        }
         boolean enrolled = authService.enrollFace(
                 request.getEmployeeCode(),
                 request.getFaceDataUrl(),
-                request.getConfidenceScore() != null ? request.getConfidenceScore() : 0.95
+                request.getConfidenceScore() != null ? request.getConfidenceScore() : 0.95,
+                request.getEmbedding()
         );
         return ApiResponse.ok(enrolled, "Đăng ký mẫu khuôn mặt thành công!");
     }

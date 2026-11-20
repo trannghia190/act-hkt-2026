@@ -11,7 +11,7 @@ from datetime import datetime
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status, Body
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status, Body, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -113,7 +113,7 @@ except Exception as e:
 # DATABASE & SEEDING (SQLite & PostgreSQL & JSON)
 # ====================================================
 def init_database():
-    """Initializes SQLite tables for persistent face identities and seeds personas."""
+    """Initializes SQLite tables for persistent face identities without synthetic/random seeds."""
     with sqlite3.connect(SQLITE_DB_FILE) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS face_identities (
@@ -127,31 +127,9 @@ def init_database():
                 UNIQUE(tenant_id, user_id)
             );
         """)
+        # Purge any legacy synthetic persona vectors to adhere to zero-fake-vector policy
+        conn.execute("DELETE FROM face_identities WHERE tenant_id = 'default' AND user_id IN ('Admin', 'admin', '01HR', '05ACT', '136ACT') AND length(embedding) = 512")
         conn.commit()
-
-        cursor = conn.execute("SELECT COUNT(*) FROM face_identities WHERE tenant_id = 'default'")
-        count = cursor.fetchone()[0]
-        if count == 0:
-            logger.info("Seeding standard ACT personas into face_identities...")
-            defaults = [
-                ("Admin", "Quản Trị Viên Hệ Thống (Admin)", "Ban Quản Trị Hệ Thống", 42),
-                ("admin", "AD văn min", "Khối Kỹ Thuật", 42),
-                ("01HR", "Nguyễn Thị Thu Hà", "Phòng Nhân Sự", 101),
-                ("05ACT", "Nguyễn Thanh Tùng", "Khối Kỹ Thuật", 202),
-                ("136ACT", "Vũ Văn Luận", "Khối Kỹ Thuật (Optimus)", 303),
-            ]
-            for uid, name, dept, seed_val in defaults:
-                np.random.seed(seed_val)
-                raw = np.random.uniform(0.1, 1.0, 128).astype(np.float32)
-                norm = (raw / np.linalg.norm(raw)).astype(np.float32)
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO face_identities (tenant_id, user_id, full_name, department, embedding)
-                    VALUES ('default', ?, ?, ?, ?)
-                    """,
-                    (uid, name, dept, norm.tobytes()),
-                )
-            conn.commit()
 
 
 def _parse_vector(raw: Optional[str]) -> List[float]:
@@ -225,11 +203,14 @@ async def persist_employee_to_db(employee_code: str, vec: List[float]) -> None:
         save_db()
         return
     try:
+        vec_512 = vec.copy()
+        if len(vec_512) < 512:
+            vec_512 = vec_512 + [0.0] * (512 - len(vec_512))
         async with _db_pool.acquire() as conn:
             result = await conn.execute(
                 """
                 INSERT INTO face_profiles (user_id, embedding, status, enrolled_at)
-                SELECT id, $2::vector, 'active', NOW() FROM users WHERE employee_code = $1
+                SELECT id, $2::vector, 'active', NOW() FROM users WHERE LOWER(employee_code) = LOWER($1)
                 ON CONFLICT (user_id) DO UPDATE
                   SET embedding = EXCLUDED.embedding,
                       status = 'active',
@@ -237,7 +218,7 @@ async def persist_employee_to_db(employee_code: str, vec: List[float]) -> None:
                       updated_at = NOW()
                 """,
                 employee_code,
-                _vector_literal(vec),
+                _vector_literal(vec_512),
             )
             if result.endswith("0"):
                 logger.warning("Không tìm thấy nhân viên %s trong bảng users khi lưu vector", employee_code)
@@ -302,12 +283,30 @@ class EnrollResponse(BaseModel):
     full_name: str
     message: str
     vector_dimensions: int
+    embedding: Optional[List[float]] = None
 
 
 class VerifyJsonRequest(BaseModel):
     image: str = Field(..., description="Captured face image (data URL or Base64)")
     expected_employee_code: Optional[str] = Field(None, description="Expected employee code for 1:1 check")
     liveness_frames: Optional[List[str]] = Field(None, description="Consecutive frames for liveness detection")
+    similarity_threshold: Optional[float] = Field(None, description="Dynamic similarity threshold from rules (e.g. 0.85)")
+
+
+def extract_claims_from_token(token: str) -> Optional[dict]:
+    """Extracts payload claims from JWT token without throwing exceptions."""
+    try:
+        parts = token.strip().split(".")
+        if len(parts) >= 2:
+            payload_b64 = parts[1]
+            rem = len(payload_b64) % 4
+            if rem > 0:
+                payload_b64 += "=" * (4 - rem)
+            payload_json = base64.urlsafe_b64decode(payload_b64.encode("utf-8")).decode("utf-8")
+            return json.loads(payload_json)
+    except Exception as e:
+        logger.warning("Failed to decode token claims: %s", e)
+    return None
 
 
 class EnrollJsonRequest(BaseModel):
@@ -672,8 +671,12 @@ def verify_face_json(payload: VerifyJsonRequest):
                 targeted_candidate = (user_id, name, dept)
                 break
 
-    # Prioritize expected candidate if above threshold
-    effective_threshold = float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
+    # Prioritize expected candidate if above dynamic threshold from rules
+    effective_threshold = (
+        float(payload.similarity_threshold)
+        if payload.similarity_threshold is not None and payload.similarity_threshold > 0
+        else float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
+    )
     chosen_candidate = best_candidate
     chosen_score = best_score
     if targeted_candidate and targeted_score >= effective_threshold:
@@ -736,8 +739,21 @@ async def verify_face_multipart(
 
 
 @app.post("/api/v1/face/enroll-json", response_model=EnrollResponse, summary="Biometric Enrollment (JSON)", tags=["Biometrics"])
-async def enroll_face_json(payload: EnrollJsonRequest):
+async def enroll_face_json(payload: EnrollJsonRequest, authorization: Optional[str] = Header(None)):
     """Registers an employee biometric profile using a single or multi-angle face photo."""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        claims = extract_claims_from_token(token)
+        if claims:
+            token_ec = claims.get("ec")
+            token_role = claims.get("role")
+            is_admin_user = token_role in ["ADMIN", "HR_ADMIN"]
+            if not is_admin_user and token_ec and token_ec.strip().lower() != payload.employee_code.strip().lower():
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Không được đăng ký khuôn mặt hộ người khác. Tài khoản đăng nhập là {token_ec}, không thể đăng ký cho {payload.employee_code}."
+                )
+
     img = decode_image_from_base64_or_bytes(payload.frontal_image)
     quality_ok, quality_err = check_image_quality(img)
     if not quality_ok:
@@ -811,6 +827,7 @@ async def enroll_face_json(payload: EnrollJsonRequest):
         full_name=full_name,
         message=f"Đăng ký thành công mẫu khuôn mặt {dim}D cho nhân viên {full_name} ({payload.employee_code})",
         vector_dimensions=dim,
+        embedding=vec_list,
     )
 
 
