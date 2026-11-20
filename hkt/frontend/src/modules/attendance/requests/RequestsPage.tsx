@@ -39,7 +39,7 @@ export const RequestsPage: React.FC = () => {
     endDate: new Date().toISOString().split('T')[0],
     duration: '1.0 ngày',
     leaveType: 'AL',
-    reason: '',
+    reason: 'Việc cá nhân',
   });
 
   const authHeaders = (): Record<string, string> => {
@@ -207,7 +207,7 @@ export const RequestsPage: React.FC = () => {
       endDate: new Date().toISOString().split('T')[0],
       duration: '1.0 ngày',
       leaveType: 'AL',
-      reason: ''
+      reason: 'Việc cá nhân'
     });
     showToast(`Đã gửi đơn ${newId} thành công tới cấp phê duyệt`);
   };
@@ -494,16 +494,6 @@ export const RequestsPage: React.FC = () => {
               <option value="WFH">🏡 Làm Việc Từ Xa (WFH - Tối đa 2 ngày/tuần)</option>
               <option value="ADJUST">⏱️ Bổ Sung Chấm Công (hạn 3 ngày)</option>
             </select>
-            {(newReq.type === 'LATE_EARLY' || newReq.type === 'LEAVE') && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {['Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình'].map((r) => (
-                  <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
-                    className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
             {newReq.type === 'LEAVE' && (
               <div className="mt-2">
                 <label className="block font-medium text-ink mb-1">Loại nghỉ</label>
@@ -672,6 +662,19 @@ export const RequestsPage: React.FC = () => {
 
           <div>
             <label className="block font-medium text-ink mb-1">Lý Do Chi Tiết &amp; Minh Chứng</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(newReq.type === 'ADJUST'
+                ? ['Việc cá nhân', 'Quên chấm công', 'Lỗi thiết bị', 'Mất kết nối mạng']
+                : newReq.type === 'WFH'
+                ? ['Việc cá nhân', 'Cần tập trung công việc', 'Nhà có việc', 'Họp online']
+                : ['Việc cá nhân', 'Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình']
+              ).map((r) => (
+                <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
+                  className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
             <textarea
               rows={3}
               required
