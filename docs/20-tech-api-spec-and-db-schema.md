@@ -324,7 +324,8 @@ erDiagram
 * `POST /disputes` — nhân viên tạo khiếu nại `{workDate, reason}` → `PENDING`, `deadline = now + 2 ngày`.
 * `GET /disputes?status=` — HR xem tất cả, quản lý xem cấp dưới, nhân viên chỉ xem của mình; **sắp theo hạn tăng dần**; tự chuyển `EXPIRED` khi quá hạn.
 * `GET /disputes/{id}` — chi tiết 3 nguồn **dữ liệu thật**: `log` (attendance_logs: check-in/out, status) · `relatedRequests` (đơn từ phủ ngày khiếu nại) · `currentCell` (ô timesheet_cells HR đang sửa) + `ruleHint` tính theo log.
-* `POST /disputes/{id}/resolve` — chỉ **HR hoặc quản lý trực tiếp**; chặn khi đã xử lý/quá hạn:
+* `POST /disputes/bulk-resolve` `{ids[], action, reason, symbol?}` — xử lý hàng loạt cùng action; trả `{resolved, skipped[{id,message}]}`, bỏ qua đơn đã đóng/quá hạn/không quyền.
+* `POST /disputes/{id}/resolve` — chỉ **HR hoặc quản lý trực tiếp**; chặn khi đã xử lý/quá hạn; FIX bị chặn khi kỳ công đã khoá:
   * `FIX` (cần `symbol`) → upsert `timesheet_cells` + audit ô (`timesheet_audit_logs`).
   * `MAKEUP` → tạo đơn `ADJUST` PENDING_APPROVAL cho nhân viên.
   * `REJECT` → bắt buộc `reason`.

@@ -5,6 +5,8 @@ export const DisputeDetailPage: React.FC = () => {
   const { id } = useParams();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [leaveTypes, setLeaveTypes] = useState<Record<string, string>>({});
   const token = () => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken || ''; } catch { return ''; } };
   const headers = () => (token() ? { Authorization: `Bearer ${token()}` } : {});
 
@@ -15,6 +17,11 @@ export const DisputeDetailPage: React.FC = () => {
       .catch(() => setError('Không tải được khiếu nại'));
   };
   useEffect(load, [id]);
+  useEffect(() => {
+    fetch('/api/v1/leave-types', { headers: headers() }).then(r => r.json())
+      .then(j => { if (Array.isArray(j?.data)) setLeaveTypes(Object.fromEntries(j.data.map((x: any) => [x.code, x.name]))); })
+      .catch(() => undefined);
+  }, []);
 
   const act = async (action: 'FIX' | 'MAKEUP' | 'REJECT') => {
     const reason = window.prompt(action === 'REJECT' ? 'Lý do từ chối (bắt buộc):' : 'Lý do xử lý (bắt buộc):', action === 'REJECT' ? '' : 'Đã đối chiếu 3 nguồn dữ liệu') || '';
@@ -32,32 +39,36 @@ export const DisputeDetailPage: React.FC = () => {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Xử lý khiếu nại thất bại'); load(); return; }
-    alert(action === 'REJECT' ? 'Đã từ chối — nhân viên đã nhận thông báo' : 'Đã xử lý khiếu nại — nhân viên đã nhận thông báo');
+    setMsg(action === 'REJECT' ? 'Đã từ chối — nhân viên đã nhận thông báo' : 'Đã xử lý khiếu nại — nhân viên đã nhận thông báo');
+    setError(null);
     load();
   };
 
+  const fmt = (iso?: string) => { if (!iso) return '—'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return d ? `${d}/${m}/${y}` : iso; };
   const pending = data?.status === 'PENDING';
   const statusText: Record<string, string> = { PENDING: 'Chờ xử lý', RESOLVED: 'Đã xử lý', REJECTED: 'Đã từ chối', EXPIRED: 'Quá hạn — tự đóng' };
   const reqLabel: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'WFH', LATE_EARLY: 'Đi muộn/về sớm', ADJUST: 'Bổ sung chấm công' };
+  const reqStatus: Record<string, string> = { APPROVED: 'đã duyệt', PENDING_APPROVAL: 'chờ duyệt', REJECTED: 'bị từ chối', WITHDRAWN: 'đã hủy', DRAFT: 'nháp' };
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <h1 className="text-xl font-bold text-ink mt-1">Xử lý khiếu nại {id}</h1>
+        <h1 className="text-xl font-bold text-ink mt-1">{pending ? 'Xử lý khiếu nại' : 'Chi tiết khiếu nại'} {id}</h1>
         <p className="text-xs text-ink-muted mt-1">
           So sánh 3 cột trước khi sửa: log chấm công gốc (không sửa) · đơn/khiếu nại của NV · bảng công HR đang sửa.
         </p>
         {data?.status && <div className="text-[11px] mt-2 font-semibold text-ink-muted">
-          Trạng thái: {statusText[data.status] || data.status}{data?.deadline ? ` · hạn xử lý ${data.deadline}` : ''}
+          Trạng thái: {statusText[data.status] || data.status}{data?.deadline ? ` · hạn xử lý ${fmt(data.deadline)}` : ''}
         </div>}
       </div>
       {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {msg && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{msg}</div>}
 
       <div className="grid md:grid-cols-3 gap-3">
         <div className="bg-surface border border-line rounded-xl p-4">
           <div className="text-xs font-semibold text-ink-muted">1 · Log chấm công (gốc — không sửa)</div>
           <div className="text-sm mt-2 space-y-1">
-            <div>Ngày: <b>{data?.log?.date || data?.workDate || '—'}</b></div>
+            <div>Ngày: <b>{fmt(data?.log?.date || data?.workDate)}</b></div>
             <div>Check-in: <b>{data?.log?.checkIn || '—'}</b></div>
             <div>Check-out: <b>{data?.log?.checkOut || '—'}</b></div>
             <div className="text-[11px] text-ink-muted">Trạng thái log: {data?.log?.status || 'không có bản ghi'}</div>
@@ -70,7 +81,7 @@ export const DisputeDetailPage: React.FC = () => {
             {(data?.relatedRequests || []).length === 0 && <div className="text-[11px] text-ink-muted mt-1">Chưa có đơn từ nào cho ngày này.</div>}
             {(data?.relatedRequests || []).map((r: any) => (
               <div key={r.id} className="text-[11px] mt-1 px-1.5 py-0.5 rounded bg-canvas border border-line">
-                {reqLabel[r.type] || r.type}{r.leaveType ? ` (${r.leaveType})` : ''} — {r.status === 'APPROVED' ? 'đã duyệt' : r.status === 'PENDING_APPROVAL' ? 'chờ duyệt' : r.status.toLowerCase()}
+                {reqLabel[r.type] || r.type}{r.leaveType ? ` (${leaveTypes[r.leaveType] || r.leaveType})` : ''} — {reqStatus[r.status] || r.status}
                 {r.reason ? `: ${r.reason}` : ''}
               </div>
             ))}
@@ -79,7 +90,7 @@ export const DisputeDetailPage: React.FC = () => {
         <div className="bg-surface border border-line rounded-xl p-4">
           <div className="text-xs font-semibold text-ink-muted">3 · Bảng công HR đang sửa</div>
           <div className="text-sm mt-2">
-            <div>Ô ngày {data?.workDate || '—'}: <b>{data?.currentCell ? data.currentCell : '(trống)'}</b></div>
+            <div>Ô ngày {fmt(data?.workDate)}: <b>{data?.currentCell ? data.currentCell : '(trống)'}</b></div>
           </div>
         </div>
       </div>

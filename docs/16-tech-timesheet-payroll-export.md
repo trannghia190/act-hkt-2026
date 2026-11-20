@@ -139,7 +139,7 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 * Ô hiển thị số ngày + ký hiệu/trạng thái; ngày cuối tuần luôn WEEKEND, không bị đơn nghỉ/WFH ghi đè.
 
 ### Khiếu nại bảng công — triển khai 21/11/2026
-* **Danh sách (S45)**: lọc theo trạng thái (Cần xử lý/Đã xử lý/Bị từ chối/Quá hạn/Tất cả), mỗi dòng có hạn + đếm ngược; **sắp theo hạn gần nhất**; xử lý nhanh inline 3 cách; click dòng mở chi tiết.
+* **Danh sách (S45)**: lọc theo trạng thái (Cần xử lý/Đã xử lý/Bị từ chối/Quá hạn/Tất cả), mỗi dòng có hạn (dd/mm/yyyy) + đếm ngược; **sắp theo hạn gần nhất**; xử lý nhanh inline 3 cách; tick chọn nhiều → **từ chối hàng loạt** cùng lý do (báo số xử lý/bỏ qua); click dòng mở chi tiết.
 * **Chi tiết (S33)**: 3 cột dữ liệu thật — log gốc, đơn từ liên quan, ô bảng công HR; gợi ý rule theo log (thiếu check-in/out…).
 * **Quyền**: HR/Admin xử lý tất cả; quản lý trực tiếp xử lý cấp dưới; nhân viên chỉ thấy của mình.
 * **Quá hạn 2 ngày** → `EXPIRED`, tự đóng, mọi thao tác xử lý bị chặn.

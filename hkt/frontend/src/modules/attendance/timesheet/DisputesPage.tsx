@@ -9,13 +9,17 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   REJECTED: { text: 'Đã từ chối', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
   EXPIRED: { text: 'Quá hạn — tự đóng', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
+const fmtDate = (iso?: string) => { if (!iso) return '—'; const [y, m, d] = iso.slice(0, 10).split('-'); return d ? `${d}/${m}/${y}` : iso; };
 
 export const DisputesPage: React.FC = () => {
   const [items, setItems] = useState<Dispute[]>([]);
   const [filter, setFilter] = useState<'PENDING' | 'RESOLVED' | 'REJECTED' | 'EXPIRED' | 'ALL'>('PENDING');
+  const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const token = () => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken || ''; } catch { return ''; } };
   const headers = () => (token() ? { Authorization: `Bearer ${token()}` } : {});
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
   const load = () => {
     fetch('/api/v1/disputes', { headers: headers() })
@@ -26,6 +30,7 @@ export const DisputesPage: React.FC = () => {
             id: d.id, employee: d.employee, date: d.date, reason: d.reason || 'Khiếu nại bảng công',
             status: d.status, deadline: d.deadline, daysLeft: d.daysLeft,
           })));
+          setSelected(prev => prev.filter(id => j.data.some((d: any) => d.id === id && d.status === 'PENDING')));
           setError(null);
         } else setError(j?.message || 'Không tải được danh sách khiếu nại');
       })
@@ -53,13 +58,34 @@ export const DisputesPage: React.FC = () => {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Xử lý khiếu nại thất bại'); load(); return; }
+    showToast('Đã xử lý khiếu nại — nhân viên đã nhận thông báo');
+    load();
+  };
+
+  const bulkReject = async () => {
+    if (selected.length === 0) return;
+    const reason = window.prompt(`Lý do từ chối chung cho ${selected.length} khiếu nại (bắt buộc):`, '');
+    if (!reason || !reason.trim()) { setError('Từ chối hàng loạt phải nhập lý do'); return; }
+    setError(null);
+    const res = await fetch('/api/v1/disputes/bulk-resolve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...headers() },
+      body: JSON.stringify({ ids: selected, action: 'REJECT', reason: reason.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Xử lý hàng loạt thất bại'); return; }
+    const skipped = (json?.data?.skipped || []).length;
+    showToast(`Đã từ chối ${json?.data?.resolved ?? 0} khiếu nại` + (skipped ? ` · bỏ qua ${skipped} đơn không hợp lệ` : ''));
+    setSelected([]);
     load();
   };
 
   const visible = items.filter(d => filter === 'ALL' || d.status === filter);
+  const pendingVisible = visible.filter(d => d.status === 'PENDING');
+  const allSelected = pendingVisible.length > 0 && pendingVisible.every(d => selected.includes(d.id));
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
+      {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Danh sách khiếu nại bảng công</h1>
         <p className="text-xs text-ink-muted mt-1">Hạn gần nhất lên đầu. Xử lý nhanh ngay trên bảng; click vào dòng để xem chi tiết 3 cột.</p>
@@ -67,26 +93,52 @@ export const DisputesPage: React.FC = () => {
       {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
       <div className="flex flex-wrap items-center gap-1.5">
         {([['PENDING', 'Cần xử lý'], ['RESOLVED', 'Đã xử lý'], ['REJECTED', 'Bị từ chối'], ['EXPIRED', 'Quá hạn'], ['ALL', 'Tất cả']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setFilter(k)}
+          <button key={k} onClick={() => { setFilter(k); setSelected([]); }}
             className={`text-xs px-3 py-1.5 rounded-full border ${filter === k ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {label} ({k === 'ALL' ? items.length : items.filter(d => d.status === k).length})
           </button>
         ))}
       </div>
+
+      {pendingVisible.length > 0 && (
+        <div className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 text-xs">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={allSelected}
+              onChange={() => setSelected(allSelected ? [] : pendingVisible.map(d => d.id))} />
+            Chọn tất cả đang chờ ({pendingVisible.length})
+          </label>
+          {selected.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-ink-muted">Đã chọn {selected.length}</span>
+              <button className="px-2.5 py-1 rounded bg-rose-600 text-white font-semibold" onClick={bulkReject}>
+                Từ chối hàng loạt
+              </button>
+              <button className="px-2 py-1 rounded border border-line" onClick={() => setSelected([])}>Bỏ chọn</button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-surface border border-line rounded-xl p-4">
         {visible.length === 0 && <div className="text-xs text-ink-muted py-4 text-center">Không có khiếu nại nào trong nhóm này.</div>}
         {visible.map(d => (
-          <div key={d.id} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 mb-2 text-sm">
-            <div>
-              <Link to={`/attendance/disputes/${d.id}`} className="font-semibold hover:underline">{d.employee} · {d.date}</Link>
-              <div className="text-xs text-ink-muted">{d.reason}</div>
-              {d.status === 'PENDING' && d.daysLeft !== undefined && d.daysLeft >= 0 && (
-                <div className="text-[11px] text-amber-700">⏳ Còn {d.daysLeft} ngày (hạn {d.deadline})</div>
+          <div key={d.id} className="flex items-center justify-between gap-2 border border-line rounded-lg px-3 py-2 mb-2 text-sm">
+            <div className="flex items-start gap-2">
+              {d.status === 'PENDING' && (
+                <input type="checkbox" className="mt-1" checked={selected.includes(d.id)}
+                  onChange={() => setSelected(p => p.includes(d.id) ? p.filter(i => i !== d.id) : [...p, d.id])} />
               )}
-              {d.status === 'EXPIRED' && <div className="text-[11px] text-slate-600">⏰ Quá hạn 2 ngày — tự đóng</div>}
+              <div>
+                <Link to={`/attendance/disputes/${d.id}`} className="font-semibold hover:underline">{d.employee} · {d.date}</Link>
+                <div className="text-xs text-ink-muted">{d.reason}</div>
+                {d.status === 'PENDING' && d.daysLeft !== undefined && d.daysLeft >= 0 && (
+                  <div className="text-[11px] text-amber-700">⏳ Còn {d.daysLeft} ngày (hạn {fmtDate(d.deadline)})</div>
+                )}
+                {d.status === 'EXPIRED' && <div className="text-[11px] text-slate-600">⏰ Quá hạn 2 ngày — tự đóng</div>}
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className={`text-[11px] px-2 py-0.5 rounded border ${STATUS_LABEL[d.status]?.cls || ''}`}>
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <span className={`text-[11px] px-2 py-0.5 rounded border whitespace-nowrap ${STATUS_LABEL[d.status]?.cls || ''}`}>
                 {STATUS_LABEL[d.status]?.text || d.status}
               </span>
               {d.status === 'PENDING' && (

@@ -501,6 +501,7 @@
 - [ ] Từ chối → nhân viên **nhận được thông báo**
 - [ ] Click vào 1 dòng → mở **màn hình chi tiết** (D4) để đối chiếu 3 nguồn dữ liệu
 - [ ] Quá hạn 2 ngày → hiện "đã quá hạn" và tự đóng
+- [ ] **Duyệt hàng loạt (P1)**: tick nhiều dòng → từ chối cùng 1 lý do, bỏ qua đơn không hợp lệ và báo số đã xử lý
 - [ ] Nút **Chốt & khóa** của HR **bị chặn** khi còn khiếu nại chưa xử lý
 **Phụ thuộc:** D4, E1
 
