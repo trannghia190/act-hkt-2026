@@ -123,6 +123,7 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * **Cộng phép tháng** — `@Scheduled` **daily 02:00** (không cố định ngày15), mỗi lần chạy:
   * Đọc `leave_accrual.accrual_on` (ngày cộng, mặc định15) và số ngày/tháng = `base_days_per_year / 12` (mặc định12/12=1).
   * Chỉ user `status=ACTIVE`; bỏ qua user vào làm sau ngày cộng của kỳ đó.
+  * **Không cộng đôi:** user đã có GRANT “Cấp phép năm {năm}”/“Cấp phép năm định kỳ {năm}” (cấp trọn gói) thì bỏ qua cộng tháng.
   * **Catch-up:** tìm kỳ “Cộng phép tháng M/YYYY” gần nhất trong ledger, cộng bù mọi tháng thiếu tới tháng hiện tại; nếu chưa có kỳ nào thì bắt đầu tháng hiện tại (tránh cộng trùng với seed cấp năm).
   * `@EventListener(ApplicationReadyEvent)` chạy cùng logic khi khởi động → không mất kỳ nếu server tắt đúng ngày15.
   * Endpoint thủ công: `POST /cron/monthly-leave-accrual` (idempotent, trả `backfilledMonths`).
