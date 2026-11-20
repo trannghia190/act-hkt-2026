@@ -4,6 +4,7 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
+import { Link } from 'react-router-dom';
 import { AttendanceRequestItem } from '../requests/requestStore';
 
 export const ApprovalsPage: React.FC = () => {
@@ -48,6 +49,7 @@ export const ApprovalsPage: React.FC = () => {
       reason: r.reason || '', status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
       approver: '—', createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
+      attachmentCount: Number(r.attachmentCount || 0),
     } as AttendanceRequestItem;
   };
   const loadInbox = () => {
@@ -323,6 +325,11 @@ export const ApprovalsPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-ink-secondary max-w-xs">
                     <div>{item.reason}</div>
+                    {!!item.attachmentCount && (
+                      <Link to={`/attendance/requests/${item.id}`} className="inline-block text-[11px] text-accent underline mt-0.5">
+                        📎 {item.attachmentCount} giấy tờ đính kèm
+                      </Link>
+                    )}
                     {item.approverComment && (
                       <div className="text-[11px] text-accent mt-0.5 font-medium">
                         💬 Ý kiến duyệt: {item.approverComment}
