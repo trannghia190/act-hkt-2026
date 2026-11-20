@@ -13,6 +13,10 @@ public interface DeviceRegistrationRepository extends JpaRepository<DeviceRegist
 
     Optional<DeviceRegistration> findByUserIdAndDeviceFingerprintAndIsApprovedTrue(UUID userId, String deviceFingerprint);
 
+    Optional<DeviceRegistration> findByDeviceFingerprint(String deviceFingerprint);
+
+    Optional<DeviceRegistration> findByUserIdAndDeviceFingerprint(UUID userId, String deviceFingerprint);
+
     List<DeviceRegistration> findByUserIdAndIsApprovedTrue(UUID userId);
 
     long countByUserIdAndIsApprovedTrue(UUID userId);
