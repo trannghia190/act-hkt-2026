@@ -24,6 +24,19 @@ export const RequestDetailPage: React.FC = () => {
       {req && (
         <div className="bg-surface border border-line rounded-xl p-4 space-y-2">
           <div className="text-sm font-semibold">{req.requestType} {req.leaveType ? `· ${req.leaveType}` : ''} · {req.workDate || '—'}</div>
+          {(() => {
+            try {
+              const p = JSON.parse(req.payload || '{}');
+              if (p.half_day_period) {
+                return <div className="text-[11px] text-sky-700 mt-0.5">
+                  Nửa ngày — nghỉ {p.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}
+                  {p.work_window_start && p.work_window_end ? ` · làm việc ${p.work_window_start}–${p.work_window_end}` : ''}
+                </div>;
+              }
+              if (req.minutes) return <div className="text-[11px] text-ink-muted mt-0.5">{req.minutes} phút đi muộn/về sớm</div>;
+            } catch { /* ignore */ }
+            return null;
+          })()}
           <div className="text-xs text-ink-muted">Lý do: {req.reason || '—'}</div>
           <div className="text-xs">Trạng thái: <b>{req.status}</b></div>
           <div className="flex flex-wrap gap-2 text-[11px]">

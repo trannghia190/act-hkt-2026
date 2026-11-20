@@ -70,13 +70,19 @@ public class TimesheetController {
                 daySymbol.put(log.getWorkDate().getDayOfMonth(), full ? "1.00" : "0.50");
                 present += full ? 1 : 0;
             }
-            int wfh = 0, leave = 0, late = 0;
+            int wfh = 0, late = 0;
+            double leave = 0;
             for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
                 if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !YearMonth.from(r.getWorkDate()).equals(ym)) continue;
                 int d = r.getWorkDate().getDayOfMonth();
                 switch (r.getRequestType()) {
                     case "WFH" -> { daySymbol.put(d, "R"); wfh++; present++; }
-                    case "LEAVE" -> { daySymbol.put(d, r.getLeaveType() == null ? "AL" : r.getLeaveType()); leave++; }
+                    case "LEAVE" -> {
+                        boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
+                        String sym = r.getLeaveType() == null ? "AL" : r.getLeaveType();
+                        daySymbol.put(d, halfDay ? sym + "/0.50" : sym);
+                        leave += halfDay ? 0.5 : 1;
+                    }
                     default -> { if ("LATE_EARLY".equals(r.getRequestType())) late++; }
                 }
             }
@@ -103,10 +109,13 @@ public class TimesheetController {
                 String base = s.trim().replace("*", "").replace("?", "").trim();
                 int slash = base.indexOf('/');
                 String numeric = slash >= 0 ? base.substring(slash + 1) : base;
-                try {
-                    totalDays += Double.parseDouble(numeric);
-                } catch (NumberFormatException e) {
-                    symCount.merge(base.toUpperCase(), 1, Integer::sum);
+                // Chỉ ký hiệu công (1.00/0.50) hoặc R/0.50 mới cộng vào tổng ngày công;
+                // AL/0.50 là nghỉ nửa ngày, không phải công.
+                if (base.matches("\\d+(\\.\\d+)?") || base.startsWith("R/")) {
+                    try { totalDays += Double.parseDouble(numeric); } catch (NumberFormatException ignored) { }
+                } else {
+                    String code = slash >= 0 ? base.substring(0, slash) : base;
+                    symCount.merge(code.toUpperCase(), 1, Integer::sum);
                 }
             }
 
@@ -124,10 +133,10 @@ public class TimesheetController {
             row.put("days", daySymbol);
             row.put("standardDays", workingDays);
             row.put("actualDays", Math.min(present, workingDays));
-            row.put("wfhDays", symCount.getOrDefault("R", wfh));
-            row.put("leaveDays", symCount.getOrDefault("AL", leave));
+            row.put("wfhDays", wfh);
+            row.put("leaveDays", leave);
             row.put("lateCount", late);
-            row.put("holidayDays", symCount.getOrDefault("NL", holidayCount));
+            row.put("holidayDays", holidayCount);
             row.put("sickDays", symCount.getOrDefault("S", 0));
             row.put("sickBhDays", symCount.getOrDefault("S-BH", symCount.getOrDefault("SBH", 0)));
             row.put("compDays", symCount.getOrDefault("RO", 0));
