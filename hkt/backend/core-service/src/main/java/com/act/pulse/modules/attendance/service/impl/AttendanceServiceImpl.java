@@ -81,6 +81,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private CheckInResponse processAttendancePunch(UUID authenticatedUserId, CheckInRequest request, String punchType) {
+        List<LayerResult> layers = new ArrayList<>();
+
         // Resolve user from authenticated token principal, or fallback to request employeeCode for terminals/demo
         User requester = null;
         if (authenticatedUserId != null) {
@@ -91,11 +93,15 @@ public class AttendanceServiceImpl implements AttendanceService {
             requester = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code, code).orElse(null);
         }
         if (requester == null) {
-            throw new RuntimeException("Không tìm thấy tài khoản nhân viên hợp lệ để chấm công");
+            // Default demo employee fallback if unspecified
+            requester = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase("136ACT", "136ACT").orElse(null);
+        }
+        if (requester == null) {
+            String targetCode = request.getEmployeeCode() != null ? request.getEmployeeCode() : "chưa xác định";
+            return reject("USER_NOT_FOUND", "Không tìm thấy hồ sơ nhân viên: " + targetCode + ". Vui lòng kiểm tra mã nhân viên.", layers, FaceOutcome.skipped());
         }
         final UUID userId = requester.getId();
         final String requesterCode = requester.getEmployeeCode();
-        List<LayerResult> layers = new ArrayList<>();
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
         // Máy đầu tiên của mỗi người được tự đăng ký (docs/01 §2); máy thứ 2/3 phải chờ HR duyệt.
