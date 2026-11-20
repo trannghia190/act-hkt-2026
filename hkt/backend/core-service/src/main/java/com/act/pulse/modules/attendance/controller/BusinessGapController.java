@@ -6,6 +6,19 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.DeviceRegistration;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
+import com.act.pulse.modules.attendance.entity.AuditLog;
+import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Shift;
+import com.act.pulse.modules.attendance.entity.TimesheetDispute;
+import com.act.pulse.modules.attendance.entity.Notification;
+import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.NotificationRepository;
+import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
+import com.act.pulse.modules.auth.entity.User;
+import com.act.pulse.modules.auth.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -26,6 +39,13 @@ public class BusinessGapController {
 
     private final AttendanceLogRepository attendanceLogRepository;
     private final DeviceRegistrationRepository deviceRegistrationRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final RequestRepository requestRepository;
+    private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
+    private final ShiftRepository shiftRepository;
+    private final TimesheetDisputeRepository timesheetDisputeRepository;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -35,10 +55,164 @@ public class BusinessGapController {
         return ApiResponse.ok(attendanceLogRepository.findByUserIdOrderByWorkDateDesc(userId), "Bảng công của tôi");
     }
 
+    /**
+     * S14 — Lịch nhóm: WFH / nghỉ phép / đi muộn / công đủ theo ngày, kèm cảnh báo xung đột.
+     * Phân quyền xem: HR/ADMIN xem toàn công ty; MANAGER xem cấp dưới trực tiếp; còn lại xem nhóm mình.
+     */
+    @GetMapping("/attendance/my-shift")
+    @Operation(summary = "Ca làm việc của tôi — khung giờ chuẩn để tính đi muộn/về sớm (S07/S30)")
+    public ApiResponse<Map<String, Object>> myShift() {
+        UUID userId = CurrentUser.userId();
+        Shift shift = null;
+        boolean assigned = false;
+        if (userId != null) {
+            User u = userRepository.findById(userId).orElse(null);
+            if (u != null && u.getShiftId() != null) {
+                shift = shiftRepository.findById(u.getShiftId()).orElse(null);
+                assigned = shift != null;
+            }
+        }
+        if (shift == null) {
+            shift = shiftRepository.findAll().stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
+                    .filter(s -> !Boolean.TRUE.equals(s.getIsException()))
+                    .findFirst().orElse(null);
+        }
+        Map<String, Object> out = new HashMap<>();
+        if (shift != null) {
+            out.put("code", shift.getCode());
+            out.put("name", shift.getName());
+            out.put("checkInStart", String.valueOf(shift.getCheckInStart()));
+            out.put("checkInEnd", String.valueOf(shift.getCheckInEnd()));
+            out.put("checkOutStart", String.valueOf(shift.getCheckOutStart()));
+            out.put("checkOutEnd", String.valueOf(shift.getCheckOutEnd()));
+            out.put("lunchBreakStart", String.valueOf(shift.getLunchBreakStart()));
+            out.put("lunchBreakEnd", String.valueOf(shift.getLunchBreakEnd()));
+            out.put("requiredWorkHours", shift.getRequiredWorkHours());
+            out.put("isFlexible", Boolean.TRUE.equals(shift.getIsFlexible()));
+            out.put("flexibleCheckinFrom", String.valueOf(shift.getFlexibleCheckinFrom()));
+            out.put("flexibleCheckinTo", String.valueOf(shift.getFlexibleCheckinTo()));
+            out.put("flexibleCheckoutFrom", String.valueOf(shift.getFlexibleCheckoutFrom()));
+            out.put("flexibleCheckoutTo", String.valueOf(shift.getFlexibleCheckoutTo()));
+            out.put("assigned", assigned);
+        }
+        return ApiResponse.ok(out, shift == null ? "Chưa cấu hình ca làm việc" : "Ca làm việc của tôi");
+    }
+
     @GetMapping("/attendance/team-schedule")
-    @Operation(summary = "Lịch nhóm (S14)")
-    public ApiResponse<List<AttendanceLog>> teamSchedule(@RequestParam(required = false) String month) {
-        return ApiResponse.ok(attendanceLogRepository.findAll(), "Lịch nhóm");
+    @Operation(summary = "Lịch nhóm (S14) — phân quyền 4 tầng + cảnh báo xung đột")
+    public ApiResponse<Map<String, Object>> teamSchedule(@RequestParam(required = false) String month,
+                                                         @RequestParam(required = false) String scope) {
+        UUID me = CurrentUser.userId();
+        String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+        List<User> visible;
+        String scopeLabel;
+        if ("HR_ADMIN".equals(role) || "ADMIN".equals(role)) {
+            visible = userRepository.findAll();
+            scopeLabel = "HR — toàn công ty";
+        } else {
+            User self = userRepository.findById(me).orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+            if ("MANAGER".equals(role)) {
+                List<User> team = self.getTeamId() == null ? List.of() : userRepository.findByTeamId(self.getTeamId());
+                java.util.Set<UUID> direct = new java.util.HashSet<>();
+                direct.add(me);
+                for (User u : userRepository.findAll()) {
+                    if (me.equals(u.getManagerId())) direct.add(u.getId());
+                }
+                java.util.List<User> result = new java.util.ArrayList<>();
+                for (User u : userRepository.findAll()) {
+                    if (direct.contains(u.getId()) || team.stream().anyMatch(x -> x.getId().equals(u.getId()))) result.add(u);
+                }
+                visible = result;
+                scopeLabel = "Quản lý — cấp dưới trực tiếp & nhóm";
+            } else {
+                visible = self.getTeamId() == null ? List.of(self) : userRepository.findByTeamId(self.getTeamId());
+                scopeLabel = "Thành viên — nhóm của mình";
+            }
+        }
+        if (visible.isEmpty()) visible = List.of();
+
+        java.util.Set<UUID> ids = new java.util.HashSet<>();
+        visible.forEach(u -> ids.add(u.getId()));
+        java.util.Map<UUID, User> byId = new java.util.HashMap<>();
+        visible.forEach(u -> byId.put(u.getId(), u));
+
+        // Dữ liệu đơn đã duyệt trong tháng (mặc định tháng hiện tại)
+        String ym = (month == null || month.isBlank()) ? java.time.YearMonth.now().toString() : month;
+        java.time.YearMonth targetMonth = java.time.YearMonth.parse(ym);
+
+        List<Map<String, Object>> days = new java.util.ArrayList<>();
+        java.util.List<Map<String, Object>> conflicts = new java.util.ArrayList<>();
+        int teamSize = visible.size();
+
+        for (int d = 1; d <= targetMonth.lengthOfMonth(); d++) {
+            java.time.LocalDate day = targetMonth.atDay(d);
+            List<Map<String, Object>> entries = new java.util.ArrayList<>();
+            int late = 0, present = 0;
+            double leave = 0, wfh = 0;
+            for (User u : visible) {
+                String kind = null;
+                RequestEntity found = null;
+                for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
+                    if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !day.equals(r.getWorkDate())) continue;
+                    if ("WFH".equals(r.getRequestType())) kind = "WFH";
+                    else if ("LEAVE".equals(r.getRequestType())) kind = "LEAVE";
+                    else if ("LATE_EARLY".equals(r.getRequestType())) kind = "LATE";
+                    if (kind != null) { found = r; break; }
+                }
+                boolean halfDay = false;
+                String halfPeriod = null, workFrom = null, workTo = null;
+                if (found != null && ("LEAVE".equals(kind) || "WFH".equals(kind)) && found.getPayload() != null) {
+                    try {
+                        Map<?, ?> p = objectMapper.readValue(found.getPayload(), Map.class);
+                        halfPeriod = p.get("half_day_period") == null ? null : String.valueOf(p.get("half_day_period"));
+                        halfDay = halfPeriod != null;
+                        workFrom = p.get("work_window_start") == null ? null : String.valueOf(p.get("work_window_start"));
+                        workTo = p.get("work_window_end") == null ? null : String.valueOf(p.get("work_window_end"));
+                    } catch (Exception ignored) { }
+                }
+                if (kind == null) {
+                    kind = "PRESENT";
+                    present++;
+                } else if ("WFH".equals(kind)) wfh += halfDay ? 0.5 : 1;
+                else if ("LEAVE".equals(kind)) leave += halfDay ? 0.5 : 1;
+                else late++;
+                Map<String, Object> entry = new java.util.HashMap<>();
+                entry.put("employeeCode", u.getEmployeeCode());
+                entry.put("fullName", u.getFullName());
+                entry.put("kind", kind);
+                if (halfDay) {
+                    entry.put("halfDay", true);
+                    entry.put("halfDayPeriod", halfPeriod);
+                    entry.put("workWindowStart", workFrom);
+                    entry.put("workWindowEnd", workTo);
+                }
+                entries.add(entry);
+            }
+            Map<String, Object> row = new java.util.HashMap<>();
+            row.put("date", day.toString());
+            row.put("wfh", wfh);
+            row.put("leave", leave);
+            row.put("late", late);
+            row.put("present", present);
+            row.put("teamSize", teamSize);
+            row.put("entries", entries);
+            days.add(row);
+            if (teamSize >= 3 && (wfh + leave) * 100 >= teamSize * 60) {
+                conflicts.add(Map.of("date", day.toString(),
+                        "message", String.format("%s: %d/%d người vắng (WFH %d + nghỉ %d) — đội sẽ thiếu người",
+                                day, wfh + leave, teamSize, wfh, leave)));
+            }
+        }
+
+        Map<String, Object> out = new java.util.HashMap<>();
+        out.put("month", ym);
+        out.put("scope", scopeLabel);
+        out.put("teamSize", teamSize);
+        out.put("days", days);
+        out.put("conflicts", conflicts);
+        out.put("conflictThresholdPercent", 60);
+        return ApiResponse.ok(out, "Lịch nhóm");
     }
 
     @GetMapping("/okr/dashboard")
@@ -100,12 +274,6 @@ public class BusinessGapController {
         return ApiResponse.ok(userId == null ? List.of() : deviceRegistrationRepository.findByUserIdAndIsApprovedTrue(userId), "Thiết bị của tôi");
     }
 
-    @GetMapping("/admin/devices")
-    @Operation(summary = "Quản lý thiết bị (S28)")
-    public ApiResponse<List<DeviceRegistration>> allDevices() {
-        return ApiResponse.ok(deviceRegistrationRepository.findAll(), "Danh sách thiết bị");
-    }
-
     @PostMapping("/devices/request")
     @Operation(summary = "Yêu cầu thêm thiết bị (S29)")
     public ApiResponse<DeviceRegistration> requestDevice(@RequestBody DeviceRequest request) {
@@ -121,20 +289,102 @@ public class BusinessGapController {
         return ApiResponse.ok(deviceRegistrationRepository.save(device), "Đã gửi yêu cầu — chờ HR duyệt");
     }
 
+
+    private Map<String, Object> disputeMap(TimesheetDispute d) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", d.getId());
+        m.put("employee", userRepository.findById(d.getUserId()).map(User::getFullName).orElse("—"));
+        m.put("employeeCode", userRepository.findById(d.getUserId()).map(User::getEmployeeCode).orElse(""));
+        m.put("date", d.getWorkDate() == null ? "" : d.getWorkDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        m.put("workDate", d.getWorkDate() == null ? null : d.getWorkDate().toString());
+        m.put("reason", d.getReason());
+        m.put("status", d.getStatus());
+        m.put("deadline", d.getDeadline() == null ? null : d.getDeadline().toLocalDate().toString());
+        if (d.getDeadline() != null) {
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), d.getDeadline().toLocalDate());
+            m.put("daysLeft", daysLeft);
+            if (daysLeft < 0 && "PENDING".equals(d.getStatus())) {
+                m.put("status", "EXPIRED");
+                m.put("overdue", true);
+            }
+        }
+        return m;
+    }
+
+    @PostMapping("/disputes")
+    @Operation(summary = "Nhân viên tạo khiếu nại bảng công (S33)")
+    public ApiResponse<Map<String, Object>> createDispute(@RequestBody Map<String, String> body) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) throw new RuntimeException("Chưa đăng nhập");
+        if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
+        java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
+        TimesheetDispute d = TimesheetDispute.builder()
+                .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
+                .userId(userId).workDate(workDate).reason(body.get("reason")).status("PENDING")
+                .deadline(java.time.LocalDateTime.now().plusDays(2)).build();
+        timesheetDisputeRepository.save(d);
+        return ApiResponse.ok(disputeMap(d), "Đã gửi khiếu nại bảng công");
+    }
+
     @GetMapping("/disputes")
     @Operation(summary = "Danh sách khiếu nại (S45)")
     public ApiResponse<List<Map<String, Object>>> disputes() {
-        return ApiResponse.ok(List.of(
-                Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "status", "PENDING"),
-                Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "status", "PENDING")
-        ), "Danh sách khiếu nại");
+        List<Map<String, Object>> list = new java.util.ArrayList<>();
+        for (TimesheetDispute d : timesheetDisputeRepository.findAllByOrderByCreatedAtDesc()) {
+            Map<String, Object> m = disputeMap(d);
+            if ("EXPIRED".equals(m.get("status")) && "PENDING".equals(d.getStatus())) {
+                d.setStatus("EXPIRED");
+                timesheetDisputeRepository.save(d);
+            }
+            list.add(m);
+        }
+        return ApiResponse.ok(list, "Danh sách khiếu nại");
     }
 
     @GetMapping("/disputes/{id}")
-    @Operation(summary = "Chi tiết khiếu nại (S33)")
+    @Operation(summary = "Chi tiết khiếu nại (S33/D4)")
     public ApiResponse<Map<String, Object>> dispute(@PathVariable String id) {
-        return ApiResponse.ok(Map.of("id", id, "status", "PENDING",
-                "before", "Vắng không phép", "after", "Có check-in 08:47"), "Chi tiết khiếu nại");
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        Map<String, Object> result = disputeMap(d);
+        result.put("before", "Log chấm công gốc — xem tại bảng công ngày " + result.get("date"));
+        result.put("after", "Ô bảng công HR đang sửa");
+        result.put("ruleHint", "Thiếu check-out và chưa tạo đơn bổ sung công");
+        return ApiResponse.ok(result, "Chi tiết khiếu nại");
+    }
+
+    @PostMapping("/disputes/{id}/resolve")
+    @Operation(summary = "Xử lý khiếu nại: sửa ô / tạo đơn bổ sung / từ chối (bắt buộc lý do)")
+    public ApiResponse<Map<String, Object>> resolveDispute(@PathVariable String id, @RequestBody Map<String, String> body) {
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        String action = body.getOrDefault("action", "REJECT");
+        if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
+            throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
+        }
+        d.setStatus("REJECT".equals(action) ? "REJECTED" : "RESOLVED");
+        d.setResolutionAction(action);
+        d.setResolvedBy(CurrentUser.userId());
+        d.setResolvedAt(java.time.LocalDateTime.now());
+        timesheetDisputeRepository.save(d);
+
+        AuditLog log = AuditLog.builder().action("RESOLVE_DISPUTE").entityName("DISPUTE").entityId(id)
+                .userId(CurrentUser.userId()).reason(body.get("reason")).newValue(action).build();
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        auditLogRepository.save(log);
+
+        notificationRepository.save(Notification.builder()
+                .userId(d.getUserId())
+                .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
+                .content("Khiếu nại ngày " + d.getWorkDate() + ": " + d.getReason()
+                        + ". Lý do xử lý: " + body.get("reason"))
+                .type("DISPUTE")
+                .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
+                .actionUrl("/attendance/disputes/" + id)
+                .isRead(false)
+                .build());
+
+        return ApiResponse.ok(disputeMap(d), "Đã xử lý khiếu nại");
     }
 
     @GetMapping("/notifications/preferences")

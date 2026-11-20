@@ -16,6 +16,7 @@ export const LoginPage: React.FC = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const sessionExpired = new URLSearchParams(window.location.search).get('expired') === '1';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,10 +72,16 @@ export const LoginPage: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-ink">Đăng nhập tài khoản</h2>
             <p className="text-xs text-ink-secondary mt-0.5">
-              Dùng tài khoản công ty do HR cấp (demo: <code className="font-mono font-bold text-accent">136ACT / 123456</code>)
+              Dùng tài khoản công ty do HR cấp · demo: <code className="font-mono font-bold text-accent">01HR</code> (HR), <code className="font-mono font-bold text-accent">05ACT</code> (Manager), <code className="font-mono font-bold text-accent">136ACT</code> (Nhân viên) — mật khẩu <code className="font-mono font-bold text-accent">123456</code>
             </p>
           </div>
 
+          {sessionExpired && !error && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+              <span>⏳</span>
+              <span>Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</span>
+            </div>
+          )}
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
               <span>⚠️</span>
@@ -92,7 +99,7 @@ export const LoginPage: React.FC = () => {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ví dụ: Admin hoặc admin@act-corp.internal"
+                placeholder="Mã nhân viên hoặc email"
                 className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas focus:outline-none focus:border-accent font-medium text-ink"
               />
             </div>

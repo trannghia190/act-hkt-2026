@@ -70,10 +70,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // Localhost mọi cổng + các domain tunnel dùng để demo công khai và pattern wildcard
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*", "http://127.0.0.1:*",
+                "https://*.ngrok-free.app", "https://*.ngrok-free.dev",
+                "https://*.ngrok.app", "https://*.ngrok.io",
+                "https://*.trycloudflare.com", "https://*.loca.lt", "https://*.ts.net",
+                "*"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "X-Auth-Token", "Content-Type", "X-Device-Fingerprint", "*"));
         configuration.setExposedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

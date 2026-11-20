@@ -25,28 +25,28 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const actions = [
-    { label: 'Cần làm (Todo Inbox) (S02)', path: '/todo', group: 'Thao tác nhanh' },
-    { label: 'Chấm công vào ca Mobile 5 tầng (S05m)', path: '/attendance/checkin', group: 'Thao tác nhanh' },
-    { label: 'Tạo đơn làm việc tại nhà WFH / Nghỉ phép (S08)', path: '/attendance/requests', group: 'Thao tác nhanh' },
-    { label: 'Hộp thư duyệt đơn từ cấp dưới (S12)', path: '/attendance/approvals', group: 'Duyệt đơn' },
-    { label: 'Bảng công cá nhân của tôi (S11)', path: '/attendance/my-timesheet', group: 'Bảng công' },
-    { label: 'Lịch trực quan nhóm Team Schedule (S14)', path: '/attendance/team-schedule', group: 'Quản lý nhóm' },
-    { label: 'Bảng công & Chốt lương 53 cột (S15)', path: '/attendance/timesheet', group: 'Bảng công' },
-    { label: 'Số dư phép năm cá nhân (S09)', path: '/attendance/leaves', group: 'Phép năm' },
-    { label: 'Sổ cái biến động phép toàn công ty (S34)', path: '/attendance/leave-ledger', group: 'Quản trị' },
-    { label: 'Dashboard OKR cá nhân (S20)', path: '/okr/dashboard', group: 'OKR' },
-    { label: 'Thiết lập & Check-in tiến độ OKR (S21)', path: '/okr/my-okr', group: 'OKR' },
-    { label: 'Duyệt mục tiêu OKR nhóm (S42)', path: '/okr/team-approvals', group: 'OKR Quản lý' },
-    { label: 'Review & Coaching giữa năm (S43)', path: '/okr/mid-year-review', group: 'OKR Quản lý' },
-    { label: 'Form Đánh giá OKR cuối năm 4 Box (S23)', path: '/okr/assessment', group: 'OKR' },
-    { label: 'Bảng tổng hợp HR OKR 9 trường (S25)', path: '/okr/summary-report', group: 'Báo cáo' },
-    { label: 'Quản lý nhân viên & tài khoản (S40)', path: '/admin/employees', group: 'Quản trị' },
-    { label: 'Sơ đồ tổ chức & phòng ban (S41)', path: '/admin/org-tree', group: 'Quản trị' },
-    { label: 'Ca làm việc & lịch nghỉ lễ (S26)', path: '/admin/shifts', group: 'Quản trị' },
-    { label: 'Đăng ký mẫu khuôn mặt (S01-B)', path: '/auth/enroll-face', group: 'Xác thực' },
-    { label: 'Cấu hình 19 quy định Rule Engine (S16)', path: '/admin/rules', group: 'Quản trị' },
-    { label: 'Tra cứu nội quy công ty tự động sinh (S19)', path: '/admin/policy-doc', group: 'Tra cứu' },
-    { label: 'Nhật ký kiểm toán hệ thống Audit Logs (S35)', path: '/admin/audit-logs', group: 'Kiểm toán' },
+    { label: 'Cần làm (Todo Inbox)', path: '/todo', group: 'Thao tác nhanh' },
+    { label: 'Chấm công vào ca Mobile 5 tầng', path: '/attendance/checkin', group: 'Thao tác nhanh' },
+    { label: 'Tạo đơn làm việc tại nhà WFH / Nghỉ phép', path: '/attendance/requests', group: 'Thao tác nhanh' },
+    { label: 'Hộp thư duyệt đơn từ cấp dưới', path: '/attendance/approvals', group: 'Duyệt đơn' },
+    { label: 'Bảng công cá nhân của tôi', path: '/attendance/my-timesheet', group: 'Bảng công' },
+    { label: 'Lịch trực quan nhóm Team Schedule', path: '/attendance/team-schedule', group: 'Quản lý nhóm' },
+    { label: 'Bảng công & Chốt lương 53 cột', path: '/attendance/timesheet', group: 'Bảng công' },
+    { label: 'Số dư phép năm cá nhân', path: '/attendance/leaves', group: 'Phép năm' },
+    { label: 'Sổ cái biến động phép toàn công ty', path: '/attendance/leave-ledger', group: 'Quản trị' },
+    { label: 'Dashboard OKR cá nhân', path: '/okr/dashboard', group: 'OKR' },
+    { label: 'Thiết lập & Check-in tiến độ OKR', path: '/okr/my-okr', group: 'OKR' },
+    { label: 'Duyệt mục tiêu OKR nhóm', path: '/okr/team-approvals', group: 'OKR Quản lý' },
+    { label: 'Review & Coaching giữa năm', path: '/okr/mid-year-review', group: 'OKR Quản lý' },
+    { label: 'Form Đánh giá OKR cuối năm 4 Box', path: '/okr/assessment', group: 'OKR' },
+    { label: 'Bảng tổng hợp HR OKR 9 trường', path: '/okr/summary-report', group: 'Báo cáo' },
+    { label: 'Quản lý nhân viên & tài khoản', path: '/admin/employees', group: 'Quản trị' },
+    { label: 'Sơ đồ tổ chức & phòng ban', path: '/admin/org-tree', group: 'Quản trị' },
+    { label: 'Ca làm việc & lịch nghỉ lễ', path: '/admin/shifts', group: 'Quản trị' },
+    { label: 'Đăng ký mẫu khuôn mặt', path: '/auth/enroll-face', group: 'Xác thực' },
+    { label: 'Cấu hình 19 quy định Rule Engine', path: '/admin/rules', group: 'Quản trị' },
+    { label: 'Tra cứu nội quy công ty tự động sinh', path: '/admin/policy-doc', group: 'Tra cứu' },
+    { label: 'Nhật ký kiểm toán hệ thống Audit Logs', path: '/admin/audit-logs', group: 'Kiểm toán' },
   ];
 
   const filtered = actions.filter((a) =>
@@ -102,7 +102,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
         <div className="px-4 py-2.5 bg-canvas border-t border-line text-[11px] text-ink-muted flex items-center justify-between">
           <span>Dùng phím mũi tên để chọn, Enter để mở</span>
-          <span className="font-mono text-[10px]">Command Palette S03</span>
+          <span className="font-mono text-[10px]">Command Palette</span>
         </div>
       </div>
     </div>

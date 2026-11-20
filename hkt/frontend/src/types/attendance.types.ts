@@ -73,9 +73,10 @@ export interface AttendanceRequestItem {
   endDate: string;
   durationText: string;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
   approver: string;
   approverComment?: string;
+  attachmentCount?: number;
   createdAt: string;
 }
 

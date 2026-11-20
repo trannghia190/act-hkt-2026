@@ -1,31 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-interface PendingDevice { id: string; employee: string; device: string; reason: string; requestedAt: string; }
-const initial: PendingDevice[] = [
-  { id: 'P1', employee: 'Vũ Văn Luận (136ACT)', device: 'MacBook Pro · web-7c1a', reason: 'Dùng laptop khi WFH', requestedAt: '12/11/2026' },
-];
+interface Device {
+  id: string;
+  deviceFingerprint: string;
+  deviceModel?: string;
+  osVersion?: string;
+  isApproved: boolean;
+  userId: string;
+  lastActiveAt?: string;
+}
+
+const authHeaders = (): Record<string, string> => {
+  try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}` } : {}; } catch { return {}; }
+};
 
 export const AdminDevicesPage: React.FC = () => {
-  const [pending, setPending] = useState(initial);
-  const decide = (id: string, approve: boolean) => setPending(p => p.filter(d => d.id !== id));
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetch('/api/v1/admin/devices', { headers: authHeaders() })
+      .then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setDevices(j.data); else setError(j?.message || 'Không tải được thiết bị'); })
+      .catch(() => setError('Không tải được thiết bị'));
+  };
+  useEffect(load, []);
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
+
+  const act = async (d: Device, approve: boolean) => {
+    let reason = '';
+    if (!approve) {
+      reason = window.prompt('Lý do thu hồi (bắt buộc):', 'Mất máy / đổi thiết bị mới') || '';
+      if (!reason.trim()) return;
+    }
+    const res = await fetch(`/api/v1/admin/devices/${d.id}/${approve ? 'approve' : 'revoke'}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: approve ? '{}' : JSON.stringify({ reason }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Thao tác thất bại'); return; }
+    showToast(approve ? 'Đã duyệt thiết bị' : 'Đã thu hồi thiết bị'); load();
+  };
+
+  const pending = devices.filter(d => !d.isApproved);
+  const active = devices.filter(d => d.isApproved);
+
   return (
     <div className="max-w-4xl mx-auto space-y-4">
+      {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S28 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Quản lý thiết bị — duyệt & thu hồi</h1>
-        <p className="text-xs text-ink-muted mt-1">Máy thứ 3 trở đi cần lý do; mọi thao tác ghi nhật ký thay đổi.</p>
+        <p className="text-xs text-ink-muted mt-1">Mặc định2 thiết bị/người; máy thứ3 trở đi cần lý do. Mọi thao tác ghi nhật ký thay đổi.</p>
       </div>
+      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+
       <div className="bg-surface border border-line rounded-xl p-4">
-        <h2 className="text-sm font-bold mb-3">Chờ duyệt ({pending.length})</h2>
-        {pending.length === 0 && <div className="text-xs text-ink-muted">Không có yêu cầu chờ duyệt.</div>}
+        <h2 className="text-sm font-bold mb-2">Chờ duyệt ({pending.length})</h2>
+        {pending.length === 0 && <div className="text-xs text-ink-muted mb-2">Không có yêu cầu chờ duyệt.</div>}
         {pending.map(d => (
-          <div key={d.id} className="border border-line rounded-lg p-3 mb-2 text-sm">
-            <div className="font-semibold">{d.employee}</div>
-            <div className="text-xs text-ink-muted mt-1">{d.device} · {d.requestedAt} · Lý do: {d.reason}</div>
-            <div className="flex gap-2 mt-2">
-              <button className="text-xs px-3 py-1 rounded bg-emerald-600 text-white" onClick={() => decide(d.id, true)}>Duyệt</button>
-              <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => decide(d.id, false)}>Từ chối</button>
+          <div key={d.id} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 mb-2 text-sm">
+            <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
+              <div className="text-xs text-ink-muted">{d.deviceFingerprint}</div></div>
+            <div className="flex gap-2">
+              <button className="text-xs px-3 py-1 rounded bg-emerald-600 text-white" onClick={() => act(d, true)}>Duyệt</button>
+              <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => act(d, false)}>Từ chối</button>
             </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-surface border border-line rounded-xl p-4">
+        <h2 className="text-sm font-bold mb-2">Đang hoạt động ({active.length})</h2>
+        {active.map(d => (
+          <div key={d.id} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 mb-2 text-sm">
+            <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
+              <div className="text-xs text-ink-muted">{d.deviceFingerprint} · {d.osVersion || 'Web'}</div></div>
+            <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => act(d, false)}>Thu hồi</button>
           </div>
         ))}
       </div>

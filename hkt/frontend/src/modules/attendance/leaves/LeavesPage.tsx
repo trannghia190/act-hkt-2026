@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -13,58 +13,61 @@ interface LeaveLedgerEntry {
 }
 
 export const LeavesPage: React.FC = () => {
-  const [balance] = useState({
-    carriedOver: 3.5, // Rollover from 2025
-    grantedCurrentYear: 12.0,
-    seniorityBonus: 1.0,
-    totalEntitlement: 16.5,
-    used: 4.5,
-    remaining: 12.0,
-    expiringOnMarch31: 3.5,
+  const [balance, setBalance] = useState({
+    carriedOver: 0,
+    grantedCurrentYear: 0,
+    seniorityBonus: 0,
+    totalEntitlement: 0,
+    used: 0,
+    remaining: 0,
+    expiringOnMarch31: 0,
+    annualRemaining: 0,
+    carriedRemaining: 0,
   });
 
-  const [ledger] = useState<LeaveLedgerEntry[]>([
-    {
-      id: 'L-004',
-      date: '18/11/2026',
-      type: 'USED',
-      description: 'Nghỉ phép ốm cá nhân (Đơn REQ-2026-0042)',
-      amount: -1.5,
-      balanceAfter: 12.0
-    },
-    {
-      id: 'L-003',
-      date: '13/11/2026',
-      type: 'USED',
-      description: 'Nghỉ phép năm cá nhân (Đơn REQ-2026-0030)',
-      amount: -1.0,
-      balanceAfter: 13.5
-    },
-    {
-      id: 'L-002',
-      date: '15/06/2026',
-      type: 'USED',
-      description: 'Nghỉ mát hè cùng gia đình',
-      amount: -2.0,
-      balanceAfter: 14.5
-    },
-    {
-      id: 'L-001',
-      date: '01/01/2026',
-      type: 'GRANT',
-      description: 'Cấp phép năm 2026 (12 ngày) + Bảo lưu 2025 (3.5 ngày) + Thâm niên (1 ngày)',
-      amount: +16.5,
-      balanceAfter: 16.5
-    }
-  ]);
+  const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
+
+  useEffect(() => {
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch('/api/v1/leaves/my-balance', { headers }).then(r => r.json()).then(j => {
+      if (j?.data) {
+        const granted = Number(j.data.granted || 0);
+        const used = Number(j.data.used || 0);
+        const carried = Number(j.data.carriedRemaining ?? 0);
+        const annual = Number(j.data.annualRemaining ?? 0);
+        const seniority = Math.max(0, granted - 12 - carried);
+        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted, used,
+          remaining: Number(j.data.remaining || 0),
+          annualRemaining: annual,
+          carriedRemaining: carried,
+          carriedOver: carried,
+          seniorityBonus: seniority,
+          expiringOnMarch31: carried }));
+      }
+    }).catch(() => undefined);
+    fetch('/api/v1/leaves/my-ledger', { headers }).then(r => r.json()).then(j => {
+      if (Array.isArray(j?.data)) {
+        setLedger(j.data.map((e: any) => ({
+          id: e.id, date: e.createdAt ? new Date(e.createdAt).toLocaleDateString('vi-VN') : '—',
+          type: e.action, description: e.reason || e.leaveType, amount: Number(e.amount || 0),
+          balanceAfter: Number(e.balanceAfter || 0),
+        })));
+      }
+    }).catch(() => undefined);
+  }, []);
 
   const [filterType, setFilterType] = useState('Tất cả');
+  const [filterYear, setFilterYear] = useState('2026');
   const filteredLedger = ledger.filter(entry => {
+    if (filterYear !== 'Tất cả' && !entry.date.endsWith(filterYear)) return false;
     if (filterType === 'Tất cả') return true;
     if (filterType === 'Phép năm') return entry.description.toLowerCase().includes('phép năm') || entry.type === 'GRANT';
     if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
     if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
     if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
+    if (filterType === 'Chức vụ') return entry.description.toLowerCase().includes('chức vụ');
+    if (filterType === 'Thâm niên') return entry.description.toLowerCase().includes('thâm niên');
     return true;
   });
 
@@ -75,7 +78,6 @@ export const LeavesPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Số Dư Phép &amp; Sổ Phép Cá Nhân</h1>
-            <Badge variant="accent">S09 / S34</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Minh bạch từng ngày nghỉ phép năm, bảo lưu phép năm cũ và hạn chót sử dụng trước ngày 31/03
@@ -87,9 +89,11 @@ export const LeavesPage: React.FC = () => {
       <div className="p-4 bg-amber-50 rounded-xl border border-amber-300 text-xs flex items-start gap-3 text-amber-900 shadow-xs">
         <span className="text-lg">⚠️</span>
         <div>
-          <div className="font-bold">Lưu ý về Hạn sử dụng phép tồn năm trước (Rollover Deadline)</div>
+          <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
           <p className="mt-0.5 text-amber-800 leading-relaxed">
-            Bạn hiện có <strong>{balance.expiringOnMarch31} ngày phép tồn từ năm trước</strong>. Theo điều khoản số 04 trong Quy chế Nội bộ, toàn bộ số phép tồn này sẽ tự động hết hiệu lực sau ngày <strong>31/03/2027</strong>. Hãy chủ động lên kế hoạch nghỉ phép trước hạn.
+            {balance.expiringOnMarch31 > 0
+              ? <>Bạn hiện có <strong>{balance.expiringOnMarch31} ngày phép tồn từ năm trước</strong>. Theo điều khoản số 04 trong Quy chế Nội bộ, toàn bộ số phép tồn này sẽ tự động hết hiệu lực sau ngày <strong>31/03/2027</strong>. Hãy chủ động lên kế hoạch nghỉ phép trước hạn.</>
+              : <>Bạn hiện không có phép tồn từ năm trước. Phép năm 2026 cấp mới sẽ dùng theo quy chế hiện hành (01/04 giữ tối đa 5 ngày · 01/07 về 0).</>}
           </p>
         </div>
       </div>
@@ -99,19 +103,21 @@ export const LeavesPage: React.FC = () => {
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Tổng Phép Năm Được Hưởng</div>
           <div className="text-2xl font-bold text-ink mt-1">{balance.totalEntitlement} ngày</div>
-          <div className="text-[11px] text-ink-secondary mt-1">12 chuẩn + 3.5 tồn + 1 thâm niên</div>
+          <div className="text-[11px] text-ink-secondary mt-1">{balance.grantedCurrentYear - balance.carriedOver - balance.seniorityBonus} chuẩn + {balance.carriedOver} tồn + {balance.seniorityBonus} thâm niên</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép Đã Sử Dụng</div>
           <div className="text-2xl font-bold text-rose-700 mt-1">{balance.used} ngày</div>
-          <div className="text-[11px] text-rose-600 mt-1">3 đợt nghỉ đã được duyệt</div>
+          <div className="text-[11px] text-rose-600 mt-1">{ledger.filter(e => e.type === 'USED' && e.amount < 0).length} đợt nghỉ đã được duyệt</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20">
-          <div className="text-xs text-accent-dark font-medium">Số Dư Phép Còn Lại</div>
+          <div className="text-xs text-accent-dark font-medium">Tổng phép còn lại</div>
           <div className="text-2xl font-extrabold text-accent mt-1">{balance.remaining} ngày</div>
-          <div className="text-[11px] text-accent-dark mt-1">Sẵn sàng để đăng ký</div>
+          <div className="text-[11px] text-accent-dark mt-1">Phép năm {balance.annualRemaining} + Phép tồn {balance.carriedRemaining}</div>
+          <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${balance.totalEntitlement > 0 ? Math.round((balance.used / balance.totalEntitlement) * 100) : 0}%` }} /></div>
+          <div className="text-[10px] text-ink-muted mt-1">Đã dùng {balance.used}/{balance.totalEntitlement} ngày</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -119,24 +125,37 @@ export const LeavesPage: React.FC = () => {
           <div className="text-2xl font-bold text-amber-700 mt-1">{balance.expiringOnMarch31} ngày</div>
           <div className="text-[11px] text-amber-600 mt-1">Cần ưu tiên trừ trước</div>
         </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép ốm (S)</div>
+          <div className="text-2xl font-bold text-ink mt-1">0 ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
+        </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép thâm niên</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.seniorityBonus} ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
+        </div>
       </div>
 
-      {/* Bộ lọc lịch sử phép (S09) */}
+      {/* Bộ lọc lịch sử phép */}
       <div className="flex flex-wrap items-center gap-2">
-        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù'].map(f => (
+        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
           <button key={f} onClick={() => setFilterType(f)}
             className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {f}
           </button>
         ))}
-        <select className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
-          <option>Năm: 2026</option>
-          <option>Năm: 2025</option>
+        <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+          <option value="2026">Năm: 2026</option>
+          <option value="2025">Năm: 2025</option>
+          <option value="Tất cả">Tất cả năm</option>
         </select>
       </div>
 
       {/* Ledger Table */}
-      <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động - S34)">
+      <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động)">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>

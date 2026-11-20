@@ -295,7 +295,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={item.id}
                       to={item.path}
                       onClick={onCloseMobile}
-                      title={`${item.label} (${item.screenId})`}
+                      title={item.label}
                       className={({ isActive }) =>
                         `flex items-center rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
                           collapsed ? 'justify-center p-2.5 relative' : 'gap-2.5 px-3 py-2'
@@ -322,7 +322,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               {item.badge}
                             </span>
                           )}
-                          <span className="text-[9px] font-mono opacity-40 shrink-0">{item.screenId}</span>
                         </>
                       ) : (
                         item.badge && (
