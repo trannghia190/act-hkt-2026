@@ -118,7 +118,8 @@ export const MyTimesheetPage: React.FC = () => {
       } else if (wfh) {
         status = 'WFH';
         note = payload.half_day_period
-          ? `WFH buổi ${payload.half_day_period === 'MORNING' ? 'sáng' : 'chiều'} · làm việc ${payload.work_window_start || '—'}–${payload.work_window_end || '—'}`
+          ? `WFH buổi ${payload.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}`
+            + (payload.work_window_start && payload.work_window_end ? ` · làm việc ${payload.work_window_start}–${payload.work_window_end}` : '')
           : 'Làm việc từ xa (WFH) cả ngày';
       } else if (lateEarly) {
         status = lateMinutes > 0 ? 'LATE' : 'FULL';
