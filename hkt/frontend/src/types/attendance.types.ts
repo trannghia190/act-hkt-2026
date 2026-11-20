@@ -77,6 +77,9 @@ export interface AttendanceRequestItem {
   approver: string;
   approverComment?: string;
   attachmentCount?: number;
+  leaveType?: string;
+  payload?: string;
+  minutes?: number;
   createdAt: string;
 }
 

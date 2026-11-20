@@ -405,6 +405,43 @@ public class RequestController {
         return ApiResponse.ok(requestRepository.save(r), "Đã rút đơn");
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Nhân viên sửa đơn đang chờ duyệt hoặc đã bị từ chối rồi gửi lại")
+    public ApiResponse<RequestEntity> updateRequest(@PathVariable UUID id, @RequestBody CreateRequest body) {
+        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được sửa đơn của mình");
+        if (!"PENDING_APPROVAL".equals(r.getStatus()) && !"REJECTED".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
+            throw new RuntimeException("Chỉ sửa được đơn nháp, đang chờ duyệt hoặc bị từ chối");
+        }
+        if (body.getType() != null) r.setRequestType(body.getType());
+        if (body.getLeaveType() != null) r.setLeaveType(body.getLeaveType());
+        if (body.getWorkDate() != null) r.setWorkDate(body.getWorkDate());
+        r.setEndDate(body.getEndDate() == null ? r.getWorkDate() : body.getEndDate());
+        if (body.getMinutes() != null) r.setMinutes(body.getMinutes());
+        if (body.getReason() != null) r.setReason(body.getReason());
+        if (body.getPayload() != null) r.setPayload(body.getPayload());
+        if (r.getReason() == null || r.getReason().isBlank()) throw new RuntimeException("Đơn phải có lý do");
+
+        if ("LEAVE".equals(r.getRequestType())
+                && leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType())
+                    .map(lt -> Boolean.TRUE.equals(lt.getRequiresAttachment())).orElse(false)
+                && requestAttachmentRepository.countByRequestId(id) == 0) {
+            throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm");
+        }
+        if ("LATE_EARLY".equals(r.getRequestType())) {
+            int maxMinutes = ruleService.getInt("late_early", "max_minutes", 60);
+            if (r.getMinutes() == null || r.getMinutes() <= 0) throw new RuntimeException("Đơn đi muộn/về sớm phải có số phút > 0");
+            if (r.getMinutes() > maxMinutes) throw new RuntimeException("Đi muộn/về sớm tối đa " + maxMinutes + " phút mỗi lần");
+        }
+
+        r.setStatus("PENDING_APPROVAL");
+        r.setDecidedBy(null);
+        r.setDecidedAt(null);
+        r.setDecisionComment(null);
+        r.setUpdatedAt(LocalDateTime.now());
+        return ApiResponse.ok(requestRepository.save(r), "Đã cập nhật đơn và gửi lại quản lý");
+    }
+
     @PostMapping("/{id}/submit")
     @Operation(summary = "Gửi duyệt đơn đang lưu nháp")
     public ApiResponse<RequestEntity> submitDraft(@PathVariable UUID id) {

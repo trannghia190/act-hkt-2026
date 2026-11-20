@@ -19,6 +19,8 @@ export const RequestsPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAttachmentCount, setEditingAttachmentCount] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
@@ -84,6 +86,7 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || '',
       team: r.team || user?.team || '',
       type: r.requestType,
+      leaveType: r.leaveType,
       typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName || r.leaveType}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '',
       endDate: r.endDate || r.workDate || '',
@@ -98,6 +101,9 @@ export const RequestsPage: React.FC = () => {
       reason: r.reason || '',
       status: r.status === 'PENDING_APPROVAL' ? 'PENDING' : r.status,
       approver: r.approverName || (r.decidedAt ? 'Quản lý đã xử lý' : '—'),
+      payload: r.payload,
+      minutes: r.minutes,
+      attachmentCount: Number(r.attachmentCount || 0),
       createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
     } as AttendanceRequestItem;
@@ -227,7 +233,7 @@ export const RequestsPage: React.FC = () => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
-    if (leaveNeedsAttachment && attachments.length === 0) {
+    if (leaveNeedsAttachment && attachments.length === 0 && !(editingId && editingAttachmentCount > 0)) {
       showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi');
       return;
     }
@@ -331,7 +337,7 @@ export const RequestsPage: React.FC = () => {
       return;
     }
     // Chặn trước nếu vượt quota 2 ngày WFH/tuần (backend cũng chặn từng đơn).
-    if (newReq.type === 'WFH') {
+    if (newReq.type === 'WFH' && !editingId) {
       const weekKey = (iso: string) => {
         const d = new Date(iso + 'T00:00:00');
         const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
@@ -351,13 +357,22 @@ export const RequestsPage: React.FC = () => {
     (async () => {
       const createdIds: string[] = [];
       try {
-        for (const iso of sendDates) {
-          const res = await fetch('/api/v1/requests', {
-            method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...body, workDate: iso }),
+        if (editingId) {
+          const res = await fetch(`/api/v1/requests/${editingId}`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify(body),
           });
           const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
-          if (json?.data?.id) createdIds.push(json.data.id);
+          if (!res.ok) throw new Error(json?.message || 'Cập nhật đơn thất bại');
+          createdIds.push(editingId);
+        } else {
+          for (const iso of sendDates) {
+            const res = await fetch('/api/v1/requests', {
+              method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...body, workDate: iso }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json?.message || 'Gửi đơn thất bại');
+            if (json?.data?.id) createdIds.push(json.data.id);
+          }
         }
         let uploadFailed = false;
         for (const requestId of createdIds) {
@@ -378,11 +393,14 @@ export const RequestsPage: React.FC = () => {
           if (uploadFailed) break;
         }
         showToast(uploadFailed
-          ? 'Đơn đã tạo nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
-          : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
-              : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công')));
+          ? 'Đơn đã cập nhật nhưng tải giấy tờ thất bại — mở chi tiết đơn để đính kèm lại'
+          : (editingId ? 'Đã cập nhật đơn và gửi lại quản lý'
+              : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
+                  : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))));
         loadRequests();
         setIsCreateOpen(false);
+        setEditingId(null);
+        setEditingAttachmentCount(0);
         setAttachments([]);
         setLeaveUnit('DAY');
         setHalfDayPeriod('MORNING');
@@ -415,6 +433,29 @@ export const RequestsPage: React.FC = () => {
     if (!res.ok) { showToast(json?.message || 'Gửi duyệt thất bại'); return; }
     showToast('Đã gửi đơn nháp tới quản lý');
     loadRequests();
+  };
+
+  const openEditRequest = (req: AttendanceRequestItem) => {
+    let p: any = {};
+    try { p = JSON.parse(req.payload || '{}'); } catch { p = {}; }
+    setEditingId(req.id);
+    setEditingAttachmentCount(req.attachmentCount || 0);
+    setAttachments([]);
+    setLeaveUnit(p.unit === 'HALF_DAY' || p.half_day_period ? 'HALF_DAY' : 'DAY');
+    setHalfDayPeriod(p.half_day_period === 'AFTERNOON' ? 'AFTERNOON' : 'MORNING');
+    if (req.type === 'LATE_EARLY') {
+      setLateEarlyKind(p.late_early === 'EARLY' ? 'EARLY' : 'LATE');
+      if (p.time) setLateEarlyTime(String(p.time).slice(0, 5));
+    }
+    setNewReq({
+      type: req.type as any,
+      startDate: req.startDate,
+      endDate: req.endDate || req.startDate,
+      duration: p.duration || req.durationText || '1.0 ngày',
+      leaveType: req.leaveType || 'AL',
+      reason: req.reason,
+    });
+    setIsCreateOpen(true);
   };
 
   // Gợi ý điền đơn từ log chấm công thật (không hiển thị mô tả nội bộ của task).
@@ -481,7 +522,7 @@ export const RequestsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => { setEditingId(null); setEditingAttachmentCount(0); setAttachments([]); setIsCreateOpen(true); }}>
             + Tạo Đơn Mới
           </Button>
         </div>
@@ -639,19 +680,12 @@ export const RequestsPage: React.FC = () => {
                         <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy</Button>
                       </div>
                     ) : req.status === 'PENDING' ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCancelRequest(req.id)}
-                        className="text-status-danger"
-                      >
-                        Hủy đơn
-                      </Button>
+                      <div className="inline-flex gap-1.5">
+                        <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa đơn</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy đơn</Button>
+                      </div>
                     ) : req.status === 'REJECTED' ? (
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setNewReq({ ...newReq, type: req.type as any, reason: req.reason, startDate: req.startDate || newReq.startDate, endDate: req.endDate || newReq.endDate });
-                        setIsCreateOpen(true);
-                      }}>Sửa & gửi lại</Button>
+                      <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa & gửi lại</Button>
                     ) : (
                       <span className="text-ink-muted text-[11px]">Đã xử lý</span>
                     )}
@@ -675,8 +709,8 @@ export const RequestsPage: React.FC = () => {
       {/* Create Modal */}
       <Modal
         isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Tạo Đơn Yêu Cầu Mới"
+        onClose={() => { setIsCreateOpen(false); setEditingId(null); setEditingAttachmentCount(0); }}
+        title={editingId ? "Sửa Đơn Yêu Cầu" : "Tạo Đơn Yêu Cầu Mới"}
         maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 text-xs">
@@ -982,14 +1016,14 @@ export const RequestsPage: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsCreateOpen(false)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => { setIsCreateOpen(false); setEditingId(null); setEditingAttachmentCount(0); }}>
               Hủy
             </Button>
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (leaveNeedsAttachment && attachments.length === 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
-              Gửi Đơn Phê Duyệt
+              {editingId ? 'Cập nhật & Gửi Lại' : 'Gửi Đơn Phê Duyệt'}
             </Button>
           </div>
         </form>
