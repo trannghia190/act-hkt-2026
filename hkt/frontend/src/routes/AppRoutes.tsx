@@ -124,6 +124,7 @@ export const AppRoutes: React.FC = () => {
          ========================================= */}
       <Route path="/attendance/checkin" element={<CheckInPage />} />
       <Route path="/attendance/check-in" element={<Navigate to="/attendance/checkin" replace />} />
+      <Route path="/attendance/enroll" element={<Navigate to="/auth/enroll-face" replace />} />
       <Route path="/attendance/calendar" element={<CalendarPage />} />
       <Route path="/attendance/my-timesheet" element={<MyTimesheetPage />} />
       <Route
