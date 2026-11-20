@@ -194,7 +194,7 @@
 ### B4 · Bảng công của tôi 🔴 · S11
 **Nghiệm thu:**
 - [ ] **Có chọn tháng, mặc định = tháng hiện tại**; đổi tháng bằng dropdown hoặc nút ‹ ›; URL đổi theo `?month=YYYY-MM`
-- [ ] **Lịch tháng dạng ô vuông** — mỗi ngày 1 ô, xếp theo tuần (T2 → CN); nhìn 1 cái thấy ngay ngày nào có vấn đề
+- [ ] **Lịch tháng dạng ô vuông** — mỗi ngày 1 ô, **căn đúng cột thứ thật (T2 → CN)**, chèn ô trống đầu tháng; nhìn 1 cái thấy ngay ngày nào có vấn đề
 - [ ] Đủ **11 cột** số liệu, khớp với bảng điều khiển
 - [ ] **Chỉ khiếu nại được sau khi HR công bố** (ngày 11 hàng tháng) — trước đó xem số tạm tính nhưng khoá nút khiếu nại
 - [ ] Trong 2 ngày → khiếu nại được; quá 2 ngày → nút bị disable + giải thích

@@ -371,6 +371,13 @@ export const MyTimesheetPage: React.FC = () => {
                 {d}
               </div>
             ))}
+            {(() => {
+              const [yy, mm] = selectedMonth.split('-').map(Number);
+              const offset = (new Date(yy, mm - 1, 1).getDay() + 6) % 7; // 0 = Thứ 2
+              return Array.from({ length: offset }, (_, i) => (
+                <div key={`lead-${i}`} aria-hidden="true" className="min-h-[56px]" />
+              ));
+            })()}
             {data.days.map((d) => {
               const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE' || d.status === 'ABSENT';
               const cls =
