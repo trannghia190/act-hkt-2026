@@ -11,7 +11,18 @@ import urllib.error
 import urllib.request
 from datetime import date, timedelta
 
-BASE = os.environ.get("API_BASE", "http://localhost:8081/api/v1")
+def resolve_base_url():
+    if os.environ.get("API_BASE"):
+        return os.environ.get("API_BASE")
+    for port in (8080, 8081):
+        try:
+            with urllib.request.urlopen(f"http://localhost:{port}/api/v1/actuator/health", timeout=1):
+                return f"http://localhost:{port}/api/v1"
+        except Exception:
+            pass
+    return "http://localhost:8081/api/v1"
+
+BASE = resolve_base_url()
 TOKEN = None
 FAILED = []
 

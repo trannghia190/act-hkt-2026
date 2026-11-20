@@ -43,11 +43,16 @@ import { MidYearReviewPage } from '../modules/okr/assessment/MidYearReviewPage';
 import { OKRApprovalsPage } from '../modules/okr/reports/OKRApprovalsPage';
 import { OKRReportsPage } from '../modules/okr/reports/OKRReportsPage';
 
+const RootRedirect: React.FC = () => {
+  const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
+  return <Navigate to={isMobile ? "/attendance/checkin" : "/todo"} replace />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Root redirect to S02 Todo Inbox */}
-      <Route path="/" element={<Navigate to="/todo" replace />} />
+      {/* Root redirect: Mobile opens check-in directly without menu (B1 #1); Desktop opens Todo */}
+      <Route path="/" element={<RootRedirect />} />
 
       {/* 0. Auth & Onboarding */}
       <Route path="/auth/enroll-face" element={<FaceEnrollmentPage />} />
@@ -118,6 +123,8 @@ export const AppRoutes: React.FC = () => {
           MODULE 2: ATTENDANCE & TIME TRACKING
          ========================================= */}
       <Route path="/attendance/checkin" element={<CheckInPage />} />
+      <Route path="/attendance/check-in" element={<Navigate to="/attendance/checkin" replace />} />
+      <Route path="/attendance/enroll" element={<Navigate to="/auth/enroll-face" replace />} />
       <Route path="/attendance/calendar" element={<CalendarPage />} />
       <Route path="/attendance/my-timesheet" element={<MyTimesheetPage />} />
       <Route

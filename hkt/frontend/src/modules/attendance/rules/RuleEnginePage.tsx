@@ -157,7 +157,12 @@ export const RuleEnginePage: React.FC = () => {
 
   const isFieldVisible = (key: string, values: Record<string, any>): boolean => {
     if (key === 'offline_max_hours') return Boolean(values.allow_offline_punch);
-    if (key === 'geofence_radius_m' || key === 'gps_accuracy_tolerance_m') return Boolean(values.require_geofence);
+    if (key === 'geofence_radius_m' || key === 'gps_accuracy_tolerance_m' || key === 'office_lat' || key === 'office_lng') {
+      return Boolean(values.require_geofence);
+    }
+    if (key === 'office_wifi_keywords' || key === 'office_ip_prefixes') {
+      return Boolean(values.require_internal_network);
+    }
     if (key === 'face_match_threshold' || key === 'require_liveness' || key === 'face_max_attempts') {
       return Boolean(values.require_face_verification);
     }
