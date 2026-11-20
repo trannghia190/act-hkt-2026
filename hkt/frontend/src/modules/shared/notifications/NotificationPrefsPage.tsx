@@ -5,7 +5,6 @@ export const NotificationPrefsPage: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S36 · Tất cả vai trò</div>
         <h1 className="text-xl font-bold text-ink mt-1">Tuỳ chỉnh thông báo</h1>
         <p className="text-xs text-ink-muted mt-1">Tắt thông báo không làm mất việc — việc vẫn nằm trong "Cần làm".</p>
       </div>

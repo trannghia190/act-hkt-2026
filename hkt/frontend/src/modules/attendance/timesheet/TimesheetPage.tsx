@@ -264,7 +264,6 @@ export const TimesheetPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Tổng Hợp Công &amp; Chốt Lương (Master Timesheet)</h1>
-            <Badge variant="accent">S15</Badge>
             <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá' : sheetStatus === 'published' ? 'Đang khiếu nại' : 'Bản nháp'}</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
@@ -589,7 +588,7 @@ export const TimesheetPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log S35) <span className="text-rose-600">*</span></label>
+              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log) <span className="text-rose-600">*</span></label>
               <textarea
                 rows={3}
                 placeholder="Ví dụ: Bổ sung công 0.5 ngày theo xác nhận trực tiếp của Trưởng phòng..."

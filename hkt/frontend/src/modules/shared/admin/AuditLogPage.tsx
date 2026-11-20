@@ -119,7 +119,6 @@ export const AuditLogPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Nhật Ký Kiểm Toán (Audit Logs)</h1>
-            <Badge variant="accent">S35</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Ghi vết bất biến toàn bộ các hành động nhạy cảm: thay đổi quyền người dùng, chỉnh sửa bảng công, cập nhật rule engine và hiệu chỉnh điểm OKR

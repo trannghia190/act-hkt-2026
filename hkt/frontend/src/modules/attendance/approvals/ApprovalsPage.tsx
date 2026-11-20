@@ -154,7 +154,6 @@ export const ApprovalsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Phê Duyệt Đơn Nhóm (Manager Approvals)</h1>
-            <Badge variant="accent">S12</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Duyệt hàng loạt đơn xin nghỉ phép, làm từ xa (WFH), làm thêm giờ (OT) và giải trình vi phạm của nhân viên cấp dưới

@@ -88,7 +88,7 @@ export const NotificationDropdown: React.FC = () => {
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="relative p-1.5 sm:p-2 rounded-lg border border-line bg-canvas hover:bg-surface text-ink-secondary transition-colors cursor-pointer"
-        title="Trung tâm thông báo (S04)"
+        title="Trung tâm thông báo"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
@@ -109,7 +109,7 @@ export const NotificationDropdown: React.FC = () => {
             {/* Header */}
             <div className="p-3.5 border-b border-line flex items-center justify-between bg-canvas">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xs text-ink">Trung Tâm Thông Báo (S04)</span>
+                <span className="font-bold text-xs text-ink">Trung Tâm Thông Báo</span>
                 {unreadCount > 0 && (
                   <span className="text-[10px] bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded font-bold">
                     {unreadCount} mới

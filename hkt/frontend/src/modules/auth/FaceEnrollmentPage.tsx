@@ -140,7 +140,7 @@ export const FaceEnrollmentPage: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-5">
       <div className="bg-canvas border border-line rounded-xl p-6">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-2">
-          <span>📸</span> Đăng ký khuôn mặt (S01-B · task B0)
+          <span>📸</span> Đăng ký khuôn mặt
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">Đăng ký khuôn mặt — 3 góc</h1>
         <p className="text-xs text-ink-muted mt-1">

@@ -99,7 +99,6 @@ export const ShiftHolidayPage: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-4">
       {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S26 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Ca làm việc & lịch nghỉ lễ</h1>
         <p className="text-xs text-ink-muted mt-1">Ca thường / ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · bộ gán ca theo nhóm + chức danh · geofence + dải IP · ngày lễ theo năm.</p>
         <div className="flex gap-2 mt-3">

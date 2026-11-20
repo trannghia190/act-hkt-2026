@@ -263,7 +263,6 @@ export const RequestsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Đơn Của Tôi &amp; Đăng Ký Chấm Công</h1>
-            <Badge variant="accent">S08 / S30 / S31</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Theo dõi tiến độ xét duyệt đơn xin nghỉ, đăng ký làm từ xa (WFH tối đa 2 ngày/tuần), làm thêm giờ (OT) và giải trình quên chấm công
@@ -283,7 +282,6 @@ export const RequestsPage: React.FC = () => {
           <div>
             <div className="font-bold text-emerald-400 flex items-center gap-2">
               <span>Tính năng C-cố: Phát hiện 2 log chấm công bất thường cần làm đơn</span>
-              <Badge variant="accent">S07 / Tự Động</Badge>
             </div>
             <p className="text-[11px] text-ink-muted mt-0.5">
               Hệ thống tự động đọc log chấm công thật và điền sẵn ngày + số phút chính xác (tiết kiệm 100% thời gian nhập liệu).
@@ -439,7 +437,7 @@ export const RequestsPage: React.FC = () => {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Tạo Đơn Yêu Cầu Mới (S08 / S30 / S31)"
+        title="Tạo Đơn Yêu Cầu Mới"
         maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 text-xs">

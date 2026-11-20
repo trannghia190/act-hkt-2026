@@ -366,7 +366,6 @@ export const OrgTreePage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Sơ Đồ Cơ Cấu Tổ Chức &amp; Luồng Duyệt</h1>
-            <Badge variant="accent">S41</Badge>
             {canManage ? (
               <Badge variant="ok">Chế độ Quản trị (Admin/HR)</Badge>
             ) : (
@@ -581,7 +580,7 @@ export const OrgTreePage: React.FC = () => {
                 <div className="mt-1">
                   {selectedTeam.approvalType === 'DIRECT_HR' ? (
                     <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900">
-                      <strong>Cấu hình Ngoại lệ (Direct to HR):</strong> Mọi đơn từ xin nghỉ, OT, giải trình của các thành viên trong nhóm sẽ bỏ qua bước Team Lead và xuất hiện trực tiếp trong hòm thư duyệt của HR Admin (S02 &amp; S12).
+                      <strong>Cấu hình Ngoại lệ (Direct to HR):</strong> Mọi đơn từ xin nghỉ, OT, giải trình của các thành viên trong nhóm sẽ bỏ qua bước Team Lead và xuất hiện trực tiếp trong hòm thư duyệt của HR Admin.
                     </div>
                   ) : (
                     <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-900">

@@ -50,7 +50,6 @@ export const CalendarPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Lịch Chấm Công Tháng Cá Nhân</h1>
-            <Badge variant="accent">S06</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Theo dõi chi tiết nhật ký ra vào, số giờ công tích lũy, các lần dùng quota đi muộn và ngày phép

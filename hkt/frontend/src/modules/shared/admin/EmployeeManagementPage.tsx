@@ -247,7 +247,6 @@ export const EmployeeManagementPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Nhân Viên &amp; Tài Khoản</h1>
-            <Badge variant="accent">S40</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Quản trị nhân sự đầy đủ: Thêm mới, Sửa quyền, Khóa/Xóa, Đặt lại mật khẩu và Tự động gửi email qua Gmail/SMTP

@@ -72,10 +72,10 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Gmail</span>
         </Button>
 
-        {/* Global Multi-channel Notification Center (S04) */}
+        {/* Global Multi-channel Notification Center */}
         <NotificationDropdown />
 
-        {/* Face Enrollment Quick Button (S01-B) */}
+        {/* Face Enrollment Quick Button */}
         <button
           onClick={() => navigate('/auth/enroll-face')}
           className={`px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -83,11 +83,11 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 animate-pulse font-bold'
               : 'border-line bg-canvas hover:bg-surface text-ink-secondary hidden sm:inline-flex'
           }`}
-          title="Đăng ký mẫu khuôn mặt 3 góc (S01-B)"
+          title="Đăng ký mẫu khuôn mặt 3 góc"
         >
           <Camera className="w-3.5 h-3.5 text-accent" />
           <span className="hidden lg:inline">
-            {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt (S01-B)'}
+            {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt'}
           </span>
         </button>
 

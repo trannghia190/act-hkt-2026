@@ -31,7 +31,6 @@ export const DisputesPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S45 · HR</div>
         <h1 className="text-xl font-bold text-ink mt-1">Danh sách khiếu nại bảng công</h1>
         <p className="text-xs text-ink-muted mt-1">Xử lý nhanh ngay trên bảng; click vào dòng để xem chi tiết 3 cột.</p>
       </div>
