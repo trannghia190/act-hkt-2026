@@ -133,3 +133,7 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 * **Đi muộn/về sớm & bổ sung công đã duyệt:** cập nhật `attendance_logs.check_in_at/check_out_at`, `status=VALID` khi đủ cặp giờ → bảng công tính theo giờ thật.
 * **Export 53 cột:** 5 thông tin + 31 ngày + 17 tổng hợp, tên cột theo mẫu Pine, ký hiệu gốc; CSV UTF-8.
 * **Bảng công cá nhân (S11):** đọc `attendance_logs` + `requests` đã duyệt + `my-shift` + `holidays`, tính công chuẩn/thực tế/OT/đi muộn theo ca; không còn mock.
+
+### Lịch tháng dạng ô vuông (S11)
+* Căn đúng cột thứ thật (T2→CN): ô của ngày1 đặt theo `(dayOfWeek+6)%7`, chèn ô trống đầu tháng; kiểm chứng 11/2026: ngày1 là CN → 6 ô trống trước.
+* Ô hiển thị số ngày + ký hiệu/trạng thái; ngày cuối tuần luôn WEEKEND, không bị đơn nghỉ/WFH ghi đè.
