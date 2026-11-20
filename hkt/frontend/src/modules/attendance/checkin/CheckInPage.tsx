@@ -268,7 +268,11 @@ export const CheckInPage: React.FC = () => {
       const detectedCode = faceData.matched_employee?.employee_code as string | undefined;
       const detectedName = faceData.matched_employee?.full_name as string | undefined;
       const loggedInCode = user?.employeeCode;
-      if (loggedInCode && detectedCode && detectedCode !== loggedInCode) {
+
+      // Allow admin or HR role to test check-in for any recognized employee
+      const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN' || loggedInCode?.toLowerCase() === 'admin';
+
+      if (!isAdminOrManager && loggedInCode && detectedCode && detectedCode.toLowerCase() !== loggedInCode.toLowerCase()) {
         setCheckInStep('error');
         setErrorMessage(
           `🚨 CHẤM CÔNG HỘ: Người trước camera là ${detectedName} (${detectedCode}), KHÔNG KHỚP tài khoản đang đăng nhập ${loggedInCode}. Đã từ chối.`,
@@ -291,7 +295,8 @@ export const CheckInPage: React.FC = () => {
         } catch (_) {}
       }
 
-      const targetEmpCode = loggedInCode || user?.employeeCode || '136ACT';
+      // If admin/HR or detected employee is available, prioritize detectedCode
+      const targetEmpCode = (isAdminOrManager && detectedCode) ? detectedCode : (loggedInCode || detectedCode || '136ACT');
 
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
