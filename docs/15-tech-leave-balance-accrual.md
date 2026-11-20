@@ -110,3 +110,11 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * `GET /leaves/my-balance` trả `granted, used, remaining, annualRemaining, carriedRemaining, seniority, adjust, sickUsed, baseAnnual, carriedGrant`.
 * `GET /leaves/my-ledger` trả lịch sử; UI tính **số dư chạy** theo đúng quy tắc trên để cột “Số dư sau” khớp thẻ tổng.
 * Sổ cái HR (`/attendance/leave-ledger`) hiển thị cùng running balance; bộ lọc Phép năm/Phép ốm dựa trên `leaveType` (AL/S), không dựa vào mô tả.
+
+### Kiểm chứng C6c — 20/11/2026
+* **Card theo loại nghỉ:** `GET /leaves/my-balance.byType` trả toàn bộ loại nghỉ active (code/name/used/defaultDays); UI render 16 card + progress cho loại có định mức (AL…).
+* **Tổng phép còn lại** = `annualRemaining + carriedRemaining`; tự cập nhật sau điều chỉnh/duyệt đơn (đã test +1, -0.5).
+* **Phép tồn** có card riêng + trạng thái `AVAILABLE / CAPPED / EXPIRED` theo `leave_carryover` (`max_keep_from`, `max_keep_days`, `expire_from`); test đổi rule: AVAILABLEcarry1.5 · CAPPEDcarry1 (expired0.5) · EXPIREDcarry0.
+* **Cộng phép ngày15:** endpoint `POST /cron/monthly-leave-accrual` cộng1 ngày, chạy lại không cộng trùng; user vào sau ngày15 (test 20/11) **không** được cộng tháng đó.
+* **Thâm niên:** sửa so sánh năm theo tháng/ngày (không dùng day-of-year do năm nhuận); test user vào20/11/2024 → cộng1 ngày đúng ngày tròn, tách khỏi kỳ cộng tháng15.
+* **Sổ phép:** filter theo loại (AL/S/…) và năm lọc đúng số dòng; cột số dư sau = running balance khớp thẻ tổng.

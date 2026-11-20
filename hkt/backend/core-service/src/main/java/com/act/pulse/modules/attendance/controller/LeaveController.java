@@ -9,12 +9,14 @@ import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.attendance.service.RuleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,7 @@ public class LeaveController {
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
+    private final RuleService ruleService;
 
     @GetMapping("/leave-types")
     @Operation(summary = "Danh sách loại nghỉ đang áp dụng (S30/S32)")
@@ -179,17 +182,57 @@ public class LeaveController {
         BigDecimal usedFromCarry = used.min(carryGrant.max(BigDecimal.ZERO));
         BigDecimal carriedRemaining = carryGrant.subtract(usedFromCarry);
         BigDecimal annualRemaining = annualGrant.add(seniorityGrant).add(adjust).subtract(used.subtract(usedFromCarry));
+
+        // Luật phép tồn: 01/04 giữ tối đa N ngày, 01/07 về 0.
+        Map<String, Object> carryRule = ruleService.get("leave_carryover");
+        int maxKeep = carryRule.get("max_keep_days") == null ? 5 : Integer.parseInt(String.valueOf(carryRule.get("max_keep_days")));
+        String expireFrom = carryRule.get("expire_from") == null ? "07-01" : String.valueOf(carryRule.get("expire_from"));
+        String capFrom = carryRule.get("max_keep_from") == null ? "04-01" : String.valueOf(carryRule.get("max_keep_from"));
+        LocalDate today = LocalDate.now();
+        String todayMd = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
+        BigDecimal carriedAvailable = carriedRemaining.max(BigDecimal.ZERO);
+        String carryStatus = "AVAILABLE";
+        if (todayMd.compareTo(expireFrom) >= 0) {
+            carriedAvailable = BigDecimal.ZERO;
+            carryStatus = "EXPIRED";
+        } else if (todayMd.compareTo(capFrom) >= 0) {
+            carriedAvailable = carriedAvailable.min(BigDecimal.valueOf(maxKeep));
+            carryStatus = "CAPPED";
+        }
+        BigDecimal expiredCarry = carriedRemaining.subtract(carriedAvailable).max(BigDecimal.ZERO);
+
         Map<String, Object> map = new HashMap<>();
         map.put("granted", annualGrant.add(carryGrant).add(seniorityGrant));
         map.put("used", used);
-        map.put("remaining", annualRemaining.add(carriedRemaining));
+        map.put("remaining", annualRemaining.add(carriedAvailable));
         map.put("annualRemaining", annualRemaining);
-        map.put("carriedRemaining", carriedRemaining);
+        map.put("carriedRemaining", carriedAvailable);
+        map.put("expiredCarry", expiredCarry);
+        map.put("carryStatus", carryStatus);
         map.put("seniority", seniorityGrant);
         map.put("adjust", adjust);
         map.put("sickUsed", sickUsed);
         map.put("baseAnnual", annualGrant);
         map.put("carriedGrant", carryGrant);
+        Map<String, BigDecimal> usedByType = new HashMap<>();
+        for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+            if ("USED".equals(e.getAction()) && e.getLeaveType() != null) {
+                usedByType.merge(e.getLeaveType().toUpperCase(), e.getAmount().abs(), BigDecimal::add);
+            }
+        }
+        List<Map<String, Object>> byType = new java.util.ArrayList<>();
+        for (var lt : leaveTypeRepository.findAll()) {
+            BigDecimal usedThis = usedByType.getOrDefault(lt.getCode().toUpperCase(), BigDecimal.ZERO);
+            if (!Boolean.TRUE.equals(lt.getIsActive())) continue;
+            Map<String, Object> m = new HashMap<>();
+            m.put("code", lt.getCode());
+            m.put("name", lt.getName());
+            m.put("used", usedThis);
+            m.put("defaultDays", lt.getDefaultDays());
+            m.put("unit", lt.getUnit());
+            byType.add(m);
+        }
+        map.put("byType", byType);
         return map;
     }
 }

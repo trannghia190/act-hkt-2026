@@ -29,6 +29,9 @@ export const LeavesPage: React.FC = () => {
     adjust: 0,
     baseAnnual: 0,
     carriedGrant: 0,
+    expiredCarry: 0,
+    carryStatus: 'AVAILABLE',
+    byType: [] as { code: string; name: string; used: number; defaultDays: number | null; unit?: string }[],
   });
 
   const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
@@ -44,7 +47,7 @@ export const LeavesPage: React.FC = () => {
         const annual = Number(j.data.annualRemaining ?? 0);
         const seniority = Number(j.data.seniority ?? 0);
         const adjust = Number(j.data.adjust ?? 0);
-        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted + adjust, used,
+        setBalance(b => ({ ...b, grantedCurrentYear: granted, totalEntitlement: granted + adjust - Number(j.data.expiredCarry ?? 0), used,
           remaining: Number(j.data.remaining || 0),
           annualRemaining: annual,
           carriedRemaining: carried,
@@ -54,6 +57,12 @@ export const LeavesPage: React.FC = () => {
           sickUsed: Number(j.data.sickUsed ?? 0),
           baseAnnual: Number(j.data.baseAnnual ?? 0),
           carriedGrant: Number(j.data.carriedGrant ?? 0),
+          expiredCarry: Number(j.data.expiredCarry ?? 0),
+          carryStatus: String(j.data.carryStatus || 'AVAILABLE'),
+          byType: Array.isArray(j.data.byType) ? j.data.byType.map((x: any) => ({
+            code: x.code, name: x.name, used: Number(x.used || 0),
+            defaultDays: x.defaultDays == null ? null : Number(x.defaultDays), unit: x.unit,
+          })) : [],
           expiringOnMarch31: carried }));
       }
     }).catch(() => undefined);
@@ -87,7 +96,7 @@ export const LeavesPage: React.FC = () => {
     if (filterYear !== 'Tất cả' && !entry.date.endsWith(filterYear)) return false;
     if (filterType === 'Tất cả') return true;
     if (filterType === 'Phép năm') return entry.leaveType === 'AL';
-    if (filterType === 'Phép ốm') return entry.description.toLowerCase().includes('ốm');
+    if (filterType === 'Phép ốm') return entry.leaveType === 'S';
     if (filterType === 'Nghỉ bù') return entry.description.toLowerCase().includes('bù');
     if (filterType === 'Phép tồn') return entry.description.toLowerCase().includes('bảo lưu') || entry.description.toLowerCase().includes('tồn');
     if (filterType === 'Chức vụ') return entry.description.toLowerCase().includes('chức vụ');
@@ -115,9 +124,11 @@ export const LeavesPage: React.FC = () => {
         <div>
           <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
           <p className="mt-0.5 text-amber-800 leading-relaxed">
-            {balance.expiringOnMarch31 > 0
-              ? <>Bạn hiện có <strong>{balance.expiringOnMarch31} ngày phép tồn từ năm trước</strong>. Theo điều khoản số 04 trong Quy chế Nội bộ, toàn bộ số phép tồn này sẽ tự động hết hiệu lực sau ngày <strong>31/03/2027</strong>. Hãy chủ động lên kế hoạch nghỉ phép trước hạn.</>
-              : <>Bạn hiện không có phép tồn từ năm trước. Phép năm 2026 cấp mới sẽ dùng theo quy chế hiện hành (01/04 giữ tối đa 5 ngày · 01/07 về 0).</>}
+            {balance.carryStatus === 'EXPIRED' || balance.expiringOnMarch31 <= 0
+              ? <>Phép tồn năm trước đã <strong>hết hiệu lực từ 01/07</strong> theo quy chế (01/04 giữ tối đa 5 ngày · 01/07 về 0). Số dư hiện tại không còn phép tồn.</>
+              : balance.carryStatus === 'CAPPED'
+              ? <>Đã qua <strong>01/04</strong>: chỉ được giữ tối đa <strong>5 ngày phép tồn</strong>. Bạn còn <strong>{balance.expiringOnMarch31} ngày</strong>; phần vượt sẽ hết hiệu lực từ <strong>01/07</strong>.</>
+              : <>Bạn có <strong>{balance.expiringOnMarch31} ngày phép tồn</strong>; dùng trước <strong>01/04</strong>. Từ 01/04 chỉ giữ tối đa 5 ngày, từ <strong>01/07</strong> về 0.</>}
           </p>
         </div>
       </div>
@@ -127,7 +138,7 @@ export const LeavesPage: React.FC = () => {
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Tổng Phép Năm Được Hưởng</div>
           <div className="text-2xl font-bold text-ink mt-1">{balance.totalEntitlement} ngày</div>
-          <div className="text-[11px] text-ink-secondary mt-1">{balance.baseAnnual} chuẩn + {balance.carriedGrant} tồn + {balance.seniorityBonus} thâm niên{balance.adjust ? ` + ${balance.adjust} điều chỉnh` : ''}</div>
+          <div className="text-[11px] text-ink-secondary mt-1">{balance.baseAnnual} chuẩn + {balance.carriedGrant} tồn + {balance.seniorityBonus} thâm niên{balance.adjust ? ` + ${balance.adjust} điều chỉnh` : ''}{balance.expiredCarry ? ` · ${balance.expiredCarry} tồn hết hạn` : ''}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -145,9 +156,9 @@ export const LeavesPage: React.FC = () => {
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép Tồn Cần Dùng Trước 31/3</div>
+          <div className="text-xs text-ink-muted">Phép Tồn Còn Lại (hạn 01/07)</div>
           <div className="text-2xl font-bold text-amber-700 mt-1">{balance.expiringOnMarch31} ngày</div>
-          <div className="text-[11px] text-amber-600 mt-1">Cần ưu tiên trừ trước</div>
+          <div className="text-[11px] text-amber-600 mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -162,6 +173,27 @@ export const LeavesPage: React.FC = () => {
           <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
         </div>
       </div>
+
+      {balance.byType.length > 0 && (
+        <Card title="Số dư theo loại nghỉ">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {balance.byType.map(t => {
+              const remaining = t.defaultDays == null ? null : Math.max(0, t.defaultDays - t.used);
+              const pct = t.defaultDays && t.defaultDays > 0 ? Math.min(100, Math.round((t.used / t.defaultDays) * 100)) : 0;
+              return (
+                <div key={t.code} className="p-3 rounded-xl border border-line bg-surface">
+                  <div className="text-xs font-semibold text-ink">{t.name} <span className="font-mono text-[10px] text-ink-muted">{t.code}</span></div>
+                  <div className="text-xl font-bold text-ink mt-1">{remaining == null ? `${t.used} ngày đã dùng` : `${remaining} ngày còn`}</div>
+                  <div className="text-[10px] text-ink-muted">Đã dùng {t.used}{t.defaultDays != null ? ` / ${t.defaultDays}` : ''} ngày</div>
+                  {t.defaultDays != null && t.defaultDays > 0 && (
+                    <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${pct}%` }} /></div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Bộ lọc lịch sử phép */}
       <div className="flex flex-wrap items-center gap-2">
