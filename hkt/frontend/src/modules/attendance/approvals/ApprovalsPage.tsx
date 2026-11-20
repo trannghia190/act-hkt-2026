@@ -35,7 +35,7 @@ export const ApprovalsPage: React.FC = () => {
     const typeNames: Record<string, string> = { LEAVE: 'Nghỉ phép', WFH: 'Làm việc từ xa (WFH)', LATE_EARLY: 'Đi muộn / về sớm', ADJUST: 'Bổ sung chấm công' };
     return {
       id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
-      team: r.team || '', type: r.requestType, typeName: typeNames[r.requestType] || r.requestType,
+      team: r.team || '', type: r.requestType, typeName: r.leaveTypeName ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '', endDate: r.workDate || '', durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');

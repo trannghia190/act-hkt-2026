@@ -73,7 +73,7 @@ export const RequestDetailPage: React.FC = () => {
             return (
               <>
                 <div className="text-sm font-semibold">
-                  {typeNames[req.requestType] || req.requestType}{req.leaveType ? ` — ${req.leaveType}` : ''}
+                  {typeNames[req.requestType] || req.requestType}{req.leaveType ? ` — ${data.leaveTypeName || req.leaveType}` : ''}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <div><span className="text-ink-muted">Mã đơn:</span> <span className="font-mono">{req.id}</span></div>

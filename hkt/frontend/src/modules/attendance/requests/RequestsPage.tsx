@@ -78,7 +78,7 @@ export const RequestsPage: React.FC = () => {
       requesterEmail: user?.email || '',
       team: r.team || user?.team || '',
       type: r.requestType,
-      typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveType}` : (typeNames[r.requestType] || r.requestType),
+      typeName: r.leaveType ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName || r.leaveType}` : (typeNames[r.requestType] || r.requestType),
       startDate: r.workDate || '',
       endDate: r.workDate || '',
       durationText: (() => {
