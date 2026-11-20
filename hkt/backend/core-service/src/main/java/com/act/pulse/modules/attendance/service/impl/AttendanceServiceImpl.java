@@ -101,11 +101,22 @@ public class AttendanceServiceImpl implements AttendanceService {
         boolean deviceApproved = false;
         String deviceDetail = "Thiết bị này chưa được HR duyệt — không chấm công được";
         if (deviceFingerprint != null && !deviceFingerprint.isBlank()) {
-            Optional<DeviceRegistration> existing = deviceRegistrationRepository
-                    .findByUserIdAndDeviceFingerprintAndIsApprovedTrue(userId, deviceFingerprint);
-            if (existing.isPresent()) {
-                deviceApproved = true;
-                deviceDetail = null;
+            Optional<DeviceRegistration> existingOpt = deviceRegistrationRepository
+                    .findByDeviceFingerprint(deviceFingerprint);
+            if (existingOpt.isPresent()) {
+                DeviceRegistration existing = existingOpt.get();
+                if (existing.getUserId().equals(userId)) {
+                    if (Boolean.TRUE.equals(existing.getIsApproved())) {
+                        deviceApproved = true;
+                        deviceDetail = null;
+                        existing.setLastActiveAt(LocalDateTime.now());
+                        deviceRegistrationRepository.save(existing);
+                    } else {
+                        deviceDetail = "Thiết bị mới đã được gửi yêu cầu — cần HR duyệt trước khi chấm công";
+                    }
+                } else {
+                    deviceDetail = "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi";
+                }
             } else {
                 long approvedCount = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId);
                 if (approvedCount == 0) {
@@ -131,6 +142,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                             .deviceModel("Web Browser")
                             .osVersion("Web")
                             .isApproved(false)
+                            .lastActiveAt(LocalDateTime.now())
                             .build();
                     pending.setCreatedAt(LocalDateTime.now());
                     pending.setUpdatedAt(LocalDateTime.now());
