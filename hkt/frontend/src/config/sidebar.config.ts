@@ -110,7 +110,7 @@ export const SIDEBAR_CONFIG: ModuleNavigation[] = [
           { id: 'notif-prefs', label: 'Tuỳ chỉnh thông báo', path: '/settings/notifications', icon: 'Bell', screenId: 'S36' },
           { id: 'notifications-mobile', label: 'Thông báo (mobile)', path: '/notifications', icon: 'BellRing', screenId: 'S04M' },
           { id: 'shifts', label: 'Ca làm việc & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'enroll-face-shared', label: 'Đăng ký mẫu khuôn mặt (S01-B)', path: '/auth/enroll-face', icon: 'Fingerprint', screenId: 'S01-B' },
+          { id: 'enroll-face-shared', label: 'Đăng ký mẫu khuôn mặt', path: '/auth/enroll-face', icon: 'Fingerprint', screenId: 'S01-B' },
         ],
       },
       {

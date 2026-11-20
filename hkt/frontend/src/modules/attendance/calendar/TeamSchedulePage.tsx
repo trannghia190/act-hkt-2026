@@ -1,203 +1,121 @@
-import React, { useState } from 'react';
-import { Card } from '../../../components/common/Card';
-import { Badge } from '../../../components/common/Badge';
-import { Button } from '../../../components/common/Button';
+import React, { useEffect, useState } from 'react';
 
-interface TeamMemberSchedule {
-  id: string;
-  name: string;
-  code: string;
-  role: string;
-  department: string;
-  schedule: Record<number, 'OFFICE' | 'WFH' | 'LEAVE' | 'WEEKEND' | 'OFF'>;
+interface DayRow {
+  date: string;
+  wfh: number;
+  leave: number;
+  late: number;
+  present: number;
+  teamSize: number;
+  entries: { employeeCode: string; fullName: string; kind: 'WFH' | 'LEAVE' | 'LATE' | 'PRESENT'; halfDay?: boolean; halfDayPeriod?: 'MORNING' | 'AFTERNOON' | null; workWindowStart?: string | null; workWindowEnd?: string | null }[];
 }
 
+const KIND_LABEL: Record<string, { text: string; cls: string }> = {
+  PRESENT: { text: 'Có mặt', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  WFH: { text: 'WFH', cls: 'bg-violet-50 text-violet-700 border-violet-200' },
+  LEAVE: { text: 'Nghỉ phép', cls: 'bg-sky-50 text-sky-700 border-sky-200' },
+  LATE: { text: 'Đi muộn', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+};
+
 export const TeamSchedulePage: React.FC = () => {
-  const [selectedDept, setSelectedDept] = useState('ALL');
-  const [selectedWeek, setSelectedWeek] = useState('Tuần 47 (16/11 - 22/11/2026)');
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [view, setView] = useState<'week' | 'month'>('month');
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const members: TeamMemberSchedule[] = [
-    {
-      id: '1',
-      name: 'Phạm Minh Tuấn',
-      code: 'ACT0045',
-      role: 'Tech Lead',
-      department: 'Phòng Phát Triển Phần Mềm (Sirius)',
-      schedule: { 16: 'OFFICE', 17: 'OFFICE', 18: 'OFFICE', 19: 'WFH', 20: 'OFFICE', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-    {
-      id: '2',
-      name: 'Nguyễn Văn Minh',
-      code: 'ACT0142',
-      role: 'Senior Developer',
-      department: 'Phòng Phát Triển Phần Mềm (Sirius)',
-      schedule: { 16: 'OFFICE', 17: 'OFFICE', 18: 'OFFICE', 19: 'OFFICE', 20: 'WFH', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-    {
-      id: '3',
-      name: 'Lê Hải Đăng',
-      code: 'ACT0156',
-      role: 'Fullstack Dev',
-      department: 'Phòng Phát Triển Phần Mềm (Sirius)',
-      schedule: { 16: 'OFFICE', 17: 'LEAVE', 18: 'OFFICE', 19: 'OFFICE', 20: 'OFFICE', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-    {
-      id: '4',
-      name: 'Trần Thị Thu Hà',
-      code: 'ACT0088',
-      role: 'AI Engineer Lead',
-      department: 'Trung Tâm AI & Khoa Học Dữ Liệu (Optimus)',
-      schedule: { 16: 'OFFICE', 17: 'OFFICE', 18: 'WFH', 19: 'OFFICE', 20: 'OFFICE', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-    {
-      id: '5',
-      name: 'Hoàng Quốc Bảo',
-      code: 'ACT0092',
-      role: 'DevOps Engineer',
-      department: 'Phòng Hạ Tầng & An Ninh (Zeus)',
-      schedule: { 16: 'OFFICE', 17: 'OFFICE', 18: 'OFFICE', 19: 'OFFICE', 20: 'OFFICE', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-    {
-      id: '6',
-      name: 'Vũ Thùy Linh',
-      code: 'ACT0112',
-      role: 'QA Specialist',
-      department: 'Phòng Phát Triển Phần Mềm (Sirius)',
-      schedule: { 16: 'WFH', 17: 'OFFICE', 18: 'OFFICE', 19: 'OFFICE', 20: 'LEAVE', 21: 'WEEKEND', 22: 'WEEKEND' },
-    },
-  ];
+  useEffect(() => {
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    fetch(`/api/v1/attendance/team-schedule?month=${month}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json())
+      .then(j => { if (j?.data) { setData(j.data); setError(null); } else setError(j?.message || 'Không tải được lịch nhóm'); })
+      .catch(() => setError('Không tải được lịch nhóm'));
+  }, [month]);
 
-  const days = [
-    { day: 16, label: 'Thứ 2 (16/11)', isWeekend: false },
-    { day: 17, label: 'Thứ 3 (17/11)', isWeekend: false },
-    { day: 18, label: 'Thứ 4 (18/11)', isWeekend: false, isToday: true },
-    { day: 19, label: 'Thứ 5 (19/11)', isWeekend: false },
-    { day: 20, label: 'Thứ 6 (20/11)', isWeekend: false },
-    { day: 21, label: 'Thứ 7 (21/11)', isWeekend: true },
-    { day: 22, label: 'CN (22/11)', isWeekend: true },
-  ];
+  const allDays: DayRow[] = data?.days || [];
+  const days = view === 'month' ? allDays : (() => {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + weekOffset * 7);
+    const from = monday.toISOString().slice(0, 10);
+    const to = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10);
+    return allDays.filter(d => d.date >= from && d.date <= to);
+  })();
 
-  const filteredMembers = selectedDept === 'ALL'
-    ? members
-    : members.filter((m) => m.department.includes(selectedDept));
-
-  const getStatusBadge = (status: 'OFFICE' | 'WFH' | 'LEAVE' | 'WEEKEND' | 'OFF') => {
-    switch (status) {
-      case 'OFFICE':
-        return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">🏢 VP</span>;
-      case 'WFH':
-        return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30">🏠 WFH</span>;
-      case 'LEAVE':
-        return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">🌴 Phép</span>;
-      case 'WEEKEND':
-        return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium text-ink-muted">Nghỉ</span>;
-      default:
-        return <span className="inline-block px-2 py-0.5 rounded text-[11px] text-ink-muted">-</span>;
-    }
-  };
+  const dayEntries = selectedDay ? allDays.find(d => d.date === selectedDay) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Lịch Trực Quan Nhóm (Team Schedule)</h1>
-            <Badge variant="accent">S14</Badge>
+    <div className="space-y-4">
+      <div className="bg-canvas border border-line rounded-xl p-6">
+        <h1 className="text-xl font-bold text-ink mt-1">Lịch nhóm — ai vắng, ai có mặt</h1>
+        <p className="text-xs text-ink-muted mt-1">
+          {data?.scope || 'Đang tải…'} · {data?.teamSize ?? 0} người · cảnh báo khi ≥{data?.conflictThresholdPercent ?? 60}% nhóm vắng
+        </p>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <button onClick={() => setView('week')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'week' ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tuần</button>
+          <button onClick={() => setView('month')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'month' ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tháng</button>
+          {view === 'week' && (
+            <>
+              <button onClick={() => setWeekOffset(o => o - 1)} className="text-xs px-2 py-1.5 rounded border border-line">← Tuần trước</button>
+              <button onClick={() => setWeekOffset(o => o + 1)} className="text-xs px-2 py-1.5 rounded border border-line">Tuần sau →</button>
+            </>
+          )}
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink" />
+        </div>
+      </div>
+
+      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+
+      {(data?.conflicts || []).length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+          <div className="font-bold">⚠️ Cảnh báo xung đột lịch</div>
+          {data.conflicts.map((c: any) => <div key={c.date}>• {c.message}</div>)}
+        </div>
+      )}
+
+      <div className="bg-surface border border-line rounded-xl p-3 overflow-x-auto">
+        <div className="flex gap-1.5 flex-wrap">
+          {days.map(d => {
+            const absent = d.wfh + d.leave;
+            const conflict = d.teamSize >= 3 && absent * 100 >= d.teamSize * (data?.conflictThresholdPercent ?? 60);
+            return (
+              <button key={d.date} onClick={() => setSelectedDay(d.date)}
+                className={`w-[86px] rounded-lg border p-2 text-left text-[11px] ${conflict ? 'border-amber-400 bg-amber-50' : 'border-line bg-canvas hover:border-accent'} ${selectedDay === d.date ? 'ring-1 ring-accent' : ''}`}>
+                <div className="font-bold text-ink">{d.date.slice(8)}/{d.date.slice(5, 7)}</div>
+                <div className="text-emerald-700">Có mặt: {d.present}</div>
+                {d.wfh > 0 && <div className="text-violet-700">WFH: {d.wfh}</div>}
+                {d.leave > 0 && <div className="text-sky-700">Nghỉ: {d.leave}</div>}
+                {d.late > 0 && <div className="text-amber-700">Muộn: {d.late}</div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {dayEntries && (
+        <div className="bg-surface border border-line rounded-xl p-4">
+          <div className="text-sm font-bold mb-2">Chi tiết ngày {dayEntries.date}</div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {dayEntries.entries.map((e: any) => (
+              <div key={e.employeeCode} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 text-sm">
+                <span>
+                  {e.fullName} <span className="text-xs text-ink-muted">({e.employeeCode})</span>
+                  {e.halfDay && (
+                    <span className="block text-[11px] text-sky-700 mt-0.5">
+                      {e.kind === 'WFH' ? 'WFH buổi' : 'Nghỉ buổi'} {e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}
+                      {e.workWindowStart && e.workWindowEnd ? ` · làm việc ${e.workWindowStart}–${e.workWindowEnd}` : ''}
+                    </span>
+                  )}
+                </span>
+                <span className={`text-[11px] px-2 py-0.5 rounded border ${KIND_LABEL[e.kind]?.cls || ''}`}>
+                  {e.halfDay ? (e.kind === 'WFH' ? 'WFH ' : 'Nghỉ ') + (e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều') : (KIND_LABEL[e.kind]?.text || e.kind)}
+                </span>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Theo dõi phân bổ quân số làm việc tại văn phòng (Office), làm từ xa (WFH) và lịch nghỉ phép của toàn đội ngũ
-          </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="text-xs p-2 border border-line rounded-lg bg-surface font-semibold text-ink"
-          >
-            <option value="ALL">🏢 Tất cả phòng ban</option>
-            <option value="Sirius">Sirius (Software Dev)</option>
-            <option value="Optimus">Optimus (AI & Data)</option>
-            <option value="Zeus">Zeus (DevOps)</option>
-          </select>
-          <Button variant="outline" size="sm" onClick={() => setSelectedWeek('Tuần 47 (16/11 - 22/11/2026)')}>
-            {selectedWeek}
-          </Button>
-        </div>
-      </div>
-
-      {/* KPI Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Quân số hôm nay (18/11)</div>
-          <div className="text-xl font-bold text-ink mt-0.5">6 / 6 nhân sự</div>
-          <div className="text-[10px] text-emerald-400 mt-0.5 font-medium">100% sẵn sàng ca làm việc</div>
-        </div>
-        <div className="p-3.5 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Tại văn phòng (Office)</div>
-          <div className="text-xl font-bold text-emerald-400 mt-0.5">5 nhân sự</div>
-          <div className="text-[10px] text-ink-muted mt-0.5">Trực tiếp tại trụ sở ACT</div>
-        </div>
-        <div className="p-3.5 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Làm việc từ xa (WFH)</div>
-          <div className="text-xl font-bold text-sky-400 mt-0.5">1 nhân sự</div>
-          <div className="text-[10px] text-sky-400 mt-0.5">Trần Thị Thu Hà (Đã duyệt)</div>
-        </div>
-        <div className="p-3.5 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Nghỉ phép (AL / Ốm)</div>
-          <div className="text-xl font-bold text-amber-400 mt-0.5">0 nhân sự</div>
-          <div className="text-[10px] text-ink-muted mt-0.5">Không có ca vắng đột xuất</div>
-        </div>
-      </div>
-
-      {/* Team Schedule Matrix Table */}
-      <Card title="Ma Trận Lịch Trực Quan Tuần Này">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-3 px-3 min-w-[200px]">Nhân viên &amp; Vị trí</th>
-                {days.map((d) => (
-                  <th
-                    key={d.day}
-                    className={`py-3 px-2 text-center min-w-[110px] ${
-                      d.isToday ? 'bg-accent-soft/30 text-emerald-400 font-bold border-b-2 border-emerald-400' : ''
-                    } ${d.isWeekend ? 'text-ink-muted' : ''}`}
-                  >
-                    <div>{d.label}</div>
-                    {d.isToday && <span className="text-[9px] uppercase font-bold tracking-wider">(Hôm nay)</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {filteredMembers.map((m) => (
-                <tr key={m.id} className="hover:bg-canvas/40 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="font-semibold text-ink">{m.name}</div>
-                    <div className="text-[11px] text-ink-muted flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-emerald-400 font-medium">{m.code}</span>
-                      <span>·</span>
-                      <span>{m.role}</span>
-                    </div>
-                  </td>
-                  {days.map((d) => (
-                    <td
-                      key={d.day}
-                      className={`py-3 px-2 text-center ${
-                        d.isToday ? 'bg-accent-soft/10' : ''
-                      } ${d.isWeekend ? 'bg-canvas/30' : ''}`}
-                    >
-                      {getStatusBadge(m.schedule[d.day] || 'OFF')}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      )}
     </div>
   );
 };

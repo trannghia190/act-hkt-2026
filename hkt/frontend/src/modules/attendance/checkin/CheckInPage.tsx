@@ -367,7 +367,7 @@ export const CheckInPage: React.FC = () => {
       {/* Header */}
       <div className="text-center space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line">
-          <span>🛡️</span> 5 Tầng Xác Thực Chống Gian Lận (S05m)
+          <span>🛡️</span> 5 Tầng Xác Thực Chống Gian Lận
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">Chấm Công Nhận Diện Khuôn Mặt</h1>
         <p className="text-xs text-ink-muted">
@@ -383,8 +383,8 @@ export const CheckInPage: React.FC = () => {
             <span>📸</span>
             <span>
               {user?.faceEnrolled === false
-                ? '⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để lấy mẫu (S01-B)'
-                : 'Cập nhật lại mẫu khuôn mặt (S01-B)'}
+                ? '⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để lấy mẫu'
+                : 'Cập nhật lại mẫu khuôn mặt'}
             </span>
           </button>
         </div>

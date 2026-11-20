@@ -28,7 +28,6 @@ export const MidYearReviewPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm (Mid-Year Review)</h1>
-            <Badge variant="accent">S43</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Đánh giá tiến độ 6 tháng đầu năm (H1), điều chỉnh mục tiêu nửa cuối năm (H2) và ghi nhận biên bản 1-on-1 coaching giữa Quản lý và Nhân viên

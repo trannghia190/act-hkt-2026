@@ -9,7 +9,6 @@ const items = [
 export const MobileNotificationsPage: React.FC = () => (
   <div className="max-w-md mx-auto space-y-4">
     <div className="bg-canvas border border-line rounded-xl p-5">
-      <div className="text-xs text-accent font-semibold">S04m · Mobile</div>
       <h1 className="text-lg font-bold text-ink mt-1">Thông báo & nhắc việc</h1>
       <p className="text-xs text-ink-muted mt-1">3 kênh: trong web · email digest 08:00 · Web Push. Tối đa 3 push/ngày.</p>
     </div>

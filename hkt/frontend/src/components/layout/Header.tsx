@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/auth.types';
 import { Button } from '../common/Button';
 import { Menu, Search, Camera, LogOut } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -19,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenMobileMenu,
 }) => {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -72,10 +71,10 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Gmail</span>
         </Button>
 
-        {/* Global Multi-channel Notification Center (S04) */}
+        {/* Global Multi-channel Notification Center */}
         <NotificationDropdown />
 
-        {/* Face Enrollment Quick Button (S01-B) */}
+        {/* Face Enrollment Quick Button */}
         <button
           onClick={() => navigate('/auth/enroll-face')}
           className={`px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -83,28 +82,13 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 animate-pulse font-bold'
               : 'border-line bg-canvas hover:bg-surface text-ink-secondary hidden sm:inline-flex'
           }`}
-          title="Đăng ký mẫu khuôn mặt (S01-B)"
+          title="Đăng ký mẫu khuôn mặt"
         >
           <Camera className="w-3.5 h-3.5 text-accent" />
           <span className="hidden lg:inline">
-            {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt (S01-B)'}
+            {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt'}
           </span>
         </button>
-
-        {/* Role Switcher Dropdown (Phục vụ Manual Testing phân quyền) */}
-        <div className="flex items-center gap-1 pl-1 sm:pl-2 border-l border-line text-xs">
-          <select
-            value={user?.role || 'ADMIN'}
-            onChange={(e) => switchRole(e.target.value as UserRole)}
-            className="text-[11px] sm:text-xs font-bold py-1 px-1.5 sm:px-2 border border-accent-line rounded-md bg-accent-soft text-accent focus:outline-none cursor-pointer max-w-[90px] sm:max-w-none"
-            title="Chuyển vai trò nhanh để kiểm thử phân quyền"
-          >
-            <option value="ADMIN">👑 Admin</option>
-            <option value="HR_ADMIN">👩‍💼 HR</option>
-            <option value="MANAGER">👔 Lead</option>
-            <option value="EMPLOYEE">👨‍💻 Dev</option>
-          </select>
-        </div>
 
         {/* User Profile Avatar & Logout */}
         <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-line">

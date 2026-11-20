@@ -2,6 +2,8 @@ package com.act.pulse.modules.attendance.entity;
 
 import com.act.pulse.common.entity.BaseEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -23,5 +25,18 @@ public class LeaveType extends BaseEntity {
     @Builder.Default
     private Boolean isActive = true;
     @Column(name = "config", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String config;
+    @Column(name = "is_paid", nullable = false)
+    @Builder.Default
+    private Boolean isPaid = true;
+    @Column(name = "deducts_annual_leave", nullable = false)
+    @Builder.Default
+    private Boolean deductsAnnualLeave = false;
+    @Column(name = "unit", nullable = false, length = 20)
+    @Builder.Default
+    private String unit = "DAY";
+    @Column(name = "submit_within_days", nullable = false)
+    @Builder.Default
+    private Integer submitWithinDays = 3;
 }

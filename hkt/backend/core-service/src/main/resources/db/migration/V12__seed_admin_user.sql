@@ -1,5 +1,5 @@
 -- =========================================================================
--- ACT PULSE 2026 - V5: Seed initial admin user safely without overwriting
+-- ACT PULSE 2026 - V12: Seed initial admin user safely without overwriting
 -- =========================================================================
 
 INSERT INTO users (id, employee_code, full_name, email, password_hash, role, joined_date, status, must_change_password, face_enrolled, shift_id)

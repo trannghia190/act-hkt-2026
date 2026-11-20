@@ -8,9 +8,11 @@ import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
@@ -34,11 +36,21 @@ public class CronController {
         return ApiResponse.ok(true, "Đã kích hoạt gửi email digest tổng hợp thành công");
     }
 
+    @Scheduled(cron = "0 0 2 15 * *")
     @PostMapping("/monthly-leave-accrual")
     @Operation(summary = "Cron cộng tự động 1.0 ngày phép vào ngày 15 hàng tháng (ATT-LEAVE-02)")
     public ApiResponse<Map<String, Object>> cronMonthlyAccrual() {
         int granted = 0;
+        LocalDate today = LocalDate.now();
+        String monthTag = "Cộng phép tháng " + today.getMonthValue() + "/" + today.getYear();
         for (var user : userRepository.findAll()) {
+            // Chỉ cộng cho người vào làm từ ngày 15 trở về trước trong tháng
+            if (user.getJoinedDate() != null && user.getJoinedDate().isAfter(today.withDayOfMonth(15))) {
+                continue;
+            }
+            boolean already = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                    .anyMatch(e -> e.getReason() != null && e.getReason().contains(monthTag));
+            if (already) continue;
             BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
                     .filter(e -> "GRANT".equals(e.getAction()))
                     .map(LeaveLedgerEntry::getAmount)
@@ -49,7 +61,7 @@ public class CronController {
                     .action("GRANT")
                     .amount(BigDecimal.ONE)
                     .balanceAfter(prev.add(BigDecimal.ONE))
-                    .reason("Cộng phép tháng (ngày 15)")
+                    .reason(monthTag)
                     .performedBySystem(true)
                     .build();
             leaveLedgerRepository.save(entry);
@@ -58,10 +70,41 @@ public class CronController {
         return ApiResponse.ok(Map.of("accruedEmployees", granted, "daysAdded", 1.0), "Cộng tích lũy 1.0 ngày phép tháng thành công");
     }
 
+    @Scheduled(cron = "0 30 2 * * *")
     @PostMapping("/yearly-seniority-accrual")
     @Operation(summary = "Cron cộng phép thâm niên theo Luật Lao động (ATT-LEAVE-03)")
     public ApiResponse<Map<String, Object>> cronYearlySeniority() {
-        return ApiResponse.ok(Map.of("eligibleEmployees", userRepository.count()), "Cộng phép thâm niên hoàn tất");
+        int granted = 0;
+        LocalDate today = LocalDate.now();
+        for (var user : userRepository.findAll()) {
+            if (user.getJoinedDate() == null) continue;
+            int years = today.getYear() - user.getJoinedDate().getYear();
+            if (today.getDayOfYear() >= user.getJoinedDate().getDayOfYear()) {
+                // đủ năm
+            } else {
+                years--;
+            }
+            if (years < 2 || years % 2 != 0) continue;
+            if (today.getMonthValue() != user.getJoinedDate().getMonthValue()
+                    || today.getDayOfMonth() != user.getJoinedDate().getDayOfMonth()) continue;
+            String tag = "Cộng phép thâm niên " + years + " năm";
+            boolean already = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                    .anyMatch(e -> e.getReason() != null && e.getReason().contains(tag));
+            if (already) continue;
+            BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
+                    .filter(e -> "GRANT".equals(e.getAction()))
+                    .map(LeaveLedgerEntry::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            LeaveLedgerEntry entry = LeaveLedgerEntry.builder()
+                    .userId(user.getId()).leaveType("AL").action("GRANT").amount(BigDecimal.ONE)
+                    .balanceAfter(prev.add(BigDecimal.ONE))
+                    .reason(tag)
+                    .performedBySystem(true)
+                    .build();
+            leaveLedgerRepository.save(entry);
+            granted++;
+        }
+        return ApiResponse.ok(Map.of("eligibleEmployees", granted), "Cộng phép thâm niên hoàn tất");
     }
 
     @PostMapping("/cleanup-expired-leaves")
