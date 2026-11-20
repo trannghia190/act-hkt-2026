@@ -30,6 +30,8 @@ public interface AuthService {
 
     void sendPasswordResetOtp(String email);
 
+    boolean resetPasswordWithOtp(String emailOrEmployeeCode, String otp, String newPassword);
+
     boolean testEmailConnection(String targetEmail, String testMessage);
 
     boolean configureSmtp(String host, int port, String username, String password);
