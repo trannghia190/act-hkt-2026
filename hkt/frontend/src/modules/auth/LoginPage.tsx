@@ -11,8 +11,15 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
   const [forgotEmail, setForgotEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -40,19 +47,83 @@ export const LoginPage: React.FC = () => {
   const handleSendReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotMessage(null);
+    setResetError(null);
+    setResetLoading(true);
     try {
       const res = await fetch('/api/v1/auth/reset-password-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
       });
-      if (res.ok) {
-        setForgotMessage(`Mã OTP đã được gửi về email ${forgotEmail}. Vui lòng kiểm tra hộp thư hoặc mở Mailpit (http://localhost:8025).`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setForgotMessage(`Mã OTP đã được gửi về email ${forgotEmail}. Vui lòng kiểm tra hộp thư Gmail hoặc Mailpit (http://localhost:8025).`);
+        setForgotStep(2);
       } else {
-        setForgotMessage('Đã phát lệnh gửi email đặt lại mật khẩu. Bạn có thể kiểm tra tại Mailpit: http://localhost:8025.');
+        setForgotMessage('Mã OTP xác thực đã được gửi về email của bạn (nếu tài khoản tồn tại trong hệ thống).');
+        setForgotStep(2);
       }
     } catch (err) {
-      setForgotMessage('Đã mô phỏng gửi email OTP đặt lại mật khẩu qua hệ thống.');
+      setForgotMessage('Đã phát lệnh gửi mã OTP xác thực qua hệ thống.');
+      setForgotStep(2);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+
+    if (!resetOtp.trim()) {
+      setResetError('Vui lòng nhập mã OTP xác thực 6 chữ số từ email.');
+      return;
+    }
+    if (resetNewPassword.length < 8) {
+      setResetError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+      return;
+    }
+    if (!/[A-Z]/.test(resetNewPassword) || !/[a-z]/.test(resetNewPassword) || !/[0-9]/.test(resetNewPassword)) {
+      setResetError('Mật khẩu mới phải gồm chữ hoa, chữ thường và chữ số.');
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('Mật khẩu xác nhận không khớp với mật khẩu mới.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const res = await fetch('/api/v1/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail,
+          otp: resetOtp.trim(),
+          newPassword: resetNewPassword,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setResetSuccess(true);
+        setUsername(forgotEmail);
+        setPassword(resetNewPassword);
+        setTimeout(() => {
+          setIsForgotPasswordOpen(false);
+          setForgotStep(1);
+          setResetSuccess(false);
+          setForgotEmail('');
+          setResetOtp('');
+          setResetNewPassword('');
+          setResetConfirmPassword('');
+        }, 2000);
+      } else {
+        setResetError(data.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+      }
+    } catch (err: any) {
+      setResetError(err?.message || 'Không thể kết nối đến máy chủ xác thực.');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -150,42 +221,127 @@ export const LoginPage: React.FC = () => {
       {isForgotPasswordOpen && (
         <Modal
           isOpen={true}
-          onClose={() => setIsForgotPasswordOpen(false)}
-          title="Quên Mật Khẩu &amp; Khôi Phục Tài Khoản"
+          onClose={() => {
+            setIsForgotPasswordOpen(false);
+            setForgotStep(1);
+            setResetError(null);
+            setForgotMessage(null);
+          }}
+          title={forgotStep === 1 ? "Quên Mật Khẩu — Bước 1/2: Nhận Mã OTP" : "Đặt Lại Mật Khẩu — Bước 2/2: Nhập OTP & Mật Khẩu Mới"}
           maxWidth="md"
         >
-          <form onSubmit={handleSendReset} className="space-y-4 text-xs">
-            <p className="text-ink-secondary leading-relaxed">
-              Nhập email công ty đã đăng ký. Hệ thống sẽ tạo mã OTP xác thực và gửi hướng dẫn đặt lại mật khẩu về hộp thư của bạn.
-            </p>
+          {forgotStep === 1 ? (
+            <form onSubmit={handleSendReset} className="space-y-4 text-xs">
+              <p className="text-ink-secondary leading-relaxed">
+                Nhập email công ty hoặc mã nhân viên đã đăng ký. Hệ thống sẽ tạo mã OTP xác thực 6 chữ số có hiệu lực trong 15 phút và gửi về hộp thư Gmail của bạn.
+              </p>
 
-            <div>
-              <label className="block font-semibold text-ink mb-1">Email tài khoản</label>
-              <input
-                type="email"
-                required
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                placeholder="example@act-corp.internal hoặc email Gmail của bạn"
-                className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
-              />
-            </div>
-
-            {forgotMessage && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs leading-relaxed">
-                {forgotMessage}
+              <div>
+                <label className="block font-semibold text-ink mb-1">Email hoặc Mã nhân viên</label>
+                <input
+                  type="text"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="Ví dụ: 136ACT hoặc luan.vu@act-corp.internal"
+                  className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
+                />
               </div>
-            )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsForgotPasswordOpen(false)}>
-                Đóng
-              </Button>
-              <Button variant="primary" size="sm" type="submit">
-                Gửi Mã OTP Về Email
-              </Button>
-            </div>
-          </form>
+              {resetError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs leading-relaxed">
+                  ⚠️ {resetError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-line">
+                <Button variant="outline" size="sm" type="button" onClick={() => setIsForgotPasswordOpen(false)}>
+                  Đóng
+                </Button>
+                <Button variant="primary" size="sm" type="submit" disabled={resetLoading}>
+                  {resetLoading ? 'Đang gửi...' : 'Gửi Mã OTP Về Email →'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleConfirmReset} className="space-y-4 text-xs">
+              {forgotMessage && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs leading-relaxed">
+                  ✉️ {forgotMessage}
+                </div>
+              )}
+
+              {resetSuccess && (
+                <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-bold text-center leading-relaxed">
+                  🎉 Đặt lại mật khẩu thành công! Mật khẩu mới đã có hiệu lực ngay lập tức. Đang chuyển về màn hình đăng nhập...
+                </div>
+              )}
+
+              {resetError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs leading-relaxed">
+                  ⚠️ {resetError}
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-semibold text-ink">Mã xác thực OTP (6 chữ số)</label>
+                  <span className="text-[10px] text-ink-muted">Kiểm tra hộp thư Gmail</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={resetOtp}
+                  onChange={(e) => setResetOtp(e.target.value)}
+                  placeholder="Nhập mã 6 chữ số (vd: 123456)"
+                  className="w-full p-2.5 border border-line rounded-lg bg-canvas text-center font-mono font-bold text-base tracking-widest text-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Mật khẩu mới (tối thiểu 8 ký tự, gồm chữ hoa, số &amp; ký tự đặc biệt)</label>
+                <input
+                  type="password"
+                  required
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu mới..."
+                  className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-ink mb-1">Xác nhận mật khẩu mới</label>
+                <input
+                  type="password"
+                  required
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới..."
+                  className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(1)}
+                  className="text-xs text-ink-muted hover:text-ink hover:underline"
+                >
+                  ← Gửi lại mã OTP
+                </button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" type="button" onClick={() => setIsForgotPasswordOpen(false)}>
+                    Hủy
+                  </Button>
+                  <Button variant="primary" size="sm" type="submit" disabled={resetLoading || resetSuccess}>
+                    {resetLoading ? 'Đang cập nhật...' : 'Xác Nhận Đặt Lại Mật Khẩu'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          )}
         </Modal>
       )}
     </div>

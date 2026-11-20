@@ -221,6 +221,26 @@ export const EmployeeManagementPage: React.FC = () => {
     }
   };
 
+  const handleAdminResetPassword = async (emp: Employee) => {
+    if (!window.confirm(`Xác nhận cấp lại mật khẩu tạm thời cho nhân viên ${emp.fullName} (${emp.employeeCode}) và gửi email hướng dẫn qua Gmail?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/admin/users/${emp.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName} và gửi email kích hoạt tới ${emp.email}!`);
+      } else {
+        alert(data.message || 'Lỗi khi cấp lại mật khẩu');
+      }
+    } catch {
+      alert('Không thể kết nối đến máy chủ.');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Toast Notification */}
@@ -463,6 +483,14 @@ export const EmployeeManagementPage: React.FC = () => {
                           title="Chuyển nhóm làm việc"
                         >
                           Chuyển nhóm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdminResetPassword(emp)}
+                          className="px-2.5 py-1 rounded-lg bg-surface hover:bg-amber-600 hover:text-white text-ink-secondary text-[11px] font-semibold transition-all cursor-pointer border border-line shadow-2xs"
+                          title="Cấp lại mật khẩu và gửi email kích hoạt"
+                        >
+                          Cấp lại pass
                         </button>
                       </div>
                     </td>
