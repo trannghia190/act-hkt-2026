@@ -211,7 +211,7 @@ export const RequestsPage: React.FC = () => {
         ? `Làm việc từ xa (WFH)${leaveUnit === 'HALF_DAY' ? ` (nửa ngày, buổi ${halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'})` : ''}`
         : typeNames[newReq.type],
       startDate: newReq.startDate,
-      endDate: (newReq.type === 'LATE_EARLY' || ((newReq.type === 'LEAVE' || newReq.type === 'WFH') && leaveUnit === 'HALF_DAY')) ? newReq.startDate : newReq.endDate,
+      endDate: (newReq.type === 'LATE_EARLY' || newReq.type === 'WFH' || (newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY')) ? newReq.startDate : newReq.endDate,
       durationText: newReq.type === 'LATE_EARLY'
         ? lateEarlyDuration
         : newReq.type === 'LEAVE'
@@ -753,7 +753,7 @@ export const RequestsPage: React.FC = () => {
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
                   />
                 </div>
-                {!(newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY') && (
+                {!(newReq.type === 'WFH' || (newReq.type === 'LEAVE' && leaveUnit === 'HALF_DAY')) && (
                   <div>
                     <label className="block font-medium text-ink mb-1">Đến Ngày</label>
                     <input
@@ -772,13 +772,19 @@ export const RequestsPage: React.FC = () => {
                 {newReq.type === 'LEAVE' && <>Hạn gửi loại nghỉ này: <b>{leaveSubmitDays} ngày</b> kể từ ngày nghỉ — chọn từ <b>{minDateForSelected}</b>.</>}
               </div>
 
-              {newReq.type === 'LEAVE' ? (
+              {newReq.type === 'LEAVE' || newReq.type === 'WFH' ? (
                 <div>
                   <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
                   <div className="w-full p-2 border border-line rounded-lg bg-canvas text-ink">
-                    {leaveUnit === 'HALF_DAY'
-                      ? <>0.5 ngày{halfDayWindow ? ` — ${halfDayWindow.text}` : ''}</>
-                      : <>{leaveDays} ngày làm việc</>}
+                    {newReq.type === 'LEAVE' ? (
+                      leaveUnit === 'HALF_DAY'
+                        ? <>0.5 ngày{halfDayWindow ? ` — ${halfDayWindow.text}` : ''}</>
+                        : <>{leaveDays} ngày làm việc</>
+                    ) : (
+                      leaveUnit === 'HALF_DAY'
+                        ? <>0.5 ngày — WFH buổi {halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}, làm việc {halfDayWindow?.from}–{halfDayWindow?.to}</>
+                        : <>1.0 ngày làm việc</>
+                    )}
                   </div>
                 </div>
               ) : (
