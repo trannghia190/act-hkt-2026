@@ -7,6 +7,9 @@ import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Team;
+import com.act.pulse.modules.attendance.entity.Timesheet;
+import com.act.pulse.modules.attendance.entity.TimesheetCell;
+import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
 import com.act.pulse.modules.attendance.repository.*;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
@@ -37,11 +40,11 @@ public class TimesheetController {
     private final TeamRepository teamRepository;
     private final RuleService ruleService;
     private final AuditLogRepository auditLogRepository;
-
-    public static final java.util.concurrent.atomic.AtomicInteger DISPUTES_PENDING = new java.util.concurrent.atomic.AtomicInteger(2);
-    private static final Map<String, String> STATUS = new java.util.concurrent.ConcurrentHashMap<>();
-    /** Ô đã sửa tay: key = month|employeeCode|day */
-    private static final Map<String, String> CELL_OVERRIDES = new java.util.concurrent.ConcurrentHashMap<>();
+    private final TimesheetRepository timesheetRepository;
+    private final TimesheetCellRepository timesheetCellRepository;
+    private final TimesheetCellAuditRepository timesheetCellAuditRepository;
+    private final TimesheetDisputeRepository timesheetDisputeRepository;
+    private final NotificationRepository notificationRepository;
 
     @lombok.Data
     public static class EditCellRequest {
@@ -50,6 +53,21 @@ public class TimesheetController {
         private String symbol;
         private String reason;
         private java.util.List<String> employeeCodes; // cho sửa hàng loạt
+    }
+
+    private String statusOf(YearMonth ym) {
+        List<Timesheet> rows = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
+        return rows.isEmpty() ? "draft" : rows.get(0).getStatus();
+    }
+
+    private Timesheet sheetOf(UUID userId, YearMonth ym) {
+        return timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, ym.getMonthValue(), ym.getYear())
+                .orElseGet(() -> timesheetRepository.save(Timesheet.builder()
+                        .userId(userId).periodMonth(ym.getMonthValue()).periodYear(ym.getYear()).status("draft").build()));
+    }
+
+    private void ensureAllSheets(YearMonth ym) {
+        for (User u : userRepository.findAll()) sheetOf(u.getId(), ym);
     }
 
     @GetMapping
@@ -95,11 +113,11 @@ public class TimesheetController {
                 else if (!weekend) workingDays++;
             }
 
-            // Ô đã sửa tay (ưu tiên hơn dữ liệu gốc)
-            for (int d = 1; d <= ym.lengthOfMonth(); d++) {
-                String ov = CELL_OVERRIDES.get(ym + "|" + u.getEmployeeCode() + "|" + d);
-                if (ov != null) daySymbol.put(d, ov);
-            }
+            // Ô đã sửa tay lưu trong DB (ưu tiên hơn dữ liệu gốc)
+            timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(u.getId(), ym.getMonthValue(), ym.getYear())
+                    .ifPresent(sheet -> timesheetCellRepository.findByTimesheetId(sheet.getId()).forEach(cell -> {
+                        if (cell.getWorkDate() != null) daySymbol.put(cell.getWorkDate().getDayOfMonth(), cell.getSymbol());
+                    }));
 
             // Đếm theo ký hiệu gốc của từng ô để export khớp file HR (Pine 53 cột).
             Map<String, Integer> symCount = new HashMap<>();
@@ -153,7 +171,7 @@ public class TimesheetController {
         out.put("month", ym.toString());
         out.put("daysInMonth", ym.lengthOfMonth());
         out.put("rows", rows);
-        out.put("status", STATUS.getOrDefault(ym.toString(), "draft"));
+        out.put("status", statusOf(ym));
         out.put("publishDay", ruleService.getInt("payroll_period", "publish_day", 11));
         out.put("disputeWindowDays", ruleService.getInt("payroll_period", "dispute_window_days", 2));
         return ApiResponse.ok(out, "Bảng công " + ym);
@@ -170,12 +188,23 @@ public class TimesheetController {
             throw new RuntimeException("Thiếu ký hiệu công mới");
         }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        if ("locked".equals(STATUS.get(ym.toString()))) {
+        if ("locked".equals(statusOf(ym))) {
             throw new RuntimeException("Kỳ công đã khoá — không sửa được ô");
         }
+        User target = userRepository.findByEmployeeCode(req.getEmployeeCode())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + req.getEmployeeCode()));
+        Timesheet sheet = sheetOf(target.getId(), ym);
+        LocalDate workDate = ym.atDay(req.getDay());
+        TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), workDate)
+                .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(workDate).isManual(true).build());
+        String oldVal = cell.getSymbol();
+        cell.setSymbol(req.getSymbol());
+        cell.setIsManual(true);
+        cell = timesheetCellRepository.save(cell);
         String key = ym + "|" + req.getEmployeeCode() + "|" + req.getDay();
-        String oldVal = CELL_OVERRIDES.get(key);
-        CELL_OVERRIDES.put(key, req.getSymbol());
+        timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
+                .timesheetCellId(cell.getId()).oldValue(oldVal).newValue(req.getSymbol())
+                .reason(req.getReason()).changedBy(CurrentUser.userId()).build());
         AuditLog log = AuditLog.builder().action("EDIT_TIMESHEET_CELL").entityName("TIMESHEET_CELL")
                 .entityId(key).userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
                 .oldValue(oldVal).newValue(req.getSymbol()).reason(req.getReason()).build();
@@ -195,11 +224,23 @@ public class TimesheetController {
             throw new RuntimeException("Chưa chọn nhân sự nào");
         }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        if ("locked".equals(STATUS.get(ym.toString()))) {
+        if ("locked".equals(statusOf(ym))) {
             throw new RuntimeException("Kỳ công đã khoá — không sửa được");
         }
         for (String code : req.getEmployeeCodes()) {
-            CELL_OVERRIDES.put(ym + "|" + code + "|" + req.getDay(), req.getSymbol());
+            userRepository.findByEmployeeCode(code).ifPresent(u -> {
+                Timesheet sheet = sheetOf(u.getId(), ym);
+                LocalDate workDate = ym.atDay(req.getDay());
+                TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), workDate)
+                        .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(workDate).build());
+                String oldVal = cell.getSymbol();
+                cell.setSymbol(req.getSymbol());
+                cell.setIsManual(true);
+                cell = timesheetCellRepository.save(cell);
+                timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
+                        .timesheetCellId(cell.getId()).oldValue(oldVal).newValue(req.getSymbol())
+                        .reason(req.getReason()).changedBy(CurrentUser.userId()).build());
+            });
         }
         AuditLog log = AuditLog.builder().action("BULK_EDIT_TIMESHEET").entityName("TIMESHEET_CELL")
                 .entityId(ym + "|" + req.getDay()).userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
@@ -214,9 +255,16 @@ public class TimesheetController {
     @Operation(summary = "Công bố bảng công (mặc định ngày 11) — mở cửa sổ khiếu nại")
     public ApiResponse<Map<String, Object>> publish(@RequestParam(required = false) String month) {
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        STATUS.put(ym.toString(), "published");
+        ensureAllSheets(ym);
         int window = ruleService.getInt("payroll_period", "dispute_window_days", 2);
         LocalDate deadline = LocalDate.now().plusDays(window);
+        List<Timesheet> rows = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
+        for (Timesheet s : rows) {
+            s.setStatus("published");
+            s.setPublishedAt(java.time.LocalDateTime.now());
+            s.setDisputeDeadline(deadline.atTime(23, 59));
+        }
+        timesheetRepository.saveAll(rows);
         return ApiResponse.ok(Map.of("month", ym.toString(), "status", "published", "disputeDeadline", deadline.toString()),
                 "Đã công bố bảng công — khiếu nại đến " + deadline);
     }
@@ -225,11 +273,17 @@ public class TimesheetController {
     @Operation(summary = "Khoá kỳ công — chặn đơn/quyết định sau khoá")
     public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month,
                                                  @RequestParam(required = false, defaultValue = "false") boolean force) {
-        if (!force && DISPUTES_PENDING.get() > 0) {
-            throw new RuntimeException("Còn " + DISPUTES_PENDING.get() + " khiếu nại chưa xử lý — xử lý hết trước khi khoá kỳ công");
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        long pending = timesheetDisputeRepository.findByStatus("PENDING").stream()
+                .filter(d -> d.getDeadline() == null || d.getDeadline().isAfter(now)).count();
+        if (!force && pending > 0) {
+            throw new RuntimeException("Còn " + pending + " khiếu nại chưa xử lý — xử lý hết trước khi khoá kỳ công");
         }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        STATUS.put(ym.toString(), "locked");
+        ensureAllSheets(ym);
+        List<Timesheet> rows = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
+        for (Timesheet s : rows) { s.setStatus("locked"); s.setLockedAt(now); }
+        timesheetRepository.saveAll(rows);
         return ApiResponse.ok(Map.of("month", ym.toString(), "status", "locked",
                 "lockedBy", String.valueOf(CurrentUser.employeeCode())), "Đã khoá kỳ công");
     }
