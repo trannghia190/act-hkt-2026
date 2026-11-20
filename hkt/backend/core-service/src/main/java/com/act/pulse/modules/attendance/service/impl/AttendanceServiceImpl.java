@@ -169,7 +169,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         // ── Lớp 2 · MẠNG NỘI BỘ ───────────────────────────────────────────
         boolean requireNetwork = ruleService.getBoolean("attendance_security", "require_internal_network", true);
-        boolean inOfficeNetwork = isOfficeNetwork(request.getWifiBssid());
+        boolean inOfficeNetwork = isOfficeNetwork(request.getWifiBssid(), request.getIpAddress());
         boolean wfhToday = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .anyMatch(r -> "WFH".equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
                         && LocalDate.now().equals(r.getWorkDate()));
@@ -178,24 +178,31 @@ public class AttendanceServiceImpl implements AttendanceService {
                 networkPassed ? null : "Bạn đang ngoài mạng công ty — hãy nối Wi-Fi văn phòng"));
 
         // ── Lớp 3 · VỊ TRÍ (GPS + độ chính xác) ───────────────────────────
+        boolean requireGeofence = ruleService.getBoolean("attendance_security", "require_geofence", true);
         int geofenceRadius = ruleService.getInt("attendance_security", "geofence_radius_m", 150);
         int gpsTolerance = ruleService.getInt("attendance_security", "gps_accuracy_tolerance_m", 100);
         Double distance = null;
         boolean gpsPassed = true;
         String gpsDetail = null;
-        if (request.getAccuracyMeters() != null && request.getAccuracyMeters().doubleValue() > gpsTolerance && !wfhToday) {
-            gpsPassed = false;
-            gpsDetail = String.format("Độ chính xác GPS (%.0fm) vượt quá sai số cho phép (%dm). Vui lòng di chuyển lại gần cửa sổ hoặc khu vực thông thoáng và thử lại.",
-                    request.getAccuracyMeters().doubleValue(), gpsTolerance);
-        } else if (request.getLatitude() != null && request.getLongitude() != null) {
-            double officeLat = ruleService.getDouble("attendance_security", "office_lat", OFFICE_LAT);
-            double officeLng = ruleService.getDouble("attendance_security", "office_lng", OFFICE_LNG);
-            distance = haversineMeters(request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
-                    officeLat, officeLng);
-            if (distance > geofenceRadius && !wfhToday) {
+
+        if (requireGeofence && !wfhToday) {
+            if (request.getLatitude() == null || request.getLongitude() == null) {
                 gpsPassed = false;
-                gpsDetail = String.format("Bạn đang cách văn phòng %,.0fm (vượt quá bán kính cho phép %dm)",
-                        distance, geofenceRadius);
+                gpsDetail = "Không lấy được vị trí GPS. Vui lòng bật định vị trên thiết bị và cấp quyền cho trình duyệt.";
+            } else if (request.getAccuracyMeters() != null && request.getAccuracyMeters().doubleValue() > gpsTolerance) {
+                gpsPassed = false;
+                gpsDetail = String.format("Độ chính xác GPS (%.0fm) vượt quá sai số cho phép (%dm). Vui lòng di chuyển lại gần cửa sổ hoặc khu vực thông thoáng và thử lại.",
+                        request.getAccuracyMeters().doubleValue(), gpsTolerance);
+            } else {
+                double officeLat = ruleService.getDouble("attendance_security", "office_lat", OFFICE_LAT);
+                double officeLng = ruleService.getDouble("attendance_security", "office_lng", OFFICE_LNG);
+                distance = haversineMeters(request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
+                        officeLat, officeLng);
+                if (distance > geofenceRadius) {
+                    gpsPassed = false;
+                    gpsDetail = String.format("Bạn đang cách văn phòng %,.0fm (vượt quá bán kính cho phép %dm)",
+                            distance, geofenceRadius);
+                }
             }
         }
         layers.add(layer("GPS", "Trong bán kính văn phòng", gpsPassed, gpsDetail));
@@ -241,7 +248,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             String reason = switch (first.getLayer()) {
                 case "DEVICE" -> "DEVICE_NOT_APPROVED";
                 case "NETWORK" -> "OUTSIDE_NETWORK";
-                case "GPS" -> "OUTSIDE_GEOFENCE";
+                case "GPS" -> (first.getDetail() != null && first.getDetail().contains("sai số")) ? "GPS_ACCURACY" : "OUTSIDE_GEOFENCE";
                 case "SHIFT" -> "NO_SHIFT";
                 case "FACE" -> face.proxyDetected ? "PROXY_PUNCH_DETECTED" : "FACE_NOT_MATCHED";
                 default -> first.getDetail();
@@ -490,21 +497,26 @@ public class AttendanceServiceImpl implements AttendanceService {
         return null;
     }
 
-    private boolean isOfficeNetwork(String wifiBssid) {
-        if (wifiBssid == null || wifiBssid.isBlank()) {
-            return false;
-        }
-        String bssid = wifiBssid.toLowerCase();
+    private boolean isOfficeNetwork(String wifiBssid, String ipAddress) {
         String wifiKeywords = ruleService.getString("attendance_security", "office_wifi_keywords", "act_office,act-office,act_office_5g");
-        for (String kw : wifiKeywords.split(",")) {
-            if (!kw.isBlank() && bssid.contains(kw.trim().toLowerCase())) {
-                return true;
+        if (wifiBssid != null && !wifiBssid.isBlank()) {
+            String bssid = wifiBssid.toLowerCase();
+            for (String kw : wifiKeywords.split(",")) {
+                if (!kw.isBlank() && bssid.contains(kw.trim().toLowerCase())) {
+                    return true;
+                }
             }
         }
-        String ipPrefixes = ruleService.getString("attendance_security", "office_ip_prefixes", "10.0.,192.168.,172.16.,127.0.");
-        for (String prefix : ipPrefixes.split(",")) {
-            if (!prefix.isBlank() && bssid.startsWith(prefix.trim())) {
+        String ipPrefixes = ruleService.getString("attendance_security", "office_ip_prefixes", "10.0.,192.168.,172.16.,127.0.,0:0:0:0:0:0:0:1,::1");
+        String checkIp = (ipAddress != null && !ipAddress.isBlank()) ? ipAddress : wifiBssid;
+        if (checkIp != null && !checkIp.isBlank()) {
+            if ("::1".equals(checkIp) || "127.0.0.1".equals(checkIp)) {
                 return true;
+            }
+            for (String prefix : ipPrefixes.split(",")) {
+                if (!prefix.isBlank() && checkIp.startsWith(prefix.trim())) {
+                    return true;
+                }
             }
         }
         return false;
