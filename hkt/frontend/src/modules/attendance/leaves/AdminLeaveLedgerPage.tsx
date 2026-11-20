@@ -163,7 +163,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           <option value="GRANT">Cấp phép đầu kỳ (+)</option>
           <option value="USED">Đã sử dụng (-)</option>
           <option value="ADJUST">Điều chỉnh HR (±)</option>
-          <option value="EXPIRED">Hết hạn 31/3 (-)</option>
+          <option value="EXPIRED">Hết hạn phép tồn (-)</option>
         </select>
       </div>
 

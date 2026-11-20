@@ -118,3 +118,18 @@ Mọi biến động tăng/giảm số dư phép đều được lưu trữ theo
 * **Cộng phép ngày15:** endpoint `POST /cron/monthly-leave-accrual` cộng1 ngày, chạy lại không cộng trùng; user vào sau ngày15 (test 20/11) **không** được cộng tháng đó.
 * **Thâm niên:** sửa so sánh năm theo tháng/ngày (không dùng day-of-year do năm nhuận); test user vào20/11/2024 → cộng1 ngày đúng ngày tròn, tách khỏi kỳ cộng tháng15.
 * **Sổ phép:** filter theo loại (AL/S/…) và năm lọc đúng số dòng. Mỗi dòng hiển thị **Loại phép** (tên + code) và **số dư chạy theo đúng loại đó**: AL = quỹ phép năm; S = số ngày nghỉ ốm đã dùng (không trộn với quỹ AL). Áp dụng cả Sổ phép cá nhân và Sổ cái HR.
+
+### Cơ chế tự động (cập nhật 20/11/2026)
+* **Cộng phép tháng** — `@Scheduled` **daily 02:00** (không cố định ngày15), mỗi lần chạy:
+  * Đọc `leave_accrual.accrual_on` (ngày cộng, mặc định15) và số ngày/tháng = `base_days_per_year / 12` (mặc định12/12=1).
+  * Chỉ user `status=ACTIVE`; bỏ qua user vào làm sau ngày cộng của kỳ đó.
+  * **Catch-up:** tìm kỳ “Cộng phép tháng M/YYYY” gần nhất trong ledger, cộng bù mọi tháng thiếu tới tháng hiện tại; nếu chưa có kỳ nào thì bắt đầu tháng hiện tại (tránh cộng trùng với seed cấp năm).
+  * `@EventListener(ApplicationReadyEvent)` chạy cùng logic khi khởi động → không mất kỳ nếu server tắt đúng ngày15.
+  * Endpoint thủ công: `POST /cron/monthly-leave-accrual` (idempotent, trả `backfilledMonths`).
+* **Cắt phép tồn** — `@Scheduled` **daily 02:15** + chạy khi khởi động, endpoint `POST /cron/leave-carry-expiry`:
+  * Đọc `leave_carryover`: từ `max_keep_from` (04-01) giữ tối đa `max_keep_days` (5); từ `expire_from` (07-01) về0.
+  * Tính tồn còn lại = GRANT tồn − USED **chỉ loại trừ phép năm** (S/không trừ phép không ảnh hưởng) − EXPIRED đã ghi.
+  * Ghi dòng `EXPIRED` âm vào `leave_ledger` + **audit `EXPIRE_LEAVE_CARRY`**; tag theo mốc policy nên chạy lại không ghi trùng.
+  * Chạy daily nên tự bù nếu lỡ ngày 01/04 hoặc 01/07.
+* **Thâm niên** — daily 02:30, đọc `leave_seniority.days_per_interval` (mặc định1), cộng đúng ngày tròn, idempotent theo tag, không gộp kỳ ngày15.
+* **Sổ phép** hiển thị cả dòng `EXPIRED` (Hết hạn phép tồn), tính số dư chạy theo từng loại phép.

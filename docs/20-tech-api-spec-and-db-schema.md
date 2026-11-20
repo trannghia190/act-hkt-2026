@@ -321,3 +321,8 @@ erDiagram
 * `POST /timesheets/publish`, `/timesheets/lock` — lưu `timesheets`; lock đếm pending từ `timesheet_disputes`.
 * `POST /disputes` (nhân viên tạo), `GET /disputes`, `GET /disputes/{id}`, `POST /disputes/{id}/resolve` — DB `timesheet_disputes`.
 * `GET /attendance/my-shift` — ca thật (khung vào/ra, nghỉ trưa, giờ/ngày) để tính đi muộn/về sớm và hiển thị giờ làm.
+
+### Cron phép
+* `POST /cron/monthly-leave-accrual` — cộng phép tháng (đọc `leave_accrual.accrual_on`/`base_days_per_year`, ACTIVE, idempotent, backfill `backfilledMonths`).
+* `POST /cron/leave-carry-expiry` — cắt phép tồn theo `leave_carryover`, ghi `EXPIRED` + audit, idempotent.
+* `POST /cron/yearly-seniority-accrual` — cộng thâm niên đúng ngày tròn, đọc `days_per_interval`.
