@@ -553,13 +553,13 @@ nhầm.
 
 | Hạng mục | Cài đặt |
 |---|---|
-| Hình thức | Theo ngày / nửa ngày; đăng ký lẻ / lịch cố định (vd: thứ Sáu hằng tuần) |
-| Quota | 2 ngày/tuần (cấu hình theo phòng ban/vị trí) |
-| Vị trí cấm WFH | `Position.allow_wfh = false` → chặn tạo đơn |
+| Hình thức | Theo ngày hoặc **nửa ngày** (chọn buổi sáng/chiều); đăng ký từng ngày, **không lặp tuần** |
+| Quota | 2 ngày/tuần; nửa ngày tính **0.5 ngày** |
+| Địa điểm | **Không giới hạn địa điểm WFH** |
 | Hạn đăng ký | ≥ 1 ngày làm việc; đơn gấp vẫn tạo được nhưng gắn cờ `is_late_request` |
 | Chấm công trong ngày WFH | Được phép chấm **ngoài mạng công ty VÀ ngoài bán kính GPS** — đây là **ngoại lệ duy nhất**; ngày khác cả 2 đều **chặn** |
 | Báo cáo công việc | Bắt buộc nhập tóm tắt cuối ngày WFH (nếu bật) |
-| Trên bảng công | Ngày WFH = công bình thường, nhưng cột `wfh_days` đánh dấu riêng |
+| Trên bảng công | WFH cả ngày = `R` (1 công); WFH nửa ngày = `R/0.50` (0.5 công); cột `wfh_days` cộng 0.5/1 |
 
 ### 2.5 Rule đi muộn không có đơn
 
@@ -966,7 +966,6 @@ Duyệt nhiều đơn cùng lúc; lý do từ chối bằng 1 chạm từ chip p
 **WFH**
 - [ ] Quota 2 lần/tuần → lần 3 bị chặn
 - [ ] Đăng lịch cố định (thứ Sáu hằng tuần) tạo được nhiều tuần
-- [ ] Vị trí cấm WFH → không tạo được đơn
 
 **Bảng công**
 - [ ] Bảng công có đủ **53 cột** (5 thông tin + 31 ngày + 17 tổng hợp) theo mẫu `doc/Rule chấm công.xlsx`

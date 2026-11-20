@@ -658,7 +658,7 @@ tbody tr:hover{background:var(--surface-2)}
       <tr><td><a class="id" href="#s07">S07</a></td><td>C-cố</td><td>Nhân viên</td><td></td><td>Tạo đơn đi muộn — điền sẵn từ log chấm công thật</td></tr>
       <tr><td><a class="id" href="#s08">S08</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Đơn của tôi — lịch sử + trạng thái rõ ràng</td></tr>
       <tr><td><a class="id" href="#s09">S09</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Số dư phép — tự tính, có cảnh báo phép tồn</td></tr>
-      <tr><td><a class="id" href="#s10">S10</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Đăng ký WFH — lẻ hoặc lịch cố định</td></tr>
+      <tr><td><a class="id" href="#s10">S10</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Đăng ký WFH — ngày hoặc nửa ngày</td></tr>
       <tr><td><a class="id" href="#s11">S11</a></td><td>Bài toán 1</td><td>Nhân viên</td><td><span class="badge d">P0</span></td><td>Bảng công của tôi — xem & khiếu nại trong 2 ngày</td></tr>
       <tr><td><a class="id" href="#s12">S12</a></td><td>C7</td><td>Quản lý</td><td><span class="badge d">P0</span></td><td>Duyệt đơn — 12 đơn trong 3 phút</td></tr>
       <tr><td><a class="id" href="#s13">S13</a></td><td>Bài toán 1</td><td>Quản lý</td><td><span class="badge d">P0</span></td><td>Chi tiết đơn — timeline đầy đủ, ai làm gì lúc nào</td></tr>
@@ -2617,27 +2617,26 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="n">10</div>
     <div>
       <div class="eyebrow">Bài toán 1 · Nhân viên · P0</div>
-      <h2>Đăng ký WFH — lẻ hoặc lịch cố định</h2>
-      <p class="desc">Mục 6.5: đăng ký theo ngày/nửa ngày, lẻ hoặc lịch cố định (vd thứ Sáu hằng tuần); quota 2 lần/tuần; hạn đăng ký ≥ 1 ngày làm việc (đơn gấp vẫn tạo được nhưng bị đánh dấu); chấm công ngoài mạng công ty trong ngày WFH đã duyệt.</p>
+      <h2>Đăng ký WFH — theo ngày hoặc nửa ngày</h2>
+      <p class="desc">Mục 6.5: đăng ký theo ngày hoặc nửa ngày (chọn buổi sáng/chiều, không lặp tuần); quota 2 ngày/tuần (nửa ngày = 0.5); hạn đăng ký ≥ 1 ngày làm việc; không giới hạn địa điểm; chấm công ngoài mạng công ty trong ngày WFH đã duyệt.</p>
     </div>
   </div>
   <div class="spec">
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Đăng ký lẻ (chọn ngày) hoặc lịch cố định (chọn thứ trong tuần)</li>
-        <li><span class="tag p0">P0</span>Cả ngày / nửa ngày</li>
+        <li><span class="tag p0">P0</span>Đăng ký theo ngày — không có lịch lặp tuần</li>
+        <li><span class="tag p0">P0</span>Cả ngày hoặc nửa ngày — chọn buổi sáng/chiều, tính 0.5 công</li>
         <li><span class="tag p0">P0</span>Quota 2 lần/tuần — hiện rõ đã dùng mấy, còn mấy</li>
         <li><span class="tag p0">P0</span>Đơn gấp → tạo được nhưng gắn cờ đỏ cho quản lý</li>
-        <li><span class="tag p0">P0</span>Vị trí không được phép WFH → chặn tạo đơn</li>
-        <li><span class="tag p0">P0</span>Báo cáo công việc cuối ngày WFH (bắt buộc nếu bật)</li>
+                <li><span class="tag p0">P0</span>Báo cáo công việc cuối ngày WFH (bắt buộc nếu bật)</li>
       </ul>
     </div>
     <div>
       <h4>Acceptance criteria</h4>
       <ul>
         <li>Lần 3 trong tuần → bị chặn, hiện rõ đã dùng 2/2</li>
-        <li>Lịch cố định tạo được nhiều tuần liên tiếp</li>
+        <li>WFH nửa ngày hiển thị 0.5 công và khung giờ làm việc còn lại</li>
         <li>Đăng trong ngày → gắn cờ "đơn gấp", quản lý thấy cờ đỏ</li>
         <li>Ngày WFH đã duyệt → chấm công ngoài mạng công ty OK</li>
         <li>Thiếu báo cáo công việc cuối ngày → nhắc việc trong todo inbox</li>

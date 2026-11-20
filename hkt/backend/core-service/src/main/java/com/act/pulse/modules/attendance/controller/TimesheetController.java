@@ -81,20 +81,25 @@ public class TimesheetController {
         for (User u : userRepository.findAll()) {
             Map<Integer, String> daySymbol = new HashMap<>();
             List<AttendanceLog> logs = attendanceLogRepository.findByUserIdOrderByWorkDateDesc(u.getId());
-            int present = 0;
+            double present = 0;
             for (AttendanceLog log : logs) {
                 if (log.getWorkDate() == null || !YearMonth.from(log.getWorkDate()).equals(ym)) continue;
                 boolean full = log.getCheckInAt() != null && log.getCheckOutAt() != null;
                 daySymbol.put(log.getWorkDate().getDayOfMonth(), full ? "1.00" : "0.50");
                 present += full ? 1 : 0;
             }
-            int wfh = 0, late = 0;
-            double leave = 0;
+            int late = 0;
+            double leave = 0, wfh = 0;
             for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
                 if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null || !YearMonth.from(r.getWorkDate()).equals(ym)) continue;
                 int d = r.getWorkDate().getDayOfMonth();
                 switch (r.getRequestType()) {
-                    case "WFH" -> { daySymbol.put(d, "R"); wfh++; present++; }
+                    case "WFH" -> {
+                        boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
+                        daySymbol.put(d, halfDay ? "R/0.50" : "R");
+                        wfh += halfDay ? 0.5 : 1;
+                        present += halfDay ? 0.5 : 1;
+                    }
                     case "LEAVE" -> {
                         boolean halfDay = r.getPayload() != null && r.getPayload().contains("half_day_period");
                         String sym = r.getLeaveType() == null ? "AL" : r.getLeaveType();

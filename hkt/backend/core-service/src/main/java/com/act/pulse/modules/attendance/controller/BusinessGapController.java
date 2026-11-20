@@ -165,8 +165,8 @@ public class BusinessGapController {
         for (int d = 1; d <= targetMonth.lengthOfMonth(); d++) {
             java.time.LocalDate day = targetMonth.atDay(d);
             List<Map<String, Object>> entries = new java.util.ArrayList<>();
-            int wfh = 0, late = 0, present = 0;
-            double leave = 0;
+            int late = 0, present = 0;
+            double leave = 0, wfh = 0;
             for (User u : visible) {
                 String kind = null;
                 RequestEntity found = null;
@@ -179,7 +179,7 @@ public class BusinessGapController {
                 }
                 boolean halfDay = false;
                 String halfPeriod = null, workFrom = null, workTo = null;
-                if (found != null && "LEAVE".equals(kind) && found.getPayload() != null) {
+                if (found != null && ("LEAVE".equals(kind) || "WFH".equals(kind)) && found.getPayload() != null) {
                     try {
                         Map<?, ?> p = objectMapper.readValue(found.getPayload(), Map.class);
                         halfPeriod = p.get("half_day_period") == null ? null : String.valueOf(p.get("half_day_period"));
@@ -191,7 +191,7 @@ public class BusinessGapController {
                 if (kind == null) {
                     kind = "PRESENT";
                     present++;
-                } else if ("WFH".equals(kind)) wfh++;
+                } else if ("WFH".equals(kind)) wfh += halfDay ? 0.5 : 1;
                 else if ("LEAVE".equals(kind)) leave += halfDay ? 0.5 : 1;
                 else late++;
                 Map<String, Object> entry = new java.util.HashMap<>();
