@@ -18,9 +18,9 @@ graph TD
 ```
 
 ### 1.1. Đơn Đi Muộn / Về Sớm (Late Arrival / Early Departure — S07)
-* **Một ngày cụ thể** (không có "từ ngày → đến ngày").
+* **Một ngày cụ thể** (không có "từ ngày → đến ngày"). Giờ vào trong khung `checkInStart–checkInEnd` (VD 08:22 trong 08:00–09:30) **không bị coi là muộn**.
 * Chọn **Đi muộn** (cập nhật giờ vào) hoặc **Về sớm** (cập nhật giờ ra) + **giờ thực tế**.
-* Số phút tự tính theo ca thật (`/attendance/my-shift`): đi muộn = giờ chọn − `checkInStart`; về sớm = `checkOutStart` − giờ chọn.
+* Số phút tự tính theo ca thật (`/attendance/my-shift`): chỉ tính **đi muộn khi giờ vào > `checkInEnd`** (hết khung check-in cho phép) → phút = giờ chọn − `checkInEnd`; **về sớm khi giờ ra < `checkOutStart`** → phút = `checkOutStart` − giờ chọn. Vào/ra trong khung cho phép = 0 phút, không tạo đơn.
 * **Tối đa `late_early.max_minutes`** (mặc định 60) — ô chọn giờ bị giới hạn min/max theo cấu hình; quota `late_early.max_count` (2 lần/tháng).
 * **Hạn nộp `late_early.submit_within_days`** (3 ngày) — lịch chỉ chọn từ `hôm nay − N`.
 * Không nhập "Số lượng/Thời lượng"; lưu `payload = { late_early, time, shift_start, shift_end }`.

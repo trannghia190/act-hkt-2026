@@ -52,8 +52,8 @@ export const RequestsPage: React.FC = () => {
     fetch('/api/v1/attendance/my-shift', { headers }).then(r => r.json()).then(j => {
       if (j?.data && j.data.code) {
         setMyShift(j.data);
-        const start = String(j.data.checkInStart || '08:00').slice(0, 5);
-        const [h, m] = start.split(':').map(Number);
+        const inEnd = String(j.data.checkInEnd || '09:30').slice(0, 5);
+        const [h, m] = inEnd.split(':').map(Number);
         const total = h * 60 + m + 15;
         setLateEarlyTime(`${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
       }
@@ -207,6 +207,7 @@ export const RequestsPage: React.FC = () => {
     return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
   };
   const SHIFT_START = hhmm(myShift?.checkInStart) || '08:00';
+  const SHIFT_IN_END = hhmm(myShift?.checkInEnd) || '09:30';
   const SHIFT_END = hhmm(myShift?.checkOutStart) || '17:00';
   const shiftStartLabel = hhmm(myShift?.checkInStart) || '08:00';
   const shiftInEnd = hhmm(myShift?.checkInEnd) || '09:30';
@@ -225,7 +226,7 @@ export const RequestsPage: React.FC = () => {
     : 0;
   const lateEarlyMinutes = newReq.type === 'LATE_EARLY'
     ? (lateEarlyKind === 'LATE'
-        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_START)
+        ? toMinutes(lateEarlyTime) - toMinutes(SHIFT_IN_END)
         : toMinutes(SHIFT_END) - toMinutes(lateEarlyTime))
     : 0;
   const lateEarlyValid = lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax;
@@ -321,7 +322,7 @@ export const RequestsPage: React.FC = () => {
       ...(newReq.type === 'LATE_EARLY' ? {
         late_early: lateEarlyKind,
         time: lateEarlyTime,
-        shift_start: SHIFT_START,
+        shift_start: SHIFT_IN_END,
         shift_end: SHIFT_END,
       } : {}),
       ...(newReq.type === 'ADJUST' ? {
@@ -485,7 +486,7 @@ export const RequestsPage: React.FC = () => {
   const lateMinutesOf = (log: any) => {
     if (!log?.checkInAt) return 0;
     const d = new Date(log.checkInAt);
-    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_START));
+    return Math.max(0, d.getHours() * 60 + d.getMinutes() - toMinutes(SHIFT_IN_END));
   };
   const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt && l.workDate >= isoDaysFromToday(-adjustDeadlineDays));
   const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0 && l.workDate >= isoDaysFromToday(-lateSubmitDays));
@@ -914,7 +915,7 @@ export const RequestsPage: React.FC = () => {
                       const kind = e.target.value as 'LATE' | 'EARLY';
                       setLateEarlyKind(kind);
                       setLateEarlyTime(kind === 'LATE'
-                        ? `${String(Math.floor((toMinutes(SHIFT_START) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 15) % 60).padStart(2, '0')}`
+                        ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + 15) % 60).padStart(2, '0')}`
                         : `${String(Math.floor((toMinutes(SHIFT_END) - 15) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 15) % 60).padStart(2, '0')}`);
                     }}
                     className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
@@ -933,10 +934,10 @@ export const RequestsPage: React.FC = () => {
                     type="time"
                     required
                     min={lateEarlyKind === 'LATE'
-                      ? `${String(Math.floor((toMinutes(SHIFT_START) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + 1) % 60).padStart(2, '0')}`
+                      ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + 1) % 60).padStart(2, '0')}`
                       : `${String(Math.floor((toMinutes(SHIFT_END) - lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - lateMinutesMax) % 60).padStart(2, '0')}`}
                     max={lateEarlyKind === 'LATE'
-                      ? `${String(Math.floor((toMinutes(SHIFT_START) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_START) + lateMinutesMax) % 60).padStart(2, '0')}`
+                      ? `${String(Math.floor((toMinutes(SHIFT_IN_END) + lateMinutesMax) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_IN_END) + lateMinutesMax) % 60).padStart(2, '0')}`
                       : `${String(Math.floor((toMinutes(SHIFT_END) - 1) / 60)).padStart(2, '0')}:${String((toMinutes(SHIFT_END) - 1) % 60).padStart(2, '0')}`}
                     value={lateEarlyTime}
                     onChange={e => setLateEarlyTime(e.target.value)}

@@ -575,7 +575,7 @@ Theo quyết định HR: **"Tính theo đúng giờ làm việc thực tế"**.
 Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → nghĩa là `công thực tế = giờ làm việc chuẩn - phút đi muộn/về sớm thực tế`.
 
 ### 2.6 Đơn từ — chốt triển khai 20/11/2026
-* **Đi muộn/về sớm:** 1 ngày; chọn Đi muộn (sửa giờ vào) hoặc Về sớm (sửa giờ ra) + giờ thực tế; số phút tự tính theo ca thật; giới hạn `late_early.max_minutes` (cấu hình, mặc định 60) áp cả ô chọn giờ lẫn server; hạn nộp `submit_within_days` (3 ngày). Duyệt → cập nhật `attendance_logs`.
+* **Đi muộn/về sớm:** 1 ngày; chọn Đi muộn (sửa giờ vào) hoặc Về sớm (sửa giờ ra) + giờ thực tế; số phút chỉ tính khi **giờ vào > `checkInEnd`** hoặc **giờ ra < `checkOutStart`** (vào/ra trong khung = không muộn); giới hạn `late_early.max_minutes` (cấu hình, mặc định 60) áp cả ô chọn giờ lẫn server; hạn nộp `submit_within_days` (3 ngày). Duyệt → cập nhật `attendance_logs`.
 * **Bổ sung chấm công:** 1 ngày, chỉ hôm nay hoặc quá khứ trong `makeup.deadline_working_days` (mặc định 3), không cho ngày tương lai; chọn Giờ vào/Giờ ra + giờ thực tế; **không nhập thời lượng**; quota 5 lần/tháng; duyệt → cập nhật `attendance_logs`.
 * **Nghỉ phép:** cả ngày hoặc nửa ngày (0.5, chọn buổi sáng/chiều + khung giờ làm còn lại theo ca); lưu `end_date` thật; file đính kèm bắt buộc theo loại nghỉ (`requires_attachment`), cho **nhiều file**ảnh/PDF ≤10MB, lưu bytea trong `request_attachments`; server chặn duyệt nếu thiếu giấy tờ.
 * **WFH:** không giới hạn địa điểm, không lặp tuần; cả ngày chọn khoảng ngày (mỗi ngày làm việc = 1 đơn, quota 2/tuần) hoặc nửa ngày 0.5 (1 ngày, sáng/chiều); bảng công ghi `R` / `R/0.50`.
