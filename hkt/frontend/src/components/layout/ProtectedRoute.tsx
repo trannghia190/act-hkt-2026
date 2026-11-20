@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return (
@@ -25,9 +25,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           <div>• Phòng ban: {user.department || 'Chưa thiết lập'}</div>
         </div>
         <div className="flex justify-center gap-2 pt-2">
-          <Button variant="primary" size="sm" onClick={() => switchRole('ADMIN')}>
-            👑 Chuyển sang vai trò Admin ngay
-          </Button>
           <Button variant="outline" size="sm" onClick={() => window.history.back()}>
             Quay lại
           </Button>

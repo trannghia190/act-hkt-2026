@@ -72,7 +72,7 @@ export const LoginPage: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-ink">Đăng nhập tài khoản</h2>
             <p className="text-xs text-ink-secondary mt-0.5">
-              Dùng tài khoản công ty do HR cấp (demo: <code className="font-mono font-bold text-accent">136ACT / 123456</code>)
+              Dùng tài khoản công ty do HR cấp · demo: <code className="font-mono font-bold text-accent">01HR</code> (HR), <code className="font-mono font-bold text-accent">05ACT</code> (Manager), <code className="font-mono font-bold text-accent">136ACT</code> (Nhân viên) — mật khẩu <code className="font-mono font-bold text-accent">123456</code>
             </p>
           </div>
 
@@ -99,7 +99,7 @@ export const LoginPage: React.FC = () => {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ví dụ: Admin hoặc admin@act-corp.internal"
+                placeholder="Mã nhân viên hoặc email"
                 className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas focus:outline-none focus:border-accent font-medium text-ink"
               />
             </div>
