@@ -27,6 +27,7 @@ const emptyForm: LeaveType = { code: '', name: '', defaultDays: null, requiresAt
 export const LeaveTypesPage: React.FC = () => {
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [editing, setEditing] = useState<LeaveType | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<LeaveType>(emptyForm);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +43,8 @@ export const LeaveTypesPage: React.FC = () => {
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
 
-  const openAdd = () => { setEditing(null); setForm(emptyForm); };
-  const openEdit = (t: LeaveType) => { setEditing(t); setForm({ ...t }); };
+  const openAdd = () => { setEditing(null); setForm(emptyForm); setIsOpen(true); };
+  const openEdit = (t: LeaveType) => { setEditing(t); setForm({ ...t }); setIsOpen(true); };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +59,7 @@ export const LeaveTypesPage: React.FC = () => {
     if (!res.ok) { setError(json?.message || 'Lưu loại nghỉ thất bại'); return; }
     setEditing(undefined as any);
     setForm(emptyForm);
+    setIsOpen(false);
     setError(null);
     showToast(editing ? 'Đã cập nhật loại nghỉ' : 'Đã thêm loại nghỉ');
     load();
@@ -93,8 +95,8 @@ export const LeaveTypesPage: React.FC = () => {
         ))}
       </div>
 
-      {(editing || form !== emptyForm) && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => { setEditing(undefined as any); setForm(emptyForm); }}>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => { setEditing(undefined as any); setForm(emptyForm); setIsOpen(false); }}>
           <form className="bg-surface rounded-xl p-5 w-full max-w-md space-y-3" onClick={(e) => e.stopPropagation()} onSubmit={save}>
             <h3 className="text-base font-bold">{editing ? 'Sửa loại nghỉ' : 'Thêm loại nghỉ'}</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -132,7 +134,7 @@ export const LeaveTypesPage: React.FC = () => {
               <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
             </label>
             <div className="flex justify-end gap-2">
-              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(undefined as any); setForm(emptyForm); }}>Huỷ</button>
+              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(undefined as any); setForm(emptyForm); setIsOpen(false); }}>Huỷ</button>
               <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu</button>
             </div>
           </form>

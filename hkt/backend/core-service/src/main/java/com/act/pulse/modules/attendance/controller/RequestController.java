@@ -3,7 +3,9 @@ package com.act.pulse.modules.attendance.controller;
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.act.pulse.modules.attendance.service.RuleService;
@@ -34,6 +36,7 @@ public class RequestController {
     private final UserRepository userRepository;
     private final RuleService ruleService;
     private final LeaveTypeRepository leaveTypeRepository;
+    private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping
@@ -156,12 +159,33 @@ public class RequestController {
 
     @GetMapping("/inbox")
     @Operation(summary = "Hộp thư duyệt của quản lý (S12)")
-    public ApiResponse<List<RequestEntity>> inbox() {
+    public ApiResponse<List<Map<String, Object>>> inbox() {
         List<UUID> managed = userRepository.findAll().stream()
                 .filter(u -> CurrentUser.userId().equals(u.getManagerId()))
                 .map(User::getId)
                 .collect(Collectors.toList());
-        return ApiResponse.ok(requestRepository.findByUserIdInAndStatusOrderByCreatedAtDesc(managed, "PENDING_APPROVAL"), "Đơn chờ duyệt");
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (RequestEntity r : requestRepository.findByUserIdInAndStatusOrderByCreatedAtDesc(managed, "PENDING_APPROVAL")) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", r.getId());
+            m.put("userId", r.getUserId());
+            m.put("requestType", r.getRequestType());
+            m.put("leaveType", r.getLeaveType());
+            m.put("workDate", r.getWorkDate());
+            m.put("minutes", r.getMinutes());
+            m.put("reason", r.getReason());
+            m.put("status", r.getStatus());
+            m.put("createdAt", r.getCreatedAt());
+            m.put("appliedParameters", r.getAppliedParameters());
+            userRepository.findById(r.getUserId()).ifPresent(u -> {
+                m.put("employeeCode", u.getEmployeeCode());
+                m.put("employeeName", u.getFullName());
+                m.put("employeeEmail", u.getEmail());
+                m.put("positionName", u.getPositionName());
+            });
+            rows.add(m);
+        }
+        return ApiResponse.ok(rows, "Đơn chờ duyệt");
     }
 
     @GetMapping("/{id}")
@@ -181,8 +205,9 @@ public class RequestController {
 
     @PostMapping("/{id}/approve")
     @Operation(summary = "Quản lý duyệt đơn (1 cấp)")
-    public ApiResponse<RequestEntity> approve(@PathVariable UUID id) {
-        return decide(id, true, null);
+    public ApiResponse<RequestEntity> approve(@PathVariable UUID id, @RequestBody(required = false) Map<String, String> body) {
+        String comment = body == null ? null : body.get("comment");
+        return decide(id, true, comment);
     }
 
     @PostMapping("/{id}/reject")
@@ -198,9 +223,22 @@ public class RequestController {
     public ApiResponse<RequestEntity> withdraw(@PathVariable UUID id) {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được rút đơn của mình");
-        if (!"PENDING_APPROVAL".equals(r.getStatus())) throw new RuntimeException("Chỉ rút được đơn đang chờ duyệt");
+        if (!"PENDING_APPROVAL".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
+            throw new RuntimeException("Chỉ rút/huỷ được đơn nháp hoặc đang chờ duyệt");
+        }
         r.setStatus("WITHDRAWN");
         return ApiResponse.ok(requestRepository.save(r), "Đã rút đơn");
+    }
+
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "Gửi duyệt đơn đang lưu nháp")
+    public ApiResponse<RequestEntity> submitDraft(@PathVariable UUID id) {
+        RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được gửi đơn của mình");
+        if (!"DRAFT".equals(r.getStatus())) throw new RuntimeException("Chỉ gửi duyệt được đơn nháp");
+        r.setStatus("PENDING_APPROVAL");
+        r.setUpdatedAt(LocalDateTime.now());
+        return ApiResponse.ok(requestRepository.save(r), "Đã gửi đơn tới quản lý");
     }
 
     @PostMapping("/bulk-approve")
@@ -222,7 +260,21 @@ public class RequestController {
         r.setDecidedBy(me);
         r.setDecidedAt(LocalDateTime.now());
         r.setDecisionComment(comment);
-        return ApiResponse.ok(requestRepository.save(r), approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
+        RequestEntity saved = requestRepository.save(r);
+
+        // Nhân viên nhận thông báo kết quả duyệt/từ chối (từ chối luôn kèm lý do).
+        notificationRepository.save(Notification.builder()
+                .userId(owner.getId())
+                .title(approve ? "Đơn đã được duyệt" : "Đơn bị từ chối")
+                .content("Đơn " + r.getRequestType() + " ngày " + r.getWorkDate()
+                        + (comment == null || comment.isBlank() ? "" : " — Lý do: " + comment))
+                .type("REQUEST")
+                .priority(approve ? "MEDIUM" : "HIGH")
+                .actionUrl("/attendance/requests")
+                .isRead(false)
+                .build());
+
+        return ApiResponse.ok(saved, approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
     }
 
     @lombok.Data

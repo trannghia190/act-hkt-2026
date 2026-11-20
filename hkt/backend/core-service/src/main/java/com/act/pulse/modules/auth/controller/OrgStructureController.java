@@ -1,9 +1,11 @@
 package com.act.pulse.modules.auth.controller;
 
 import com.act.pulse.common.response.ApiResponse;
+import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -31,6 +33,9 @@ public class OrgStructureController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Data
     @Builder
@@ -333,21 +338,38 @@ public class OrgStructureController {
     @GetMapping("/notifications")
     @Operation(summary = "Danh sách thông báo thời gian thực trên Header (CORE-NOTIF-01)")
     public ApiResponse<List<Map<String, Object>>> getNotifications() {
-        return ApiResponse.ok(List.of(
-                Map.of("id", "NOTIF-01", "title", "Nhắc nhở chấm công ra ca chiều", "type", "ATTENDANCE", "read", false),
-                Map.of("id", "NOTIF-02", "title", "Đơn nghỉ phép REQ-001 đã được duyệt", "type", "REQUEST", "read", true)
-        ), "Lấy thông báo thành công");
+        List<Map<String, Object>> list = notificationRepository
+                .findByUserIdOrderByCreatedAtDesc(CurrentUser.userId()).stream()
+                .map(n -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", n.getId().toString());
+                    m.put("title", n.getTitle());
+                    m.put("content", n.getContent());
+                    m.put("type", n.getType());
+                    m.put("read", Boolean.TRUE.equals(n.getIsRead()));
+                    m.put("actionUrl", n.getActionUrl());
+                    m.put("createdAt", String.valueOf(n.getCreatedAt()));
+                    return m;
+                }).toList();
+        return ApiResponse.ok(list, "Lấy thông báo thành công");
     }
 
     @PutMapping("/notifications/{id}/read")
     @Operation(summary = "Đánh dấu thông báo đã đọc (CORE-NOTIF-01)")
     public ApiResponse<Boolean> markNotificationRead(@PathVariable String id) {
+        notificationRepository.findById(UUID.fromString(id)).ifPresent(n -> {
+            n.setIsRead(true);
+            notificationRepository.save(n);
+        });
         return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc");
     }
 
     @PutMapping("/notifications/mark-all-read")
     @Operation(summary = "Đánh dấu tất cả thông báo đã đọc (CORE-NOTIF-02)")
     public ApiResponse<Boolean> markAllNotificationsRead() {
+        var unread = notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(CurrentUser.userId());
+        unread.forEach(n -> n.setIsRead(true));
+        notificationRepository.saveAll(unread);
         return ApiResponse.ok(true, "Đã đánh dấu tất cả thông báo đã đọc");
     }
 

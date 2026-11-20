@@ -9,7 +9,9 @@ import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,7 @@ public class BusinessGapController {
     private final AuditLogRepository auditLogRepository;
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
 
     @GetMapping("/attendance/my-timesheet")
     @Operation(summary = "Bảng công của tôi (S11)")
@@ -268,6 +271,20 @@ public class BusinessGapController {
                 .userId(CurrentUser.userId()).reason(body.get("reason")).newValue(action).build();
         log.setCreatedAt(java.time.LocalDateTime.now());
         auditLogRepository.save(log);
+
+        // Nhân viên nhận thông báo kết quả xử lý khiếu nại (đặc biệt khi bị từ chối — bắt buộc kèm lý do).
+        userRepository.findFirstByFullName(String.valueOf(d.get("employee"))).ifPresent(emp ->
+                notificationRepository.save(Notification.builder()
+                        .userId(emp.getId())
+                        .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
+                        .content("Khiếu nại ngày " + d.get("date") + ": " + d.get("reason")
+                                + ". Lý do xử lý: " + body.get("reason"))
+                        .type("DISPUTE")
+                        .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
+                        .actionUrl("/attendance/disputes/" + id)
+                        .isRead(false)
+                        .build()));
+
         return ApiResponse.ok(d, "Đã xử lý khiếu nại");
     }
 

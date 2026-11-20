@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom';
 
 interface Row { code: string; name: string; team: string; annual: number; carried: number; sick: number; seniority: number; used: number; }
 
-const initial: Row[] = [
-  { code: '136ACT', name: 'Vũ Văn Luận', team: 'Optimus', annual: 8.5, carried: 5, sick: 0, seniority: 1, used: 3.5 },
-  { code: '05ACT', name: 'Nguyễn Thanh Tùng', team: 'Sirius', annual: 12, carried: 2, sick: 1, seniority: 0, used: 6 },
-  { code: '01HR', name: 'Nguyễn Thị Thu Hà', team: 'HR', annual: 15, carried: 0, sick: 0, seniority: 2, used: 4 },
-];
+// Luôn lấy từ API — không dùng dữ liệu mẫu.
+const initial: Row[] = [];
 
 export const LeaveTablePage: React.FC = () => {
   const [data, setData] = useState<Row[]>(initial);
@@ -22,7 +19,7 @@ export const LeaveTablePage: React.FC = () => {
       .then(j => {
         if (Array.isArray(j?.data) && j.data.length) {
           setData(j.data.map((u: any) => ({
-            code: u.employeeCode, name: u.fullName, team: u.team || '—',
+            code: u.employeeCode, name: u.fullName, team: u.teamName || '—',
             annual: Number(u.annualRemaining ?? u.granted ?? 0), carried: Number(u.carriedOver ?? 0),
             sick: Number(u.sickUsed ?? 0), seniority: Number(u.seniority ?? 0), used: Number(u.totalUsed ?? u.used ?? 0),
           })));
