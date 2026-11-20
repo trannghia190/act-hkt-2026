@@ -78,7 +78,7 @@ cleanup() {
   if [ "$PROVIDER_USED" = "tailscale" ]; then
     tailscale funnel reset >/dev/null 2>&1 || true
   fi
-  rm -f "$RUN_DIR/tunnel.pid"
+  rm -f "$RUN_DIR/tunnel.pid" "$RUN_DIR/share-credentials.txt"
   echo "Đã tắt tunnel."
 }
 
@@ -141,6 +141,9 @@ print_result() {
   if [ "$PROVIDER_USED" != "ngrok" ] || [ "$SHARE_BASIC_AUTH" != "1" ]; then
     warn "Không có basic auth ở tầng tunnel — chỉ dựa vào đăng nhập của app."
   fi
+  warn "Trình duyệt hỏi lại dù đã nhập? Mở Incognito hoặc xoá mật khẩu đã lưu cho *.ngrok-free.app."
+  warn "Nếu bị hỏi lặp sau khi vào /todo: chạy frontend với VITE_DISABLE_HMR=1 (HMR WebSocket bị Basic Auth challenge)."
+  echo "  Thông tin đăng nhập đã lưu tại: $RUN_DIR/share-credentials.txt"
   warn "Hãy Ctrl+C (hoặc ./share-local.sh stop) khi demo xong."
   echo "=================================================================="
   echo
@@ -171,6 +174,11 @@ PROVIDER="$(detect_provider)"
 
 if [ "$PROVIDER" = "ngrok" ] && [ "$SHARE_BASIC_AUTH" = "1" ] && [ -z "$SHARE_PASS" ]; then
   SHARE_PASS="$(gen_pass)"
+fi
+if [ "$PROVIDER" = "ngrok" ] && [ "$SHARE_BASIC_AUTH" = "1" ]; then
+  if [ "${#SHARE_PASS}" -lt 8 ] || [ "${#SHARE_PASS}" -gt 128 ]; then
+    die "SHARE_PASS phải dài 8–128 ký tự (ngrok báo ERR_NGROK_360 nếu ngắn hơn)."
+  fi
 fi
 
 info "Provider: ${PROVIDER}"
@@ -214,6 +222,11 @@ for t in d.get("tunnels", []):
     sleep 1
   done
   [ -n "$url" ] || { tail -20 "$LOG_DIR/ngrok.log" >&2; die "Không lấy được URL ngrok."; }
+  if [ "$SHARE_BASIC_AUTH" = "1" ]; then
+    printf "URL=%s\nUSER=%s\nPASS=%s\n" "$url" "$SHARE_USER" "$SHARE_PASS" \
+      >"$RUN_DIR/share-credentials.txt"
+    chmod 600 "$RUN_DIR/share-credentials.txt"
+  fi
   print_result "$url"
 }
 
