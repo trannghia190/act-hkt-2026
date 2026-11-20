@@ -16,6 +16,7 @@ export const LoginPage: React.FC = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const sessionExpired = new URLSearchParams(window.location.search).get('expired') === '1';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +76,12 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
+          {sessionExpired && !error && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+              <span>⏳</span>
+              <span>Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</span>
+            </div>
+          )}
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
               <span>⚠️</span>
