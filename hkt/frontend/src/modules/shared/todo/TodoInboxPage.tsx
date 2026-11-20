@@ -312,25 +312,35 @@ export const TodoInboxPage: React.FC = () => {
   const renderTaskCard = (task: PersonalTask) => (
     <div
       key={task.id}
-      className={`p-4 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:border-line-focus ${
+      className={`p-4 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:shadow-md ${
         task.urgency === 'overdue'
-          ? 'border-rose-300 bg-rose-50/50'
+          ? 'border-l-4 border-l-rose-500 border-rose-200 bg-gradient-to-r from-rose-50/70 via-surface to-surface'
           : task.urgency === 'soon'
-            ? 'border-amber-300 bg-amber-50/50'
+            ? 'border-l-4 border-l-amber-500 border-amber-200 bg-gradient-to-r from-amber-50/70 via-surface to-surface'
             : task.urgency === 'today' || task.urgency === 'normal'
-              ? 'border-accent-line bg-accent-soft/40'
-              : 'border-sky-200 bg-sky-50/50'
+              ? 'border-l-4 border-l-sky-500 border-sky-200 bg-gradient-to-r from-sky-50/70 via-surface to-surface'
+              : 'border-l-4 border-l-emerald-500 border-emerald-200 bg-gradient-to-r from-emerald-50/70 via-surface to-surface'
       }`}
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {task.module === 'timesheet' && <Clock className="w-4 h-4 text-accent" />}
-            {task.module === 'okr' && <Target className="w-4 h-4 text-sky-700" />}
-            {task.module === 'leave' && <Sun className="w-4 h-4 text-amber-700" />}
-            {task.module !== 'timesheet' && task.module !== 'okr' && task.module !== 'leave' && (
-              <Calendar className="w-4 h-4 text-indigo-700" />
-            )}
+            <div className={`p-1.5 rounded-lg flex items-center justify-center ${
+              task.module === 'timesheet'
+                ? 'bg-accent-soft text-accent'
+                : task.module === 'okr'
+                  ? 'bg-sky-100 text-sky-700'
+                  : task.module === 'leave'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-indigo-100 text-indigo-700'
+            }`}>
+              {task.module === 'timesheet' && <Clock className="w-4 h-4" />}
+              {task.module === 'okr' && <Target className="w-4 h-4" />}
+              {task.module === 'leave' && <Sun className="w-4 h-4" />}
+              {task.module !== 'timesheet' && task.module !== 'okr' && task.module !== 'leave' && (
+                <Calendar className="w-4 h-4" />
+              )}
+            </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
               {task.module === 'timesheet' ? 'Chấm Công' : task.module === 'okr' ? 'OKR Mục Tiêu' : 'Phép Năm'}
             </span>
@@ -354,19 +364,20 @@ export const TodoInboxPage: React.FC = () => {
         <p className="text-xs text-ink-secondary leading-relaxed">{task.description}</p>
       </div>
 
-      <div className="pt-3 mt-2 border-t border-line/60 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
+      <div className="pt-3 mt-3 border-t border-line/60 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => handleCompletePersonalTask(task)}
-            className="text-[11px] text-ink-muted hover:text-accent transition-colors font-medium cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
           >
-            ✓ Đã xong
+            <CheckCircle2 className="w-3 h-3" />
+            <span>Đã xong</span>
           </button>
           <button
             type="button"
             onClick={(e) => handleDeletePersonalTask(task.id, e)}
-            className="text-[11px] text-ink-muted hover:text-rose-600 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
             title="Xóa bỏ nhiệm vụ"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -421,25 +432,28 @@ export const TodoInboxPage: React.FC = () => {
       )}
 
       {/* TOP CARD: Số Phép Còn Lại Hiện Ngay Trên Trang Này (Criteria G1-#4) */}
-      <div className="bg-surface border border-line rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
-            <Sun className="w-6 h-6 text-amber-700" />
+      <div className="bg-gradient-to-r from-amber-500/10 via-surface to-surface border border-amber-300/60 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Sun className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="text-[11px] text-ink-muted font-medium">Số dư phép năm cá nhân còn lại (S02 / C1)</div>
+            <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Số dư phép năm cá nhân (S02 / C1)</div>
             <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="text-accent text-lg font-extrabold">{leaveSummary.totalRemaining} ngày</span>
-              <span className="text-xs font-normal text-ink-muted">
-                (Tồn 2025: <strong className="text-amber-800 font-semibold">{leaveSummary.carriedRemaining}</strong> ngày · Phép 2026: {leaveSummary.annualRemaining} ngày)
+              <span className="text-accent text-2xl font-extrabold">{leaveSummary.totalRemaining} ngày</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
+                Tồn 2025: {leaveSummary.carriedRemaining} ngày
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
+                Phép 2026: {leaveSummary.annualRemaining} ngày
               </span>
             </div>
-            <div className="text-[11px] text-ink-muted mt-0.5">
-              Lưu ý: Phép tồn 2025 bảo lưu tối đa đến <strong className="text-amber-800 font-semibold">{leaveSummary.carriedExpiryDate}</strong>
+            <div className="text-[11px] text-ink-muted mt-1">
+              ⏳ Hạn bảo lưu phép tồn 2025: <strong className="text-amber-800 font-bold">{leaveSummary.carriedExpiryDate}</strong>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-2.5 self-end sm:self-center">
           <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
             Xem Sổ Phép
           </Button>
