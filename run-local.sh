@@ -402,7 +402,8 @@ start_frontend() {
 
 stop_previous() {
   local f pid p
-  for f in "$RUN_DIR"/*.pid; do
+  # Chỉ dừng service của run-local — KHÔNG đụng tunnel.pid của share-local.sh
+  for f in "$RUN_DIR/ai-face.pid" "$RUN_DIR/core-service.pid" "$RUN_DIR/frontend.pid"; do
     [ -f "$f" ] || continue
     pid="$(cat "$f" 2>/dev/null || true)"
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
