@@ -556,7 +556,7 @@ nhầm.
 | Hình thức | Theo ngày hoặc **nửa ngày** (chọn buổi sáng/chiều); đăng ký từng ngày, **không lặp tuần** |
 | Quota | 2 ngày/tuần; nửa ngày tính **0.5 ngày** |
 | Địa điểm | **Không giới hạn địa điểm WFH** |
-| Hạn đăng ký | ≥ 1 ngày làm việc; đơn gấp vẫn tạo được nhưng gắn cờ `is_late_request` |
+| Hạn đăng ký | **Cho phép đăng ký lùi tối đa `wfh.submit_within_days` (mặc định 3) ngày** (kể cả hôm nay) và ngày tương lai; không còn yêu cầu trước 1 ngày |
 | Chấm công trong ngày WFH | Được phép chấm **ngoài mạng công ty VÀ ngoài bán kính GPS** — đây là **ngoại lệ duy nhất**; ngày khác cả 2 đều **chặn** |
 | Báo cáo công việc | Bắt buộc nhập tóm tắt cuối ngày WFH (nếu bật) |
 | Trên bảng công | WFH cả ngày = `R` (1 công); WFH nửa ngày = `R/0.50` (0.5 công); cột `wfh_days` cộng 0.5/1 |
