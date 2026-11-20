@@ -8,13 +8,19 @@ import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
+import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.attendance.entity.AuditLog;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Sort;
 import org.springframework.beans.factory.annotation.Autowired;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -36,6 +42,12 @@ public class OrgStructureController {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Data
     @Builder
@@ -108,18 +120,28 @@ public class OrgStructureController {
         private String ipAddress;
     }
 
-    private static final List<EmployeeDto> EMPLOYEES_DB = Collections.synchronizedList(new ArrayList<>());
-    private static final List<AuditLogDto> AUDIT_LOGS = Collections.synchronizedList(new ArrayList<>());
+    private EmployeeDto toEmployeeDto(User u) {
+        String teamName = u.getTeamId() == null ? "" :
+                teamRepository.findById(u.getTeamId()).map(com.act.pulse.modules.attendance.entity.Team::getName).orElse("");
+        return EmployeeDto.builder()
+                .id(u.getId().toString())
+                .employeeCode(u.getEmployeeCode())
+                .fullName(u.getFullName())
+                .email(u.getEmail())
+                .phone("")
+                .team(teamName)
+                .role(u.getRole())
+                .status(u.getStatus())
+                .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
+                .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
+                .build();
+    }
 
-    static {
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("1").employeeCode("Admin").fullName("Quản Trị Viên Hệ Thống").email("admin@act.vn").phone("0901234567").team("Ban Quản Trị").role("ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("2").employeeCode("01HR").fullName("Nguyễn Thị Thu Hà").email("ha.ntt@act.vn").phone("0902345678").team("Phòng Nhân Sự").role("HR_ADMIN").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("3").employeeCode("05ACT").fullName("Nguyễn Thanh Tùng").email("tung.nt@act.vn").phone("0903456789").team("Khối Kỹ Thuật (Sirius)").role("MANAGER").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-        EMPLOYEES_DB.add(EmployeeDto.builder().id("4").employeeCode("136ACT").fullName("Vũ Văn Luận").email("luan.vv@act.vn").phone("0904567890").team("Khối Kỹ Thuật (Optimus)").role("EMPLOYEE").status("ACTIVE").mustChangePassword(false).faceEnrolled(true).build());
-
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-1").timestamp(LocalDateTime.now().minusHours(2).toString()).actorCode("Admin").actorName("Quản Trị Viên").action("LOGIN").entity("AUTH").details("Đăng nhập thành công từ IP 14.161.22.45").ipAddress("14.161.22.45").build());
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-2").timestamp(LocalDateTime.now().minusHours(1).toString()).actorCode("01HR").actorName("Nguyễn Thị Thu Hà").action("UPDATE_RULE").entity("RULE_ENGINE").details("Cập nhật quy định ATTENDANCE_GEOFENCE_RADIUS: 150m -> 200m").ipAddress("14.161.22.45").build());
-        AUDIT_LOGS.add(AuditLogDto.builder().id("aud-3").timestamp(LocalDateTime.now().minusMinutes(20).toString()).actorCode("05ACT").actorName("Nguyễn Thanh Tùng").action("APPROVE").entity("REQUEST").details("Phê duyệt đơn xin nghỉ phép #REQ-2026-001 cho nhân viên 136ACT").ipAddress("14.161.22.45").build());
+    private void saveAudit(String action, String entity, String details) {
+        AuditLog log = AuditLog.builder().action(action).entityName(entity)
+                .userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode()).reason(details).build();
+        log.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(log);
     }
 
     @GetMapping("/org/tree")
@@ -167,22 +189,23 @@ public class OrgStructureController {
             @RequestParam(required = false) String team
     ) {
         List<EmployeeDto> filtered = new ArrayList<>();
-        for (EmployeeDto emp : EMPLOYEES_DB) {
+        for (User u : userRepository.findAll()) {
+            EmployeeDto emp = toEmployeeDto(u);
             boolean matchKey = (keyword == null || keyword.isEmpty()) ||
-                    emp.getFullName().toLowerCase().contains(keyword.toLowerCase()) ||
-                    emp.getEmployeeCode().toLowerCase().contains(keyword.toLowerCase());
+                    (emp.getFullName() != null && emp.getFullName().toLowerCase().contains(keyword.toLowerCase())) ||
+                    (emp.getEmployeeCode() != null && emp.getEmployeeCode().toLowerCase().contains(keyword.toLowerCase()));
             boolean matchTeam = (team == null || team.isEmpty()) ||
-                    emp.getTeam().toLowerCase().contains(team.toLowerCase());
-
-            if (matchKey && matchTeam) {
-                filtered.add(emp);
-            }
+                    (emp.getTeam() != null && emp.getTeam().toLowerCase().contains(team.toLowerCase()));
+            if (matchKey && matchTeam) filtered.add(emp);
         }
+        int total = filtered.size();
+        int from = Math.min(page * Math.max(size, 1), total);
+        int to = Math.min(from + Math.max(size, 1), total);
 
         Map<String, Object> res = new HashMap<>();
-        res.put("content", filtered);
-        res.put("totalElements", filtered.size());
-        res.put("totalPages", 1);
+        res.put("content", filtered.subList(from, to));
+        res.put("totalElements", total);
+        res.put("totalPages", size <= 0 ? 1 : (int) Math.ceil((double) total / size));
         res.put("currentPage", page);
 
         return ApiResponse.ok(res, "Lấy danh sách nhân viên thành công");
@@ -191,49 +214,50 @@ public class OrgStructureController {
     @PostMapping("/admin/users")
     @Operation(summary = "Tạo mới nhân viên đơn lẻ & Gửi email kích hoạt Gmail (S40)")
     public ApiResponse<EmployeeDto> createEmployee(@RequestBody CreateEmployeeRequest req) {
-        String code = req.getEmployeeCode() != null && !req.getEmployeeCode().isEmpty() ?
-                req.getEmployeeCode() : "ACT-" + (100 + EMPLOYEES_DB.size());
-
-        EmployeeDto newEmp = EmployeeDto.builder()
-                .id(String.valueOf(EMPLOYEES_DB.size() + 1))
+        if (req.getFullName() == null || req.getFullName().isBlank()
+                || req.getEmail() == null || req.getEmail().isBlank()) {
+            throw new RuntimeException("Thiếu họ tên hoặc email nhân viên");
+        }
+        String code = req.getEmployeeCode() != null && !req.getEmployeeCode().isEmpty()
+                ? req.getEmployeeCode() : "ACT-" + (100 + userRepository.count());
+        if (userRepository.findByEmployeeCode(code).isPresent()) throw new RuntimeException("Mã nhân viên đã tồn tại: " + code);
+        if (userRepository.findByEmail(req.getEmail()).isPresent()) throw new RuntimeException("Email đã tồn tại: " + req.getEmail());
+        UUID teamId = null;
+        if (req.getTeam() != null && !req.getTeam().isBlank()) {
+            teamId = teamRepository.findAll().stream()
+                    .filter(team -> team.getName() != null && team.getName().equalsIgnoreCase(req.getTeam()))
+                    .map(com.act.pulse.modules.attendance.entity.Team::getId).findFirst().orElse(null);
+        }
+        User user = User.builder()
                 .employeeCode(code)
                 .fullName(req.getFullName())
                 .email(req.getEmail())
-                .phone(req.getPhone() != null ? req.getPhone() : "090" + System.currentTimeMillis() % 10000000)
-                .team(req.getTeam() != null ? req.getTeam() : "Khối Kỹ Thuật")
-                .role(req.getRole() != null ? req.getRole() : "EMPLOYEE")
+                .passwordHash(passwordEncoder.encode("123456"))
+                .role(req.getRole() == null || req.getRole().isBlank() ? "EMPLOYEE" : req.getRole())
+                .teamId(teamId)
                 .status("ACTIVE")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
+                .joinedDate(LocalDate.now())
                 .build();
-
-        EMPLOYEES_DB.add(newEmp);
-
-        AUDIT_LOGS.add(0, AuditLogDto.builder()
-                .id("aud-" + System.currentTimeMillis())
-                .timestamp(LocalDateTime.now().toString())
-                .actorCode("HR_ADMIN")
-                .actorName("Nguyễn Thị Thu Hà")
-                .action("CREATE_USER")
-                .entity("USER")
-                .details("Tạo nhân viên mới: " + newEmp.getFullName() + " (" + newEmp.getEmployeeCode() + ")")
-                .ipAddress("14.161.22.45")
-                .build());
-
-        return ApiResponse.ok(newEmp, "Đã tạo nhân viên thành công và gửi thông tin đăng nhập về email!");
+        userRepository.save(user);
+        saveAudit("CREATE_USER", "USER", "Tạo nhân viên mới: " + user.getFullName() + " (" + user.getEmployeeCode() + ")");
+        return ApiResponse.ok(toEmployeeDto(user), "Đã tạo nhân viên thành công và gửi thông tin đăng nhập về email!");
     }
 
     @PostMapping("/admin/users/{id}/reset-password")
     @Operation(summary = "Admin cấp lại mật khẩu & Mở khóa Brute-Force (S40-C)")
     public ApiResponse<Boolean> adminResetPassword(@PathVariable String id) {
-        for (EmployeeDto emp : EMPLOYEES_DB) {
-            if (id.equals(emp.getId()) || id.equals(emp.getEmployeeCode())) {
-                emp.setMustChangePassword(true);
-                emp.setStatus("ACTIVE");
-                return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + emp.getEmail());
-            }
-        }
-        throw new RuntimeException("Không tìm thấy nhân viên: " + id);
+        User user = null;
+        try { user = userRepository.findById(UUID.fromString(id)).orElse(null); } catch (Exception ignored) { }
+        if (user == null) user = userRepository.findByEmployeeCode(id).orElse(null);
+        if (user == null) throw new RuntimeException("Không tìm thấy nhân viên: " + id);
+        user.setPasswordHash(passwordEncoder.encode("123456"));
+        user.setMustChangePassword(true);
+        user.setStatus("ACTIVE");
+        userRepository.save(user);
+        saveAudit("RESET_PASSWORD", "USER", "Cấp lại mật khẩu cho " + user.getFullName() + " (" + user.getEmployeeCode() + ")");
+        return ApiResponse.ok(true, "Mật khẩu đã được cấp lại và gửi tới email: " + user.getEmail());
     }
 
     @GetMapping("/admin/roles/matrix")
@@ -255,7 +279,21 @@ public class OrgStructureController {
     @GetMapping("/admin/audit-logs")
     @Operation(summary = "Nhật ký kiểm toán tập trung Centralized Audit Trail (S45)")
     public ApiResponse<List<AuditLogDto>> getAuditLogs() {
-        return ApiResponse.ok(new ArrayList<>(AUDIT_LOGS), "Lấy nhật ký kiểm toán thành công");
+        List<AuditLogDto> rows = new ArrayList<>();
+        for (AuditLog log : auditLogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))) {
+            rows.add(AuditLogDto.builder()
+                    .id(log.getId().toString())
+                    .timestamp(String.valueOf(log.getCreatedAt()))
+                    .actorCode(log.getUserCode())
+                    .actorName(log.getUserName())
+                    .action(log.getAction())
+                    .entity(log.getEntityName())
+                    .details(log.getReason() != null ? log.getReason()
+                            : (log.getOldValue() == null ? "" : log.getOldValue() + " → ") + (log.getNewValue() == null ? "" : log.getNewValue()))
+                    .ipAddress(log.getIpAddress())
+                    .build());
+        }
+        return ApiResponse.ok(rows, "Lấy nhật ký kiểm toán thành công");
     }
 
     @GetMapping("/admin/holidays")

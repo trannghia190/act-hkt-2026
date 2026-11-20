@@ -10,10 +10,12 @@ import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Shift;
+import com.act.pulse.modules.attendance.entity.TimesheetDispute;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +44,7 @@ public class BusinessGapController {
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final ShiftRepository shiftRepository;
+    private final TimesheetDisputeRepository timesheetDisputeRepository;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/attendance/my-timesheet")
@@ -286,25 +289,54 @@ public class BusinessGapController {
         return ApiResponse.ok(deviceRegistrationRepository.save(device), "Đã gửi yêu cầu — chờ HR duyệt");
     }
 
-    private static final List<Map<String, Object>> DISPUTES = new java.util.ArrayList<>(List.of(
-            new java.util.HashMap<>(Map.of("id", "DC-01", "employee", "Vũ Văn Luận", "date", "05/11/2026", "reason", "Có check-in 08:47 nhưng bảng ghi vắng", "status", "PENDING", "deadline", java.time.LocalDate.now().plusDays(2).toString())),
-            new java.util.HashMap<>(Map.of("id", "DC-02", "employee", "Nguyễn Thị Thu Hà", "date", "07/11/2026", "reason", "Nghỉ phép đã duyệt nhưng ghi UP", "status", "PENDING", "deadline", java.time.LocalDate.now().plusDays(1).toString()))
-    ));
+
+    private Map<String, Object> disputeMap(TimesheetDispute d) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", d.getId());
+        m.put("employee", userRepository.findById(d.getUserId()).map(User::getFullName).orElse("—"));
+        m.put("employeeCode", userRepository.findById(d.getUserId()).map(User::getEmployeeCode).orElse(""));
+        m.put("date", d.getWorkDate() == null ? "" : d.getWorkDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        m.put("workDate", d.getWorkDate() == null ? null : d.getWorkDate().toString());
+        m.put("reason", d.getReason());
+        m.put("status", d.getStatus());
+        m.put("deadline", d.getDeadline() == null ? null : d.getDeadline().toLocalDate().toString());
+        if (d.getDeadline() != null) {
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), d.getDeadline().toLocalDate());
+            m.put("daysLeft", daysLeft);
+            if (daysLeft < 0 && "PENDING".equals(d.getStatus())) {
+                m.put("status", "EXPIRED");
+                m.put("overdue", true);
+            }
+        }
+        return m;
+    }
+
+    @PostMapping("/disputes")
+    @Operation(summary = "Nhân viên tạo khiếu nại bảng công (S33)")
+    public ApiResponse<Map<String, Object>> createDispute(@RequestBody Map<String, String> body) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) throw new RuntimeException("Chưa đăng nhập");
+        if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
+        java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
+        TimesheetDispute d = TimesheetDispute.builder()
+                .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
+                .userId(userId).workDate(workDate).reason(body.get("reason")).status("PENDING")
+                .deadline(java.time.LocalDateTime.now().plusDays(2)).build();
+        timesheetDisputeRepository.save(d);
+        return ApiResponse.ok(disputeMap(d), "Đã gửi khiếu nại bảng công");
+    }
 
     @GetMapping("/disputes")
     @Operation(summary = "Danh sách khiếu nại (S45)")
     public ApiResponse<List<Map<String, Object>>> disputes() {
-        var list = new java.util.ArrayList<Map<String, Object>>();
-        java.time.LocalDate today = java.time.LocalDate.now();
-        for (Map<String, Object> d : DISPUTES) {
-            Map<String, Object> copy = new java.util.HashMap<>(d);
-            String dl = String.valueOf(d.get("deadline"));
-            if ("PENDING".equals(d.get("status"))) {
-                long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, java.time.LocalDate.parse(dl));
-                copy.put("daysLeft", daysLeft);
-                if (daysLeft < 0) { copy.put("status", "EXPIRED"); copy.put("overdue", true); }
+        List<Map<String, Object>> list = new java.util.ArrayList<>();
+        for (TimesheetDispute d : timesheetDisputeRepository.findAllByOrderByCreatedAtDesc()) {
+            Map<String, Object> m = disputeMap(d);
+            if ("EXPIRED".equals(m.get("status")) && "PENDING".equals(d.getStatus())) {
+                d.setStatus("EXPIRED");
+                timesheetDisputeRepository.save(d);
             }
-            list.add(copy);
+            list.add(m);
         }
         return ApiResponse.ok(list, "Danh sách khiếu nại");
     }
@@ -312,11 +344,11 @@ public class BusinessGapController {
     @GetMapping("/disputes/{id}")
     @Operation(summary = "Chi tiết khiếu nại (S33/D4)")
     public ApiResponse<Map<String, Object>> dispute(@PathVariable String id) {
-        Map<String, Object> d = DISPUTES.stream().filter(x -> id.equals(x.get("id"))).findFirst()
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
-        Map<String, Object> result = new java.util.HashMap<>(d);
-        result.put("before", "Vắng không phép (0 công)");
-        result.put("after", "Có check-in 08:47 · 1.00 công");
+        Map<String, Object> result = disputeMap(d);
+        result.put("before", "Log chấm công gốc — xem tại bảng công ngày " + result.get("date"));
+        result.put("after", "Ô bảng công HR đang sửa");
         result.put("ruleHint", "Thiếu check-out và chưa tạo đơn bổ sung công");
         return ApiResponse.ok(result, "Chi tiết khiếu nại");
     }
@@ -324,36 +356,35 @@ public class BusinessGapController {
     @PostMapping("/disputes/{id}/resolve")
     @Operation(summary = "Xử lý khiếu nại: sửa ô / tạo đơn bổ sung / từ chối (bắt buộc lý do)")
     public ApiResponse<Map<String, Object>> resolveDispute(@PathVariable String id, @RequestBody Map<String, String> body) {
-        Map<String, Object> d = DISPUTES.stream().filter(x -> id.equals(x.get("id"))).findFirst()
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
         String action = body.getOrDefault("action", "REJECT");
         if ("REJECT".equals(action) && (body.get("reason") == null || body.get("reason").isBlank())) {
             throw new RuntimeException("Từ chối khiếu nại phải nhập lý do");
         }
-        if ("PENDING".equals(d.get("status"))) {
-            TimesheetController.DISPUTES_PENDING.decrementAndGet();
-        }
-        d.put("status", "REJECT".equals(action) ? "REJECTED" : "RESOLVED");
-        d.put("action", action);
+        d.setStatus("REJECT".equals(action) ? "REJECTED" : "RESOLVED");
+        d.setResolutionAction(action);
+        d.setResolvedBy(CurrentUser.userId());
+        d.setResolvedAt(java.time.LocalDateTime.now());
+        timesheetDisputeRepository.save(d);
+
         AuditLog log = AuditLog.builder().action("RESOLVE_DISPUTE").entityName("DISPUTE").entityId(id)
                 .userId(CurrentUser.userId()).reason(body.get("reason")).newValue(action).build();
         log.setCreatedAt(java.time.LocalDateTime.now());
         auditLogRepository.save(log);
 
-        // Nhân viên nhận thông báo kết quả xử lý khiếu nại (đặc biệt khi bị từ chối — bắt buộc kèm lý do).
-        userRepository.findFirstByFullName(String.valueOf(d.get("employee"))).ifPresent(emp ->
-                notificationRepository.save(Notification.builder()
-                        .userId(emp.getId())
-                        .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
-                        .content("Khiếu nại ngày " + d.get("date") + ": " + d.get("reason")
-                                + ". Lý do xử lý: " + body.get("reason"))
-                        .type("DISPUTE")
-                        .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
-                        .actionUrl("/attendance/disputes/" + id)
-                        .isRead(false)
-                        .build()));
+        notificationRepository.save(Notification.builder()
+                .userId(d.getUserId())
+                .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
+                .content("Khiếu nại ngày " + d.getWorkDate() + ": " + d.getReason()
+                        + ". Lý do xử lý: " + body.get("reason"))
+                .type("DISPUTE")
+                .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
+                .actionUrl("/attendance/disputes/" + id)
+                .isRead(false)
+                .build());
 
-        return ApiResponse.ok(d, "Đã xử lý khiếu nại");
+        return ApiResponse.ok(disputeMap(d), "Đã xử lý khiếu nại");
     }
 
     @GetMapping("/notifications/preferences")
