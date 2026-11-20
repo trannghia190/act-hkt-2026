@@ -322,6 +322,7 @@ erDiagram
 * `POST /timesheets/cell`, `/timesheets/bulk` — ghi `timesheet_cells` + `timesheet_audit_logs`; bắt buộc lý do; chặn khi khoá.
 * `POST /timesheets/publish`, `/timesheets/lock` — lưu `timesheets`; lock đếm pending từ `timesheet_disputes`.
 * `POST /disputes` (nhân viên tạo), `GET /disputes`, `GET /disputes/{id}`, `POST /disputes/{id}/resolve` — DB `timesheet_disputes`.
+* `GET /attendance/my-timesheet?month&employeeCode` — bảng công tháng của tôi hoặc của nhân viên cấp dưới/HR xem; trả `employeeCode/employeeName`.
 * `GET /attendance/my-shift` — ca thật (khung vào/ra, nghỉ trưa, giờ/ngày) để tính đi muộn/về sớm và hiển thị giờ làm.
 
 ### Cron phép
