@@ -69,7 +69,7 @@ public class RequestController {
         if (userId == null) throw new RuntimeException("Chưa đăng nhập");
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
 
-        // ── WFH: quota 2 lần/tuần · hạn ≥ 1 ngày làm việc · vị trí cấm ──
+        // ── WFH: quota 2 lần/tuần · cho phép đăng ký lùi tối đa submit_within_days ngày ──
         if ("WFH".equals(body.getType())) {
             LocalDate workDate = body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate();
             LocalDate weekStart = workDate.with(DayOfWeek.MONDAY);
@@ -80,8 +80,9 @@ public class RequestController {
                     .filter(r -> r.getWorkDate() != null && !r.getWorkDate().isBefore(weekStart) && !r.getWorkDate().isAfter(weekEnd))
                     .count();
             if (weekly >= 2) throw new RuntimeException("Đã đăng ký đủ 2 ngày WFH trong tuần này — lần thứ 3 bị chặn");
-            if (workDate.isBefore(LocalDate.now().plusDays(1)) && !Boolean.TRUE.equals(body.getUrgent())) {
-                throw new RuntimeException("WFH phải đăng ký trước ít nhất 1 ngày làm việc");
+            int backfillDays = ruleService.getInt("wfh", "submit_within_days", 3);
+            if (workDate.isBefore(LocalDate.now().minusDays(backfillDays))) {
+                throw new RuntimeException("WFH chỉ đăng ký được trong vòng " + backfillDays + " ngày trước (kể cả hôm nay)");
             }
         }
 

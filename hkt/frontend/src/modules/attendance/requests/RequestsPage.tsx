@@ -185,8 +185,9 @@ export const RequestsPage: React.FC = () => {
   const selectedLeaveCfg = leaveTypes.find((lt: any) => lt.code === newReq.leaveType);
   const leaveNeedsAttachment = newReq.type === 'LEAVE' && Boolean(selectedLeaveCfg?.requiresAttachment);
   const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+  const wfhBackfillDays = Number(rulesCfg?.wfh?.submit_within_days ?? 3);
   const minDateFor = (type: string) => {
-    if (type === 'WFH') return isoDaysFromToday(1);
+    if (type === 'WFH') return isoDaysFromToday(-wfhBackfillDays);
     if (type === 'LATE_EARLY') return isoDaysFromToday(-lateSubmitDays);
     if (type === 'ADJUST') return isoDaysFromToday(-adjustDeadlineDays);
     return isoDaysFromToday(-leaveSubmitDays);
@@ -839,7 +840,7 @@ export const RequestsPage: React.FC = () => {
 
           {newReq.type === 'WFH' && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
-              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; đăng ký trước ít nhất 1 ngày làm việc — ngày sớm nhất <strong>{minDateForSelected}</strong>. Không giới hạn địa điểm.</div>
+              <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; cho phép đăng ký lùi tối đa <strong>{wfhBackfillDays} ngày</strong> (ngày sớm nhất <strong>{minDateForSelected}</strong>) và ngày tương lai. Không giới hạn địa điểm.</div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-[11px]">Đơn vị
                   <select className="mt-1 w-full border border-blue-200 rounded p-1" value={leaveUnit}

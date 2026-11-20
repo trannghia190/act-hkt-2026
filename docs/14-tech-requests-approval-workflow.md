@@ -45,7 +45,7 @@ graph TD
 * **Không giới hạn địa điểm WFH**, **không có lịch lặp tuần**.
 * **Cả ngày**: chọn **từ ngày → đến ngày**; mỗi ngày làm việc trong khoảng tạo 1 đơn, chặn trước nếu vượt quota 2 ngày/tuần.
 * **Nửa ngày (0.5)**: chỉ 1 ngày, chọn buổi sáng/chiều; không hiển thị khung giờ làm vì làm tại nhà.
-* Hạn đăng ký ≥1 ngày làm việc; ngày WFH đã duyệt được chấm công ngoài mạng/GPS.
+* Cho phép đăng ký **lùi tối đa `wfh.submit_within_days` (mặc định3) ngày** (kể cả hôm nay) và ngày tương lai; quá hạn →400. Ngày WFH đã duyệt được chấm công ngoài mạng/GPS.
 * Trên bảng công: `R` (cả ngày) hoặc `R/0.50` (nửa ngày); lịch nhóm hiện "WFH sáng/chiều".
 
 ### 1.5. Danh sách & chi tiết đơn của nhân viên (S08)
