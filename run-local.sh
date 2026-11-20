@@ -321,6 +321,7 @@ start_core() {
     SPRING_REDIS_PORT="$REDIS_PORT" \
     AI_FACE_SERVICE_URL="http://127.0.0.1:${AI_PORT}" \
     MANAGEMENT_HEALTH_MAIL_ENABLED=false \
+    SPRING_FLYWAY_OUT_OF_ORDER=true \
     exec mvn spring-boot:run
   ) >"$LOG_DIR/core-service.log" 2>&1 &
   CORE_PID=$!
