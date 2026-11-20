@@ -33,10 +33,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")
+        // Ưu tiên X-Auth-Token để không đụng Authorization (có thể do tunnel như
+        // ngrok basic auth sử dụng) — vẫn chấp nhận Bearer cho client cũ.
+        String token = request.getHeader("X-Auth-Token");
+        if (token == null || token.isBlank()) {
+            String header = request.getHeader("Authorization");
+            if (header != null && header.startsWith("Bearer ")) token = header.substring(7);
+        }
+        if (token != null && !token.isBlank()
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Claims claims = jwtService.parse(header.substring(7));
+            Claims claims = jwtService.parse(token);
             if (claims != null) {
                 UUID userId = jwtService.getUserId(claims);
                 String employeeCode = jwtService.getEmployeeCode(claims);
