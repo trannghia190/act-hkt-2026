@@ -480,9 +480,9 @@ export const CheckInPage: React.FC = () => {
           livenessFrames: frames,
           deviceFingerprint: getDeviceFingerprint(),
           wifiBssid: simWifi === 'INTERNAL' ? 'ACT_OFFICE_5G' : '4G_EXTERNAL',
-          latitude: simZone === 'GREEN' ? 21.0285 : 21.0298,
-          longitude: simZone === 'GREEN' ? 105.8542 : 105.8570,
-          accuracyMeters: 12,
+          latitude: simZone === 'GREEN' ? 21.0285 : 21.0360,
+          longitude: 105.8542,
+          accuracyMeters: (simGpsAccuracy as string) === 'POOR' ? 150 : 12,
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
         }),
       });
@@ -633,84 +633,82 @@ export const CheckInPage: React.FC = () => {
           </button>
         </div>
 
-        {/* QA Simulation Bar (Development only) */}
-        {Boolean((import.meta as any)?.env?.DEV) && (
-          <div className="p-3 bg-canvas-subtle rounded-xl border border-line text-left text-xs space-y-2">
-            <div className="text-[11px] font-bold text-ink flex items-center justify-between">
-              <span>🧪 Kịch Bản QA Kiểm Thử 5 Lớp Xác Thực</span>
-              <span className="text-[10px] text-accent">Tùy biến môi trường</span>
+        {/* QA Simulation Bar (Luôn hiển thị để phục vụ nghiệm thu các kịch bản) */}
+        <div className="p-3 bg-amber-500/10 dark:bg-amber-500/15 rounded-xl border-2 border-dashed border-amber-500/40 text-left text-xs space-y-2 shadow-xs">
+          <div className="text-[12px] font-bold text-amber-900 dark:text-amber-200 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">🧪 Kịch Bản Nghiệm Thu 5 Lớp Xác Thực</span>
+            <span className="text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold px-2 py-0.5 rounded-full">Dành cho Tester / Nghiệm thu</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <span className="text-ink-muted font-medium">1. Khuôn mặt:</span>
+              <div className="flex gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setFaceTestScenario('SELF')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${faceTestScenario === 'SELF' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  Chính chủ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFaceTestScenario('PROXY_FRAUD')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${faceTestScenario === 'PROXY_FRAUD' ? 'bg-rose-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  Chấm hộ
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px]">
-              <div>
-                <span className="text-ink-muted">Khuôn mặt:</span>
-                <div className="flex gap-1 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setFaceTestScenario('SELF')}
-                    className={`px-1.5 py-1 rounded font-semibold ${faceTestScenario === 'SELF' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    Chính chủ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFaceTestScenario('PROXY_FRAUD')}
-                    className={`px-1.5 py-1 rounded font-semibold ${faceTestScenario === 'PROXY_FRAUD' ? 'bg-rose-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    Chấm hộ
-                  </button>
-                </div>
+            <div>
+              <span className="text-ink-muted font-medium">2. Mạng Wi-Fi:</span>
+              <div className="flex gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setSimWifi('INTERNAL')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simWifi === 'INTERNAL' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  Nội bộ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimWifi('EXTERNAL')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simWifi === 'EXTERNAL' ? 'bg-amber-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  Ngoài mạng
+                </button>
               </div>
+            </div>
 
-              <div>
-                <span className="text-ink-muted">Mạng Wi-Fi:</span>
-                <div className="flex gap-1 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setSimWifi('INTERNAL')}
-                    className={`px-1.5 py-1 rounded font-semibold ${simWifi === 'INTERNAL' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    Nội bộ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimWifi('EXTERNAL')}
-                    className={`px-1.5 py-1 rounded font-semibold ${simWifi === 'EXTERNAL' ? 'bg-amber-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    Ngoài mạng
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-ink-muted">GPS Vị trí:</span>
-                <div className="flex gap-1 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => { setSimZone('GREEN'); setSimGpsAccuracy('ACCURATE'); }}
-                    className={`px-1.5 py-1 rounded font-semibold ${simZone === 'GREEN' && simGpsAccuracy === 'ACCURATE' ? 'bg-emerald-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    15m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimZone('RED')}
-                    className={`px-1.5 py-1 rounded font-semibold ${simZone === 'RED' ? 'bg-rose-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    850m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimGpsAccuracy('POOR')}
-                    className={`px-1.5 py-1 rounded font-semibold ${simGpsAccuracy === 'POOR' ? 'bg-purple-600 text-white' : 'bg-canvas border border-line'}`}
-                  >
-                    Sai số &gt;100m
-                  </button>
-                </div>
+            <div>
+              <span className="text-ink-muted font-medium">3. GPS Vị trí:</span>
+              <div className="flex gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => { setSimZone('GREEN'); setSimGpsAccuracy('ACCURATE'); }}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simZone === 'GREEN' && simGpsAccuracy === 'ACCURATE' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  15m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimZone('RED')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simZone === 'RED' ? 'bg-rose-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  850m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimGpsAccuracy('POOR')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-colors ${simGpsAccuracy === 'POOR' ? 'bg-purple-600 text-white shadow-xs' : 'bg-canvas border border-line text-ink-secondary hover:bg-canvas-subtle'}`}
+                >
+                  Sai số &gt;100m
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Camera Viewport with Oval Guideline Overlay (Criterion B1 #2) */}
         <div className="relative w-56 h-56 sm:w-60 sm:h-60 mx-auto rounded-full border-4 border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
