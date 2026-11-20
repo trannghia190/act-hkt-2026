@@ -12,4 +12,5 @@ public class Team extends BaseEntity {
     @Column(name = "name", nullable = false, length = 100) private String name;
     @Column(name = "parent_id") private UUID parentId;
     @Column(name = "leader_id") private UUID leaderId;
+    @Column(name = "is_special_approval") private Boolean isSpecialApproval;
 }

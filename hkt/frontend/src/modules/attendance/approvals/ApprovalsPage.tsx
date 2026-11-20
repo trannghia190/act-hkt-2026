@@ -36,7 +36,7 @@ export const ApprovalsPage: React.FC = () => {
     return {
       id: r.id, requesterCode: r.employeeCode || '', requesterName: r.employeeName || '', requesterEmail: r.employeeEmail || '',
       team: r.team || '', type: r.requestType, typeName: r.leaveTypeName ? `${typeNames[r.requestType] || r.requestType} — ${r.leaveTypeName}` : (typeNames[r.requestType] || r.requestType),
-      startDate: r.workDate || '', endDate: r.workDate || '', durationText: (() => {
+      startDate: r.workDate || '', endDate: r.endDate || r.workDate || '', durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');
           if (p.half_day_period) {
@@ -53,9 +53,20 @@ export const ApprovalsPage: React.FC = () => {
     } as AttendanceRequestItem;
   };
   const loadInbox = () => {
-    fetch('/api/v1/requests/inbox', { headers: authOnly() })
-      .then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setRequests(j.data.map(mapRequest)); })
-      .catch(() => undefined);
+    Promise.all([
+      fetch('/api/v1/requests/inbox', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/v1/requests/history', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
+    ]).then(([pendingJson, historyJson]) => {
+      const merged: any[] = [];
+      const seen = new Set<string>();
+      [...(Array.isArray(pendingJson?.data) ? pendingJson.data : []),
+       ...(Array.isArray(historyJson?.data) ? historyJson.data : [])].forEach((r: any) => {
+        if (!r?.id || seen.has(r.id)) return;
+        seen.add(r.id);
+        merged.push(r);
+      });
+      setRequests(merged.map(mapRequest));
+    }).catch(() => undefined);
   };
   useEffect(loadInbox, []);
 

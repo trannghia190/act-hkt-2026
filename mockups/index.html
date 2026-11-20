@@ -2165,10 +2165,13 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Điền sẵn: loại đơn · ngày · <b>số phút từ log</b> · ca làm việc</li>
+        <li><span class="tag p0">P0</span>Chỉ chọn <b>1 ngày</b>; chọn <b>Đi muộn (sửa giờ vào)</b> hoặc <b>Về sớm (sửa giờ ra)</b> + giờ thực tế</li>
+        <li><span class="tag p0">P0</span>Chỉ tính muộn khi vào <b>sau `checkInEnd`</b> (hoặc ra trước `checkOutStart`); vào trong khung cho phép = không muộn</li>
+        <li><span class="tag p0">P0</span>Số phút tự tính theo ca; giới hạn <b>late_early.max_minutes</b> lấy từ cấu hình (ô giờ bị min/max)</li>
         <li><span class="tag p0">P0</span>Chọn lý do bằng <b>chip 1 chạm</b> (kẹt xe, tắc đường, họp bất trợ, sự cố máy…)</li>
         <li><span class="tag p0">P0</span>Hiện quota còn lại ngay trên form</li>
-        <li><span class="tag p0">P0</span>Chặn server-side khi vượt quota / vượt 60 phút</li>
+        <li><span class="tag p0">P0</span>Chặn server-side khi vượt quota / vượt max phút; hạn nộp 3 ngày</li>
+        <li><span class="tag p0">P0</span>Duyệt xong cập nhật giờ vào/ra thật trong bảng công</li>
         <li>Đơn bổ sung công: bắt buộc lý do + kiểm tra hạn 3 ngày làm việc</li>
       </ul>
     </div>
@@ -2310,10 +2313,11 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Tabs theo loại đơn + tất cả</li>
+        <li><span class="tag p0">P0</span>Phân trang server-side; lọc theo loại/trạng thái/<b>khoảng ngày</b></li>
+        <li><span class="tag p0">P0</span>Cột <b>Ngày áp dụng</b> (1 ngày hoặc khoảng) + <b>Ngày tạo</b>; nút <b>Xem chi tiết</b> mọi dòng</li>
         <li><span class="tag p0">P0</span>Trạng thái: nháp · chờ duyệt · đã duyệt · bị từ chối · trả lại</li>
         <li><span class="tag p0">P0</span>Hiện <b>lý do từ chối / góp ý</b> của quản lý</li>
-        <li><span class="tag p0">P0</span>Đơn bị trả lại → nút "Sửa &amp; gửi lại" ngay trong danh sách</li>
+        <li><span class="tag p0">P0</span>Đơn chờ duyệt/bị từ chối → nút <b>Sửa đơn</b> ngay trong danh sách</li>
         <li>Badge quota còn lại trên tab</li>
       </ul>
     </div>
@@ -2445,9 +2449,9 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Card từng loại nghỉ với số dư còn lại + progress</li>
+        <li><span class="tag p0">P0</span>Card tổng/đã dùng/còn lại + progress phép năm; thẻ riêng Phép tồn · Phép ốm · Phép thâm niên</li>
         <li><span class="tag p0">P0</span>Thẻ <b>Tổng phép còn lại</b> = phép năm + phép tồn — nhân viên không phải tự cộng</li>
-        <li><span class="tag p0">P0</span>Hiện rõ <b>lịch sử cộng/trừ</b> (sổ cái phép append-only)</li>
+        <li><span class="tag p0">P0</span>Hiện rõ <b>lịch sử cộng/trừ</b> (sổ cái phép append-only), mỗi dòng có <b>loại phép</b> và số dư sau theo đúng loại (AL/S…)</li>
         <li><span class="tag p0">P0</span><b>Lọc lịch sử phép</b> theo loại phép (phép năm · tồn · chức vụ · thâm niên · ốm · bù) và theo năm</li>
         <li><span class="tag p0">P0</span>Cảnh báo phép tồn sắp hết hạn + mốc hạn</li>
         <li><span class="tag p0">P0</span>Hiện nguồn cộng: hàng tháng · <b>thâm niên</b> · chức vụ</li>
@@ -6129,7 +6133,7 @@ tbody tr:hover{background:var(--surface-2)}
         <li><span class="tag p0">P0</span>Chọn ngày → tự tính <b>số ngày làm việc</b> (trừ cuối tuần + lễ)</li>
         <li><span class="tag p0">P0</span>Kiểm tra số dư phép <b>ngay khi chọn</b> — chặn nếu thiếu</li>
         <li><span class="tag p0">P0</span>Đơn gửi muộn → gắn cờ "gấp" (quản lý thấy)</li>
-        <li><span class="tag p0">P0</span>Đủ ngày cần giấy tờ → hiện ô upload, bắt buộc</li>
+        <li><span class="tag p0">P0</span>Đủ ngày cần giấy tờ → hiện ô upload, bắt buộc; <b>chọn được nhiều file</b>ảnh/PDF (≤10MB/file)</li>
         <li><span class="tag p0">P0</span>Mọi đơn nghỉ phép <b>chỉ 1 bước duyệt: quản lý</b> — không chuyển HR, hiện rõ ngay trên form</li>
         <li><span class="tag p0">P0</span><b>Gửi đơn từ bất kỳ đâu</b> — không cần GPS, không cần Wi-Fi công ty (chỉ chấm công mới cần)</li>
       </ul>
@@ -6321,10 +6325,11 @@ tbody tr:hover{background:var(--surface-2)}
     <div>
       <h4>Tính năng</h4>
       <ul>
-        <li><span class="tag p0">P0</span>Chọn ngày quên chấm → <b>tự tính hạn nộp</b> theo ngày làm việc</li>
+        <li><span class="tag p0">P0</span>Chỉ chọn <b>1 ngày</b>: hôm nay hoặc quá khứ trong hạn (không ngày tương lai)</li>
+        <li><span class="tag p0">P0</span>Chọn <b>Giờ vào</b> hoặc <b>Giờ ra</b> + giờ thực tế; <b>không nhập thời lượng</b></li>
         <li><span class="tag p0">P0</span>Hiện rõ: <b>còn bao nhiêu ngày</b> để nộp (đếm ngược)</li>
-        <li><span class="tag p0">P0</span>Quá hạn → cho phép nộp nếu quy định cho phép, <b>bắt buộc lý do chi tiết</b> + gắn cờ</li>
-        <li><span class="tag p0">P0</span>Điền sẵn giờ vào/ra từ log chấm công (nếu có)</li>
+        <li><span class="tag p0">P0</span>Quá hạn → <b>chặn gửi</b> theo cấu hình (3 ngày)</li>
+        <li><span class="tag p0">P0</span>Duyệt xong cập nhật đúng giờ vào/ra vào log chấm công và bảng công</li>
         <li><span class="tag p0">P0</span>Hiện quota còn lại · chặn khi hết quota</li>
         <li><span class="tag p0">P0</span>Chọn loại bổ sung: quên chấm công · lỗi thiết bị · sự cố khác</li>
       </ul>

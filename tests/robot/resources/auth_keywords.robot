@@ -37,14 +37,18 @@ Request Password Reset Link
 
 Change Password For User
     [Arguments]    ${code}    ${old_pass}    ${new_pass}
-    Create Session    auth_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    ${token}=    Login And Get Token    ${code}    ${old_pass}
+    &{headers}=    Create Dictionary    Content-Type=application/json    Authorization=Bearer ${token}    X-Auth-Token=${token}
+    Create Session    auth_pwd_sess    ${CORE_BASE_URL}    headers=${headers}
     &{body}=    Create Dictionary    employeeCode=${code}    oldPassword=${old_pass}    newPassword=${new_pass}
-    ${resp}=    Post Request    auth_sess    /auth/change-password    json=${body}
+    ${resp}=    Post Request    auth_pwd_sess    /auth/change-password    json=${body}
     [Return]    ${resp}
 
 Enroll Face Biometric Wizard
     [Arguments]    ${code}    ${face_data_url}
-    Create Session    auth_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    ${token}=    Login And Get Token    ${code}    123456
+    &{headers}=    Create Dictionary    Content-Type=application/json    Authorization=Bearer ${token}    X-Auth-Token=${token}
+    Create Session    auth_face_sess    ${CORE_BASE_URL}    headers=${headers}
     &{body}=    Create Dictionary    employeeCode=${code}    faceDataUrl=${face_data_url}    confidenceScore=${0.98}
-    ${resp}=    Post Request    auth_sess    /auth/enroll-face    json=${body}
+    ${resp}=    Post Request    auth_face_sess    /auth/enroll-face    json=${body}
     [Return]    ${resp}

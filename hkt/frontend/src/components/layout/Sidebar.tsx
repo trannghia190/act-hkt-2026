@@ -1,71 +1,73 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { SIDEBAR_CONFIG } from '../../config/sidebar.config';
+import { NavLink, useLocation } from 'react-router-dom';
+import { getNavForRole } from '../../config/sidebar.config';
+import { useNavBadges } from '../../hooks/useNavBadges';
 import { useAuth } from '../../context/AuthContext';
 import { ActHktLogo } from '../common/ActHktLogo';
 import {
-  Home,
-  Inbox,
-  Fingerprint,
-  Calendar,
-  FileText,
-  FilePlus,
-  Sun,
   CheckSquare,
-  Users,
-  Table,
-  Sliders,
-  BookOpen,
-  Book,
+  Bell,
+  Settings,
+  Fingerprint,
+  FilePlus,
+  Calendar,
+  Sun,
+  FileText,
   Target,
   Edit3,
   Award,
-  CheckCircle,
-  MessageSquare,
-  Layout,
   BarChart2,
-  FileSpreadsheet,
+  BookOpen,
+  Smartphone,
+  CheckCircle,
+  Users,
+  MessageSquare,
+  Table,
+  AlertTriangle,
+  Layers,
+  Sliders,
+  Clock,
+  CalendarRange,
+  Shield,
+  MonitorSmartphone,
   UserCheck,
   GitPullRequest,
-  Clock,
-  Repeat,
-  Shield,
-  Settings,
   HelpCircle,
-  PanelLeftClose,
   PanelLeft,
+  PanelLeftClose,
   X,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
-// S00 — Cấu trúc điều hướng: 3 biến thể menu dùng chung 1 shell
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Home,
-  Inbox,
-  Fingerprint,
-  Calendar,
-  FileText,
-  FilePlus,
-  Sun,
   CheckSquare,
-  Users,
-  Table,
-  Sliders,
-  BookOpen,
-  Book,
+  Bell,
+  Settings,
+  Fingerprint,
+  FilePlus,
+  Calendar,
+  Sun,
+  FileText,
   Target,
   Edit3,
   Award,
-  CheckCircle,
-  MessageSquare,
-  Layout,
   BarChart2,
-  FileSpreadsheet,
+  BookOpen,
+  Smartphone,
+  CheckCircle,
+  Users,
+  MessageSquare,
+  Table,
+  AlertTriangle,
+  Layers,
+  Sliders,
+  Clock,
+  CalendarRange,
+  Shield,
+  MonitorSmartphone,
   UserCheck,
   GitPullRequest,
-  Clock,
-  Repeat,
-  Shield,
-  Settings,
   HelpCircle,
 };
 
@@ -74,23 +76,13 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
-export const getModuleFromPath = (pathname: string): 'attendance' | 'okr' | 'shared' => {
-  if (pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
-    return 'shared';
-  }
-  if (pathname.startsWith('/okr')) {
-    return 'okr';
-  }
-  return 'attendance';
-};
-
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile = false,
   onCloseMobile,
 }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const badges = useNavBadges();
 
   // Desktop collapsible state (Icon-only mode vs Expanded)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -100,6 +92,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return false;
     }
   });
+
+  const [expandedSubmenus, setExpandedSubmenus] = useState<Record<string, boolean>>({
+    reqs: true, // Expand "Đơn của tôi" sub-items by default
+  });
+
+  const toggleSubmenu = (itemId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedSubmenus((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId],
+    }));
+  };
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -111,36 +116,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  // Synchronously compute active module from current route (Zero flash, zero layout shift)
-  const activeModuleId = getModuleFromPath(location.pathname);
-  const activeNav = SIDEBAR_CONFIG.find((m) => m.moduleId === activeModuleId) || SIDEBAR_CONFIG[0];
-
-  // Seamless module tab switch with direct navigation
-  const handleTabChange = (moduleId: 'attendance' | 'okr' | 'shared') => {
-    if (moduleId === activeModuleId) return;
-
-    if (moduleId === 'attendance') {
-      navigate('/todo');
-    } else if (moduleId === 'okr') {
-      navigate('/okr/dashboard');
-    } else if (moduleId === 'shared') {
-      if (user?.role === 'ADMIN' || user?.role === 'HR_ADMIN') {
-        navigate('/admin/employees');
-      } else {
-        navigate('/admin/org-tree');
-      }
-    }
-  };
-
-  // Filter groups and items according to user's assigned role
-  const filteredGroups = activeNav.groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) => !item.roles || (user?.role && item.roles.includes(user.role))
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
+  // Lấy danh sách menu theo đúng vai trò (Employee ⊂ Manager ⊂ HR) từ một nguồn cấu hình duy nhất
+  const navGroups = getNavForRole(user?.role);
 
   // Render Sidebar inner content
   const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => {
@@ -148,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="w-full h-full flex flex-col bg-[#141c1a] text-[#c3d0cc] select-none border-r border-[#1f2b28] overflow-hidden">
         {/* Brand Header */}
         <div
-          className={`border-b border-[#23312e] flex items-center justify-between ${
+          className={`border-b border-[#23312e] flex items-center justify-between shrink-0 ${
             collapsed ? 'p-2.5 flex-col gap-2' : 'p-4'
           }`}
         >
@@ -156,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             to="/todo"
             onClick={onCloseMobile}
             className="flex items-center gap-2 cursor-pointer min-w-0"
-            title="ACT-HKT 2026 Home"
+            title="ACT-HKT 2026 Home (Cần làm)"
           >
             <ActHktLogo size="md" showText={!collapsed} />
           </NavLink>
@@ -190,94 +167,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Module Switcher Tabs (3 Phân Hệ) */}
-        {!collapsed ? (
-          <div className="p-2.5 bg-[#111716] border-b border-[#1f2b28] space-y-1.5 shrink-0">
-            <div className="flex gap-1 bg-[#0d1312] p-1 rounded-lg border border-[#1f2b28]">
-              <button
-                type="button"
-                onClick={() => handleTabChange('attendance')}
-                className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer truncate ${
-                  activeModuleId === 'attendance'
-                    ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
-                    : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-                }`}
-              >
-                Chấm Công
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTabChange('okr')}
-                className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
-                  activeModuleId === 'okr'
-                    ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
-                    : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-                }`}
-              >
-                OKR
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTabChange('shared')}
-                className={`flex-1 py-1.5 px-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer truncate ${
-                  activeModuleId === 'shared'
-                    ? 'bg-emerald-600 text-white font-bold shadow-sm ring-1 ring-emerald-400/30'
-                    : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-                }`}
-              >
-                Hệ Thống
-              </button>
-            </div>
-            <div className="text-[10px] text-center font-medium text-emerald-400/90 truncate">
-              {activeNav.moduleTitle}
-            </div>
-          </div>
-        ) : (
-          /* Mini Tab Switcher in Collapsed Mode */
-          <div className="py-2 px-1.5 border-b border-[#1f2b28] bg-[#111716] flex flex-col gap-1.5 items-center shrink-0">
-            <button
-              type="button"
-              onClick={() => handleTabChange('attendance')}
-              className={`w-9 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                activeModuleId === 'attendance'
-                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40'
-                  : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-              }`}
-              title="Phân hệ Chấm Công & Chuyên Cần"
-            >
-              <Fingerprint className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('okr')}
-              className={`w-9 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                activeModuleId === 'okr'
-                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40'
-                  : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-              }`}
-              title="Phân hệ Quản Trị & Đánh Giá OKR"
-            >
-              <Target className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('shared')}
-              className={`w-9 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                activeModuleId === 'shared'
-                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40'
-                  : 'text-[#8fa39d] hover:bg-[#1a2422] hover:text-white'
-              }`}
-              title="Phân hệ Hệ Thống & Cơ Cấu Tổ Chức"
-            >
-              <Sliders className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Navigation Menu Items List */}
-        <div className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin scrollbar-thumb-zinc-700 min-h-0 space-y-4">
-          {filteredGroups.map((group, gIdx) => (
-            <div key={gIdx}>
+        {/* Navigation Menu Items List — Cuộn mượt mà trên cả Desktop & Mobile */}
+        <div className="flex-1 overflow-y-auto py-3 px-2 scrollbar-thin scrollbar-thumb-zinc-700 min-h-0 space-y-4">
+          {navGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-1">
               {!collapsed ? (
                 <div className="px-3 pb-1 text-[10px] font-bold tracking-wider uppercase text-[#61756f] truncate">
                   {group.groupName}
@@ -289,46 +182,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const IconComponent = iconMap[item.icon] || HelpCircle;
+                  const hasChildren = item.children && item.children.length > 0;
+                  const isSubExpanded = !!expandedSubmenus[item.id];
+                  const badgeValue = item.badgeKey ? badges[item.badgeKey] : undefined;
+                  const showBadge = badgeValue !== undefined && badgeValue > 0;
 
                   return (
-                    <NavLink
-                      key={item.id}
-                      to={item.path}
-                      onClick={onCloseMobile}
-                      title={item.label}
-                      className={({ isActive }) =>
-                        `flex items-center rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
-                          collapsed ? 'justify-center p-2.5 relative' : 'gap-2.5 px-3 py-2'
-                        } ${
-                          isActive
-                            ? 'bg-[#1b3830] text-white font-semibold shadow-2xs border-l-3 border-emerald-400'
-                            : 'text-[#a3b8b2] hover:bg-[#1a2422] hover:text-white'
-                        }`
-                      }
-                    >
-                      <IconComponent className="w-4 h-4 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <div key={item.id} className="space-y-0.5">
+                      <NavLink
+                        to={item.path}
+                        onClick={onCloseMobile}
+                        title={`${item.label} (${item.screenId})`}
+                        className={({ isActive }) =>
+                          `flex items-center rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
+                            collapsed ? 'justify-center p-2.5 relative' : 'gap-2.5 px-3 py-2'
+                          } ${
+                            isActive
+                              ? 'bg-[#1b3830] text-white font-semibold shadow-2xs border-l-3 border-emerald-400'
+                              : 'text-[#a3b8b2] hover:bg-[#1a2422] hover:text-white'
+                          }`
+                        }
+                      >
+                        <IconComponent className="w-4 h-4 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
 
-                      {!collapsed ? (
-                        <>
-                          <span className="flex-1 truncate">{item.label}</span>
-                          {item.badge && (
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${
-                                item.badgeColor === 'danger'
-                                  ? 'bg-rose-600 text-white'
-                                  : 'bg-accent text-white'
-                              }`}
+                        {!collapsed ? (
+                          <>
+                            <span className="flex-1 truncate">{item.label}</span>
+
+                            {/* Badge số việc chờ */}
+                            {showBadge && (
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${
+                                  item.badgeColor === 'danger'
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-emerald-600 text-white'
+                                }`}
+                              >
+                                {badgeValue}
+                              </span>
+                            )}
+
+                            {/* Chevron for items with children */}
+                            {hasChildren && (
+                              <button
+                                type="button"
+                                onClick={(e) => toggleSubmenu(item.id, e)}
+                                className="p-0.5 hover:text-white text-[#7c918b]"
+                              >
+                                {isSubExpanded ? (
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+
+                            <span className="text-[9px] font-mono opacity-40 shrink-0">{item.screenId}</span>
+                          </>
+                        ) : (
+                          showBadge && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          )
+                        )}
+                      </NavLink>
+
+                      {/* Sub-items list (e.g. Xin nghỉ phép · WFH, Bổ sung chấm công) */}
+                      {!collapsed && hasChildren && isSubExpanded && (
+                        <div className="pl-7 pr-2 py-0.5 space-y-0.5">
+                          {item.children!.map((child, cIdx) => (
+                            <NavLink
+                              key={cIdx}
+                              to={child.path}
+                              onClick={onCloseMobile}
+                              className={({ isActive }) =>
+                                `block px-2.5 py-1.5 rounded-md text-[11px] transition-colors truncate ${
+                                  isActive
+                                    ? 'text-emerald-400 font-semibold bg-[#1a2b26]'
+                                    : 'text-[#7e968f] hover:text-white hover:bg-[#16201e]'
+                                }`
+                              }
                             >
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        item.badge && (
-                          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                        )
+                              {child.label}
+                            </NavLink>
+                          ))}
+                        </div>
                       )}
-                    </NavLink>
+                    </div>
                   );
                 })}
               </div>
@@ -375,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {renderSidebarContent(isCollapsed, false)}
       </aside>
 
-      {/* 2. Mobile / Tablet Slide-over Drawer with Backdrop */}
+      {/* 2. Mobile Slide-over Drawer with Backdrop (Responsive ở 390px) */}
       {isOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           {/* Backdrop */}
@@ -383,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="fixed inset-0 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={onCloseMobile}
           />
-          {/* Full-width drawer content */}
+          {/* Mobile Drawer content */}
           <div className="relative w-72 max-w-[85vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
             {renderSidebarContent(false, true)}
           </div>

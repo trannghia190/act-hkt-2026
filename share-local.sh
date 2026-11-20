@@ -78,7 +78,7 @@ cleanup() {
   if [ "$PROVIDER_USED" = "tailscale" ]; then
     tailscale funnel reset >/dev/null 2>&1 || true
   fi
-  rm -f "$RUN_DIR/tunnel.pid"
+  rm -f "$RUN_DIR/tunnel.pid" "$RUN_DIR/share-credentials.txt"
   echo "Đã tắt tunnel."
 }
 
@@ -92,7 +92,7 @@ frontend_ok() {
 }
 
 stop_tunnel() {
-  local pid
+  local pid pids
   if [ -f "$RUN_DIR/tunnel.pid" ]; then
     pid="$(cat "$RUN_DIR/tunnel.pid" 2>/dev/null || true)"
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
@@ -100,9 +100,15 @@ stop_tunnel() {
       echo "Đã dừng tunnel PID $pid."
     fi
     rm -f "$RUN_DIR/tunnel.pid"
-  else
-    echo "Không có tunnel nào do script này chạy."
   fi
+  # Dọn mọi ngrok còn sót cho đúng cổng này (tránh 2 tunnel cùng lúc)
+  pids="$(pgrep -f "ngrok http ${PORT}( |$)" 2>/dev/null || true)"
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    echo "Đã dừng ngrok còn sót: $pids"
+  fi
+  rm -f "$RUN_DIR/share-credentials.txt"
+  echo "Đã dọn tunnel."
   # Dọn cả funnel background nếu có
   command -v tailscale >/dev/null 2>&1 && tailscale funnel reset >/dev/null 2>&1 || true
 }
@@ -141,6 +147,9 @@ print_result() {
   if [ "$PROVIDER_USED" != "ngrok" ] || [ "$SHARE_BASIC_AUTH" != "1" ]; then
     warn "Không có basic auth ở tầng tunnel — chỉ dựa vào đăng nhập của app."
   fi
+  warn "Trình duyệt hỏi lại dù đã nhập? Mở Incognito hoặc xoá mật khẩu đã lưu cho *.ngrok-free.app."
+  warn "Nếu bị hỏi lặp sau khi vào /todo: chạy frontend với VITE_DISABLE_HMR=1 (HMR WebSocket bị Basic Auth challenge)."
+  echo "  Thông tin đăng nhập đã lưu tại: $RUN_DIR/share-credentials.txt"
   warn "Hãy Ctrl+C (hoặc ./share-local.sh stop) khi demo xong."
   echo "=================================================================="
   echo
@@ -172,6 +181,11 @@ PROVIDER="$(detect_provider)"
 if [ "$PROVIDER" = "ngrok" ] && [ "$SHARE_BASIC_AUTH" = "1" ] && [ -z "$SHARE_PASS" ]; then
   SHARE_PASS="$(gen_pass)"
 fi
+if [ "$PROVIDER" = "ngrok" ] && [ "$SHARE_BASIC_AUTH" = "1" ]; then
+  if [ "${#SHARE_PASS}" -lt 8 ] || [ "${#SHARE_PASS}" -gt 128 ]; then
+    die "SHARE_PASS phải dài 8–128 ký tự (ngrok báo ERR_NGROK_360 nếu ngắn hơn)."
+  fi
+fi
 
 info "Provider: ${PROVIDER}"
 trap cleanup EXIT INT TERM
@@ -179,6 +193,13 @@ trap cleanup EXIT INT TERM
 # ------------------------------ Ngrok ----------------------------------------
 start_ngrok() {
   PROVIDER_USED="ngrok"
+  local existing
+  existing="$(pgrep -f "ngrok http ${PORT}( |$)" 2>/dev/null || true)"
+  if [ -n "$existing" ]; then
+    die "Đã có ngrok cho cổng ${PORT} đang chạy (PID: $(echo $existing | tr '\n' ' ')).
+    → Chạy './share-local.sh stop' trước rồi mở lại, tránh 2 tunnel gây lệch URL/password."
+  fi
+  local ngrok_log="$LOG_DIR/ngrok-$$.log"
   local args=(http "$PORT" "--log=stdout" "--log-format=logfmt" "--host-header=rewrite")
   if [ "$SHARE_BASIC_AUTH" = "1" ]; then
     args+=("--basic-auth=${SHARE_USER}:${SHARE_PASS}")
@@ -187,18 +208,21 @@ start_ngrok() {
     args+=("--url=https://${NGROK_DOMAIN}")
   fi
   info "Đang mở ngrok (port ${PORT})…"
-  ngrok "${args[@]}" >"$LOG_DIR/ngrok.log" 2>&1 &
+  ngrok "${args[@]}" >"$ngrok_log" 2>&1 &
   PID=$!
   echo "$PID" >"$RUN_DIR/tunnel.pid"
 
   local url="" i
   for i in $(seq 1 30); do
     if ! kill -0 "$PID" 2>/dev/null; then
-      echo "— ngrok log —" >&2; tail -20 "$LOG_DIR/ngrok.log" >&2
+      echo "— ngrok log —" >&2; tail -20 "$ngrok_log" >&2
       die "ngrok thoát. Kiểm tra đăng nhập: ngrok config add-authtoken <token>"
     fi
-    url="$(curl -s --max-time 2 http://127.0.0.1:4040/api/tunnels 2>/dev/null \
-      | python3 -c 'import json,sys
+    # Ưu tiên log RIÊNG của process này (tránh đọc nhầm tunnel của process khác qua API 4040)
+    url="$(grep -oE 'url=https://[^ ]+' "$ngrok_log" 2>/dev/null | tail -1 | cut -d= -f2 || true)"
+    if [ -z "$url" ]; then
+      url="$(curl -s --max-time 2 http://127.0.0.1:4040/api/tunnels 2>/dev/null \
+        | python3 -c 'import json,sys
 try:
     d=json.load(sys.stdin)
 except Exception:
@@ -207,13 +231,16 @@ for t in d.get("tunnels", []):
     u=t.get("public_url","")
     if u.startswith("https://"):
         print(u); break' 2>/dev/null || true)"
-    if [ -z "$url" ]; then
-      url="$(grep -oE 'https://[a-zA-Z0-9._-]+\.ngrok[^ "]*' "$LOG_DIR/ngrok.log" 2>/dev/null | head -1 || true)"
     fi
     [ -n "$url" ] && break
     sleep 1
   done
-  [ -n "$url" ] || { tail -20 "$LOG_DIR/ngrok.log" >&2; die "Không lấy được URL ngrok."; }
+  [ -n "$url" ] || { tail -20 "$ngrok_log" >&2; die "Không lấy được URL ngrok."; }
+  if [ "$SHARE_BASIC_AUTH" = "1" ]; then
+    printf "URL=%s\nUSER=%s\nPASS=%s\n" "$url" "$SHARE_USER" "$SHARE_PASS" \
+      >"$RUN_DIR/share-credentials.txt"
+    chmod 600 "$RUN_DIR/share-credentials.txt"
+  fi
   print_result "$url"
 }
 

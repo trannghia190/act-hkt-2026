@@ -21,6 +21,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // Khi share qua tunnel có HTTP Basic Auth (ngrok), WebSocket HMR bị challenge
+    // 401 liên tục vì trình duyệt không gửi lại basic auth cho WS.
+    // Chạy frontend với VITE_DISABLE_HMR=1 khi demo qua tunnel.
+    hmr: process.env.VITE_DISABLE_HMR === '1' ? false : undefined,
     allowedHosts: [
       '.trycloudflare.com',
       '.ngrok-free.app',
