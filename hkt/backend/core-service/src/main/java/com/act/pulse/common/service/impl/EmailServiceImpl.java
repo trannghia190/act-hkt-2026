@@ -83,7 +83,7 @@ public class EmailServiceImpl implements EmailService {
     // 1. ACCOUNT ACTIVATION & FIRST LOGIN PASSWORD CHANGE
     // =========================================================================
     @Override
-    public void sendAccountActivationEmail(String toEmail, String fullName, String employeeCode, String temporaryPassword) {
+    public boolean sendAccountActivationEmail(String toEmail, String fullName, String employeeCode, String temporaryPassword) {
         String subject = "[ACT PULSE] Thông Báo Khởi Tạo Tài Khoản Nhân Viên & Kích Hoạt Lần Đầu";
         String preheader = "Kính gửi " + fullName + ", tài khoản của bạn đã được khởi tạo trên hệ thống ACT PULSE. Vui lòng kích hoạt trong 24 giờ.";
 
@@ -142,14 +142,14 @@ public class EmailServiceImpl implements EmailService {
                 "http://localhost:3000/login"
         );
 
-        sendHtmlEmail(toEmail, subject, htmlContent);
+        return sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
     // =========================================================================
     // 2. PASSWORD RESET OTP VIA GMAIL
     // =========================================================================
     @Override
-    public void sendPasswordResetEmail(String toEmail, String fullName, String resetToken) {
+    public boolean sendPasswordResetEmail(String toEmail, String fullName, String resetToken) {
         String subject = "[ACT PULSE] Mã Xác Thực OTP Đặt Lại Mật Khẩu";
         String preheader = "Mã OTP xác thực đặt lại mật khẩu của bạn là " + resetToken + " (hiệu lực 15 phút).";
 
@@ -189,14 +189,14 @@ public class EmailServiceImpl implements EmailService {
                 "http://localhost:3000/forgot-password"
         );
 
-        sendHtmlEmail(toEmail, subject, htmlContent);
+        return sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
     // =========================================================================
     // 2.1. PASSWORD CHANGED / RESET CONFIRMATION VIA GMAIL
     // =========================================================================
     @Override
-    public void sendPasswordChangedSuccessEmail(String toEmail, String fullName, String changeType) {
+    public boolean sendPasswordChangedSuccessEmail(String toEmail, String fullName, String changeType) {
         String subject = "[ACT PULSE] Xác Nhận Thay Đổi Mật Khẩu Tài Khoản Thành Công";
         String preheader = "Mật khẩu tài khoản ACT PULSE của " + fullName + " vừa được cập nhật thành công.";
         String timeStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
@@ -245,7 +245,7 @@ public class EmailServiceImpl implements EmailService {
                 "http://localhost:3000/login"
         );
 
-        sendHtmlEmail(toEmail, subject, htmlContent);
+        return sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
     // =========================================================================

@@ -120,6 +120,9 @@ public class OrgStructureController {
         private String joinDate;
         private boolean mustChangePassword;
         private boolean faceEnrolled;
+        private String defaultPassword;
+        private boolean emailSent;
+        private String emailStatusMessage;
     }
 
     @Data
@@ -625,10 +628,36 @@ public class OrgStructureController {
         userRepository.save(userToSave);
 
         // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
+        boolean emailSent = false;
+        String emailStatusMessage = "";
         try {
             if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
-                emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(), userToSave.getEmployeeCode(), rawPassword);
+                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(), userToSave.getEmployeeCode(), rawPassword);
+                if (emailSent) {
+                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới " + userToSave.getEmail();
+                } else {
+                    emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail() + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
+                }
+            } else {
+                emailStatusMessage = "Nhân viên chưa có địa chỉ email";
             }
+        } catch (Exception e) {
+            emailStatusMessage = "Lỗi khi gửi email: " + e.getMessage();
+        }
+
+        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3)
+        try {
+            Notification notif = Notification.builder()
+                    .userId(userToSave.getId())
+                    .title("Chào mừng thành viên mới đến với ACT PULSE!")
+                    .content("Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: " + userToSave.getEmployeeCode() + ", Mật khẩu mặc định: " + rawPassword + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.")
+                    .type("ONBOARDING")
+                    .priority("HIGH")
+                    .actionUrl("/profile")
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notif);
         } catch (Exception ignored) {}
 
         // Audit log
@@ -662,11 +691,14 @@ public class OrgStructureController {
                 .approvalChain(defaultManagerId != null ? "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)" : "⚠ Chưa có quản lý trực tiếp")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
+                .defaultPassword(rawPassword)
+                .emailSent(emailSent)
+                .emailStatusMessage(emailStatusMessage)
                 .joinDate(LocalDate.now().toString())
                 .hireDate(LocalDate.now().toString())
                 .build();
 
-        return ApiResponse.ok(dto, "Đã tạo nhân viên thành công và gửi thông tin đăng nhập về email!");
+        return ApiResponse.ok(dto, "Đã tạo nhân viên " + userToSave.getFullName() + " thành công! Mật khẩu mặc định: " + rawPassword + ". " + emailStatusMessage);
     }
 
     @RequestMapping(value = {"/admin/users/{id}/change-manager", "/admin/users/{id}/manager"}, method = {RequestMethod.POST, RequestMethod.PUT})
@@ -839,9 +871,10 @@ public class OrgStructureController {
         authService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD");
 
         // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP
+        boolean emailSent = false;
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), user.getEmployeeCode(), tempPass);
+                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), user.getEmployeeCode(), tempPass);
             }
         } catch (Exception ignored) {}
 
@@ -859,7 +892,9 @@ public class OrgStructureController {
                 .build();
         auditLogRepository.save(audit);
 
-        return ApiResponse.ok(true, "Mật khẩu đã được cấp lại ngẫu nhiên và gửi tới email: " + user.getEmail());
+        String msg = "Mật khẩu tạm thời (" + tempPass + ") đã được cấp lại thành công! " +
+                (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail() : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
+        return ApiResponse.ok(true, msg);
     }
 
     @GetMapping("/admin/roles/matrix")

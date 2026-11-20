@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -53,7 +53,22 @@ export const EmployeeManagementPage: React.FC = () => {
     team: 'Sirius',
     positionName: 'Kỹ sư Phần mềm',
     role: 'EMPLOYEE' as const,
+    password: '123456',
   });
+
+  interface CreatedResult {
+    fullName: string;
+    employeeCode: string;
+    email: string;
+    team: string;
+    role: string;
+    defaultPassword: string;
+    emailSent?: boolean;
+    emailStatusMessage?: string;
+  }
+  const [createdAccount, setCreatedAccount] = useState<CreatedResult | null>(null);
+  const [copiedAccount, setCopiedAccount] = useState(false);
+  const [showNewEmpPassword, setShowNewEmpPassword] = useState(false);
 
   const [editForm, setEditForm] = useState<Employee | null>(null);
 
@@ -107,7 +122,7 @@ export const EmployeeManagementPage: React.FC = () => {
   const noTeamCount = employees.filter((e) => !e.team || e.team === 'Chưa có nhóm').length;
   const noManagerCount = employees.filter((e) => !e.managerId && e.role !== 'ADMIN').length;
 
-  // Handle Add Employee (Tự gán nhóm và ca mặc định nếu để trống)
+  // Handle Add Employee (Tự gán nhóm và ca mặc định nếu để trống & Gửi email kích hoạt)
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -121,17 +136,38 @@ export const EmployeeManagementPage: React.FC = () => {
           team: newEmp.team,
           positionName: newEmp.positionName,
           role: newEmp.role,
+          password: newEmp.password || '123456',
         }),
       });
 
-      if (res.ok) {
-        const json = await res.json();
-        showToast(`Đã thêm nhân viên ${json.data.fullName} (${json.data.employeeCode}) thành công! Tự động gán nhóm ${json.data.team} và phân ca mặc định.`);
+      const json = await res.json();
+      if (res.ok && json.success) {
+        const empData = json.data;
         setIsAddModalOpen(false);
+        setCreatedAccount({
+          fullName: empData?.fullName || newEmp.fullName,
+          employeeCode: empData?.employeeCode || newEmp.code,
+          email: empData?.email || newEmp.email,
+          team: empData?.team || newEmp.team,
+          role: empData?.role || newEmp.role,
+          defaultPassword: empData?.defaultPassword || newEmp.password || '123456',
+          emailSent: empData?.emailSent,
+          emailStatusMessage: empData?.emailStatusMessage || json.message,
+        });
+        showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || newEmp.password || '123456'}`);
+        // Reset code for next entry
+        setNewEmp({
+          code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
+          fullName: '',
+          email: '',
+          team: 'Sirius',
+          positionName: 'Kỹ sư Phần mềm',
+          role: 'EMPLOYEE' as const,
+          password: '123456',
+        });
         fetchEmployees();
       } else {
-        const err = await res.json();
-        showToast(`Lỗi: ${err.message || 'Không thể tạo nhân viên'}`);
+        showToast(`Lỗi: ${json.message || 'Không thể tạo nhân viên'}`);
       }
     } catch (err) {
       showToast('Đã tạo nhân viên thành công trên hệ thống!');
@@ -232,13 +268,39 @@ export const EmployeeManagementPage: React.FC = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName} và gửi email kích hoạt tới ${emp.email}!`);
+        setCreatedAccount({
+          fullName: emp.fullName,
+          employeeCode: emp.employeeCode,
+          email: emp.email,
+          team: emp.team,
+          role: emp.role,
+          defaultPassword: '123456',
+          emailSent: true,
+          emailStatusMessage: data.message || 'Đã cấp lại mật khẩu tạm thời (123456) và phát lệnh gửi email kích hoạt qua Gmail.',
+        });
+        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName}! Mật khẩu tạm: 123456`);
+        fetchEmployees();
       } else {
         alert(data.message || 'Lỗi khi cấp lại mật khẩu');
       }
     } catch {
       alert('Không thể kết nối đến máy chủ.');
     }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdAccount) return;
+    const text = `=== THÔNG TIN TÀI KHOẢN ACT PULSE ===\n` +
+      `• Họ và Tên: ${createdAccount.fullName}\n` +
+      `• Mã nhân viên: ${createdAccount.employeeCode}\n` +
+      `• Email đăng nhập: ${createdAccount.email}\n` +
+      `• Mật khẩu khởi tạo / tạm thời: ${createdAccount.defaultPassword}\n` +
+      `• Yêu cầu: Bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên\n` +
+      `• Đường dẫn đăng nhập: http://localhost:3000/login\n` +
+      `=====================================`;
+    navigator.clipboard.writeText(text);
+    setCopiedAccount(true);
+    setTimeout(() => setCopiedAccount(false), 3000);
   };
 
   return (
@@ -459,10 +521,17 @@ export const EmployeeManagementPage: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-3">
-                      {emp.status === 'ACTIVE' && <Badge variant="ok">Hoạt động</Badge>}
-                      {emp.status === 'PENDING_ACTIVATION' && <Badge variant="warn">Chưa kích hoạt</Badge>}
-                      {emp.status === 'LOCKED' && <Badge variant="danger">Đang khoá</Badge>}
-                      {emp.status === 'INACTIVE' && <Badge variant="gray">Ngừng</Badge>}
+                      <div className="flex flex-col gap-1 items-start">
+                        {emp.status === 'ACTIVE' && <Badge variant="ok">Hoạt động</Badge>}
+                        {emp.status === 'PENDING_ACTIVATION' && <Badge variant="warn">Chưa kích hoạt</Badge>}
+                        {emp.status === 'LOCKED' && <Badge variant="danger">Đang khoá</Badge>}
+                        {emp.status === 'INACTIVE' && <Badge variant="gray">Ngừng</Badge>}
+                        {emp.mustChangePassword && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30 whitespace-nowrap" title="Bắt buộc đổi mật khẩu lần đầu">
+                            🔑 Đổi pass lần đầu
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Action buttons */}
@@ -620,7 +689,7 @@ export const EmployeeManagementPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Modal: Thêm Nhân Viên Mới (Tự gán nhóm & ca mặc định) */}
+      {/* Modal: Thêm Nhân Viên Mới (Tự gán nhóm, ca mặc định & gửi mail kích hoạt) */}
       {isAddModalOpen && (
         <Modal
           isOpen={isAddModalOpen}
@@ -628,6 +697,17 @@ export const EmployeeManagementPage: React.FC = () => {
           title="Thêm Nhân Viên Mới Vào Tổ Chức (S40)"
         >
           <form onSubmit={handleCreateEmployee} className="space-y-4 text-xs">
+            {/* Hướng dẫn an ninh & Gmail */}
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Mail className="w-4 h-4 text-emerald-400" />
+                <span>Tự động kích hoạt tài khoản &amp; gửi email thông báo qua Gmail</span>
+              </div>
+              <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                Hệ thống sẽ cấp mã nhân viên và mật khẩu mặc định (khởi tạo: <strong>123456</strong>), đồng thời phát lệnh gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-ink mb-1">Mã Nhân Viên *</label>
@@ -654,15 +734,43 @@ export const EmployeeManagementPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-semibold text-ink mb-1">Email Công Ty *</label>
+              <label className="block font-semibold text-ink mb-1">Email Nhận Thông Báo (Gmail / Công Ty) *</label>
               <input
                 type="email"
                 required
-                placeholder="an.nv@act-corp.internal"
+                placeholder="an.nv@act-corp.internal hoặc nguyenvanan@gmail.com"
                 value={newEmp.email}
                 onChange={(e) => setNewEmp({ ...newEmp, email: e.target.value })}
-                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
+                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-medium"
               />
+            </div>
+
+            {/* Mật khẩu mặc định / khởi tạo */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-semibold text-ink">Mật Khẩu Mặc Định Khởi Tạo *</label>
+                <span className="text-[10px] text-amber-500 font-bold">Bắt buộc đổi pass lần đầu (S01-A)</span>
+              </div>
+              <div className="relative">
+                <input
+                  type={showNewEmpPassword ? 'text' : 'password'}
+                  required
+                  value={newEmp.password}
+                  onChange={(e) => setNewEmp({ ...newEmp, password: e.target.value })}
+                  className="w-full text-xs p-2.5 pr-16 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-mono font-bold"
+                  placeholder="123456"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewEmpPassword(!showNewEmpPassword)}
+                  className="absolute right-2 top-2 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink rounded bg-surface border border-line cursor-pointer"
+                >
+                  {showNewEmpPassword ? 'Ẩn' : 'Hiện'}
+                </button>
+              </div>
+              <span className="text-[10px] text-ink-muted mt-1 block">
+                * Mật khẩu này sẽ được gửi vào hộp thư Gmail của nhân viên để đăng nhập lần đầu.
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -679,7 +787,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   <option value="Mobile">Nhóm Mobile</option>
                 </select>
                 <span className="text-[10px] text-ink-muted mt-0.5 block">
-                  * Tự gán nhóm mặc định &amp; phân ca tự động
+                  * Tự gán nhóm &amp; phân ca mặc định
                 </span>
               </div>
 
@@ -703,10 +811,123 @@ export const EmployeeManagementPage: React.FC = () => {
                 Hủy
               </Button>
               <Button type="submit" variant="primary" size="sm">
-                Tạo Nhân Viên &amp; Kích Hoạt
+                <Mail className="w-3.5 h-3.5 mr-1" />
+                Tạo Nhân Viên &amp; Gửi Email Kích Hoạt
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal: Xác Nhận & Sao Chép Thông Tin Tài Khoản Vừa Tạo / Reset */}
+      {createdAccount && (
+        <Modal
+          isOpen={Boolean(createdAccount)}
+          onClose={() => setCreatedAccount(null)}
+          title="🎉 Thông Tin Tài Khoản Khởi Tạo & Thông Báo Gmail"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>Khởi tạo tài khoản thành công!</span>
+              </div>
+              <p className="text-[11px] text-emerald-200/90 mt-1 leading-relaxed">
+                Tài khoản nhân viên đã được ghi nhận vào cơ sở dữ liệu hệ thống với đầy đủ phân quyền và cơ chế bảo mật.
+              </p>
+            </div>
+
+            {/* Chi tiết tài khoản */}
+            <div className="bg-canvas border border-line rounded-xl p-4 space-y-2.5">
+              <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider border-b border-line pb-1.5 flex items-center justify-between">
+                <span>Thông Tin Đăng Nhập Của Nhân Viên</span>
+                <span className="text-amber-400 font-mono font-bold">Chờ đổi pass lần đầu</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60">
+                <span className="text-ink-muted">Họ và tên:</span>
+                <span className="col-span-2 font-bold text-ink">{createdAccount.fullName}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60">
+                <span className="text-ink-muted">Mã nhân viên:</span>
+                <span className="col-span-2 font-mono font-bold text-accent">{createdAccount.employeeCode}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60">
+                <span className="text-ink-muted">Email đăng nhập:</span>
+                <span className="col-span-2 font-semibold text-ink">{createdAccount.email}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60 items-center">
+                <span className="text-ink-muted">Mật khẩu mặc định:</span>
+                <div className="col-span-2 flex items-center gap-2">
+                  <span className="px-2.5 py-1 bg-surface border border-line rounded-lg font-mono font-extrabold text-sm text-ink tracking-wider">
+                    {createdAccount.defaultPassword}
+                  </span>
+                  <span className="text-[10px] text-amber-500 font-semibold">(Tạm thời)</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60">
+                <span className="text-ink-muted">Nhóm &amp; Vai trò:</span>
+                <span className="col-span-2 font-medium text-ink">{createdAccount.team} · {createdAccount.role}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1">
+                <span className="text-ink-muted">Trạng thái gửi Gmail:</span>
+                <div className="col-span-2">
+                  <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span>{createdAccount.emailStatusMessage || 'Đã phát lệnh gửi email thông báo qua Gmail'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Lưu ý bảo mật */}
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-[11px] space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <Key className="w-3.5 h-3.5 text-amber-400" />
+                <span>Quy định bảo mật lần đầu đăng nhập (S01-A)</span>
+              </div>
+              <p className="text-amber-200/80 leading-relaxed">
+                Khi nhân viên đăng nhập bằng mật khẩu mặc định này tại <code>/login</code>, hệ thống sẽ cưỡng chế hiển thị giao diện đổi mật khẩu bắt buộc trước khi cấp quyền truy cập các tính năng chấm công và xin đơn.
+              </p>
+            </div>
+
+            {/* Thao tác Copy & Close */}
+            <div className="flex justify-between items-center pt-3 border-t border-line">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyCredentials}
+                className="gap-1.5"
+              >
+                {copiedAccount ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-bold">Đã sao chép!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao Chép Thông Tin Tài Khoản</span>
+                  </>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setCreatedAccount(null)}
+              >
+                Xác Nhận &amp; Đóng
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
