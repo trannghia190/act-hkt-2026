@@ -84,7 +84,7 @@ export const RequestDetailPage: React.FC = () => {
                   <div><span className="text-ink-muted">Mã đơn:</span> <span className="font-mono">{req.id}</span></div>
                   <div><span className="text-ink-muted">Nhân viên:</span> <b>{data.employeeName || '—'}</b> {data.employeeCode ? `(${data.employeeCode})` : ''}</div>
                   <div><span className="text-ink-muted">Ngày áp dụng:</span> <b>{req.workDate ? `${shownDate(req.workDate)}${req.endDate && req.endDate !== req.workDate ? ` → ${shownDate(req.endDate)}` : ''}` : '—'}</b></div>
-                  <div><span className="text-ink-muted">Thời lượng:</span> <b>{p.duration || (req.minutes ? `${req.minutes} phút` : '—')}</b></div>
+                  <div><span className="text-ink-muted">Thời lượng:</span> <b>{data.durationText || p.duration || (req.minutes ? `${req.minutes} phút` : '—')}</b></div>
                   {p.half_day_period && (
                     <div><span className="text-ink-muted">Buổi:</span> <b>{p.half_day_period === 'MORNING' ? 'Buổi sáng' : 'Buổi chiều'}</b>
                       {p.work_window_start && p.work_window_end ? ` · làm việc ${p.work_window_start}–${p.work_window_end}` : ''}</div>
@@ -138,7 +138,14 @@ export const RequestDetailPage: React.FC = () => {
               <div><div className="font-semibold">{t.action}</div><div className="text-xs text-ink-muted">{t.at} · {t.actor}</div></div>
             </div>
           ))}
-          <div className="text-xs text-ink-muted mt-2 border-t border-line pt-2">Lịch sử chỉnh sửa: {data?.timeline?.length || 0} mốc · mọi thay đổi ghi vào nhật ký (audit log).</div>
+          <div className="text-xs text-ink-muted mt-2 border-t border-line pt-2">Lịch sử chỉnh sửa: {data?.editHistory?.length || 0} lần · mọi thay đổi ghi vào audit log.</div>
+          {(data?.editHistory || []).map((h: any, i: number) => (
+            <div key={i} className="mt-2 text-xs border border-line rounded-lg p-2 bg-canvas">
+              <div className="font-semibold text-ink">Lần sửa {i + 1} · {h.actor} · {h.at}</div>
+              <div className="text-ink-muted mt-1">Trước: {h.oldValue}</div>
+              <div className="text-ink mt-0.5">Sau: {h.newValue}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>
