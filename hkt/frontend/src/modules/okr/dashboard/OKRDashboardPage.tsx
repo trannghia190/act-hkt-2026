@@ -13,7 +13,6 @@ export const OKRDashboardPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Điều Khiển Mục Tiêu &amp; Hiệu Suất (OKR Dashboard)</h1>
-            <Badge variant="accent">S20</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Tổng quan tiến độ thực hiện mục tiêu cấp Công ty, Phòng ban và mức độ đóng góp của từng cá nhân

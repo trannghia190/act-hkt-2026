@@ -4,8 +4,10 @@ import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.LeaveType;
+import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
+import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +30,7 @@ public class LeaveController {
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
 
     @GetMapping("/leave-types")
     @Operation(summary = "Danh sách loại nghỉ đang áp dụng (S30/S32)")
@@ -45,6 +48,9 @@ public class LeaveController {
     @PostMapping("/admin/leave-types")
     @Operation(summary = "Thêm loại nghỉ mới — không cần sửa code")
     public ApiResponse<LeaveType> create(@RequestBody LeaveType payload) {
+        if (leaveTypeRepository.findByCode(payload.getCode()).isPresent()) {
+            throw new RuntimeException("Mã loại nghỉ đã tồn tại: " + payload.getCode());
+        }
         payload.setIsActive(payload.getIsActive() == null || payload.getIsActive());
         payload.setRequiresAttachment(Boolean.TRUE.equals(payload.getRequiresAttachment()));
         return ApiResponse.ok(leaveTypeRepository.save(payload), "Đã thêm loại nghỉ");
@@ -131,8 +137,10 @@ public class LeaveController {
             }
             b.put("employeeCode", u.getEmployeeCode());
             b.put("fullName", u.getFullName());
+            b.put("teamName", u.getTeamId() == null ? null
+                    : teamRepository.findById(u.getTeamId()).map(Team::getName).orElse(null));
             b.put("annualRemaining", annualGrant.subtract(annualUsed));
-            b.put("carriedOver", BigDecimal.ZERO);
+            b.put("carriedOver", b.getOrDefault("carriedRemaining", BigDecimal.ZERO));
             b.put("sickUsed", sickUsed);
             b.put("seniority", seniorityGrant);
             b.put("totalUsed", otherUsed);

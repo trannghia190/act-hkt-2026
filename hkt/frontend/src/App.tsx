@@ -9,6 +9,7 @@ import { EnterpriseGmailModal } from './components/common/EnterpriseGmailModal';
 import { FirstLoginChangePasswordModal } from './modules/auth/FirstLoginChangePasswordModal';
 import { LoginPage } from './modules/auth/LoginPage';
 import { AppRoutes } from './routes/AppRoutes';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 function MainLayout() {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -17,6 +18,7 @@ function MainLayout() {
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,7 +56,9 @@ function MainLayout() {
 
         {/* Dynamic Route View with responsive mobile-safe padding */}
         <div className="p-3 sm:p-5 md:p-6 pb-24 lg:pb-8 max-w-7xl mx-auto">
-          <AppRoutes />
+          <ErrorBoundary key={location.pathname}>
+            <AppRoutes />
+          </ErrorBoundary>
         </div>
       </main>
 
@@ -67,7 +71,7 @@ function MainLayout() {
       {/* 5. Global Enterprise Gmail / SMTP Setup Modal */}
       <EnterpriseGmailModal isOpen={isGmailModalOpen} onClose={() => setIsGmailModalOpen(false)} />
 
-      {/* 6. Forced First-Login Change Password Modal (S01-A) */}
+      {/* 6. Forced First-Login Change Password Modal */}
       <FirstLoginChangePasswordModal
         isOpen={Boolean(user?.mustChangePassword)}
         onSuccess={() => {

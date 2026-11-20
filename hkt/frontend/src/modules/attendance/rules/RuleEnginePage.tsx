@@ -63,7 +63,9 @@ export const RuleEnginePage: React.FC = () => {
       const res = await api('/rules');
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
-      setRules(json.data || []);
+      if (!Array.isArray(json?.data)) throw new Error('Dữ liệu quy định không hợp lệ');
+      if (json.data.length === 0) throw new Error('Chưa có cấu hình quy định nào — kiểm tra lại dữ liệu seed');
+      setRules(json.data);
       setError(null);
     } catch (e: any) {
       setError(e?.message || 'Không tải được danh sách quy định');
@@ -83,7 +85,13 @@ export const RuleEnginePage: React.FC = () => {
 
   const openEdit = (rule: RuleApi) => {
     setEditing(rule);
-    setFormValues(JSON.parse(rule.currentValue || '{}'));
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(rule.currentValue || '{}');
+    } catch {
+      parsed = {};
+    }
+    setFormValues(parsed && typeof parsed === 'object' ? parsed : {});
     setReason('');
     setEffectiveDate(new Date().toISOString().slice(0, 10));
   };
@@ -193,10 +201,10 @@ export const RuleEnginePage: React.FC = () => {
     );
   };
 
+  const q = search.trim().toLowerCase();
   const filtered = rules.filter((r) => {
-    const q = search.trim().toLowerCase();
     if (!q) return true;
-    return r.name.toLowerCase().includes(q) || r.ruleKey.toLowerCase().includes(q);
+    return (r.name || '').toLowerCase().includes(q) || (r.ruleKey || '').toLowerCase().includes(q);
   });
 
   return (
@@ -205,7 +213,6 @@ export const RuleEnginePage: React.FC = () => {
 
       <div className="bg-canvas border border-line rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="text-xs text-accent font-semibold">S16 · HR</div>
           <h1 className="text-xl font-bold text-ink mt-1">Cấu hình 19 quy định</h1>
           <p className="text-xs text-ink-muted mt-1">Chỉ áp dụng toàn công ty · mỗi lần lưu tạo phiên bản có ngày hiệu lực + lý do.</p>
         </div>
@@ -218,7 +225,12 @@ export const RuleEnginePage: React.FC = () => {
       </div>
 
       {loading && <div className="text-sm text-ink-muted">Đang tải 19 quy định…</div>}
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && (
+        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button className="text-xs px-2.5 py-1 rounded border border-rose-300 bg-white" onClick={loadRules}>Thử lại</button>
+        </div>
+      )}
 
       <div className="bg-surface border border-line rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
@@ -232,12 +244,19 @@ export const RuleEnginePage: React.FC = () => {
             </tr>
           </thead>
           <tbody>
+            {!loading && !error && filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-6 text-center text-xs text-ink-muted">
+                  Không tìm thấy quy định phù hợp{q ? ` với từ khoá “${q}”` : ''}.
+                </td>
+              </tr>
+            )}
             {filtered.map((r) => (
               <tr key={r.ruleKey} className="border-t border-line align-top">
                 <td className="p-3">
-                  <div className="font-semibold text-ink">{r.name}</div>
+                  <div className="font-semibold text-ink">{r.name || r.ruleKey}</div>
                   <div className="text-[11px] font-mono text-ink-muted">{r.ruleKey}</div>
-                  <div className="text-[11px] text-ink-muted mt-1 max-w-xl">{r.description}</div>
+                  <div className="text-[11px] text-ink-muted mt-1 max-w-xl">{r.description || ''}</div>
                 </td>
                 <td className="p-3 text-center text-xs">{r.category}</td>
                 <td className="p-3 text-center text-xs">v{r.versionCount}</td>
@@ -259,7 +278,7 @@ export const RuleEnginePage: React.FC = () => {
             <div className="text-[11px] text-ink-muted">Scope: toàn công ty · {editing.ruleKey}</div>
             <label className="block text-xs font-semibold">Các field của quy định</label>
             <div className="grid sm:grid-cols-2 gap-2 max-h-[45vh] overflow-auto pr-1">
-              {Object.entries(formValues)
+              {Object.entries(formValues || {})
                 .filter(([key]) => isFieldVisible(key, formValues))
                 .map(([key, value]) => renderField(key, value))}
             </div>

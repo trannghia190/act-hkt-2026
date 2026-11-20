@@ -20,7 +20,6 @@ export const OKRAssessmentPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Đánh Giá Hiệu Suất Cuối Năm (Form 4 Box)</h1>
-            <Badge variant="accent">S23</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Tổng kết kết quả thực hiện OKR 4 Quý năm 2026, nhân viên tự đánh giá (Self-review) và Quản lý trực tiếp chấm điểm

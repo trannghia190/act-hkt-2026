@@ -17,7 +17,6 @@ export const RequestDetailPage: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S13 · Chi tiết đơn</div>
         <h1 className="text-xl font-bold text-ink mt-1">Đơn {req?.id || id}</h1>
         <p className="text-xs text-ink-muted mt-1">Timeline đầy đủ + ảnh hưởng tới bảng công.</p>
       </div>
@@ -42,7 +41,7 @@ export const RequestDetailPage: React.FC = () => {
               <div><div className="font-semibold">{t.action}</div><div className="text-xs text-ink-muted">{t.at} · {t.actor}</div></div>
             </div>
           ))}
-          <div className="text-xs text-ink-muted">Lịch sử chỉnh sửa: ghi trong nhật ký thay đổi.</div>
+          <div className="text-xs text-ink-muted mt-2 border-t border-line pt-2">Lịch sử chỉnh sửa: {data?.timeline?.length || 0} mốc · mọi thay đổi ghi vào nhật ký (audit log).</div>
         </div>
       )}
     </div>

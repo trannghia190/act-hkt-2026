@@ -96,7 +96,7 @@ export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSucce
             🔑
           </div>
           <div>
-            <h2 className="text-base font-bold text-ink">Bắt Buộc Đổi Mật Khẩu Lần Đầu (S01-A)</h2>
+            <h2 className="text-base font-bold text-ink">Bắt Buộc Đổi Mật Khẩu Lần Đầu</h2>
             <p className="text-xs text-ink-muted">Tài khoản nhân viên mới cần thiết lập mật khẩu bảo mật riêng</p>
           </div>
         </div>

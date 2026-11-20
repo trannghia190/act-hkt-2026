@@ -14,12 +14,17 @@
 #   - Frontend (Vite)           : http://localhost:3000
 #
 # Cách dùng:
-#   ./run-local.sh              # setup + chạy cả 3 service (Ctrl+C để dừng)
-#   ./run-local.sh setup        # chỉ chuẩn bị DB / venv / node_modules
-#   ./run-local.sh backend      # chỉ AI + Core
-#   ./run-local.sh frontend     # chỉ frontend (giả định backend đã chạy)
-#   ./run-local.sh stop         # dừng các process do script này đã start
+#   ./run-local.sh                 # setup + chạy cả 3 service (Ctrl+C để dừng)
+#   ./run-local.sh backend         # chỉ AI + Core
+#   ./run-local.sh frontend        # chỉ frontend (giả định backend đã chạy)
+#   ./run-local.sh --no-backend    # chỉ frontend (bỏ AI + Core)
+#   ./run-local.sh --no-frontend   # chỉ backend (AI + Core)
+#   ./run-local.sh --no-ai         # Core + Frontend (bỏ AI Face)
+#   ./run-local.sh --no-core       # AI + Frontend (bỏ Core)
+#   ./run-local.sh setup           # chỉ chuẩn bị phần được chọn
+#   ./run-local.sh stop            # dừng các process do script này đã start
 #
+# Có thể kết hợp: ./run-local.sh --no-frontend --no-ai  → chỉ Core
 # Ghi đè cấu hình bằng biến môi trường, ví dụ:
 #   DB_USER=postgres CORE_PORT=8081 ./run-local.sh
 # ==============================================================================
@@ -51,6 +56,11 @@ AI_PID=""
 CORE_PID=""
 FRONTEND_PID=""
 
+# Bật/tắt từng service — được đặt lại bởi tham số dòng lệnh ở phần Main.
+RUN_AI=1
+RUN_CORE=1
+RUN_FRONTEND=1
+
 # ------------------------------ Tiện ích --------------------------------------
 if [ -t 1 ]; then
   C_CYAN=$'\033[0;36m'; C_GREEN=$'\033[0;32m'; C_YELLOW=$'\033[1;33m'
@@ -65,8 +75,9 @@ warn() { echo "${C_YELLOW}  ! $*${C_NC}"; }
 die()  { echo "${C_RED}✗ $*${C_NC}" >&2; exit 1; }
 
 usage() {
-  sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
-  exit 0
+  # In toàn bộ khối comment ở đầu file (bỏ shebang), dừng ở dòng code đầu tiên.
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
+  exit "${1:-0}"
 }
 
 port_in_use() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
@@ -262,12 +273,15 @@ setup_frontend() {
 
 do_setup() {
   check_tools
-  check_postgres
-  check_redis
-  check_keycloak
-  setup_ai
-  setup_core
-  setup_frontend
+  if [ "$RUN_AI" = 1 ] || [ "$RUN_CORE" = 1 ]; then
+    check_postgres
+    if [ "$RUN_CORE" = 1 ]; then check_redis; fi
+    check_keycloak
+  fi
+  if [ "$RUN_AI" = 1 ]; then setup_ai; fi
+  if [ "$RUN_CORE" = 1 ]; then setup_core; fi
+  if [ "$RUN_FRONTEND" = 1 ]; then setup_frontend; fi
+  return 0
 }
 
 # ------------------------------ Chạy service ----------------------------------
@@ -314,15 +328,23 @@ start_core() {
 }
 
 show_logs_hint() {
+  local files=""
+  [ "$RUN_AI" = 1 ] && files="$files $LOG_DIR/ai-face.log"
+  [ "$RUN_CORE" = 1 ] && files="$files $LOG_DIR/core-service.log"
+  [ "$RUN_FRONTEND" = 1 ] && files="$files $LOG_DIR/frontend.log"
   echo "  Logs: $LOG_DIR"
-  echo "    tail -f $LOG_DIR/ai-face.log $LOG_DIR/core-service.log $LOG_DIR/frontend.log"
+  echo "    tail -f${files}"
 }
 
 wait_backends() {
-  wait_http "http://127.0.0.1:${AI_PORT}/health" "AI Face Service" 90 \
-    || die "AI Face Service không lên. Xem: $LOG_DIR/ai-face.log"
-  wait_http "http://127.0.0.1:${CORE_PORT}/api/v1/actuator/health" "Core Service" 300 \
-    || die "Core Service không lên. Xem: $LOG_DIR/core-service.log"
+  if [ "$RUN_AI" = 1 ]; then
+    wait_http "http://127.0.0.1:${AI_PORT}/health" "AI Face Service" 90 \
+      || die "AI Face Service không lên. Xem: $LOG_DIR/ai-face.log"
+  fi
+  if [ "$RUN_CORE" = 1 ]; then
+    wait_http "http://127.0.0.1:${CORE_PORT}/api/v1/actuator/health" "Core Service" 300 \
+      || die "Core Service không lên. Xem: $LOG_DIR/core-service.log"
+  fi
 }
 
 print_dashboard() {
@@ -330,26 +352,38 @@ print_dashboard() {
   echo "=================================================================="
   echo "${C_GREEN}${C_BOLD}  ACT-HKT 2026 — Môi trường local đã sẵn sàng${C_NC}"
   echo "=================================================================="
-  echo "  🌐 Frontend (Vite)            http://localhost:${FRONTEND_PORT}"
-  echo "  ☕ Core Service API           http://localhost:${CORE_PORT}/api/v1"
-  echo "  📚 Swagger UI                 http://localhost:${CORE_PORT}/swagger-ui.html"
-  echo "  🤖 AI Face Service            http://localhost:${AI_PORT}/docs"
-  echo "  🐘 PostgreSQL                ${DB_HOST}:${DB_PORT}/${DB_NAME} (user: ${DB_USER})"
-  echo "  ⚡ Redis                      ${REDIS_HOST}:${REDIS_PORT}"
-  if [ -n "${KEYCLOAK_URL:-}" ]; then
+  [ "$RUN_FRONTEND" = 1 ] && echo "  🌐 Frontend (Vite)            http://localhost:${FRONTEND_PORT}"
+  [ "$RUN_CORE" = 1 ] && echo "  ☕ Core Service API           http://localhost:${CORE_PORT}/api/v1"
+  [ "$RUN_CORE" = 1 ] && echo "  📚 Swagger UI                 http://localhost:${CORE_PORT}/swagger-ui.html"
+  [ "$RUN_AI" = 1 ] && echo "  🤖 AI Face Service            http://localhost:${AI_PORT}/docs"
+  if [ "$RUN_AI" = 1 ] || [ "$RUN_CORE" = 1 ]; then
+    echo "  🐘 PostgreSQL                ${DB_HOST}:${DB_PORT}/${DB_NAME} (user: ${DB_USER})"
+  fi
+  [ "$RUN_CORE" = 1 ] && echo "  ⚡ Redis                      ${REDIS_HOST}:${REDIS_PORT}"
+  if [ "$RUN_CORE" = 1 ] && [ -n "${KEYCLOAK_URL:-}" ]; then
     echo "  🔐 Keycloak                   ${KEYCLOAK_URL} (chưa được code sử dụng)"
   fi
-  local mail_state="tắt kiểm tra health (chưa cấu hình SMTP)"
-  if [ -n "${SPRING_MAIL_USERNAME:-}" ]; then mail_state="đã cấu hình SMTP"; fi
-  echo "  ✉️  Email                      ${mail_state}"
-  echo "------------------------------------------------------------------"
-  echo "  Tài khoản seed trong DB: 01HR · 05ACT · 136ACT (mật khẩu: 123456)"
-  echo "  Tài khoản demo của UI   : admin / Admin"
+  if [ "$RUN_CORE" = 1 ]; then
+    local mail_state="tắt kiểm tra health (chưa cấu hình SMTP)"
+    if [ -n "${SPRING_MAIL_USERNAME:-}" ]; then mail_state="đã cấu hình SMTP"; fi
+    echo "  ✉️  Email                      ${mail_state}"
+    echo "------------------------------------------------------------------"
+    echo "  Tài khoản demo (mật khẩu: 123456)"
+    echo "    01HR   → HR Admin   (duyệt cấu hình, bảng công, phép toàn công ty)"
+    echo "    05ACT  → Manager    (duyệt đơn cấp dưới, lịch nhóm)"
+    echo "    136ACT → Nhân viên  (tự chấm công, tạo đơn, xem phép/bảng công)"
+  fi
   echo "=================================================================="
   echo
 }
 
 start_frontend() {
+  if ! port_in_use "$CORE_PORT"; then
+    warn "Không thấy Core ở cổng ${CORE_PORT} — frontend sẽ gọi API thất bại cho tới khi Core chạy."
+  fi
+  if ! port_in_use "$AI_PORT"; then
+    warn "Không thấy AI Face ở cổng ${AI_PORT} — chức năng khuôn mặt sẽ lỗi."
+  fi
   FRONTEND_PORT="$(pick_port "$FRONTEND_PORT")"
   info "Khởi động Frontend trên :${FRONTEND_PORT}"
   (
@@ -385,74 +419,67 @@ stop_previous() {
 }
 
 # ------------------------------ Main ------------------------------------------
-COMMAND="${1:-all}"
+COMMAND="all"
 
-case "$COMMAND" in
-  -h|--help|help)
-    usage
-    ;;
+while [ $# -gt 0 ]; do
+  case "$1" in
+    all|"")                       COMMAND="all" ;;
+    backend|api)                  COMMAND="backend" ;;
+    frontend|ui)                  COMMAND="frontend" ;;
+    setup|stop)                   COMMAND="$1" ;;
+    -h|--help|help)               usage 0 ;;
+    --no-backend|--skip-backend)  RUN_AI=0; RUN_CORE=0 ;;
+    --no-frontend|--skip-frontend) RUN_FRONTEND=0 ;;
+    --no-ai|--skip-ai)            RUN_AI=0 ;;
+    --no-core|--skip-core)        RUN_CORE=0 ;;
+    *)
+      echo "Tham số không hợp lệ: $1" >&2
+      usage 1
+      ;;
+  esac
+  shift
+done
 
-  stop)
-    stop_previous
-    exit 0
-    ;;
+# Lệnh vị trí là preset; cờ --no-* áp dụng sau nên có thể kết hợp.
+if [ "$COMMAND" = "backend" ]; then RUN_FRONTEND=0; fi
+if [ "$COMMAND" = "frontend" ]; then RUN_AI=0; RUN_CORE=0; fi
 
-  setup)
-    do_setup
-    echo
-    ok "Setup xong. Chạy: ./run-local.sh"
-    ;;
+if [ "$COMMAND" = "stop" ]; then
+  stop_previous
+  exit 0
+fi
 
-  backend|api)
-    do_setup
-    start_ai
-    start_core
-    wait_backends
-    print_dashboard
-    show_logs_hint
-    echo "Ctrl+C để dừng."
-    while :; do
-      kill -0 "$AI_PID" 2>/dev/null || die "AI Face Service đã dừng. Xem $LOG_DIR/ai-face.log"
-      kill -0 "$CORE_PID" 2>/dev/null || die "Core Service đã dừng. Xem $LOG_DIR/core-service.log"
-      sleep 2
-    done
-    ;;
+if [ "$RUN_AI" = 0 ] && [ "$RUN_CORE" = 0 ] && [ "$RUN_FRONTEND" = 0 ]; then
+  die "Không còn service nào để chạy (đã loại trừ tất cả)."
+fi
 
-  frontend|ui)
-    setup_frontend
-    # Nếu backend đang chạy sẵn thì dùng cổng phát hiện được, không thì mặc định.
-    if ! port_in_use "$CORE_PORT"; then
-      warn "Không thấy gì ở cổng ${CORE_PORT} — frontend sẽ gọi API thất bại cho tới khi backend chạy."
-    fi
-    start_frontend
-    print_dashboard
-    echo "  Frontend log: tail -f $LOG_DIR/frontend.log"
-    echo "Ctrl+C để dừng."
-    while kill -0 "$FRONTEND_PID" 2>/dev/null; do sleep 2; done
-    ;;
+if [ "$COMMAND" = "setup" ]; then
+  do_setup
+  echo
+  ok "Setup xong."
+  exit 0
+fi
 
-  all|"")
-    do_setup
-    start_ai
-    start_core
-    wait_backends
-    start_frontend
-    print_dashboard
-    show_logs_hint
-    echo "Ctrl+C để dừng tất cả."
-    while :; do
-      kill -0 "$AI_PID" 2>/dev/null || die "AI Face Service đã dừng. Xem $LOG_DIR/ai-face.log"
-      kill -0 "$CORE_PID" 2>/dev/null || die "Core Service đã dừng. Xem $LOG_DIR/core-service.log"
-      kill -0 "$FRONTEND_PID" 2>/dev/null || die "Frontend đã dừng. Xem $LOG_DIR/frontend.log"
-      sleep 2
-    done
-    ;;
-
-  *)
-    echo "Lệnh không hợp lệ: $COMMAND" >&2
-    usage
-    ;;
-esac
+do_setup
+if [ "$RUN_AI" = 1 ]; then start_ai; fi
+if [ "$RUN_CORE" = 1 ]; then start_core; fi
+wait_backends
+if [ "$RUN_FRONTEND" = 1 ]; then start_frontend; fi
+print_dashboard
+show_logs_hint
+echo "Ctrl+C để dừng."
+while :; do
+  if [ "$RUN_AI" = 1 ] && ! kill -0 "$AI_PID" 2>/dev/null; then
+    die "AI Face Service đã dừng. Xem $LOG_DIR/ai-face.log"
+  fi
+  if [ "$RUN_CORE" = 1 ] && ! kill -0 "$CORE_PID" 2>/dev/null; then
+    die "Core Service đã dừng. Xem $LOG_DIR/core-service.log"
+  fi
+  if [ "$RUN_FRONTEND" = 1 ] && ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    die "Frontend đã dừng. Xem $LOG_DIR/frontend.log"
+  fi
+  sleep 2
+done
 
 # Ghi chú Keycloak:
 #   Code hiện tại (SecurityConfig.java) chưa dùng OAuth2/OIDC — cấu hình Keycloak

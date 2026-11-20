@@ -53,7 +53,6 @@ export const PolicyDocPage: React.FC = () => {
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="text-xs text-accent font-semibold">S19 · Tất cả vai trò</div>
         <h1 className="text-xl font-bold text-ink mt-1">Tra cứu nội quy & quy chế</h1>
         <p className="text-xs text-ink-muted mt-1">Sinh tự động từ 19 quy định HR đang áp dụng — không lệch với phần mềm.</p>
         <input className="mt-3 w-full sm:w-80 text-xs px-3 py-2 rounded-lg border border-line bg-surface"
