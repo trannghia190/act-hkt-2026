@@ -33,6 +33,16 @@
 # ==============================================================================
 set -euo pipefail
 
+# Ensure PATH includes essential tools on macOS (Docker, Homebrew, /usr/local/bin, NVM)
+for _p in \
+  "/usr/local/bin" "/usr/local/sbin" "/opt/homebrew/bin" "/opt/homebrew/sbin" \
+  "/Applications/Docker.app/Contents/Resources/bin" \
+  "$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -n 1)/bin"; do
+  if [ -d "$_p" ]; then
+    export PATH="$_p:$PATH"
+  fi
+done
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT="${PORT:-3000}"
 PROVIDER="${PROVIDER:-auto}"

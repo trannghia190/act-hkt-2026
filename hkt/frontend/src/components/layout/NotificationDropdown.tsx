@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, Check, Clock, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,56 +18,38 @@ export const NotificationDropdown: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'UNREAD'>('ALL');
   const navigate = useNavigate();
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'NOTIF-01',
-      title: 'Nhắc nhở chấm công ra ca chiều',
-      message: 'Đã 17:35, bạn đã đủ 8.0 giờ làm việc. Hãy thực hiện chấm công ra ca để ghi nhận đủ công.',
-      timestamp: '10 phút trước',
-      type: 'attendance',
-      level: 'urgent',
-      read: false,
-      actionUrl: '/attendance/checkin',
-    },
-    {
-      id: 'NOTIF-02',
-      title: 'Đơn xin nghỉ phép năm đã được duyệt',
-      message: 'Quản lý Phạm Minh Tuấn đã phê duyệt đơn nghỉ phép năm (REQ-2026-0030) của bạn.',
-      timestamp: '2 giờ trước',
-      type: 'attendance',
-      level: 'info',
-      read: false,
-      actionUrl: '/attendance/requests',
-    },
-    {
-      id: 'NOTIF-03',
-      title: 'Hạn chót check-in OKR Quý 4/2026',
-      message: 'Hôm nay là hạn chót cập nhật số liệu tiến độ các Key Result tháng 11.',
-      timestamp: 'Hôm nay 08:30',
-      type: 'okr',
-      level: 'warning',
-      read: false,
-      actionUrl: '/okr/my-okr',
-    },
-    {
-      id: 'NOTIF-04',
-      title: 'Cập nhật nội quy lao động mới (Quy tắc 04)',
-      message: 'Phòng Nhân sự vừa ban hành phiên bản quy chế mới về thời hạn bảo lưu phép năm 31/03.',
-      timestamp: 'Hôm qua',
-      type: 'system',
-      level: 'info',
-      read: true,
-      actionUrl: '/admin/policy-doc',
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    fetch('/api/v1/notifications')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          const mapped: NotificationItem[] = data.data.map((d: any) => ({
+            id: d.id,
+            title: d.title,
+            message: d.message || d.content || d.title,
+            timestamp: d.timestamp || 'Vừa xong',
+            type: (d.type || 'system').toLowerCase() as any,
+            level: (d.level || (d.priority === 'HIGH' ? 'urgent' : 'info')) as any,
+            read: !!d.read,
+            actionUrl: d.actionUrl,
+          }));
+          setNotifications(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllAsRead = () => {
+    fetch('/api/v1/notifications/mark-all-read', { method: 'PUT' }).catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const handleClickItem = (item: NotificationItem) => {
+    fetch(`/api/v1/notifications/${item.id}/read`, { method: 'PUT' }).catch(() => {});
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
     );
@@ -120,7 +102,7 @@ export const NotificationDropdown: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="text-[11px] text-emerald-500 hover:text-emerald-400 font-medium flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Check className="w-3 h-3" />
                   Đọc tất cả
@@ -135,7 +117,7 @@ export const NotificationDropdown: React.FC = () => {
                 onClick={() => setActiveTab('ALL')}
                 className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
                   activeTab === 'ALL'
-                    ? 'text-emerald-500 border-b-2 border-emerald-500 font-bold'
+                    ? 'text-accent border-b-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -146,7 +128,7 @@ export const NotificationDropdown: React.FC = () => {
                 onClick={() => setActiveTab('UNREAD')}
                 className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
                   activeTab === 'UNREAD'
-                    ? 'text-emerald-500 border-b-2 border-emerald-500 font-bold'
+                    ? 'text-accent border-b-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -197,10 +179,18 @@ export const NotificationDropdown: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-2 border-t border-line bg-canvas text-center">
-              <span className="text-[10px] text-ink-muted font-medium">
-                Thông báo đẩy đa kênh: In-app · Mobile Push · Gmail Enterprise
-              </span>
+            <div className="p-2 border-t border-line bg-canvas flex items-center justify-between text-[11px] px-3">
+              <span className="text-[10px] text-ink-muted">In-app · Push · Email</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/notifications/preferences');
+                }}
+                className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
+              >
+                Cài đặt thông báo (S36) →
+              </button>
             </div>
           </div>
         </>

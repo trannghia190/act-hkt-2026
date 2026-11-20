@@ -16,6 +16,7 @@ import java.util.UUID;
 public interface RequestRepository extends JpaRepository<RequestEntity, UUID>, JpaSpecificationExecutor<RequestEntity> {
     List<RequestEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<RequestEntity> findByUserIdInAndStatusOrderByCreatedAtDesc(Collection<UUID> userIds, String status);
+    List<RequestEntity> findByUserIdAndStatus(UUID userId, String status);
 
     @Query("select r from RequestEntity r where r.userId = :userId " +
             "and (:fromDate is null or r.workDate >= :fromDate) " +

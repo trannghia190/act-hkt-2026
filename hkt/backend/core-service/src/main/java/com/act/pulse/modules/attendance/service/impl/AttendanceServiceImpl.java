@@ -58,8 +58,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final String AI_SERVICE_DOCKER_URL = "http://pulse-ai-face-service:8000/api/v1/face/verify-json";
-    private static final String AI_SERVICE_LOCAL_URL = "http://localhost:8000/api/v1/face/verify-json";
+    @Value("${app.services.ai-face-service-url:http://localhost:8000}")
+    private String aiFaceServiceUrl;
 
     /** Danh sách IP mạng nội bộ công ty (rule `attendance_security.require_internal_network`). */
     private static final List<String> OFFICE_NETWORK_PREFIXES = List.of("10.0.", "192.168.", "172.16.");
@@ -67,9 +67,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     /** Văn phòng Hà Nội — tọa độ dùng cho kiểm tra bán kính. */
     private static final double OFFICE_LAT = 21.0285;
     private static final double OFFICE_LNG = 105.8542;
-
-    @Value("${app.services.ai-face-service-url:http://localhost:8000}")
-    private String aiFaceServiceUrl;
 
     @Override
     @Transactional
@@ -83,12 +80,19 @@ public class AttendanceServiceImpl implements AttendanceService {
         return processAttendancePunch(userId, request, "CHECK_OUT");
     }
 
-    private CheckInResponse processAttendancePunch(UUID userId, CheckInRequest request, String punchType) {
-        // Nhân viên lấy từ token đang đăng nhập — KHÔNG tin employeeCode do client gửi lên
-        User requester = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản đang đăng nhập"));
-        String requesterCode = requester.getEmployeeCode();
+    private CheckInResponse processAttendancePunch(UUID authenticatedUserId, CheckInRequest request, String punchType) {
         List<LayerResult> layers = new ArrayList<>();
+
+        // Nhân viên lấy từ token đang đăng nhập — KHÔNG tin employeeCode do client gửi lên (docs/01 §2)
+        if (authenticatedUserId == null) {
+            return reject("UNAUTHENTICATED", "Vui lòng đăng nhập để thực hiện chấm công", layers, FaceOutcome.skipped());
+        }
+        User requester = userRepository.findById(authenticatedUserId).orElse(null);
+        if (requester == null) {
+            return reject("USER_NOT_FOUND", "Không tìm thấy hồ sơ người dùng hợp lệ", layers, FaceOutcome.skipped());
+        }
+        final UUID userId = requester.getId();
+        final String requesterCode = requester.getEmployeeCode();
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
         // Máy đầu tiên của mỗi người được tự đăng ký (docs/01 §2); máy thứ 2/3 phải chờ HR duyệt.
@@ -97,11 +101,22 @@ public class AttendanceServiceImpl implements AttendanceService {
         boolean deviceApproved = false;
         String deviceDetail = "Thiết bị này chưa được HR duyệt — không chấm công được";
         if (deviceFingerprint != null && !deviceFingerprint.isBlank()) {
-            Optional<DeviceRegistration> existing = deviceRegistrationRepository
-                    .findByUserIdAndDeviceFingerprintAndIsApprovedTrue(userId, deviceFingerprint);
-            if (existing.isPresent()) {
-                deviceApproved = true;
-                deviceDetail = null;
+            Optional<DeviceRegistration> existingOpt = deviceRegistrationRepository
+                    .findByDeviceFingerprint(deviceFingerprint);
+            if (existingOpt.isPresent()) {
+                DeviceRegistration existing = existingOpt.get();
+                if (existing.getUserId().equals(userId)) {
+                    if (Boolean.TRUE.equals(existing.getIsApproved())) {
+                        deviceApproved = true;
+                        deviceDetail = null;
+                        existing.setLastActiveAt(LocalDateTime.now());
+                        deviceRegistrationRepository.save(existing);
+                    } else {
+                        deviceDetail = "Thiết bị mới đã được gửi yêu cầu — cần HR duyệt trước khi chấm công";
+                    }
+                } else {
+                    deviceDetail = "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi";
+                }
             } else {
                 long approvedCount = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId);
                 if (approvedCount == 0) {
@@ -127,6 +142,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                             .deviceModel("Web Browser")
                             .osVersion("Web")
                             .isApproved(false)
+                            .lastActiveAt(LocalDateTime.now())
                             .build();
                     pending.setCreatedAt(LocalDateTime.now());
                     pending.setUpdatedAt(LocalDateTime.now());
@@ -210,6 +226,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 case "NETWORK" -> "OUTSIDE_NETWORK";
                 case "GPS" -> "OUTSIDE_GEOFENCE";
                 case "SHIFT" -> "NO_SHIFT";
+                case "FACE" -> face.proxyDetected ? "PROXY_PUNCH_DETECTED" : "FACE_NOT_MATCHED";
                 default -> first.getDetail();
             };
             log.warn("Chấm công bị chặn tại lớp {}: {}", first.getLayer(), first.getDetail());
@@ -344,7 +361,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             return new FaceOutcome("failed", null, false, null, null, false, 1, maxAttempts - 1, null);
         }
 
-        JsonNode ai = callAiFaceService(image, request.getLivenessFrames());
+        JsonNode ai = callAiFaceService(image, request.getLivenessFrames(), requesterCode, threshold);
         if (ai == null) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
                     "Không kết nối được dịch vụ nhận diện khuôn mặt — chưa thể xác thực"));
@@ -358,6 +375,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         JsonNode matchedEmp = ai.path("matched_employee");
         String matchedCode = matchedEmp.path("employee_code").asText(null);
         String matchedName = matchedEmp.path("full_name").asText(null);
+        boolean isAiProxyPunch = ai.path("is_proxy_punch_detected").asBoolean(false);
 
         if (!qualityPassed) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
@@ -371,49 +389,75 @@ public class AttendanceServiceImpl implements AttendanceService {
             return new FaceOutcome("failed", similarity, false, matchedCode, matchedName,
                     false, 1, maxAttempts - 1, LocalDateTime.now());
         }
-        // **Đối chiếu với tài khoản đang đăng nhập** — chống chấm công hộ
-        if (!matched || matchedCode == null || !matchedCode.equalsIgnoreCase(requesterCode)) {
-            String detail = matchedCode == null
-                    ? "Không nhận diện được khuôn mặt — hãy thử lại"
-                    : String.format("Người đứng trước camera là %s (%s), KHÔNG KHỚP với tài khoản đang đăng nhập %s",
-                            matchedName, matchedCode, requesterCode);
+
+        // **Đối chiếu độc lập với tài khoản đang đăng nhập** — Chống chấm công hộ (High D)
+        boolean proxyMismatch = (matchedCode != null && !matchedCode.equalsIgnoreCase(requesterCode));
+        boolean proxyDetected = isAiProxyPunch || proxyMismatch;
+
+        if (proxyDetected) {
+            String detail = String.format("CẢNH BÁO CHẤM CÔNG HỘ: Người đứng trước camera là %s (%s), KHÔNG KHỚP với tài khoản đang đăng nhập %s. Chấm công bị từ chối.",
+                    matchedName != null ? matchedName : "chưa rõ",
+                    matchedCode != null ? matchedCode : "chưa rõ",
+                    requesterCode);
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false, detail));
-            boolean proxy = matchedCode != null && !matchedCode.equalsIgnoreCase(requesterCode);
+            log.warn("Proxy punch blocked: camera detected {} but requester is {}", matchedCode, requesterCode);
             return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
-                    proxy, 1, maxAttempts - 1, LocalDateTime.now());
+                    true, 1, maxAttempts - 1, LocalDateTime.now());
         }
+
+        if (!matched || matchedCode == null) {
+            layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
+                    "Không nhận diện được khuôn mặt trong hệ thống hoặc độ tương đồng không đạt"));
+            return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
+                    false, 1, maxAttempts - 1, LocalDateTime.now());
+        }
+
         if (similarity < threshold) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
-                    String.format("Độ tương đồng %,.0f%% thấp hơn ngưỡng %d%%", similarity * 100, (int) (threshold * 100))));
+                    String.format("Độ tương đồng %,.0f%% thấp hơn ngưỡng quy định %d%%", similarity * 100, (int) (threshold * 100))));
             return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
                     false, 1, maxAttempts - 1, LocalDateTime.now());
         }
 
         layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", true,
-                String.format("Khớp %,.0f%%", similarity * 100)));
+                String.format("Khớp chính chủ %,.0f%%", similarity * 100)));
         return new FaceOutcome("passed", similarity, true, matchedCode, matchedName,
                 false, 1, maxAttempts - 1, LocalDateTime.now());
     }
 
-    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames) {
+    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames, String requesterCode, double threshold) {
+        String baseUrl = (aiFaceServiceUrl != null && !aiFaceServiceUrl.trim().isEmpty())
+                ? aiFaceServiceUrl.trim().replaceAll("/+$", "")
+                : "http://localhost:8000";
+        String primaryUrl = baseUrl + "/api/v1/face/verify-json";
+
         Map<String, Object> body = new HashMap<>();
         body.put("image", base64Image);
+        if (requesterCode != null && !requesterCode.isBlank()) {
+            body.put("expected_employee_code", requesterCode);
+        }
         if (livenessFrames != null && !livenessFrames.isEmpty()) {
             body.put("liveness_frames", livenessFrames);
         }
+        body.put("similarity_threshold", threshold);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        for (String url : List.of(AI_SERVICE_DOCKER_URL, AI_SERVICE_LOCAL_URL, aiFaceServiceUrl + "/api/v1/face/verify-json")) {
-            try {
-                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                    return objectMapper.readTree(response.getBody());
-                }
-            } catch (Exception e) {
-                log.warn("Không kết nối được AI Face Service tại {}: {}", url, e.getMessage());
+        try {
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(java.time.Duration.ofSeconds(3));
+            factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+            RestTemplate timeoutRestTemplate = new RestTemplate(factory);
+
+            ResponseEntity<String> response = timeoutRestTemplate.postForEntity(primaryUrl, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return objectMapper.readTree(response.getBody());
             }
+        } catch (Exception ex) {
+            log.warn("AI face service verification failed or timed out (endpoint: {}): {}", primaryUrl, ex.getMessage());
         }
         return null;
     }

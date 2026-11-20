@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 animate-pulse font-bold'
               : 'border-line bg-canvas hover:bg-surface text-ink-secondary hidden sm:inline-flex'
           }`}
-          title="Đăng ký mẫu khuôn mặt 3 góc"
+          title="Đăng ký mẫu khuôn mặt"
         >
           <Camera className="w-3.5 h-3.5 text-accent" />
           <span className="hidden lg:inline">

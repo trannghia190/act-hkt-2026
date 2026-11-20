@@ -268,7 +268,9 @@ export const CheckInPage: React.FC = () => {
       const detectedCode = faceData.matched_employee?.employee_code as string | undefined;
       const detectedName = faceData.matched_employee?.full_name as string | undefined;
       const loggedInCode = user?.employeeCode;
-      if (loggedInCode && detectedCode && detectedCode !== loggedInCode) {
+
+      // Chống chấm công hộ: Người trước camera phải là chính chủ tài khoản đang đăng nhập
+      if (loggedInCode && detectedCode && detectedCode.toLowerCase() !== loggedInCode.toLowerCase()) {
         setCheckInStep('error');
         setErrorMessage(
           `🚨 CHẤM CÔNG HỘ: Người trước camera là ${detectedName} (${detectedCode}), KHÔNG KHỚP tài khoản đang đăng nhập ${loggedInCode}. Đã từ chối.`,
@@ -278,11 +280,26 @@ export const CheckInPage: React.FC = () => {
       }
 
       // 2) Gọi Core Service — SERVER quyết định chấm được hay không
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        reqHeaders['Authorization'] = `Bearer ${user.accessToken}`;
+      } else {
+        try {
+          const saved = localStorage.getItem('pulse_auth_user');
+          if (saved) {
+            const u = JSON.parse(saved);
+            if (u?.accessToken) reqHeaders['Authorization'] = `Bearer ${u.accessToken}`;
+          }
+        } catch (_) {}
+      }
+
+      const targetEmpCode = loggedInCode || user?.employeeCode || '';
+
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({
-          employeeCode: loggedInCode,
+          employeeCode: targetEmpCode,
           faceImageBase64: imageBase64,
           livenessFrames: frames,
           deviceFingerprint: getDeviceFingerprint(),
@@ -364,7 +381,7 @@ export const CheckInPage: React.FC = () => {
             <span>
               {user?.faceEnrolled === false
                 ? '⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để lấy mẫu'
-                : 'Cập nhật lại mẫu khuôn mặt 3 góc'}
+                : 'Cập nhật lại mẫu khuôn mặt'}
             </span>
           </button>
         </div>
@@ -387,8 +404,8 @@ export const CheckInPage: React.FC = () => {
           <button
             onClick={() => setCheckType('IN')}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'IN'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
+              ? 'bg-accent text-white shadow-xs'
+              : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
               }`}
           >
             Check-In Vào Ca (Sáng)
@@ -396,15 +413,16 @@ export const CheckInPage: React.FC = () => {
           <button
             onClick={() => setCheckType('OUT')}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${checkType === 'OUT'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
+              ? 'bg-accent text-white shadow-xs'
+              : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
               }`}
           >
             Check-Out Về (Chiều)
           </button>
         </div>
 
-        {/* Interactive Environment & Fraud Simulation Bar for QA Testing */}
+        {/* Interactive Environment & Fraud Simulation Bar for QA Testing (Hidden in Production) */}
+        {Boolean((import.meta as any)?.env?.DEV) && (
         <div className="my-3 p-3 bg-canvas-subtle rounded-xl border border-line text-left text-xs space-y-2.5">
           <div className="text-[11px] font-bold text-ink flex items-center justify-between">
             <span className="flex items-center gap-1">🧪 Kịch Bản Kiểm Thử QA (Xác Thực AI &amp; Chống Chấm Công Hộ)</span>
@@ -421,8 +439,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('SELF')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'SELF'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
               >
                 👤 Chính Chủ ({user?.employeeCode || '136ACT'})
@@ -431,8 +449,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('PROXY_FRAUD')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'PROXY_FRAUD'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
                 title="Mô phỏng nhân viên khác đứng trước camera để test tính năng phát hiện chấm công hộ"
               >
@@ -442,8 +460,8 @@ export const CheckInPage: React.FC = () => {
                 type="button"
                 onClick={() => setFaceTestScenario('POOR_QUALITY')}
                 className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all border text-left ${faceTestScenario === 'POOR_QUALITY'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                    : 'bg-canvas border-line text-ink-secondary hover:text-ink'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-canvas border-line text-ink-secondary hover:text-ink'
                   }`}
                 title="Mô phỏng ảnh chụp quá tối hoặc quá mờ để test bộ kiểm tra chất lượng ảnh"
               >
@@ -507,6 +525,7 @@ export const CheckInPage: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Circular Camera Viewport */}
         <div className="relative w-56 h-56 mx-auto my-4 rounded-full border-4 border-dashed border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
@@ -566,8 +585,8 @@ export const CheckInPage: React.FC = () => {
             type="button"
             onClick={toggleRealCamera}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs border cursor-pointer ${useRealCamera && cameraStream
-                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
-                : 'bg-accent text-white border-transparent hover:bg-accent-hover'
+              ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
+              : 'bg-accent text-white border-transparent hover:bg-accent-hover'
               }`}
           >
             <span>{useRealCamera && cameraStream ? '🟢' : '📹'}</span>
