@@ -188,9 +188,10 @@ public class AuthController {
         if (email == null && body != null && body.containsKey("employeeCode")) {
             email = String.valueOf(body.get("employeeCode"));
         }
-        if (email == null || email.isBlank()) email = "admin@act.vn";
-        authService.sendPasswordResetOtp(email);
-        return ApiResponse.ok("Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn.", "Thành công");
+        if (email != null && !email.isBlank()) {
+            authService.sendPasswordResetOtp(email.trim());
+        }
+        return ApiResponse.ok("Nếu tài khoản tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến email.", "Thành công");
     }
 
     @PostMapping("/reset-password")

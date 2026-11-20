@@ -32,6 +32,8 @@ public class TodoController {
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final TodoCompletionRepository todoCompletionRepository;
 
+    private static final Map<UUID, List<TodoItem>> CUSTOM_TASKS = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -69,6 +71,32 @@ public class TodoController {
         }
 
         List<TodoItem> items = new ArrayList<>();
+
+        // 0. Kiểm tra đơn từ của chính người dùng bị từ chối / cần sửa trong DB
+        if (userId != null) {
+            List<RequestEntity> myRequests = requestRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            long rejectedCount = myRequests.stream()
+                    .filter(r -> "REJECTED".equalsIgnoreCase(r.getStatus()))
+                    .count();
+            if (rejectedCount > 0 && !done.contains("todo-my-rejected-requests")) {
+                items.add(TodoItem.builder()
+                        .id("todo-my-rejected-requests")
+                        .priority("HIGH")
+                        .urgency("overdue")
+                        .category("REQUEST")
+                        .module("requests")
+                        .kind("REQUEST_REJECTED")
+                        .title("Bạn có " + rejectedCount + " đơn bị từ chối cần xem phản hồi & gửi lại")
+                        .description("Xem chi tiết lý do từ chối từ người phê duyệt và nộp lại nếu cần.")
+                        .actionLabel("Xem Đơn Của Tôi")
+                        .actionUrl("/attendance/requests")
+                        .dueDate("Hôm nay")
+                        .isCompleted(false)
+                        .status("open")
+                        .createdAt(LocalDateTime.now().toString())
+                        .build());
+            }
+        }
 
         // 1. Việc hôm nay: Chấm công vào ca
         items.add(TodoItem.builder()
@@ -166,6 +194,15 @@ public class TodoController {
                 .createdAt(LocalDateTime.now().toString())
                 .build());
 
+        // 5. Thêm các việc cần làm tùy chỉnh do người dùng tạo (CUSTOM_TASKS)
+        if (userId != null && CUSTOM_TASKS.containsKey(userId)) {
+            for (TodoItem ct : CUSTOM_TASKS.get(userId)) {
+                if (!done.contains(ct.getId())) {
+                    items.add(ct);
+                }
+            }
+        }
+
         return items;
     }
 
@@ -227,6 +264,52 @@ public class TodoController {
             }
         }
         return ApiResponse.ok(true, "Đã cập nhật trạng thái");
+    }
+
+    @PostMapping("/create-task")
+    @Operation(summary = "Tạo một mục việc cần làm mới")
+    public ApiResponse<Map<String, Object>> createCustomTask(@RequestBody Map<String, Object> body) {
+        String id = "todo-custom-" + UUID.randomUUID().toString().substring(0, 8);
+        String title = body != null && body.containsKey("title") ? String.valueOf(body.get("title")) : "Nhiệm vụ mới";
+        String description = body != null && body.containsKey("description") ? String.valueOf(body.get("description")) : "";
+        String urgency = body != null && body.containsKey("urgency") ? String.valueOf(body.get("urgency")) : "today";
+        String module = body != null && body.containsKey("module") ? String.valueOf(body.get("module")) : "timesheet";
+        String actionUrl = body != null && body.containsKey("actionUrl") ? String.valueOf(body.get("actionUrl")) : "/attendance/checkin";
+        String actionLabel = body != null && body.containsKey("actionLabel") ? String.valueOf(body.get("actionLabel")) : "Xử lý ngay";
+        String dueDate = body != null && body.containsKey("dueDate") ? String.valueOf(body.get("dueDate")) : "Hôm nay";
+
+        Map<String, Object> task = new HashMap<>();
+        task.put("id", id);
+        task.put("title", title);
+        task.put("description", description);
+        task.put("urgency", urgency);
+        task.put("module", module);
+        task.put("actionUrl", actionUrl);
+        task.put("actionLabel", actionLabel);
+        task.put("dueDate", dueDate);
+
+        UUID uid = CurrentUser.userId();
+        if (uid != null) {
+            TodoItem item = TodoItem.builder()
+                    .id(id)
+                    .title(title)
+                    .description(description)
+                    .urgency(urgency)
+                    .module(module)
+                    .actionUrl(actionUrl)
+                    .actionLabel(actionLabel)
+                    .dueDate(dueDate)
+                    .priority("HIGH".equalsIgnoreCase(urgency) || "overdue".equalsIgnoreCase(urgency) ? "HIGH" : "MEDIUM")
+                    .category(module.toUpperCase())
+                    .kind("CUSTOM_TASK")
+                    .status("open")
+                    .isCompleted(false)
+                    .createdAt(LocalDateTime.now().toString())
+                    .build();
+            CUSTOM_TASKS.computeIfAbsent(uid, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(item);
+        }
+
+        return ApiResponse.ok(task, "Tạo công việc thành công");
     }
 
     @GetMapping("/completed")

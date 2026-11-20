@@ -786,6 +786,16 @@ public class OrgStructureController {
         return CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN";
     }
 
+    private String resolveClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        if (request == null) return "127.0.0.1";
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        String remote = request.getRemoteAddr();
+        return (remote != null && !remote.isBlank()) ? remote : "127.0.0.1";
+    }
+
     private User findUserByIdOrCode(String idOrCode) {
         try {
             UUID uid = UUID.fromString(idOrCode.trim());
@@ -892,7 +902,7 @@ public class OrgStructureController {
                     .newValue(a.getNewValue())
                     .reason(a.getReason() != null ? a.getReason() : "Thao tác hệ thống")
                     .details(diff + (a.getReason() != null ? " [Lý do: " + a.getReason() + "]" : ""))
-                    .ipAddress(a.getIpAddress() != null ? a.getIpAddress() : "14.161.22.45")
+                    .ipAddress(a.getIpAddress() != null && !a.getIpAddress().isBlank() ? a.getIpAddress() : "127.0.0.1")
                     .affectedUser(a.getEntityId())
                     .build();
             results.add(dto);
@@ -953,7 +963,8 @@ public class OrgStructureController {
 
     @PostMapping(value = {"/attendance/timesheet/override", "/admin/timesheet/override"})
     @Operation(summary = "Sửa 1 ô bảng công thủ công — bắt buộc lý do & ghi audit log (S15/S35)")
-    public ApiResponse<Map<String, Object>> overrideTimesheetCell(@RequestBody TimesheetOverrideRequest req) {
+    public ApiResponse<Map<String, Object>> overrideTimesheetCell(@RequestBody TimesheetOverrideRequest req,
+                                                                 jakarta.servlet.http.HttpServletRequest httpRequest) {
         if (req.getReason() == null || req.getReason().trim().isBlank()) {
             throw new RuntimeException("Lý do sửa bảng công là bắt buộc");
         }
@@ -975,7 +986,7 @@ public class OrgStructureController {
                 .oldValue(field + ": " + oldV)
                 .newValue(field + ": " + newV)
                 .reason(req.getReason().trim())
-                .ipAddress("14.161.22.45 (Chrome · macOS)")
+                .ipAddress(resolveClientIp(httpRequest))
                 .build();
         auditLogRepository.save(audit);
 

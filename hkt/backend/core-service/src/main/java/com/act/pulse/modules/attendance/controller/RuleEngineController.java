@@ -71,9 +71,9 @@ public class RuleEngineController {
         }
 
         public String resolveReason() {
-            if (reason != null && !reason.isBlank()) return reason;
-            if (changeReason != null && !changeReason.isBlank()) return changeReason;
-            return "Cập nhật tham số quy định hệ thống";
+            if (reason != null && !reason.isBlank()) return reason.trim();
+            if (changeReason != null && !changeReason.isBlank()) return changeReason.trim();
+            return null;
         }
     }
 
@@ -101,14 +101,30 @@ public class RuleEngineController {
     @PutMapping("/{ruleKey}")
     @Operation(summary = "Lưu quy định mới — tạo phiên bản có ngày hiệu lực + lý do, ghi audit log (S17)")
     public ApiResponse<RuleItem> updateRule(@PathVariable String ruleKey,
-                                            @RequestBody UpdateRuleRequest request) {
+                                            @RequestBody UpdateRuleRequest request,
+                                            jakarta.servlet.http.HttpServletRequest httpRequest) {
         Rule rule = findRuleByKey(ruleKey);
 
         String value = request.resolveValue();
         if (value == null || value.isBlank()) {
             throw new RuntimeException("Giá trị quy định không được để trống");
         }
-        String reason = request.resolveReason();
+
+        // Validate JSON format for rules configured as JSON
+        if ("JSON".equalsIgnoreCase(rule.getDataType()) || (value.trim().startsWith("{") || value.trim().startsWith("["))) {
+            try {
+                objectMapper.readTree(value);
+            } catch (Exception e) {
+                throw new RuntimeException("Giá trị quy định JSON không hợp lệ: " + e.getMessage());
+            }
+        }
+
+        String reason = request.getChangeReason() != null && !request.getChangeReason().isBlank()
+                ? request.getChangeReason().trim()
+                : (request.getReason() != null ? request.getReason().trim() : null);
+        if (reason == null || reason.isBlank()) {
+            throw new RuntimeException("Bắt buộc nhập lý do thay đổi quy định");
+        }
 
         LocalDate effectiveDate = request.getEffectiveFrom() == null || request.getEffectiveFrom().isBlank()
                 ? LocalDate.now()
@@ -146,7 +162,7 @@ public class RuleEngineController {
                 .oldValue(rule.getName() + " (" + ruleKey + "): " + oldValue)
                 .newValue(rule.getName() + " (" + ruleKey + "): " + value)
                 .reason(reason)
-                .ipAddress("14.161.22.45 (Chrome/Web)")
+                .ipAddress(resolveClientIp(httpRequest))
                 .build();
         auditLogRepository.save(audit);
 
@@ -154,6 +170,16 @@ public class RuleEngineController {
         item.setCurrentValue(value);
         item.setVersion(versionStr);
         return ApiResponse.ok(item, "Đã lưu quy định mới");
+    }
+
+    private String resolveClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        if (request == null) return "127.0.0.1";
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        String remote = request.getRemoteAddr();
+        return (remote != null && !remote.isBlank()) ? remote : "127.0.0.1";
     }
 
     @GetMapping("/{ruleKey}/versions")
@@ -178,7 +204,8 @@ public class RuleEngineController {
     @Operation(summary = "Hoàn tác về một phiên bản cũ (tạo phiên bản mới, không xoá lịch sử)")
     public ApiResponse<RuleItem> rollback(@PathVariable String ruleKey,
                                           @PathVariable(required = false) String versionId,
-                                          @RequestBody(required = false) java.util.Map<String, String> body) {
+                                          @RequestBody(required = false) java.util.Map<String, String> body,
+                                          jakarta.servlet.http.HttpServletRequest httpRequest) {
         Rule rule = findRuleByKey(ruleKey);
 
         RuleVersion target;
@@ -228,7 +255,7 @@ public class RuleEngineController {
                 .oldValue(rule.getName() + " (" + ruleKey + "): " + oldValue)
                 .newValue(rule.getName() + " (" + ruleKey + "): " + target.getValue())
                 .reason("Rollback quy định về phiên bản " + target.getVersion())
-                .ipAddress("14.161.22.45 (Chrome/Web)")
+                .ipAddress(resolveClientIp(httpRequest))
                 .build();
         auditLogRepository.save(audit);
 
@@ -239,26 +266,45 @@ public class RuleEngineController {
     }
 
     private Rule findRuleByKey(String ruleKey) {
+        if (ruleKey == null || ruleKey.isBlank()) {
+            throw new RuntimeException("Mã quy định không được để trống");
+        }
         Optional<Rule> opt = ruleRepository.findByRuleKey(ruleKey);
         if (opt.isPresent()) return opt.get();
         opt = ruleRepository.findByRuleKey(ruleKey.toLowerCase());
         if (opt.isPresent()) return opt.get();
 
-        if ("ATTENDANCE_GEOFENCE_RADIUS".equalsIgnoreCase(ruleKey)) {
-            return ruleRepository.findByRuleKey("attendance_security")
-                    .orElseGet(() -> ruleRepository.findAll().get(0));
+        // 19 Catalog Rules Alias Map
+        Map<String, String> aliases = Map.ofEntries(
+                Map.entry("ATTENDANCE_GEOFENCE_RADIUS", "attendance_security"),
+                Map.entry("FLEX_TIME_GRACE_PERIOD", "grace_period"),
+                Map.entry("MISSING_PUNCH_DEADLINE", "missing_punch_deadline"),
+                Map.entry("LATE_EARLY_MONTHLY_QUOTA", "late_early_quota"),
+                Map.entry("MONTHLY_LEAVE_ACCRUAL_DATE", "leave_accrual"),
+                Map.entry("WFH_WEEKLY_QUOTA", "wfh_quota"),
+                Map.entry("LEAVE_EXPIRY_DATE_PHASE1", "leave_cleanup_p1"),
+                Map.entry("LEAVE_EXPIRY_DATE_PHASE2", "leave_cleanup_p2"),
+                Map.entry("OKR_RATING_SCALE", "okr_rating_scale"),
+                Map.entry("OKR_RATING_SCALE_INTEGER", "okr_rating_scale"),
+                Map.entry("OKR_COMPANY_RATIO", "okr_alignment_ratio"),
+                Map.entry("OKR_COMPANY_ALIGNMENT_RATIO", "okr_alignment_ratio"),
+                Map.entry("CALIBRATION_BELL_CURVE", "calibration_bell_curve"),
+                Map.entry("APPROVAL_SLA_HOURS", "approval_sla"),
+                Map.entry("TIMESHEET_LOCK_DAY", "payroll_period")
+        );
+
+        String mapped = aliases.get(ruleKey.toUpperCase());
+        if (mapped != null) {
+            Optional<Rule> mappedOpt = ruleRepository.findByRuleKey(mapped);
+            if (mappedOpt.isPresent()) return mappedOpt.get();
         }
-        if ("TIMESHEET_LOCK_DAY".equalsIgnoreCase(ruleKey)) {
-            return ruleRepository.findByRuleKey("payroll_period")
-                    .orElseGet(() -> ruleRepository.findAll().get(0));
-        }
+
         List<Rule> all = ruleRepository.findAll();
         for (Rule r : all) {
             if (r.getRuleKey().equalsIgnoreCase(ruleKey) || r.getRuleKey().replace("_", "").equalsIgnoreCase(ruleKey.replace("_", ""))) {
                 return r;
             }
         }
-        if (!all.isEmpty()) return all.get(0);
         throw new RuntimeException("Không tìm thấy quy định: " + ruleKey);
     }
 
@@ -270,26 +316,33 @@ public class RuleEngineController {
             @RequestParam(required = false) String newValue,
             @RequestBody(required = false) Map<String, Object> body) {
         String effectiveRuleKey = ruleKey != null ? ruleKey : (ruleKeyParam != null ? ruleKeyParam : (body != null ? (String) body.get("ruleKey") : "RULE_SAMPLE"));
+        long activeCount = userRepository.count();
+        Rule targetRule = null;
+        try {
+            targetRule = findRuleByKey(effectiveRuleKey);
+        } catch (Exception ignored) {}
+
+        String val = newValue != null ? newValue : (body != null && body.get("newValue") != null ? String.valueOf(body.get("newValue")) : "");
         Map<String, Object> result = new HashMap<>();
         result.put("ruleKey", effectiveRuleKey);
-        result.put("newValue", newValue != null ? newValue : (body != null ? body.get("newValue") : ""));
-        result.put("affectedEmployeesCount", 12);
-        result.put("summaryText", "Giả lập chạy thử nghiệm hoàn tất: Tác động đến 12 nhân sự, không có xung đột ràng buộc.");
+        result.put("newValue", val);
+        result.put("affectedEmployeesCount", activeCount > 0 ? activeCount : 1);
+        result.put("summaryText", "Giả lập chạy thử nghiệm hoàn tất: Áp dụng trên " + (activeCount > 0 ? activeCount : 1) + " nhân sự đang hoạt động của công ty.");
         result.put("isValid", true);
         result.put("calculatedWorkDay", 1.0);
         result.put("isLate", false);
-        result.put("explanation", "Trong khung giờ dung sai 15 phút");
+        result.put("explanation", targetRule != null ? "Quy định áp dụng: " + targetRule.getName() : "Trong khung giờ quy định");
         return ApiResponse.ok(result, "Chạy thử nghiệm Sandbox thành công");
     }
 
-    @GetMapping({"/public-faq", "/public-policy-doc"})
+    @GetMapping("/public-faq")
     @Operation(summary = "Trang tra cứu nội quy công ty tự động sinh từ Rule Engine (C10 / S19)")
     public ApiResponse<List<Map<String, String>>> publicFaq() {
         List<Map<String, String>> faqs = new ArrayList<>();
         for (Rule r : ruleRepository.findAll()) {
             Map<String, String> item = new HashMap<>();
-            item.put("question", "Quy định về " + r.getName() + " như thế nào?");
-            item.put("answer", "Giá trị hiện tại áp dụng: " + r.getCurrentValue() + ". " + (r.getDescription() != null ? r.getDescription() : ""));
+            item.put("question", r.getName() + " được quy định như thế nào?");
+            item.put("answer", (r.getDescription() != null && !r.getDescription().isBlank() ? r.getDescription() + " " : "") + "Thông số áp dụng hiện tại: " + r.getCurrentValue());
             item.put("ruleKey", r.getRuleKey());
             faqs.add(item);
         }

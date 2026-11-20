@@ -37,9 +37,6 @@ venv/
 .env
 .env.local
 tests/robot/reports/
-log.html
-output.xml
-report.html
 
 # Local run artifacts (run-local.sh)
 .run-local/

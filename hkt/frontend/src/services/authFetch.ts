@@ -61,8 +61,10 @@ export function installAuthFetch(): void {
       const auth = headers.get('Authorization');
       let t = token;
       if (!t && auth && auth.startsWith('Bearer ')) t = auth.substring(7);
-      headers.delete('Authorization');
-      if (t) headers.set('X-Auth-Token', t);
+      if (t) {
+        headers.set('X-Auth-Token', t);
+        headers.set('Authorization', `Bearer ${t}`);
+      }
       return { ...(base || {}), headers };
     };
 
