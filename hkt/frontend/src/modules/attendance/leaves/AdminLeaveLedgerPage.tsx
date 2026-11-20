@@ -265,7 +265,6 @@ export const AdminLeaveLedgerPage: React.FC = () => {
               value={adjustEmpCode}
               onChange={(e) => setAdjustEmpCode(e.target.value)}
               className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink font-mono font-bold"
-              required
             />
           </div>
 
@@ -277,7 +276,6 @@ export const AdminLeaveLedgerPage: React.FC = () => {
               value={adjustAmount}
               onChange={(e) => setAdjustAmount(e.target.value)}
               className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink font-mono font-bold"
-              required
             />
           </div>
 
@@ -288,7 +286,6 @@ export const AdminLeaveLedgerPage: React.FC = () => {
               value={adjustReason}
               onChange={(e) => setAdjustReason(e.target.value)}
               className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink"
-              required
             />
           </div>
 
