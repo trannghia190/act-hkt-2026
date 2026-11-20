@@ -138,7 +138,7 @@ export const MobileNotificationsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/notifications/preferences')}
-            className="text-xs text-ink-muted hover:text-emerald-400 flex items-center gap-1 cursor-pointer font-medium"
+            className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium"
           >
             <Settings className="w-3.5 h-3.5" />
             Cài đặt (S36)
@@ -150,9 +150,9 @@ export const MobileNotificationsPage: React.FC = () => {
         </p>
 
         {/* Anti-spam Policy Summary */}
-        <div className="p-3 bg-surface rounded-xl border border-line text-[11px] text-ink-secondary space-y-1.5">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <ShieldCheck className="w-4 h-4 shrink-0" />
+        <div className="p-3 bg-surface rounded-xl border border-line text-[11px] text-ink-secondary space-y-1.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-accent font-semibold">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-accent" />
             Chính sách chống spam thông minh (C2 / C12)
           </div>
           <div className="grid grid-cols-2 gap-2 text-[10px] text-ink-muted pt-1 border-t border-line">
@@ -166,8 +166,8 @@ export const MobileNotificationsPage: React.FC = () => {
 
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
           {toastMsg}
         </div>
       )}
@@ -181,7 +181,7 @@ export const MobileNotificationsPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Tìm theo tiêu đề, nội dung..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-emerald-500"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
           />
         </div>
         <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
@@ -198,7 +198,7 @@ export const MobileNotificationsPage: React.FC = () => {
             onClick={() => setActiveFilter('ALL')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
               activeFilter === 'ALL'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40'
+                ? 'bg-accent-soft text-accent border border-accent-line font-bold'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -209,7 +209,7 @@ export const MobileNotificationsPage: React.FC = () => {
             onClick={() => setActiveFilter('UNREAD')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
               activeFilter === 'UNREAD'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40'
+                ? 'bg-accent-soft text-accent border border-accent-line font-bold'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -221,7 +221,7 @@ export const MobileNotificationsPage: React.FC = () => {
           <button
             type="button"
             onClick={handleMarkAllRead}
-            className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
+            className="text-[11px] text-accent hover:underline font-semibold cursor-pointer"
           >
             Đọc tất cả
           </button>
@@ -231,7 +231,7 @@ export const MobileNotificationsPage: React.FC = () => {
       {/* Notification List */}
       <div className="space-y-3">
         {displayedItems.length === 0 ? (
-          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted space-y-2">
+          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted space-y-2 shadow-2xs">
             <div className="text-2xl">🎉</div>
             <div className="font-semibold text-ink">Hộp thông báo trống</div>
             <p>Bạn đã đọc hết mọi thông báo và nhắc việc.</p>
@@ -244,10 +244,10 @@ export const MobileNotificationsPage: React.FC = () => {
               className={`p-4 rounded-xl border bg-surface transition-all cursor-pointer shadow-2xs hover:border-line-focus space-y-2.5 ${
                 !item.read
                   ? item.kind === 'urgent'
-                    ? 'border-rose-500/40 bg-rose-500/5'
+                    ? 'border-rose-300 bg-rose-50/50'
                     : item.kind === 'warn'
-                      ? 'border-amber-500/40 bg-amber-500/5'
-                      : 'border-emerald-500/30'
+                      ? 'border-amber-300 bg-amber-50/50'
+                      : 'border-accent-line bg-accent-soft/30'
                   : 'border-line opacity-75'
               }`}
             >
@@ -259,7 +259,7 @@ export const MobileNotificationsPage: React.FC = () => {
                         ? 'bg-rose-500 animate-pulse'
                         : item.kind === 'warn'
                           ? 'bg-amber-500'
-                          : 'bg-emerald-500'
+                          : 'bg-accent'
                     }`}
                   />
                   <h3 className="font-bold text-xs text-ink leading-tight">{item.title}</h3>

@@ -206,10 +206,10 @@ export const NotificationPrefsPage: React.FC = () => {
             type="checkbox"
             checked={item.web}
             onChange={() => handleToggleEventChannel(key, 'web')}
-            className="rounded border-line text-emerald-500 focus:ring-emerald-500 w-3.5 h-3.5"
+            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
           />
           <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Globe className="w-3 h-3 text-emerald-400" /> Web
+            <Globe className="w-3 h-3 text-accent" /> Web
           </span>
         </label>
 
@@ -219,10 +219,10 @@ export const NotificationPrefsPage: React.FC = () => {
             type="checkbox"
             checked={item.email}
             onChange={() => handleToggleEventChannel(key, 'email')}
-            className="rounded border-line text-emerald-500 focus:ring-emerald-500 w-3.5 h-3.5"
+            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
           />
           <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Mail className="w-3 h-3 text-sky-400" /> Email
+            <Mail className="w-3 h-3 text-sky-600" /> Email
           </span>
         </label>
 
@@ -232,10 +232,10 @@ export const NotificationPrefsPage: React.FC = () => {
             type="checkbox"
             checked={item.push}
             onChange={() => handleToggleEventChannel(key, 'push')}
-            className="rounded border-line text-emerald-500 focus:ring-emerald-500 w-3.5 h-3.5"
+            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
           />
           <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Smartphone className="w-3 h-3 text-amber-400" /> Push
+            <Smartphone className="w-3 h-3 text-amber-600" /> Push
           </span>
         </label>
       </div>
@@ -257,9 +257,9 @@ export const NotificationPrefsPage: React.FC = () => {
 
         {/* STATS BANNER: Số việc chờ theo nhóm (Criteria G4-#6) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          <div className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between">
+          <div className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <div className="w-8 h-8 rounded-lg bg-accent-soft border border-accent-line flex items-center justify-center text-accent">
                 <Inbox className="w-4 h-4" />
               </div>
               <div>
@@ -270,9 +270,9 @@ export const NotificationPrefsPage: React.FC = () => {
             <Badge variant="ok">Đang hoạt động</Badge>
           </div>
 
-          <div className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between">
+          <div className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
                 <UserCheck className="w-4 h-4" />
               </div>
               <div>
@@ -287,16 +287,16 @@ export const NotificationPrefsPage: React.FC = () => {
 
       {/* TOAST WITH 1-CLICK UNDO (Criteria G4-#7) */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg animate-in fade-in">
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
             <span>{toastMessage}</span>
           </div>
           {previousStateRef.current && (
             <button
               type="button"
               onClick={handleUndo}
-              className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
             >
               <RotateCcw className="w-3 h-3" />
               Hoàn tác (Undo)
