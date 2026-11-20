@@ -237,10 +237,23 @@ export const FaceEnrollmentPage: React.FC = () => {
     setEnrollMessage(null);
 
     try {
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        reqHeaders['Authorization'] = `Bearer ${user.accessToken}`;
+      } else {
+        try {
+          const saved = localStorage.getItem('pulse_auth_user');
+          if (saved) {
+            const u = JSON.parse(saved);
+            if (u?.accessToken) reqHeaders['Authorization'] = `Bearer ${u.accessToken}`;
+          }
+        } catch (_) {}
+      }
+
       // 1. Send biometric image(s) to AI Face Service (OpenCV YuNet + SFace)
       const aiRes = await fetch('/ai-face/api/v1/face/enroll-json', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({
           employee_code: employeeCode.trim(),
           full_name: fullName.trim() || employeeCode.trim(),
@@ -256,15 +269,16 @@ export const FaceEnrollmentPage: React.FC = () => {
         throw new Error(aiJson.detail || aiJson.message || 'Không thể trích xuất vector khuôn mặt từ ảnh.');
       }
 
-      // 2. Synchronize status with Core Service
+      // 2. Synchronize status with Core Service using authentic AI embedding
       try {
         await fetch('/api/v1/auth/enroll-face', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: reqHeaders,
           body: JSON.stringify({
             employeeCode: employeeCode.trim(),
             faceDataUrl: capturedImage,
             confidenceScore: 0.98,
+            embedding: aiJson.embedding || undefined,
           }),
         });
       } catch (err) {
@@ -640,10 +654,11 @@ export const FaceEnrollmentPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Seed Profiles Quick Selector */}
+              {/* Seed Profiles Quick Selector (Admin/HR Only) */}
+              {isAdmin && (
               <div className="pt-2">
                 <div className="text-[11px] font-semibold text-ink-muted mb-1.5">
-                  Chọn nhanh nhân sự mẫu:
+                  Chọn nhanh nhân sự mẫu (Quản trị):
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {[
@@ -670,6 +685,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Status Message Alert */}
               {enrollMessage && (

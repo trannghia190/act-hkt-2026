@@ -36,9 +36,13 @@ public class SecurityConfig {
 
     /** Public endpoints accessible without requiring Bearer token. */
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/auth/**",
-            "/attendance/check-in",
-            "/attendance/check-out",
+            "/auth/login",
+            "/auth/refresh",
+            "/auth/reset-password-request",
+            "/auth/forgot-password",
+            "/auth/test-email",
+            "/auth/config-smtp",
+            "/auth/smtp-status",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",

@@ -23,11 +23,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage() == null ? "Yêu cầu không hợp lệ" : ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDatabaseException(org.springframework.dao.DataAccessException ex) {
+        log.error("Internal database exception caught: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Lỗi cơ sở dữ liệu nội bộ. Vui lòng thử lại sau."));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Object>> handleRuntime(RuntimeException ex) {
         log.error("Unhandled runtime exception caught: {}", ex.getMessage(), ex);
+        String msg = ex.getMessage();
+        if (msg == null || msg.contains("SQL") || msg.contains("database") || msg.contains("org.hibernate") || msg.contains("psql") || msg.contains("Exception")) {
+            msg = "Yêu cầu không thể xử lý. Vui lòng thử lại.";
+        }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage() == null ? "Yêu cầu không thể xử lý" : ex.getMessage()));
+                .body(ApiResponse.error(msg));
     }
 
     @ExceptionHandler(Exception.class)
