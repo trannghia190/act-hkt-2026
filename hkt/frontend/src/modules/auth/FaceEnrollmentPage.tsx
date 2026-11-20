@@ -111,9 +111,13 @@ export const FaceEnrollmentPage: React.FC = () => {
       }
 
       // Đánh dấu đã đăng ký ở Core Service — chỉ cho chính tài khoản đang đăng nhập
+      const coreHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        coreHeaders['Authorization'] = `Bearer ${user.accessToken}`;
+      }
       const coreRes = await fetch('/api/v1/auth/enroll-face', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: coreHeaders,
         body: JSON.stringify({
           employeeCode: user.employeeCode,
           faceDataUrl: captures.FRONTAL,

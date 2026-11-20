@@ -59,6 +59,22 @@ export const TimesheetPage: React.FC = () => {
     );
     if (next === null) return;
     setDayOverrides((prev) => ({ ...prev, [`${row.id}-${day}`]: next }));
+
+    // Ghi nhật ký kiểm toán Append-Only vào backend
+    fetch('/api/v1/attendance/timesheet/override', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeCode: row.code,
+        employeeName: row.fullName,
+        workDate: `2026-11-${day < 10 ? '0' + day : day}`,
+        fieldName: `ngày ${day}/11`,
+        oldValue: current,
+        newValue: next,
+        reason: `Điều chỉnh thủ công ô ngày ${day}/11 theo đề xuất giải trình`
+      })
+    }).catch(err => console.error('Lỗi lưu audit log bảng công', err));
+
     showToast(`Đã sửa ô ngày ${day}/11 của ${row.fullName} — có ghi nhật ký thay đổi`);
   };
 
@@ -162,12 +178,31 @@ export const TimesheetPage: React.FC = () => {
 
   const handleSaveCellOverride = () => {
     if (!editingCell) return;
+    const oldVal = (editingCell.row as any)[editingCell.field];
+    const newVal = editingCell.val;
+    const reasonText = overrideReason.trim() || 'Điều chỉnh thủ công ô bảng công có xác nhận';
+
+    // Ghi nhật ký kiểm toán Append-Only vào backend
+    fetch('/api/v1/attendance/timesheet/override', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeCode: editingCell.row.code,
+        employeeName: editingCell.row.fullName,
+        workDate: '2026-11-05',
+        fieldName: editingCell.field,
+        oldValue: String(oldVal),
+        newValue: String(newVal),
+        reason: reasonText
+      })
+    }).catch(err => console.error('Lỗi lưu audit log bảng công', err));
+
     setRows(prev =>
       prev.map(r => (r.id === editingCell.row.id ? { ...r, [editingCell.field]: editingCell.val } : r))
     );
     setEditingCell(null);
     setOverrideReason('');
-    showToast(`Đã cập nhật thủ công ô công cho ${editingCell.row.fullName}`);
+    showToast(`Đã cập nhật thủ công ô công cho ${editingCell.row.fullName} và ghi nhật ký thay đổi`);
   };
 
   const handleBulkApply = (e: React.FormEvent) => {

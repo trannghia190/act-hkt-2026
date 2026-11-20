@@ -101,10 +101,14 @@ cleanup() {
       kill "$pid" 2>/dev/null || true
     fi
   done
-  # Maven/uvicorn/npm đều sinh process con — dọn thêm theo cổng đang nghe.
+  # Maven/uvicorn/npm đều sinh process con — dọn thêm theo cổng đang nghe (bỏ qua Docker).
   for p in "$FRONTEND_PORT" "$CORE_PORT" "$AI_PORT"; do
     pids="$(lsof -nP -tiTCP:"$p" -sTCP:LISTEN 2>/dev/null || true)"
-    if [ -n "$pids" ]; then kill $pids 2>/dev/null || true; fi
+    for pid in $pids; do
+      if [ -n "$pid" ] && ! ps -p "$pid" -o comm= 2>/dev/null | grep -iq docker; then
+        kill "$pid" 2>/dev/null || true
+      fi
+    done
   done
   rm -f "$RUN_DIR"/*.pid 2>/dev/null || true
   exit 0

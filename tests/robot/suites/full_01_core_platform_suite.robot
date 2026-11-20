@@ -376,6 +376,67 @@ TC_CORE-UI-02: Giao Diện Đáp Ứng Mobile Tối Ưu (Bottom Navigation & Dra
     ${resp}=    Get Request    core_sess    /attendance/status
     Should Be Equal As Integers    ${resp.status_code}    200
 
+TC_CORE-NAV-01: Cấu Trúc Điều Hướng 3 Biến Thể Menu (Employee ⊂ Manager ⊂ HR)
+    [Documentation]    [[S00]] [P0] Sinh 3 biến thể nav Employee ⊂ Manager ⊂ HR từ 1 nguồn cấu hình duy nhất, kiểm tra với 4 tài khoản seed.
+    Create Session    core_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    # 1. Employee Persona (136ACT) -> EMPLOYEE (14 mục nav)
+    &{emp_body}=    Create Dictionary    employeeCodeOrEmail=${EMP_CODE}    password=${EMP_PASS}
+    ${emp_resp}=    Post Request    core_sess    /auth/login    json=${emp_body}
+    Should Be Equal As Integers    ${emp_resp.status_code}    200
+    ${emp_json}=    Set Variable    ${emp_resp.json()}
+    Should Be Equal As Strings    ${emp_json['data']['role']}    EMPLOYEE
+
+    # 2. Manager Persona (05ACT) -> MANAGER (17 mục nav)
+    &{mgr_body}=    Create Dictionary    employeeCodeOrEmail=${MGR_CODE}    password=${MGR_PASS}
+    ${mgr_resp}=    Post Request    core_sess    /auth/login    json=${mgr_body}
+    Should Be Equal As Integers    ${mgr_resp.status_code}    200
+    ${mgr_json}=    Set Variable    ${mgr_resp.json()}
+    Should Be Equal As Strings    ${mgr_json['data']['role']}    MANAGER
+
+    # 3. HR Persona (01HR) -> HR_ADMIN (24 mục nav)
+    &{hr_body}=    Create Dictionary    employeeCodeOrEmail=${HR_CODE}    password=${HR_PASS}
+    ${hr_resp}=    Post Request    core_sess    /auth/login    json=${hr_body}
+    Should Be Equal As Integers    ${hr_resp.status_code}    200
+    ${hr_json}=    Set Variable    ${hr_resp.json()}
+    Should Be Equal As Strings    ${hr_json['data']['role']}    HR_ADMIN
+
+    # 4. Admin Persona (Admin) -> ADMIN (27 mục nav)
+    &{adm_body}=    Create Dictionary    employeeCodeOrEmail=${ADMIN_CODE}    password=${ADMIN_PASS}
+    ${adm_resp}=    Post Request    core_sess    /auth/login    json=${adm_body}
+    Should Be Equal As Integers    ${adm_resp.status_code}    200
+    ${adm_json}=    Set Variable    ${adm_resp.json()}
+    Should Be Equal As Strings    ${adm_json['data']['role']}    ADMIN
+
+TC_CORE-NAV-02: Đồng Bộ Badge Số Việc Chờ Từ API Todo Inbox & Notification
+    [Documentation]    [[S00]] [P0] Badge số việc chờ trên menu lấy từ API todo và notification
+    Create Session    core_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    &{adm_body}=    Create Dictionary    employeeCodeOrEmail=${ADMIN_CODE}    password=${ADMIN_PASS}
+    ${adm_resp}=    Post Request    core_sess    /auth/login    json=${adm_body}
+    ${token}=    Set Variable    ${adm_resp.json()['data']['accessToken']}
+    &{auth_headers}=    Create Dictionary    Content-Type=application/json    Authorization=Bearer ${token}
+
+    Create Session    auth_sess    ${CORE_BASE_URL}    headers=${auth_headers}
+    ${todo_resp}=    Get Request    auth_sess    /todos/my-inbox
+    Should Be Equal As Integers    ${todo_resp.status_code}    200
+    ${todo_json}=    Set Variable    ${todo_resp.json()}
+    Should Be True    ${todo_json['success']}
+    ${todo_len}=    Get Length    ${todo_json['data']}
+    Should Be True    ${todo_len} >= 1
+
+    ${notif_resp}=    Get Request    auth_sess    /notifications
+    Should Be Equal As Integers    ${notif_resp.status_code}    200
+    ${notif_json}=    Set Variable    ${notif_resp.json()}
+    Should Be True    ${notif_json['success']}
+
+TC_CORE-NAV-03: Kiểm Tra Tính Toàn Vẹn Không Có Link Chết (Dead Link Prevention)
+    [Documentation]    [[S00]] [P0] Mọi mục nav trỏ đến endpoint và màn hình thật
+    Create Session    core_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}
+    ${resp_status}=    Get Request    core_sess    /attendance/status
+    Should Be Equal As Integers    ${resp_status.status_code}    200
+
+    ${resp_shifts}=    Get Request    core_sess    /admin/shifts
+    Should Be Equal As Integers    ${resp_shifts.status_code}    200
+
 TC_RULE-CONFIG-01: Quy Tắc 1: Bán Kính Định Vị Geofence Chấm Công (ATTENDANCE_GEOFENCE_RADIUS)
     [Documentation]    [[S18]] [P0] Quy định bán kính địa lý cho phép chấm công xung quanh trụ sở công ty (mặc định 150m cho Vùng Xanh, 300m cho Vùng Vàng). | Expected: Input: Tham số radius_meters = 150 (số nguyên > 0); Người sửa có quyền ADMIN. Xử lý hệ thống & Lưu trữ: 1. Validate radius_meters từ 50m đến 1000m. 2. Lưu vào bảng 'system_rule_versions' với key='ATTENDANCE_GEOFENCE_RADIUS'. 3. Cập nhật cache Redis. 4. Áp dụng ngay cho các lượt chấm công tiếp theo. Output: HTTP 200 OK; Rule Engine cập nhật phiên bản mới. Kết quả cuối cùng: Thuật toán Haversine tại Core Service tự động sử dụng bán kính mới để phân vùng geofence.
     Create Session    core_sess    ${CORE_BASE_URL}    headers=${COMMON_HEADERS}

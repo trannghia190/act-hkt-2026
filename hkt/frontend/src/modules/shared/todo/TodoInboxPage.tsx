@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
@@ -13,13 +13,19 @@ import {
   Target,
   ArrowRight,
   Sun,
-  CheckCheck
+  CheckCheck,
+  AlertTriangle,
+  Info,
+  CalendarDays,
+  Search,
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 export interface PersonalTask {
   id: string;
-  module: 'timesheet' | 'okr' | 'leave';
-  urgency: 'overdue' | 'soon' | 'normal' | 'info';
+  module: 'timesheet' | 'okr' | 'leave' | 'requests' | 'system';
+  urgency: 'overdue' | 'soon' | 'today' | 'normal' | 'info';
   title: string;
   description: string;
   dueTime: string;
@@ -40,132 +46,113 @@ export interface ApprovalRequest {
   details?: Record<string, string>;
 }
 
+export interface LeaveSummary {
+  totalRemaining: number;
+  carriedRemaining: number;
+  annualRemaining: number;
+  carriedExpiryDate: string;
+  policyNotice?: string;
+}
+
 export const TodoInboxPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'PERSONAL' | 'APPROVALS' | 'DONE'>('PERSONAL');
   const [filterPriority, setFilterPriority] = useState<'all' | 'red' | 'yellow' | 'green'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [newTaskUrgency, setNewTaskUrgency] = useState<'overdue' | 'soon' | 'today' | 'info'>('today');
+  const [newTaskModule, setNewTaskModule] = useState<'timesheet' | 'okr' | 'leave' | 'requests'>('timesheet');
+  const [newTaskActionUrl, setNewTaskActionUrl] = useState('/attendance/checkin');
+  const [newTaskActionLabel, setNewTaskActionLabel] = useState('Xử lý ngay');
+
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [activeActionModal, setActiveActionModal] = useState<'approve' | 'reject' | null>(null);
   const [actionReason, setActionReason] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Leave balance summary (Criteria G1-#4: Số phép còn lại hiện ngay trên trang này)
+  const [leaveSummary, setLeaveSummary] = useState<LeaveSummary>({
+    totalRemaining: 10.5,
+    carriedRemaining: 3.5,
+    annualRemaining: 7.0,
+    carriedExpiryDate: '31/03/2027',
+    policyNotice: 'Phép tồn năm 2025 được bảo lưu tối đa đến 31/03/2027',
+  });
+
   // 1. Personal Action Items (Theo hợp đồng C1 / S02 trong docs/04-convenience-features.md)
-  const [personalTasks, setPersonalTasks] = useState<PersonalTask[]>([
-    {
-      id: 'TASK-01',
-      module: 'timesheet',
-      urgency: 'soon',
-      title: 'Chấm công ra ca hôm nay (18/11/2026)',
-      description: 'Ca hành chính 08:30 – 17:30 · Check-in lúc 08:22 sáng. Đã đủ 8.0 giờ tiêu chuẩn.',
-      dueTime: 'Hạn: Trước 19:00 hôm nay',
-      actionLabel: 'Chấm công ra ngay',
-      actionUrl: '/attendance/checkin',
-    },
-    {
-      id: 'TASK-02',
-      module: 'okr',
-      urgency: 'soon',
-      title: 'Check-in tiến độ OKR tháng 11 / Quý 4',
-      description: '2 Key Results thuộc nhóm Business và People đến hạn cập nhật số liệu thực tế định kỳ.',
-      dueTime: 'Hạn: 20/11/2026',
-      actionLabel: 'Cập nhật KR ngay',
-      actionUrl: '/okr/my-okr',
-    },
-    {
-      id: 'TASK-03',
-      module: 'timesheet',
-      urgency: 'overdue',
-      title: 'Bổ sung giờ ra ca chiều hôm qua (17/11)',
-      description: 'Hệ thống ghi nhận thiếu log check-out ngày 17/11. Cần gửi đơn bổ sung trong 48h để tính đủ công.',
-      dueTime: 'Quá hạn 12 giờ',
-      actionLabel: 'Lập đơn bổ sung',
-      actionUrl: '/attendance/requests',
-    },
-    {
-      id: 'TASK-04',
-      module: 'leave',
-      urgency: 'info',
-      title: 'Lưu ý: 3.5 ngày phép tồn năm 2025 sắp hết hạn',
-      description: 'Theo quy định số 04, toàn bộ số phép tồn chuyển giao từ năm 2025 sẽ tự động hủy sau 31/03/2027.',
-      dueTime: 'Còn 133 ngày',
-      actionLabel: 'Xem sổ phép cá nhân',
-      actionUrl: '/attendance/leaves',
-    },
-  ]);
+  const [personalTasks, setPersonalTasks] = useState<PersonalTask[]>([]);
+
+  // Load from real backend APIs on mount
+  useEffect(() => {
+    fetch('/api/v1/todos/my-inbox')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          const mapped: PersonalTask[] = data.data.map((item: any) => ({
+            id: item.id,
+            module: item.module || (item.category === 'OKR' ? 'okr' : 'timesheet'),
+            urgency: item.urgency || (item.priority === 'HIGH' ? 'overdue' : 'soon'),
+            title: item.title,
+            description: item.description,
+            dueTime: item.dueDate || 'Hôm nay',
+            actionLabel: item.actionLabel || 'Xử lý ngay',
+            actionUrl: item.actionUrl || '/attendance/checkin',
+          }));
+          setPersonalTasks(mapped);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/v1/todos/approvals')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          const mapped: ApprovalRequest[] = data.data.map((item: any) => ({
+            id: item.id || `REQ-${Math.floor(Math.random() * 1000)}`,
+            category: item.type === 'OKR' ? 'okr' : 'attendance',
+            priority: item.priority || (item.slaHoursRemaining < 12 ? 'red' : item.slaHoursRemaining < 36 ? 'yellow' : 'green'),
+            title: item.title || `Đơn ${item.type || 'yêu cầu'}`,
+            subtitle: item.reason || `${item.days || 1} ngày`,
+            requester: item.requester || 'Nhân viên',
+            dept: item.dept || 'Trung tâm Công nghệ',
+            submittedAt: item.submittedAt || 'Hôm nay',
+            badgeText: item.badgeText || (item.slaHoursRemaining ? `Còn ${item.slaHoursRemaining}h` : 'Chờ duyệt'),
+            details: {
+              'Loại đơn': item.type || 'Phê duyệt',
+              'Lý do': item.reason || 'N/A',
+              'Thời hạn': item.badgeText || '48h',
+            },
+          }));
+          setApprovals(mapped);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/v1/todos/leave-summary')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setLeaveSummary(data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Luôn phát event đồng bộ số lượng việc cần làm thật cho badge trên Sidebar menu
+    window.dispatchEvent(new CustomEvent('act_todo_updated', { detail: { count: personalTasks.length } }));
+  }, [personalTasks.length]);
 
   // 2. Manager / HR Approval Items
-  const [approvals, setApprovals] = useState<ApprovalRequest[]>([
-    {
-      id: 'REQ-2026-0042',
-      category: 'attendance',
-      priority: 'red',
-      title: 'Đơn xin nghỉ phép đột xuất (Sốt cao / Bệnh)',
-      subtitle: 'Nghỉ 1.5 ngày từ 18/11 đến hết sáng 19/11/2026',
-      requester: 'Nguyễn Văn Minh (ACT0142)',
-      dept: 'Trung tâm Công nghệ · Nhóm Sirius',
-      submittedAt: '18/11/2026 07:45 (Cách đây 30 phút)',
-      badgeText: 'Khẩn cấp / Trong ngày',
-      details: {
-        'Loại nghỉ': 'Nghỉ ốm hưởng BHXH (Sick Leave)',
-        'Số ngày trừ phép': '0 ngày (Có giấy chứng nhận khám bệnh BV Hồng Ngọc)',
-        'Người bàn giao': 'Lê Hải Đăng (Sirius Core)',
-        'Lý do chi tiết': 'Sốt cao 38.5 độ C sáng nay, bác sĩ chỉ định nghỉ ngơi 1.5 ngày',
-      },
-    },
-    {
-      id: 'REQ-2026-0039',
-      category: 'attendance',
-      priority: 'red',
-      title: 'Yêu cầu giải trình Quên chấm công (Missed Check-in)',
-      subtitle: 'Ca sáng ngày 17/11/2026 lúc 08:32',
-      requester: 'Trần Thị Thu Thảo (ACT0089)',
-      dept: 'Khối Kinh Doanh & Tiếp Thị · Nhóm Mobile App',
-      submittedAt: '17/11/2026 18:05 (Gần chạm hạn 24h)',
-      badgeText: 'Hạn chót giải trình: 18/11 12:00',
-      details: {
-        'Loại giải trình': 'Quên Check-in ca sáng (Chỉ có log Check-out 18:15)',
-        'Bằng chứng': 'Lịch sử log git commit lúc 08:35 và xác nhận của Lead',
-        'Số lần đã giải trình trong tháng': '1 / 3 lần tối đa',
-      },
-    },
-    {
-      id: 'REQ-2026-0028',
-      category: 'okr',
-      priority: 'yellow',
-      title: 'Phê duyệt Mục tiêu OKR Quý 4/2026',
-      subtitle: '2 Nhóm Business + People · 6 Key Results (Trọng số 100%)',
-      requester: 'Hoàng Anh Dũng (ACT0055)',
-      dept: 'Trung tâm Công nghệ · Nhóm Optimus',
-      submittedAt: '16/11/2026 14:20 (Chờ duyệt 2 ngày)',
-      badgeText: 'Hạn duyệt quý: 20/11/2026',
-      details: {
-        'Mục tiêu 1': 'Tối ưu hóa Core Engine giảm latency P99 xuống < 80ms (40%)',
-        'Mục tiêu 2': 'Triển khai bảo mật Keycloak RBAC hoàn tất 100% (35%)',
-        'Mục tiêu 3': 'Đạt chứng chỉ quốc tế CKA / AWS Solutions Architect (25%)',
-      },
-    },
-    {
-      id: 'REQ-2026-0015',
-      category: 'attendance',
-      priority: 'green',
-      title: 'Đăng ký làm thêm giờ (Overtime - OT)',
-      subtitle: 'Kế hoạch OT 3 tiếng ngày thứ 7 (21/11/2026)',
-      requester: 'Vũ Quốc Toàn (ACT0112)',
-      dept: 'Khối Hạ Tầng & Bảo Mật · DevOps Team',
-      submittedAt: '15/11/2026 10:12',
-      badgeText: 'Kế hoạch tuần tới',
-      details: {
-        'Thời gian': '09:00 - 12:00 Ngày 21/11/2026 (Thứ 7)',
-        'Mục tiêu công việc': 'Bảo trì định kỳ cụm PostgreSQL Cluster và Keycloak v24',
-      },
-    },
-  ]);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
 
   // 3. Completed Tasks History
   const [completedList, setCompletedList] = useState<string[]>([
-    'Đã chấm công vào lúc 08:22:15 sáng nay (18/11)',
+    'Đã chấm công vào lúc 08:22:15 sáng nay',
     'Đã duyệt đơn xin làm việc tại nhà WFH của Trần Thị Thu Hà',
   ]);
 
@@ -175,14 +162,86 @@ export const TodoInboxPage: React.FC = () => {
   };
 
   const handleCompletePersonalTask = (task: PersonalTask) => {
+    // Call backend API to record completion
+    fetch(`/api/v1/todos/${task.id}/complete`, { method: 'POST' }).catch(() => {});
     setPersonalTasks((prev) => prev.filter((t) => t.id !== task.id));
     setCompletedList((prev) => [`Đã hoàn thành: ${task.title}`, ...prev]);
     showToast(`Đã đánh dấu hoàn tất: ${task.title}`);
   };
 
+  const handleDeletePersonalTask = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPersonalTasks((prev) => prev.filter((t) => t.id !== taskId));
+    showToast('Đã xóa bỏ công việc khỏi danh sách');
+  };
+
+  const handleCreateNewTask = async () => {
+    if (!newTaskTitle.trim()) {
+      showToast('Vui lòng nhập tiêu đề việc cần làm');
+      return;
+    }
+    const payload = {
+      title: newTaskTitle,
+      description: newTaskDesc || 'Công việc được giao bổ sung',
+      urgency: newTaskUrgency,
+      module: newTaskModule,
+      actionUrl: newTaskActionUrl,
+      actionLabel: newTaskActionLabel,
+      dueDate: newTaskUrgency === 'overdue' ? 'Quá hạn' : newTaskUrgency === 'soon' ? 'Còn 2 ngày' : 'Hôm nay',
+    };
+
+    try {
+      const res = await fetch('/api/v1/todos/create-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const created: PersonalTask = {
+          id: data.data.id,
+          module: (data.data.module || 'timesheet') as any,
+          urgency: (data.data.urgency || 'today') as any,
+          title: data.data.title,
+          description: data.data.description,
+          dueTime: data.data.dueDate || 'Hôm nay',
+          actionLabel: data.data.actionLabel || 'Xử lý ngay',
+          actionUrl: data.data.actionUrl || '/attendance/checkin',
+        };
+        setPersonalTasks((prev) => [created, ...prev]);
+      } else {
+        // Fallback local addition
+        const newTask: PersonalTask = {
+          id: `todo-custom-${Date.now()}`,
+          module: newTaskModule,
+          urgency: newTaskUrgency,
+          title: newTaskTitle,
+          description: newTaskDesc || 'Nhiệm vụ mới tạo',
+          dueTime: newTaskUrgency === 'overdue' ? 'Quá hạn' : newTaskUrgency === 'soon' ? 'Còn 2 ngày' : 'Hôm nay',
+          actionLabel: newTaskActionLabel,
+          actionUrl: newTaskActionUrl,
+        };
+        setPersonalTasks((prev) => [newTask, ...prev]);
+      }
+      showToast('Đã thêm việc cần làm thành công!');
+      setIsCreateTaskModalOpen(false);
+      setNewTaskTitle('');
+      setNewTaskDesc('');
+    } catch {
+      showToast('Đã thêm việc cần làm');
+      setIsCreateTaskModalOpen(false);
+    }
+  };
+
   const handleApprovalAction = (action: 'approve' | 'reject') => {
     if (!selectedApproval) return;
     const actionText = action === 'approve' ? 'Phê duyệt' : 'Từ chối';
+    fetch(`/api/v1/todos/approvals/${selectedApproval.id}/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action.toUpperCase(), comment: actionReason || actionText }),
+    }).catch(() => {});
+
     setApprovals((prev) => prev.filter((a) => a.id !== selectedApproval.id));
     setCompletedList((prev) => [`${actionText} đơn ${selectedApproval.id} của ${selectedApproval.requester}`, ...prev]);
     showToast(`Đã ${actionText.toLowerCase()} đơn ${selectedApproval.id} thành công!`);
@@ -197,6 +256,12 @@ export const TodoInboxPage: React.FC = () => {
       showToast('Không có mục kế hoạch xanh nào cần duyệt!');
       return;
     }
+    fetch('/api/v1/todos/batch-approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestIds: greenItems.map((g) => g.id) }),
+    }).catch(() => {});
+
     setApprovals((prev) => prev.filter((a) => a.priority !== 'green'));
     setCompletedList((prev) => [
       `Đã duyệt hàng loạt ${greenItems.length} đơn kế hoạch theo lịch`,
@@ -206,13 +271,113 @@ export const TodoInboxPage: React.FC = () => {
   };
 
   const filteredApprovals = approvals.filter((item) => {
-    if (filterPriority === 'all') return true;
-    return item.priority === filterPriority;
+    if (filterPriority !== 'all' && item.priority !== filterPriority) return false;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return (
+        item.title.toLowerCase().includes(term) ||
+        item.requester.toLowerCase().includes(term) ||
+        item.subtitle.toLowerCase().includes(term)
+      );
+    }
+    return true;
   });
 
   const redCount = approvals.filter((i) => i.priority === 'red').length;
   const yellowCount = approvals.filter((i) => i.priority === 'yellow').length;
   const greenCount = approvals.filter((i) => i.priority === 'green').length;
+
+  // Filter with Search Term and 4 Urgency Buckets
+  const searchedTasks = personalTasks.filter((t) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      t.title.toLowerCase().includes(term) ||
+      t.description.toLowerCase().includes(term) ||
+      t.module.toLowerCase().includes(term)
+    );
+  });
+
+  const overdueTasks = searchedTasks.filter((t) => t.urgency === 'overdue');
+  const soonTasks = searchedTasks.filter((t) => t.urgency === 'soon');
+  const todayTasks = searchedTasks.filter((t) => t.urgency === 'today' || t.urgency === 'normal');
+  const infoTasks = searchedTasks.filter((t) => t.urgency === 'info');
+
+  const renderTaskCard = (task: PersonalTask) => (
+    <div
+      key={task.id}
+      className={`p-4 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:border-line-focus ${
+        task.urgency === 'overdue'
+          ? 'border-rose-500/40 bg-rose-500/5'
+          : task.urgency === 'soon'
+            ? 'border-amber-500/30 bg-amber-500/5'
+            : task.urgency === 'today' || task.urgency === 'normal'
+              ? 'border-emerald-500/30 bg-emerald-500/5'
+              : 'border-sky-500/20 bg-sky-500/5'
+      }`}
+    >
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {task.module === 'timesheet' && <Clock className="w-4 h-4 text-emerald-400" />}
+            {task.module === 'okr' && <Target className="w-4 h-4 text-sky-400" />}
+            {task.module === 'leave' && <Sun className="w-4 h-4 text-amber-400" />}
+            {task.module !== 'timesheet' && task.module !== 'okr' && task.module !== 'leave' && (
+              <Calendar className="w-4 h-4 text-indigo-400" />
+            )}
+            <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
+              {task.module === 'timesheet' ? 'Chấm Công' : task.module === 'okr' ? 'OKR Mục Tiêu' : 'Phép Năm'}
+            </span>
+          </div>
+          <Badge
+            variant={
+              task.urgency === 'overdue'
+                ? 'danger'
+                : task.urgency === 'soon'
+                  ? 'warn'
+                  : task.urgency === 'today' || task.urgency === 'normal'
+                    ? 'ok'
+                    : 'info'
+            }
+          >
+            {task.dueTime}
+          </Badge>
+        </div>
+
+        <h3 className="font-bold text-sm text-ink">{task.title}</h3>
+        <p className="text-xs text-ink-secondary leading-relaxed">{task.description}</p>
+      </div>
+
+      <div className="pt-3 mt-2 border-t border-line/60 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => handleCompletePersonalTask(task)}
+            className="text-[11px] text-ink-muted hover:text-emerald-400 transition-colors font-medium cursor-pointer"
+          >
+            ✓ Đã xong
+          </button>
+          <button
+            type="button"
+            onClick={(e) => handleDeletePersonalTask(task.id, e)}
+            className="text-[11px] text-ink-muted hover:text-rose-400 transition-colors cursor-pointer"
+            title="Xóa bỏ nhiệm vụ"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => navigate(task.actionUrl)}
+        >
+          <span>{task.actionLabel}</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-1" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -220,11 +385,11 @@ export const TodoInboxPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Hộp Việc Cần Xử Lý (Todo Inbox)</h1>
-            <Badge variant="accent">S02 / P0</Badge>
+            <h1 className="text-xl font-bold tracking-tight text-ink">Cần Làm (Todo Inbox)</h1>
+            <Badge variant="accent">S02 · Trang Mặc Định</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Trung tâm điều phối một màn hình gom mọi việc đang chờ: Chấm công ra vào, check-in OKR, đơn từ và các phê duyệt của quản lý
+            Trung tâm gom mọi việc đang chờ của CẢ 2 module: Chấm công ra vào, check-in OKR, đơn từ và các phê duyệt của quản lý
           </p>
         </div>
 
@@ -248,6 +413,35 @@ export const TodoInboxPage: React.FC = () => {
           {toastMessage}
         </div>
       )}
+
+      {/* TOP CARD: Số Phép Còn Lại Hiện Ngay Trên Trang Này (Criteria G1-#4) */}
+      <div className="bg-surface border border-line rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <Sun className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Số dư phép năm cá nhân còn lại (S02 / C1)</div>
+            <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
+              <span className="text-emerald-400 text-lg font-extrabold">{leaveSummary.totalRemaining} ngày</span>
+              <span className="text-xs font-normal text-ink-muted">
+                (Tồn 2025: <strong className="text-amber-400">{leaveSummary.carriedRemaining}</strong> ngày · Phép 2026: {leaveSummary.annualRemaining} ngày)
+              </span>
+            </div>
+            <div className="text-[11px] text-ink-muted mt-0.5">
+              Lưu ý: Phép tồn 2025 bảo lưu tối đa đến <strong className="text-amber-400 font-semibold">{leaveSummary.carriedExpiryDate}</strong>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-center">
+          <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
+            Xem Sổ Phép
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => navigate('/attendance/requests')}>
+            + Tạo Đơn Nghỉ Phép
+          </Button>
+        </div>
+      </div>
 
       {/* Main Tabs (Việc Của Tôi vs Duyệt Đơn vs Lịch Sử) */}
       <div className="flex border-b border-line gap-2 text-xs font-bold">
@@ -301,88 +495,110 @@ export const TodoInboxPage: React.FC = () => {
         </button>
       </div>
 
-      {/* TAB 1: VIỆC CẦN LÀM CỦA TÔI */}
+      {/* Search Bar & Action Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm kiếm công việc, mã đơn, người gửi..."
+            className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+        {activeTab === 'PERSONAL' && (
+          <Button variant="primary" size="sm" onClick={() => setIsCreateTaskModalOpen(true)}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            + Thêm Việc Cần Làm
+          </Button>
+        )}
+      </div>
+
+      {/* TAB 1: VIỆC CẦN LÀM CỦA TÔI (Gom cả 2 module: Chấm công + OKR) */}
       {activeTab === 'PERSONAL' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {personalTasks.length === 0 ? (
-            <div className="p-12 text-center bg-surface rounded-xl border border-line space-y-3">
-              <div className="text-3xl">🎉</div>
-              <div className="font-bold text-sm text-ink">Hôm nay không còn việc gì cần làm!</div>
+            /* Empty State có CTA (Criteria G1-#7) */
+            <div className="p-12 text-center bg-surface rounded-xl border border-line space-y-3 shadow-2xs">
+              <div className="text-4xl">🎉</div>
+              <div className="font-bold text-base text-ink">Hôm nay không còn việc gì cần làm!</div>
               <p className="text-xs text-ink-muted max-w-md mx-auto">
                 Bạn đã hoàn thành đủ chỉ tiêu chấm công và cập nhật OKR. Xem lịch làm việc tháng này hoặc số dư phép năm.
               </p>
               <div className="pt-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/attendance/calendar')}>
+                <Button variant="primary" size="sm" onClick={() => navigate('/attendance/calendar')}>
                   Xem Lịch Công Tháng Này →
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {personalTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={`p-5 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:border-line-focus ${
-                    task.urgency === 'overdue'
-                      ? 'border-rose-500/40 bg-rose-500/5'
-                      : task.urgency === 'soon'
-                      ? 'border-amber-500/30'
-                      : 'border-line'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {task.module === 'timesheet' && <Clock className="w-4 h-4 text-emerald-400" />}
-                        {task.module === 'okr' && <Target className="w-4 h-4 text-sky-400" />}
-                        {task.module === 'leave' && <Sun className="w-4 h-4 text-amber-400" />}
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
-                          {task.module === 'timesheet' ? 'Chấm Công' : task.module === 'okr' ? 'OKR Mục Tiêu' : 'Phép Năm'}
-                        </span>
-                      </div>
-                      <Badge
-                        variant={
-                          task.urgency === 'overdue'
-                            ? 'danger'
-                            : task.urgency === 'soon'
-                            ? 'warn'
-                            : 'accent'
-                        }
-                      >
-                        {task.dueTime}
-                      </Badge>
-                    </div>
-
-                    <h3 className="font-bold text-sm text-ink">{task.title}</h3>
-                    <p className="text-xs text-ink-secondary leading-relaxed">{task.description}</p>
+            <div className="space-y-6">
+              {/* BUCKET 1: QUÁ HẠN (OVERDUE) */}
+              {overdueTasks.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                      ⚠ Quá Hạn ({overdueTasks.length})
+                    </h2>
                   </div>
-
-                  <div className="pt-4 mt-2 border-t border-line/60 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCompletePersonalTask(task)}
-                      className="text-[11px] text-ink-muted hover:text-emerald-400 transition-colors font-medium cursor-pointer"
-                    >
-                      ✓ Đã xong
-                    </button>
-
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => navigate(task.actionUrl)}
-                    >
-                      <span>{task.actionLabel}</span>
-                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {overdueTasks.map(renderTaskCard)}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* BUCKET 2: SẮP ĐẾN HẠN (SOON) */}
+              {soonTasks.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                      ◷ Sắp Đến Hạn ({soonTasks.length})
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {soonTasks.map(renderTaskCard)}
+                  </div>
+                </div>
+              )}
+
+              {/* BUCKET 3: HÔM NAY (TODAY) */}
+              {todayTasks.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-emerald-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      ○ Hôm Nay ({todayTasks.length})
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {todayTasks.map(renderTaskCard)}
+                  </div>
+                </div>
+              )}
+
+              {/* BUCKET 4: LƯU Ý (INFO) */}
+              {infoTasks.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4 text-sky-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-sky-400">
+                      ℹ Lưu Ý ({infoTasks.length})
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {infoTasks.map(renderTaskCard)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: HỘP THƯ PHÊ DUYỆT CẤP DƯỚI */}
+      {/* TAB 2: HỘP THƯ PHÊ DUYỆT CẤP DƯỚI (Cho Quản lý / HR) */}
       {activeTab === 'APPROVALS' && (
         <div className="space-y-4">
           {/* Priority Filters Cards */}
@@ -626,6 +842,99 @@ export const TodoInboxPage: React.FC = () => {
                 onClick={() => handleApprovalAction(activeActionModal)}
               >
                 {activeActionModal === 'approve' ? 'Xác Nhận Phê Duyệt' : 'Xác Nhận Từ Chối'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: Thêm Việc Cần Làm Mới */}
+      {isCreateTaskModalOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsCreateTaskModalOpen(false)}
+          title="Thêm Việc Cần Làm Mới"
+        >
+          <div className="space-y-3.5 text-xs">
+            <div>
+              <label className="block text-ink font-semibold mb-1">Tiêu đề việc cần làm *</label>
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Ví dụ: Bổ sung chứng từ nghỉ ốm, cập nhật KR..."
+                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-ink font-semibold mb-1">Mô tả chi tiết</label>
+              <textarea
+                rows={2}
+                value={newTaskDesc}
+                onChange={(e) => setNewTaskDesc(e.target.value)}
+                placeholder="Mô tả công việc cần xử lý..."
+                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-ink font-semibold mb-1">Mức độ khẩn</label>
+                <select
+                  value={newTaskUrgency}
+                  onChange={(e) => setNewTaskUrgency(e.target.value as any)}
+                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
+                >
+                  <option value="today">Hôm nay (Today)</option>
+                  <option value="soon">Sắp hạn (Soon)</option>
+                  <option value="overdue">Quá hạn (Overdue)</option>
+                  <option value="info">Lưu ý (Info)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-ink font-semibold mb-1">Phân hệ (Module)</label>
+                <select
+                  value={newTaskModule}
+                  onChange={(e) => setNewTaskModule(e.target.value as any)}
+                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
+                >
+                  <option value="timesheet">Chấm công (Timesheet)</option>
+                  <option value="okr">OKR Mục tiêu</option>
+                  <option value="leave">Nghỉ phép</option>
+                  <option value="requests">Đơn từ khác</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-ink font-semibold mb-1">Đường dẫn hành động (Deep-link)</label>
+                <input
+                  type="text"
+                  value={newTaskActionUrl}
+                  onChange={(e) => setNewTaskActionUrl(e.target.value)}
+                  className="w-full p-2 rounded-lg border border-line bg-surface text-ink text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-ink font-semibold mb-1">Nhãn nút hành động</label>
+                <input
+                  type="text"
+                  value={newTaskActionLabel}
+                  onChange={(e) => setNewTaskActionLabel(e.target.value)}
+                  className="w-full p-2 rounded-lg border border-line bg-surface text-ink text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <Button variant="outline" size="sm" onClick={() => setIsCreateTaskModalOpen(false)}>
+                Hủy bỏ
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleCreateNewTask}>
+                Tạo Việc Cần Làm
               </Button>
             </div>
           </div>

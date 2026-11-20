@@ -54,9 +54,14 @@ export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSucce
 
     setIsSubmitting(true);
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        headers['Authorization'] = `Bearer ${user.accessToken}`;
+      }
+
       const response = await fetch('/api/v1/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           employeeCode: user?.employeeCode || '136ACT',
           oldPassword,
@@ -64,7 +69,7 @@ export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSucce
         }),
       });
 
-      const res = await response.json();
+      const res = await response.json().catch(() => ({}));
       if (response.ok && res.success) {
         setShowSuccess(true);
         updateUser({ mustChangePassword: false });
@@ -73,22 +78,10 @@ export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSucce
           if (onSuccess) onSuccess();
         }, 1200);
       } else {
-        // Fallback for mock demo
-        setShowSuccess(true);
-        updateUser({ mustChangePassword: false });
-        setTimeout(() => {
-          setShowSuccess(false);
-          if (onSuccess) onSuccess();
-        }, 1200);
+        setError(res.message || 'Mật khẩu cũ không đúng hoặc mật khẩu mới chưa thỏa mãn chính sách bảo mật');
       }
-    } catch (err) {
-      // Offline fallback
-      setShowSuccess(true);
-      updateUser({ mustChangePassword: false });
-      setTimeout(() => {
-        setShowSuccess(false);
-        if (onSuccess) onSuccess();
-      }, 1200);
+    } catch (err: any) {
+      setError(err?.message || 'Không thể kết nối đến máy chủ xác thực');
     } finally {
       setIsSubmitting(false);
     }

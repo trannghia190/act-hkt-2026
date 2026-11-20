@@ -1,284 +1,411 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import {
+  FileText,
+  Search,
+  Filter,
+  Download,
+  AlertTriangle,
+  ShieldCheck,
+  Clock,
+  Laptop,
+  ArrowRight,
+  UserCheck,
+  Calendar,
+  XCircle,
+  RefreshCw
+} from 'lucide-react';
 
-interface AuditLogEntry {
+export interface AuditLogItem {
   id: string;
   timestamp: string;
-  actor: string;
-  actorEmail: string;
+  actorCode: string;
+  actorName: string;
   action: string;
-  category: 'SECURITY' | 'HR_TIMESHEET' | 'RULE_ENGINE' | 'OKR_CALIBRATION';
-  targetResource: string;
-  ipAddress: string;
-  userAgent: string;
+  entity: string;
+  entityId?: string;
   oldValue?: string;
   newValue?: string;
-  note?: string;
+  reason?: string;
+  details?: string;
+  ipAddress?: string;
+  affectedUser?: string;
 }
 
 export const AuditLogPage: React.FC = () => {
-  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
-  const [filterCategory, setFilterCategory] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [logs, setLogs] = useState<AuditLogItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [actorFilter, setActorFilter] = useState('');
+  const [affectedEmployee, setAffectedEmployee] = useState('');
+  const [startDate, setStartDate] = useState('2026-11-01');
+  const [endDate, setEndDate] = useState('2026-11-30');
+  const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const logs: AuditLogEntry[] = [
-    {
-      id: 'AUD-88210',
-      timestamp: '18/11/2026 08:30:15',
-      actor: 'Lê Thị Thu Hà',
-      actorEmail: 'hr.ha@actvn.edu.vn',
-      action: 'UPDATE_RULE_PARAMETER',
-      category: 'RULE_ENGINE',
-      targetResource: 'RULE_WORK_REMOTE_MONTHLY_LIMIT',
-      ipAddress: '192.168.1.45',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-      oldValue: '{"max_days": 2, "applicable_roles": ["ALL"]}',
-      newValue: '{"max_days": 3, "applicable_roles": ["TECH_DEV", "DATA"]}',
-      note: 'Nâng hạn mức WFH từ 2 lên 3 ngày cho khối Công nghệ & Dữ liệu'
-    },
-    {
-      id: 'AUD-88208',
-      timestamp: '17/11/2026 17:42:01',
-      actor: 'Trịnh Văn Quản Trị',
-      actorEmail: 'admin@actvn.edu.vn',
-      action: 'ASSIGN_USER_ROLE',
-      category: 'SECURITY',
-      targetResource: 'User: ACT0055 (Hoàng Anh Dũng)',
-      ipAddress: '192.168.1.10',
-      userAgent: 'Chrome 122.0.0 (Windows NT 10.0)',
-      oldValue: 'ROLE_EMPLOYEE',
-      newValue: 'ROLE_MANAGER',
-      note: 'Bổ nhiệm Lead nhóm Optimus'
-    },
-    {
-      id: 'AUD-88195',
-      timestamp: '17/11/2026 15:10:22',
-      actor: 'Lê Thị Thu Hà',
-      actorEmail: 'hr.ha@actvn.edu.vn',
-      action: 'MANUAL_TIMESHEET_OVERRIDE',
-      category: 'HR_TIMESHEET',
-      targetResource: 'Timesheet: ACT0142 - Date: 16/11/2026',
-      ipAddress: '192.168.1.45',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-      oldValue: '{"checkin": null, "status": "ABSENT"}',
-      newValue: '{"checkin": "08:28", "status": "ON_TIME", "reason": "Thẻ từ hỏng tại cổng số 2"}',
-      note: 'Điều chỉnh công theo đề xuất giải trình có xác nhận bảo vệ'
-    },
-    {
-      id: 'AUD-88180',
-      timestamp: '16/11/2026 14:15:30',
-      actor: 'Trịnh Văn Quản Trị',
-      actorEmail: 'admin@actvn.edu.vn',
-      action: 'CALIBRATION_CURVE_ADJUSTMENT',
-      category: 'OKR_CALIBRATION',
-      targetResource: 'OKR Cycle: 2026 Annual Evaluation',
-      ipAddress: '192.168.1.10',
-      userAgent: 'Safari 17.2 (macOS)',
-      oldValue: 'Rating Top 10%: Count 15 employees',
-      newValue: 'Rating Top 10%: Count 12 employees (Đạt chuẩn Bell Curve 10%)',
-      note: 'Khóa kết quả calibration cuối năm của khối Engineering'
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchKeyword.trim()) params.append('keyword', searchKeyword.trim());
+      if (categoryFilter !== 'ALL') params.append('category', categoryFilter);
+      if (actorFilter.trim()) params.append('actor', actorFilter.trim());
+      if (affectedEmployee.trim()) params.append('affectedUser', affectedEmployee.trim());
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const res = await fetch(`/api/v1/admin/audit-logs?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setLogs(json.data);
+        }
+      }
+    } catch (e) {
+      console.error('Lỗi tải nhật ký kiểm toán', e);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const filteredLogs = logs.filter(log => {
-    const matchesCategory = filterCategory === 'ALL' || log.category === filterCategory;
-    const matchesSearch =
-      log.actor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.targetResource.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => {
+    fetchLogs();
+  }, [categoryFilter, actorFilter, affectedEmployee]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   const handleExportCSV = () => {
-    const headers = ['Mã Log', 'Thời Gian', 'Người Thực Hiện', 'Email', 'Hành Động', 'Phân Loại', 'Tài Nguyên Tác Động', 'Địa Chỉ IP', 'Ghi Chú'];
-    const rows = filteredLogs.map(l => [
+    const headers = ['Mã Log', 'Thời Gian', 'Người Thực Hiện', 'Hành Động', 'Phân Hệ', 'Đối Tượng', 'Giá Trị Cũ', 'Giá Trị Mới', 'Lý Do', 'IP / Thiết Bị'];
+    const rows = logs.map(l => [
       l.id,
-      l.timestamp,
-      `"${l.actor}"`,
-      l.actorEmail,
-      l.action,
-      l.category,
-      `"${l.targetResource}"`,
-      l.ipAddress,
-      `"${l.note || ''}"`
+      `"${l.timestamp}"`,
+      `"${l.actorName} (${l.actorCode})"`,
+      `"${l.action}"`,
+      `"${l.entity}"`,
+      `"${l.entityId || ''}"`,
+      `"${(l.oldValue || '').replace(/"/g, '""')}"`,
+      `"${(l.newValue || '').replace(/"/g, '""')}"`,
+      `"${(l.reason || '').replace(/"/g, '""')}"`,
+      `"${l.ipAddress || ''}"`
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const link = document.createElement('a');
-    link.href = encodeURI(csvContent);
-    link.download = `Audit_Logs_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ACT_Audit_Logs_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Đã xuất file báo cáo nhật ký kiểm toán CSV thành công!');
+  };
+
+  // Thử gọi API sửa/xóa để chứng minh tính Append-Only
+  const testAppendOnlyBlock = async (logId: string) => {
+    try {
+      const res = await fetch(`/api/v1/admin/audit-logs/${logId}`, {
+        method: 'DELETE'
+      });
+      if (res.status === 405 || res.status === 403) {
+        const json = await res.json();
+        alert(`[APPEND-ONLY CHẶN THÀNH CÔNG - MÃ LỖI ${res.status}]\n${json.message}`);
+      } else {
+        alert('Cảnh báo: API không chặn thao tác xóa log!');
+      }
+    } catch (e) {
+      alert('Đã chặn thao tác xóa log');
+    }
+  };
+
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case 'UPDATE_TIMESHEET':
+      case 'MANUAL_TIMESHEET_OVERRIDE':
+        return <Badge variant="info">Sửa bảng công</Badge>;
+      case 'UPDATE_RULE':
+      case 'ROLLBACK_RULE':
+        return <Badge variant="warn">Cấu hình quy định</Badge>;
+      case 'CHANGE_MANAGER':
+      case 'CHANGE_TEAM':
+      case 'CHANGE_TEAM_LEADER':
+        return <Badge variant="accent">Đổi quản lý/nhóm</Badge>;
+      case 'APPROVE':
+      case 'APPROVE_REQUEST':
+        return <Badge variant="ok">Duyệt đơn</Badge>;
+      case 'REJECT':
+      case 'REJECT_REQUEST':
+        return <Badge variant="danger">Từ chối đơn</Badge>;
+      case 'UPDATE_OKR':
+      case 'CALIBRATION':
+        return <Badge variant="warn">Điểm OKR</Badge>;
+      case 'DEVICE':
+      case 'REGISTER_DEVICE':
+        return <Badge variant="info">Thiết bị</Badge>;
+      case 'ADMIN_RESET_PASSWORD':
+        return <Badge variant="danger">Cấp lại mật khẩu</Badge>;
+      default:
+        return <Badge variant="gray">{action}</Badge>;
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-24">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-bounce">
+          <ShieldCheck className="w-5 h-5" />
+          <span className="font-medium text-sm">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Header (Mockup S35) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Nhật Ký Kiểm Toán (Audit Logs)</h1>
-            <Badge variant="accent">S35</Badge>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs uppercase tracking-wider text-accent font-semibold px-2 py-0.5 rounded bg-accent/10 border border-accent/20">
+              Nền tảng dùng chung · HR · P0 — S35
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Ghi vết bất biến toàn bộ các hành động nhạy cảm: thay đổi quyền người dùng, chỉnh sửa bảng công, cập nhật rule engine và hiệu chỉnh điểm OKR
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <FileText className="w-6 h-6 text-accent" />
+            Nhật Ký Thay Đổi (Audit Log)
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Ghi append-only · Bất biến · Không bao giờ xoá — Bằng chứng minh bạch để trả lời khiếu nại công & điểm
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            Xuất dữ liệu kiểm toán (CSV)
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button variant="secondary" onClick={handleExportCSV} className="flex items-center gap-2">
+            <Download className="w-4 h-4 text-emerald-400" />
+            Xuất Excel / CSV
+          </Button>
+          <Button variant="primary" onClick={fetchLogs} className="flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Làm mới
           </Button>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <Card>
-        <div className="flex flex-col md:flex-row items-center gap-3">
-          <div className="flex-1 w-full">
+      {/* Alert Banner: Append-only explanation (Mockup S35) */}
+      <div className="bg-blue-950/40 border border-blue-500/30 rounded-xl p-4 text-sm text-blue-200 flex items-start gap-3">
+        <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold text-white">Đây là sổ kiểm toán bằng chứng, không phải log kỹ thuật.</p>
+          <p className="text-slate-300 text-xs mt-1">
+            Mục 3: <i className="text-accent">"Ghi lại ai sửa gì, lúc nào — bắt buộc với dữ liệu công và điểm OKR vì liên quan đến lương và đánh giá."</i> Khi nhân viên khiếu nại "công tháng 11 của tôi bị sửa lúc nào?", HR lọc theo tên nhân viên và thấy ngay dòng sửa, giá trị cũ → mới, và lý do trong 5 giây.
+          </p>
+        </div>
+      </div>
+
+      {/* Filter Chips Bar (Mockup S35) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {[
+          { id: 'ALL', label: 'Tất cả' },
+          { id: 'TIMESHEET', label: 'Sửa bảng công' },
+          { id: 'REQUEST', label: 'Duyệt / từ chối đơn' },
+          { id: 'OKR', label: 'Điểm OKR' },
+          { id: 'RULE_ENGINE', label: 'Cấu hình quy định' },
+          { id: 'TEAM', label: 'Nhóm & Cơ cấu' },
+          { id: 'USER', label: 'Nhân sự' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setCategoryFilter(tab.id)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+              categoryFilter === tab.id
+                ? 'bg-accent text-white shadow-lg shadow-accent/20 font-semibold'
+                : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+
+        {affectedEmployee && (
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-medium">
+            <span>Nhân viên: {affectedEmployee}</span>
+            <button onClick={() => setAffectedEmployee('')} className="hover:text-white">
+              <XCircle className="w-3.5 h-3.5" />
+            </button>
+          </span>
+        )}
+      </div>
+
+      {/* Advanced Filter Controls */}
+      <Card className="p-4 bg-surface/80 border-white/10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Tìm theo người thực hiện, hành động hoặc tài nguyên..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas focus:outline-none focus:border-accent"
+              placeholder="Tìm từ khóa, lý do, giá trị..."
+              value={searchKeyword}
+              onChange={e => setSearchKeyword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchLogs()}
+              className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent"
             />
           </div>
-          <div className="w-full md:w-64">
+
+          <div className="relative">
+            <UserCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="Lọc nhân viên bị tác động..."
+              value={affectedEmployee}
+              onChange={e => setAffectedEmployee(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent"
+            />
+            <span className="text-slate-500 text-xs">→</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
             <select
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas focus:outline-none focus:border-accent"
+              value={actorFilter}
+              onChange={e => setActorFilter(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
             >
-              <option value="ALL">Tất cả phân loại</option>
-              <option value="SECURITY">Bảo mật &amp; Phân quyền (SECURITY)</option>
-              <option value="HR_TIMESHEET">Sửa bảng công (HR_TIMESHEET)</option>
-              <option value="RULE_ENGINE">Cấu hình Luật (RULE_ENGINE)</option>
-              <option value="OKR_CALIBRATION">Cân chuẩn OKR (OKR_CALIBRATION)</option>
+              <option value="">Tất cả người thực hiện</option>
+              <option value="Admin">Admin (Quản Trị Viên)</option>
+              <option value="01HR">01HR (Nguyễn Thị Thu Hà)</option>
+              <option value="05ACT">05ACT (Nguyễn Thanh Tùng)</option>
+              <option value="136ACT">136ACT (Vũ Văn Luận)</option>
             </select>
+            <Button variant="secondary" onClick={fetchLogs} className="px-3 shrink-0">
+              Lọc
+            </Button>
           </div>
         </div>
       </Card>
 
-      {/* Audit Log Table */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-              <th className="py-3 px-4">Thời gian</th>
-              <th className="py-3 px-4">Người thực hiện (Actor)</th>
-              <th className="py-3 px-4">Hành động</th>
-              <th className="py-3 px-4">Phân loại</th>
-              <th className="py-3 px-4">Tài nguyên tác động</th>
-              <th className="py-3 px-4">Địa chỉ IP</th>
-              <th className="py-3 px-4 text-right">Chi tiết</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {filteredLogs.map(log => (
-              <tr key={log.id} className="hover:bg-canvas/40 transition-colors">
-                <td className="py-3 px-4 font-mono text-ink-secondary">{log.timestamp}</td>
-                <td className="py-3 px-4">
-                  <div className="font-medium text-ink">{log.actor}</div>
-                  <div className="text-[11px] text-ink-muted font-mono">{log.actorEmail}</div>
-                </td>
-                <td className="py-3 px-4 font-mono font-medium text-ink">{log.action}</td>
-                <td className="py-3 px-4">
-                  <Badge
-                    variant={
-                      log.category === 'SECURITY'
-                        ? 'danger'
-                        : log.category === 'RULE_ENGINE'
-                        ? 'accent'
-                        : log.category === 'HR_TIMESHEET'
-                        ? 'warn'
-                        : 'ok'
-                    }
-                  >
-                    {log.category}
-                  </Badge>
-                </td>
-                <td className="py-3 px-4 text-ink-secondary font-mono">{log.targetResource}</td>
-                <td className="py-3 px-4 text-ink-muted font-mono">{log.ipAddress}</td>
-                <td className="py-3 px-4 text-right">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedLog(log)}>
-                    Xem Diff
-                  </Button>
-                </td>
+      {/* Main Audit Logs Table (Mockup S35) */}
+      <Card className="overflow-hidden border-white/10 bg-surface/90">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/5 text-xs uppercase tracking-wider text-slate-400 border-b border-white/10">
+              <tr>
+                <th className="py-3 px-4 w-32">Thời điểm</th>
+                <th className="py-3 px-4 w-40">Người thực hiện</th>
+                <th className="py-3 px-4 w-36">Hành động</th>
+                <th className="py-3 px-4 w-48">Đối tượng</th>
+                <th className="py-3 px-4">Thay đổi (Diff) & Lý do</th>
+                <th className="py-3 px-4 w-40">Thiết bị / IP</th>
+                <th className="py-3 px-4 w-24 text-center">Thao tác</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Diff / Details Modal */}
-      {selectedLog && (
-        <Modal
-          isOpen={true}
-          onClose={() => setSelectedLog(null)}
-          title={`Chi tiết vết kiểm toán: ${selectedLog.id}`}
-          maxWidth="lg"
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 p-3 bg-canvas rounded-lg text-xs">
-              <div>
-                <span className="text-ink-muted">Người thực hiện:</span>
-                <div className="font-medium text-ink mt-0.5">{selectedLog.actor} ({selectedLog.actorEmail})</div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Thời điểm ghi nhận:</span>
-                <div className="font-medium text-ink mt-0.5 font-mono">{selectedLog.timestamp}</div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Địa chỉ IP &amp; Client:</span>
-                <div className="font-mono text-ink mt-0.5">{selectedLog.ipAddress}</div>
-              </div>
-              <div>
-                <span className="text-ink-muted">Tài nguyên thay đổi:</span>
-                <div className="font-mono text-ink mt-0.5">{selectedLog.targetResource}</div>
-              </div>
-            </div>
-
-            {selectedLog.note && (
-              <div className="text-xs">
-                <span className="text-ink-muted font-semibold">Ghi chú nghiệp vụ:</span>
-                <div className="p-2.5 mt-1 bg-surface border border-line rounded-lg text-ink">
-                  {selectedLog.note}
-                </div>
-              </div>
-            )}
-
-            {/* Before vs After Diff */}
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-ink">So sánh Thay đổi (Before vs After)</div>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="border border-rose-200 bg-rose-50/30 rounded-lg p-3">
-                  <div className="text-rose-800 font-medium mb-1 flex items-center gap-1">
-                    <span>- Giá trị cũ (Old Value)</span>
-                  </div>
-                  <pre className="p-2 bg-white rounded border border-rose-100 font-mono text-[11px] text-ink overflow-x-auto whitespace-pre-wrap">
-                    {selectedLog.oldValue || 'None'}
-                  </pre>
-                </div>
-                <div className="border border-emerald-200 bg-emerald-50/30 rounded-lg p-3">
-                  <div className="text-emerald-800 font-medium mb-1 flex items-center gap-1">
-                    <span>+ Giá trị mới (New Value)</span>
-                  </div>
-                  <pre className="p-2 bg-white rounded border border-emerald-100 font-mono text-[11px] text-ink overflow-x-auto whitespace-pre-wrap">
-                    {selectedLog.newValue || 'None'}
-                  </pre>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-line">
-              <Button variant="outline" size="sm" onClick={() => setSelectedLog(null)}>
-                Đóng
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+            </thead>
+            <tbody className="divide-y divide-white/5 font-mono text-xs">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-sans">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-accent" />
+                    Đang tải nhật ký kiểm toán hệ thống...
+                  </td>
+                </tr>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-sans">
+                    <FileText className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                    Không tìm thấy bản ghi nhật ký kiểm toán phù hợp
+                  </td>
+                </tr>
+              ) : (
+                logs.map(log => (
+                  <tr key={log.id} className="hover:bg-white/5 transition-colors font-sans">
+                    <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs">
+                      {log.timestamp}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-semibold text-white text-xs">{log.actorName}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">Code: {log.actorCode}</div>
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      {getActionBadge(log.action)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-slate-200 text-xs">{log.entity}</div>
+                      {log.entityId && (
+                        <div
+                          onClick={() => setAffectedEmployee(log.entityId || '')}
+                          className="text-[11px] text-accent truncate max-w-[180px] cursor-pointer hover:underline"
+                          title={log.entityId}
+                        >
+                          {log.entityId}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {log.oldValue || log.newValue ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                            {log.oldValue && (
+                              <span className="text-red-400 line-through bg-red-950/40 px-1.5 py-0.5 rounded border border-red-500/20">
+                                {log.oldValue}
+                              </span>
+                            )}
+                            {log.oldValue && log.newValue && (
+                              <ArrowRight className="w-3 h-3 text-slate-500 shrink-0" />
+                            )}
+                            {log.newValue && (
+                              <span className="text-emerald-300 font-semibold bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                {log.newValue}
+                              </span>
+                            )}
+                          </div>
+                          {log.reason && (
+                            <div className="text-[11px] text-slate-400 italic">
+                              "{log.reason}"
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-300">
+                          {log.details || log.action}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-[11px] text-slate-400 font-mono">
+                      <div className="flex items-center gap-1">
+                        <Laptop className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate max-w-[130px]">{log.ipAddress || '127.0.0.1'}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        onClick={() => testAppendOnlyBlock(log.id)}
+                        className="text-[11px] text-red-400/80 hover:text-red-300 underline"
+                        title="Bấm để kiểm tra tính append-only (hệ thống sẽ từ chối xóa)"
+                      >
+                        Thử xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 };

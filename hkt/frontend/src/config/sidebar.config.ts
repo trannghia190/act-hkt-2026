@@ -1,126 +1,141 @@
-export interface MenuItem {
+// S00 — Cấu trúc điều hướng: Một nguồn sự thật duy nhất (Single Source of Truth)
+// Luật bắt buộc: Employee ⊂ Manager ⊂ HR.
+// Mỗi variant là superset của variant nhỏ hơn. Mọi mục của nhân viên có ở cả 2 bản còn lại.
+
+export interface NavChildItem {
+  label: string;
+  path: string;
+}
+
+export interface NavItem {
   id: string;
   label: string;
   path: string;
   icon: string;
-  badge?: string;
-  badgeColor?: 'accent' | 'gray' | 'danger';
+  badgeKey?: 'todo' | 'notif' | 'reqs' | 'checkin' | 'approve' | 'dispute';
+  badgeColor?: 'accent' | 'danger' | 'warning' | 'gray';
   screenId: string;
-  roles?: string[];
+  children?: NavChildItem[];
 }
 
-export interface MenuGroup {
+export interface NavGroup {
   groupName: string;
-  items: MenuItem[];
+  items: NavItem[];
 }
 
-export interface ModuleNavigation {
-  moduleId: 'attendance' | 'okr' | 'shared';
-  moduleTitle: string;
-  groups: MenuGroup[];
-}
-
-export const SIDEBAR_CONFIG: ModuleNavigation[] = [
-  // ==========================================
-  // PHÂN HỆ 1: CHẤM CÔNG & ĐƠN TỪ
-  // ==========================================
+// =========================================================================
+// 1. NHÓM DÙNG CHUNG CHO MỌI VAI TRÒ (COMMON — BIẾN THỂ NHÂN VIÊN: 14 MỤC)
+// =========================================================================
+export const COMMON_GROUPS: NavGroup[] = [
   {
-    moduleId: 'attendance',
-    moduleTitle: 'Chấm Công & Chuyên Cần',
-    groups: [
-      {
-        groupName: 'CÁ NHÂN',
-        items: [
-          { id: 'todo', label: 'Cần làm (Todo Inbox)', path: '/todo', icon: 'Inbox', badge: '3', screenId: 'S02' },
-          { id: 'checkin', label: 'Chấm công Mobile (5 Tầng)', path: '/attendance/checkin', icon: 'Fingerprint', screenId: 'S05m' },
-          { id: 'calendar', label: 'Lịch công cá nhân', path: '/attendance/calendar', icon: 'Calendar', screenId: 'S06' },
-          { id: 'my-timesheet', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
-          { id: 'my-requests', label: 'Đơn từ của tôi', path: '/attendance/requests', icon: 'FilePlus', screenId: 'S08' },
-          { id: 'wfh', label: 'Đăng ký WFH', path: '/attendance/requests?type=WFH', icon: 'Home', screenId: 'S10' },
-          { id: 'my-leaves', label: 'Số dư phép năm', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
-          { id: 'my-devices', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
-        ],
-      },
-      {
-        groupName: 'QUẢN LÝ NHÓM',
-        items: [
-          { id: 'approvals', label: 'Hộp thư duyệt đơn', path: '/attendance/approvals', icon: 'CheckSquare', badge: '12', badgeColor: 'danger', screenId: 'S12', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-          { id: 'team-calendar', label: 'Lịch trực quan nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-        ],
-      },
-      {
-        groupName: 'QUẢN TRỊ KỲ CÔNG & PHÉP',
-        items: [
-          { id: 'master-timesheet', label: 'Bảng công & Chốt lương', path: '/attendance/timesheet', icon: 'Table', screenId: 'S15', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'leave-ledger', label: 'Sổ cái biến động phép', path: '/attendance/leave-ledger', icon: 'Book', screenId: 'S34', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'leave-table', label: 'Bảng phép tất cả mọi người', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'disputes', label: 'Danh sách khiếu nại', path: '/attendance/disputes', icon: 'AlertTriangle', badge: '5', badgeColor: 'danger', screenId: 'S45', roles: ['HR_ADMIN', 'ADMIN'] },
-        ],
-      },
+    groupName: 'Hôm nay',
+    items: [
+      { id: 'todo', label: 'Cần làm', path: '/todo', icon: 'CheckSquare', badgeKey: 'todo', badgeColor: 'accent', screenId: 'S02' },
+      { id: 'notif', label: 'Thông báo', path: '/notifications', icon: 'Bell', badgeKey: 'notif', badgeColor: 'accent', screenId: 'S04m' },
+      { id: 'prefs', label: 'Tuỳ chỉnh thông báo', path: '/settings/notifications', icon: 'Settings', screenId: 'S36' },
     ],
   },
-
-  // ==========================================
-  // PHÂN HỆ 2: OKR — MỤC TIÊU & ĐÁNH GIÁ
-  // ==========================================
   {
-    moduleId: 'okr',
-    moduleTitle: 'Quản Trị & Đánh Giá OKR',
-    groups: [
+    groupName: 'Chấm công',
+    items: [
+      { id: 'punch', label: 'Chấm công', path: '/attendance/checkin', icon: 'Fingerprint', screenId: 'S05' },
       {
-        groupName: 'MỤC TIÊU CÁ NHÂN',
-        items: [
-          { id: 'okr-dashboard', label: 'Dashboard OKR cá nhân', path: '/okr/dashboard', icon: 'Target', screenId: 'S20' },
-          { id: 'my-okr', label: 'Thiết lập & Check-in', path: '/okr/my-okr', icon: 'Edit3', screenId: 'S21' },
-          { id: 'annual-assessment', label: 'Đánh giá cuối năm (4 Box)', path: '/okr/assessment', icon: 'Award', screenId: 'S23' },
+        id: 'reqs',
+        label: 'Đơn của tôi',
+        path: '/attendance/requests',
+        icon: 'FilePlus',
+        badgeKey: 'reqs',
+        screenId: 'S08',
+        children: [
+          { label: '☘ Xin nghỉ phép · WFH', path: '/attendance/requests?type=LEAVE_WFH' },
+          { label: '＋ Bổ sung chấm công', path: '/attendance/requests?type=SUPPLEMENT' },
         ],
       },
-      {
-        groupName: 'QUẢN LÝ NHÓM',
-        items: [
-          { id: 'okr-approvals', label: 'Duyệt mục tiêu OKR', path: '/okr/team-approvals', icon: 'CheckCircle', screenId: 'S42', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-          { id: 'mid-year-review', label: 'Review & Coaching giữa năm', path: '/okr/mid-year-review', icon: 'MessageSquare', screenId: 'S43', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-          { id: 'team-review', label: 'Review OKR cả nhóm', path: '/okr/team-review', icon: 'ClipboardList', screenId: 'S24', roles: ['MANAGER', 'HR_ADMIN', 'ADMIN'] },
-        ],
-      },
-      {
-        groupName: 'BÁO CÁO TOÀN CÔNG TY',
-        items: [
-          { id: 'okr-summary', label: 'Bảng tổng hợp HR 9 trường', path: '/okr/summary-report', icon: 'FileSpreadsheet', screenId: 'S25', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'okr-cycles', label: 'Quản lý chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44', roles: ['HR_ADMIN', 'ADMIN'] },
-        ],
-      },
+      { id: 'cal', label: 'Lịch công', path: '/attendance/calendar', icon: 'Calendar', screenId: 'S06' },
+      { id: 'balance', label: 'Số dư phép', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
+      { id: 'mytime', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
     ],
   },
-
-  // ==========================================
-  // PHÂN HỆ 3: HỆ THỐNG DÙNG CHUNG & TỔ CHỨC
-  // ==========================================
   {
-    moduleId: 'shared',
-    moduleTitle: 'Hệ Thống & Cơ Cấu Tổ Chức',
-    groups: [
-      {
-        groupName: 'CƠ CẤU TỔ CHỨC & NHÂN SỰ',
-        items: [
-          { id: 'users', label: 'Quản lý nhân viên & tài khoản', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'org-tree', label: 'Sơ đồ tổ chức (nhóm lồng nhau)', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
-          { id: 'admin-devices', label: 'Quản lý thiết bị (HR)', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'leave-types', label: 'Quản lý loại nghỉ', path: '/admin/leave-types', icon: 'ListTree', screenId: 'S32', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'notif-prefs', label: 'Tuỳ chỉnh thông báo', path: '/settings/notifications', icon: 'Bell', screenId: 'S36' },
-          { id: 'notifications-mobile', label: 'Thông báo (mobile)', path: '/notifications', icon: 'BellRing', screenId: 'S04M' },
-          { id: 'shifts', label: 'Ca làm việc & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'enroll-face-shared', label: 'Đăng ký mẫu khuôn mặt (S01-B)', path: '/auth/enroll-face', icon: 'Fingerprint', screenId: 'S01-B' },
-        ],
-      },
-      {
-        groupName: 'NỘI QUY & KIỂM TOÁN HỆ THỐNG',
-        items: [
-          { id: 'rules', label: 'Cấu hình 19 quy định (Rule Engine)', path: '/admin/rules', icon: 'Sliders', screenId: 'S16', roles: ['HR_ADMIN', 'ADMIN'] },
-          { id: 'policy-doc', label: 'Tra cứu nội quy công ty', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
-          { id: 'audit-logs', label: 'Nhật ký kiểm toán hệ thống', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35', roles: ['HR_ADMIN', 'ADMIN'] },
-        ],
-      },
+    groupName: 'OKR',
+    items: [
+      { id: 'myokr', label: 'OKR của tôi', path: '/okr/dashboard', icon: 'Target', screenId: 'S20' },
+      { id: 'newokr', label: 'Tạo OKR', path: '/okr/my-okr', icon: 'Edit3', screenId: 'S21' },
+      { id: 'checkin', label: 'Check-in', path: '/okr/assessment', icon: 'Award', badgeKey: 'checkin', screenId: 'S22' },
+      { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
+    ],
+  },
+  {
+    groupName: 'Chung',
+    items: [
+      { id: 'policy', label: 'Quy định tra cứu', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
+      { id: 'device', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
     ],
   },
 ];
+
+// =========================================================================
+// 2. NHÓM RIÊNG CỦA QUẢN LÝ (MANAGE: 3 MỤC)
+// =========================================================================
+export const MANAGER_GROUPS: NavGroup[] = [
+  {
+    groupName: 'Quản lý',
+    items: [
+      { id: 'approve', label: 'Duyệt đơn', path: '/attendance/approvals', icon: 'CheckCircle', badgeKey: 'approve', badgeColor: 'danger', screenId: 'S12' },
+      { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
+      { id: 'review', label: 'Review OKR nhóm', path: '/okr/team-review', icon: 'MessageSquare', screenId: 'S24' },
+    ],
+  },
+];
+
+// =========================================================================
+// 3. NHÓM RIÊNG CỦA HR (HR: 10 MỤC)
+// =========================================================================
+export const HR_GROUPS: NavGroup[] = [
+  {
+    groupName: 'HR',
+    items: [
+      { id: 'tsheet', label: 'Bảng công & chốt', path: '/attendance/timesheet', icon: 'Table', screenId: 'S15' },
+      { id: 'dispute', label: 'Danh sách khiếu nại', path: '/attendance/disputes', icon: 'AlertTriangle', badgeKey: 'dispute', badgeColor: 'danger', screenId: 'S45' },
+      { id: 'leave', label: 'Bảng phép', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46' },
+      { id: 'rules', label: 'Cấu hình quy định', path: '/admin/rules', icon: 'Sliders', screenId: 'S16' },
+      { id: 'shift', label: 'Ca & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26' },
+      { id: 'okrcycle', label: 'Chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44' },
+      { id: 'audit', label: 'Nhật ký thay đổi', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
+      { id: 'hrdev', label: 'Quản lý thiết bị', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28' },
+      { id: 'people', label: 'Quản lý nhân viên', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40' },
+      { id: 'mtree', label: 'Cây quản lý', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
+    ],
+  },
+];
+
+// =========================================================================
+// 4. SINH 3 BIẾN THỂ TỪ 1 NGUỒN CẤU HÌNH DUY NHẤT
+// =========================================================================
+// Employee (14) ⊂ Manager (17) ⊂ HR (24) / Admin (27)
+export const VARIANTS = {
+  employee: COMMON_GROUPS,
+  manager: [...COMMON_GROUPS, ...MANAGER_GROUPS],
+  hr: [...COMMON_GROUPS, ...HR_GROUPS],
+  admin: [...COMMON_GROUPS, ...MANAGER_GROUPS, ...HR_GROUPS],
+};
+
+export const DEFAULT_BADGES: Record<string, number> = {
+  todo: 3,
+  notif: 5,
+  reqs: 1,
+  checkin: 2,
+  approve: 12,
+  dispute: 5,
+};
+
+/**
+ * Trả về cấu hình NavGroup[] theo vai trò của người dùng
+ */
+export function getNavForRole(role?: string): NavGroup[] {
+  const norm = (role || '').toUpperCase();
+  if (norm === 'ADMIN') return VARIANTS.admin;
+  if (norm === 'HR_ADMIN' || norm === 'HR') return VARIANTS.hr;
+  if (norm === 'MANAGER') return VARIANTS.manager;
+  return VARIANTS.employee;
+}
