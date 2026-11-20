@@ -641,7 +641,8 @@ export const RequestsPage: React.FC = () => {
 
       {/* Requests Table */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[1180px] text-left border-collapse text-xs">
           <thead>
             <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
               <th className="py-3 px-4">Mã Đơn</th>
@@ -715,6 +716,7 @@ export const RequestsPage: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
         <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-secondary">
           <span>Trang <b>{page + 1}</b> / {totalPages} · {totalElements} đơn</span>
           <div className="flex items-center gap-1.5">
