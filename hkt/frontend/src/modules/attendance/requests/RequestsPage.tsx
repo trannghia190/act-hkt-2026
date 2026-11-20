@@ -204,33 +204,43 @@ export const RequestsPage: React.FC = () => {
     loadRequests();
   };
 
-  // C-cố Feature: Auto-fill form directly from punch logs (docs/02 §C-cố - S07)
-  const handleAutoFillMissedPunch = (kind: 'OUT' | 'LATE') => {
-    const latest = punchLogs.find(l => (kind === 'OUT' ? l.checkInAt && !l.checkOutAt : l.checkInAt)) || punchLogs[0];
-    const logDate = latest?.workDate || (kind === 'OUT' ? '2026-11-17' : '2026-11-05');
+  // Gợi ý điền đơn từ log chấm công thật (không hiển thị mô tả nội bộ của task).
+  const fmtDay = (iso: string) => {
+    const [y, m, d] = (iso || '').split('-');
+    return d && m ? `${d}/${m}` : '';
+  };
+  const timeOf = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const lateMinutesOf = (log: any) => {
+    if (!log?.checkInAt) return 0;
+    const d = new Date(log.checkInAt);
+    return Math.max(0, d.getHours() * 60 + d.getMinutes() - (8 * 60 + 30));
+  };
+  const missingCheckoutLog = punchLogs.find((l: any) => l.checkInAt && !l.checkOutAt);
+  const lateLog = punchLogs.find((l: any) => lateMinutesOf(l) > 0);
+  const anomalyCount = (missingCheckoutLog ? 1 : 0) + (lateLog ? 1 : 0);
+
+  const handleAutoFillPunch = (kind: 'OUT' | 'LATE', log: any) => {
+    const logDate = log?.workDate || '';
     if (kind === 'OUT') {
       setNewReq({
-        type: 'ADJUST',
-        startDate: logDate,
-        endDate: logDate,
-        duration: 'Ca chiều (17:30)',
-        leaveType: 'AL',
-        reason: 'Tự động trích xuất từ log: Quên quẹt thẻ chấm công ra lúc 17:30 ngày 17/11 do bận họp với khách hàng'
+        type: 'ADJUST', startDate: logDate, endDate: logDate, duration: 'Bổ sung giờ ra', leaveType: 'AL',
+        reason: `Quên chấm công ra ngày ${fmtDay(logDate)} — đề nghị bổ sung giờ ra theo log chấm công`,
       });
-      setIsCreateOpen(true);
-      showToast('⚡ C-cố: Đã tự động điền đơn bổ sung giờ ra ngày 17/11');
+      showToast(`Đã điền sẵn đơn bổ sung giờ ra ngày ${fmtDay(logDate)}`);
     } else {
+      const mins = lateMinutesOf(log);
       setNewReq({
-        type: 'ADJUST',
-        startDate: logDate,
-        endDate: logDate,
-        duration: 'Muộn 22 phút (08:52)',
-        leaveType: 'AL',
-        reason: 'Tự động trích xuất từ log: Đi muộn 22 phút ngày 05/11 do sự cố kẹt xe Nguyễn Trãi (Đăng ký trừ vào Quota 1/3 lần)'
+        type: 'ADJUST', startDate: logDate, endDate: logDate,
+        duration: `Muộn ${mins} phút (${timeOf(log.checkInAt)})`, leaveType: 'AL',
+        reason: `Đi muộn ${mins} phút ngày ${fmtDay(logDate)} — nhập lý do cụ thể`,
       });
-      setIsCreateOpen(true);
-      showToast('⚡ C-cố: Đã tự động điền giải trình đi muộn ngày 05/11');
+      showToast(`Đã điền sẵn giải trình đi muộn ngày ${fmtDay(logDate)}`);
     }
+    setIsCreateOpen(true);
   };
 
   // Filter requests
@@ -275,37 +285,41 @@ export const RequestsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* C-cố Smart Scanner Banner: Auto-detect punch abnormalities */}
-      <div className="p-3.5 bg-gradient-to-r from-emerald-950/40 to-teal-950/20 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <span className="text-xl">⚡</span>
-          <div>
-            <div className="font-bold text-emerald-400 flex items-center gap-2">
-              <span>Tính năng C-cố: Phát hiện 2 log chấm công bất thường cần làm đơn</span>
+      {anomalyCount > 0 && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <span className="text-lg">⚡</span>
+            <div>
+              <div className="font-semibold text-amber-900">
+                Có {anomalyCount} ngày chấm công cần bổ sung đơn
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Hệ thống đã đọc log chấm công của bạn và điền sẵn ngày, số phút — bạn chỉ cần kiểm tra lại rồi gửi.
+              </p>
             </div>
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              Hệ thống tự động đọc log chấm công thật và điền sẵn ngày + số phút chính xác (tiết kiệm 100% thời gian nhập liệu).
-            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {missingCheckoutLog && (
+              <button
+                type="button"
+                onClick={() => handleAutoFillPunch('OUT', missingCheckoutLog)}
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+              >
+                + Giờ ra {fmtDay(missingCheckoutLog.workDate)}
+              </button>
+            )}
+            {lateLog && (
+              <button
+                type="button"
+                onClick={() => handleAutoFillPunch('LATE', lateLog)}
+                className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+              >
+                + Đi muộn {lateMinutesOf(lateLog)}p {fmtDay(lateLog.workDate)}
+              </button>
+            )}
           </div>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => handleAutoFillMissedPunch('OUT')}
-            className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25 font-semibold text-[11px] transition-colors cursor-pointer"
-          >
-            + Điền Đơn Thiếu Ra 17/11
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAutoFillMissedPunch('LATE')}
-            className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 font-semibold text-[11px] transition-colors cursor-pointer"
-          >
-            + Điền Đơn Muộn 22p 05/11
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-3 rounded-xl border border-line shadow-2xs">
