@@ -108,7 +108,19 @@ export const RequestDetailPage: React.FC = () => {
               </>
             );
           })()}
-          <Link to="/attendance/my-timesheet" className="text-xs text-accent underline block">Xem bảng công bị tác động →</Link>
+          {(() => {
+            const viewer = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); } catch { return {}; } })();
+            const own = data?.employeeCode && viewer?.employeeCode === data.employeeCode;
+            const month = req.workDate ? String(req.workDate).slice(0, 7) : '';
+            const href = own
+              ? `/attendance/my-timesheet${month ? `?month=${month}` : ''}`
+              : `/attendance/my-timesheet?month=${month}${data?.employeeCode ? `&employeeCode=${encodeURIComponent(data.employeeCode)}` : ''}`;
+            return (
+              <Link to={href} className="text-xs text-accent underline block">
+                {own ? 'Xem bảng công bị tác động' : `Xem bảng công của ${data?.employeeName || data?.employeeCode || 'nhân viên'}`} →
+              </Link>
+            );
+          })()}
         </div>
       )}
       <div className="bg-surface border border-line rounded-xl p-4">

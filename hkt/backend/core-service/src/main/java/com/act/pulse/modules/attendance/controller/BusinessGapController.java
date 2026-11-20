@@ -78,11 +78,24 @@ public class BusinessGapController {
     public ApiResponse<Map<String, Object>> myTimesheet(
             @RequestParam(required = false) String month,
             @RequestParam(required = false) String period,
-            @RequestParam(required = false) Integer year) {
-        UUID userId = CurrentUser.userId();
-        if (userId == null) {
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) String employeeCode) {
+        UUID viewerId = CurrentUser.userId();
+        if (viewerId == null) {
             return ApiResponse.ok(Map.of("days", List.of(), "logs", List.of(), "message", "Chưa đăng nhập"), "Chưa đăng nhập");
         }
+        User viewer = userRepository.findById(viewerId).orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+        User target = viewer;
+        if (employeeCode != null && !employeeCode.isBlank()) {
+            target = userRepository.findByEmployeeCode(employeeCode)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
+            String role = CurrentUser.role() == null ? "EMPLOYEE" : CurrentUser.role();
+            boolean allowed = target.getId().equals(viewerId)
+                    || viewerId.equals(target.getManagerId())
+                    || "HR_ADMIN".equals(role) || "ADMIN".equals(role);
+            if (!allowed) throw new RuntimeException("Không có quyền xem bảng công của nhân viên này");
+        }
+        UUID userId = target.getId();
 
         java.time.YearMonth ym = java.time.YearMonth.now();
         if (month != null && !month.isBlank()) {
@@ -348,6 +361,8 @@ public class BusinessGapController {
 
         out.put("days", daysList);
         out.put("logs", logs);
+        out.put("employeeCode", target.getEmployeeCode());
+        out.put("employeeName", target.getFullName());
 
         return ApiResponse.ok(out, "Bảng công " + ym);
     }
