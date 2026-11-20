@@ -44,9 +44,16 @@ interface VerifyResult {
 export const FaceEnrollmentPage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN';
 
   // Active sub-view: 'enroll' (1 frontal angle) | 'verify' (test verification) | 'crud' (face profile list)
   const [activeTab, setActiveTab] = useState<'enroll' | 'verify' | 'crud'>('enroll');
+
+  // Multi-angle mode (B0 support)
+  const [enrollMode, setEnrollMode] = useState<'single' | 'three'>('single');
+  const [capturedLeft, setCapturedLeft] = useState<string | null>(null);
+  const [capturedRight, setCapturedRight] = useState<string | null>(null);
+  const [angleStep, setAngleStep] = useState<'frontal' | 'left' | 'right'>('frontal');
 
   // Enrollment Form state
   const [employeeCode, setEmployeeCode] = useState<string>(user?.employeeCode || '136ACT');
@@ -170,7 +177,20 @@ export const FaceEnrollmentPage: React.FC = () => {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
     if (activeTab === 'enroll') {
-      setCapturedImage(dataUrl);
+      if (enrollMode === 'three') {
+        if (angleStep === 'frontal') {
+          setCapturedImage(dataUrl);
+          setAngleStep('left');
+        } else if (angleStep === 'left') {
+          setCapturedLeft(dataUrl);
+          setAngleStep('right');
+        } else {
+          setCapturedRight(dataUrl);
+          setAngleStep('frontal');
+        }
+      } else {
+        setCapturedImage(dataUrl);
+      }
       setEnrollStatus('idle');
       setEnrollMessage(null);
     } else if (activeTab === 'verify') {
@@ -217,7 +237,7 @@ export const FaceEnrollmentPage: React.FC = () => {
     setEnrollMessage(null);
 
     try {
-      // 1. Send single frontal image to AI Face Service (OpenCV YuNet + SFace)
+      // 1. Send biometric image(s) to AI Face Service (OpenCV YuNet + SFace)
       const aiRes = await fetch('/ai-face/api/v1/face/enroll-json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -226,6 +246,8 @@ export const FaceEnrollmentPage: React.FC = () => {
           full_name: fullName.trim() || employeeCode.trim(),
           department: department.trim() || 'Khối Kỹ Thuật',
           frontal_image: capturedImage,
+          left_image: capturedLeft || undefined,
+          right_image: capturedRight || undefined,
         }),
       });
 
@@ -561,20 +583,33 @@ export const FaceEnrollmentPage: React.FC = () => {
             <Card className="p-5 border border-line bg-canvas space-y-4">
               <h2 className="text-sm font-bold text-ink border-b border-line pb-2.5 flex items-center justify-between">
                 <span>Thông Tin Nhân Viên Liên Kết</span>
-                <Badge variant="info" className="text-[10px]">1 Góc Đăng Ký</Badge>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEnrollMode(enrollMode === 'single' ? 'three' : 'single')}
+                    className="text-[10px] text-accent hover:underline cursor-pointer"
+                  >
+                    {enrollMode === 'single' ? 'Đổi sang 3 góc (B0)' : 'Đổi sang 1 góc (Nhanh)'}
+                  </button>
+                  <Badge variant="info" className="text-[10px]">
+                    {enrollMode === 'single' ? '1 Góc Đăng Ký' : '3 Góc (B0 Chuẩn)'}
+                  </Badge>
+                </div>
               </h2>
 
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-ink-muted mb-1">
                     Mã nhân viên (Employee Code) <span className="text-red-500">*</span>
+                    {!isAdmin && <span className="text-[10px] text-ink-muted ml-1.5">(Cố định theo tài khoản)</span>}
                   </label>
                   <input
                     type="text"
                     value={employeeCode}
                     onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
                     placeholder="VD: 136ACT, 01HR, 05ACT"
-                    className="w-full text-xs font-mono font-bold px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:border-accent outline-hidden"
+                    disabled={!isAdmin && !!user?.employeeCode}
+                    className={`w-full text-xs font-mono font-bold px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:border-accent outline-hidden ${!isAdmin && !!user?.employeeCode ? 'opacity-80 cursor-not-allowed bg-canvas-subtle' : ''}`}
                   />
                 </div>
 

@@ -197,6 +197,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 case "NETWORK" -> "OUTSIDE_NETWORK";
                 case "GPS" -> "OUTSIDE_GEOFENCE";
                 case "SHIFT" -> "NO_SHIFT";
+                case "FACE" -> face.proxyDetected ? "PROXY_PUNCH_DETECTED" : "FACE_NOT_MATCHED";
                 default -> first.getDetail();
             };
             log.warn("Chấm công bị chặn tại lớp {}: {}", first.getLayer(), first.getDetail());
@@ -331,7 +332,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             return new FaceOutcome("failed", null, false, null, null, false, 1, maxAttempts - 1, null);
         }
 
-        JsonNode ai = callAiFaceService(image, request.getLivenessFrames());
+        JsonNode ai = callAiFaceService(image, request.getLivenessFrames(), requesterCode);
         if (ai == null) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
                     "Không kết nối được dịch vụ nhận diện khuôn mặt — chưa thể xác thực"));
@@ -345,6 +346,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         JsonNode matchedEmp = ai.path("matched_employee");
         String matchedCode = matchedEmp.path("employee_code").asText(null);
         String matchedName = matchedEmp.path("full_name").asText(null);
+        boolean isAiProxyPunch = ai.path("is_proxy_punch_detected").asBoolean(false);
 
         if (!qualityPassed) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
@@ -358,31 +360,43 @@ public class AttendanceServiceImpl implements AttendanceService {
             return new FaceOutcome("failed", similarity, false, matchedCode, matchedName,
                     false, 1, maxAttempts - 1, LocalDateTime.now());
         }
-        // **Đối chiếu với tài khoản đang đăng nhập** — chống chấm công hộ
-        if (!matched || matchedCode == null || !matchedCode.equalsIgnoreCase(requesterCode)) {
-            String detail = matchedCode == null
-                    ? "Không nhận diện được khuôn mặt — hãy thử lại"
-                    : String.format("Người đứng trước camera là %s (%s), KHÔNG KHỚP với tài khoản đang đăng nhập %s",
-                            matchedName, matchedCode, requesterCode);
+
+        // **Đối chiếu độc lập với tài khoản đang đăng nhập** — Chống chấm công hộ (High D)
+        boolean proxyMismatch = (matchedCode != null && !matchedCode.equalsIgnoreCase(requesterCode));
+        boolean proxyDetected = isAiProxyPunch || proxyMismatch;
+
+        if (proxyDetected) {
+            String detail = String.format("CẢNH BÁO CHẤM CÔNG HỘ: Người đứng trước camera là %s (%s), KHÔNG KHỚP với tài khoản đang đăng nhập %s. Chấm công bị từ chối.",
+                    matchedName != null ? matchedName : "chưa rõ",
+                    matchedCode != null ? matchedCode : "chưa rõ",
+                    requesterCode);
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false, detail));
-            boolean proxy = matchedCode != null && !matchedCode.equalsIgnoreCase(requesterCode);
+            log.warn("Proxy punch blocked: camera detected {} but requester is {}", matchedCode, requesterCode);
             return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
-                    proxy, 1, maxAttempts - 1, LocalDateTime.now());
+                    true, 1, maxAttempts - 1, LocalDateTime.now());
         }
+
+        if (!matched || matchedCode == null) {
+            layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
+                    "Không nhận diện được khuôn mặt trong hệ thống hoặc độ tương đồng không đạt"));
+            return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
+                    false, 1, maxAttempts - 1, LocalDateTime.now());
+        }
+
         if (similarity < threshold) {
             layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", false,
-                    String.format("Độ tương đồng %,.0f%% thấp hơn ngưỡng %d%%", similarity * 100, (int) (threshold * 100))));
+                    String.format("Độ tương đồng %,.0f%% thấp hơn ngưỡng quy định %d%%", similarity * 100, (int) (threshold * 100))));
             return new FaceOutcome("failed", similarity, true, matchedCode, matchedName,
                     false, 1, maxAttempts - 1, LocalDateTime.now());
         }
 
         layers.add(layer("FACE", "Khuôn mặt khớp hồ sơ", true,
-                String.format("Khớp %,.0f%%", similarity * 100)));
+                String.format("Khớp chính chủ %,.0f%%", similarity * 100)));
         return new FaceOutcome("passed", similarity, true, matchedCode, matchedName,
                 false, 1, maxAttempts - 1, LocalDateTime.now());
     }
 
-    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames) {
+    private JsonNode callAiFaceService(String base64Image, List<String> livenessFrames, String requesterCode) {
         String baseUrl = (aiFaceServiceUrl != null && !aiFaceServiceUrl.trim().isEmpty())
                 ? aiFaceServiceUrl.trim().replaceAll("/+$", "")
                 : "http://localhost:8000";
@@ -396,6 +410,9 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         Map<String, Object> body = new HashMap<>();
         body.put("image", base64Image);
+        if (requesterCode != null && !requesterCode.isBlank()) {
+            body.put("expected_employee_code", requesterCode);
+        }
         if (livenessFrames != null && !livenessFrames.isEmpty()) {
             body.put("liveness_frames", livenessFrames);
         }
