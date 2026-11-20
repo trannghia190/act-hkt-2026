@@ -19,6 +19,7 @@ export const RequestsPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [quota, setQuota] = useState({ lateUsed: 0, lateMax: 2, adjustUsed: 0, adjustMax: 5, wfhWeekUsed: 0, wfhMax: 2 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAttachmentCount, setEditingAttachmentCount] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -111,7 +112,15 @@ export const RequestsPage: React.FC = () => {
     } as AttendanceRequestItem;
   };
 
+  const loadQuota = () => {
+    fetch('/api/v1/requests/my-quota', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(j => { if (j?.data) setQuota(q => ({ ...q, ...j.data })); })
+      .catch(() => undefined);
+  };
+
   const loadRequests = () => {
+    loadQuota();
     const params = new URLSearchParams({ page: String(page), size: String(pageSize) });
     if (filterType !== 'ALL') params.set('type', filterType);
     if (filterStatus !== 'ALL') params.set('status', filterStatus);
@@ -668,7 +677,7 @@ export const RequestsPage: React.FC = () => {
 
         <div className="text-xs text-ink-muted">
           <div className="text-[11px] text-ink-muted">
-            Quota: đi muộn {requests.filter(r => r.type === 'LATE_EARLY' && r.status !== 'REJECTED').length}/2 · bổ sung {requests.filter(r => r.type === 'ADJUST' && r.status !== 'REJECTED').length}/5 · WFH đã gửi tuần này {requests.filter(r => r.type === 'WFH' && r.status === 'PENDING').length}/2
+            Quota: đi muộn {quota.lateUsed}/{quota.lateMax} · bổ sung {quota.adjustUsed}/{quota.adjustMax} · WFH đã gửi tuần này {quota.wfhWeekUsed}/{quota.wfhMax}
           </div>
           Tổng cộng: <strong className="text-ink">{totalElements}</strong> đơn
         </div>
