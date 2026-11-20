@@ -364,8 +364,10 @@ print_dashboard() {
     if [ -n "${SPRING_MAIL_USERNAME:-}" ]; then mail_state="đã cấu hình SMTP"; fi
     echo "  ✉️  Email                      ${mail_state}"
     echo "------------------------------------------------------------------"
-    echo "  Tài khoản seed trong DB: 01HR · 05ACT · 136ACT (mật khẩu: 123456)"
-    echo "  Tài khoản demo của UI   : admin / Admin"
+    echo "  Tài khoản demo (mật khẩu: 123456)"
+    echo "    01HR   → HR Admin   (duyệt cấu hình, bảng công, phép toàn công ty)"
+    echo "    05ACT  → Manager    (duyệt đơn cấp dưới, lịch nhóm)"
+    echo "    136ACT → Nhân viên  (tự chấm công, tạo đơn, xem phép/bảng công)"
   fi
   echo "=================================================================="
   echo
