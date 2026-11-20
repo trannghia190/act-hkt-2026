@@ -347,7 +347,7 @@ Hạn dùng phép tồn = `SUM(amount)` của các transaction có `type IN ('ca
 3. Ghi audit log cho từng thao tác
 ```
 
-Với phép năm (12 ngày/năm): cấp 1 lần đầu năm. Với phép thâm niên/chức vụ: cộng 1 lần đầu năm (hoặc khi thay đổi chức vụ).
+Phép năm **12 ngày/năm được cộng dần 1 ngày vào ngày 15 mỗi tháng** (đến tháng 11/2026 tối đa 11 ngày, tháng 12 mới đủ 12). Phép thâm niên cộng đúng ngày tròn; phép chức vụ cộng đầu năm hoặc khi thay đổi chức vụ.
 
 ### 2.3 Loại nghỉ — cấu hình được, không hard-code
 
