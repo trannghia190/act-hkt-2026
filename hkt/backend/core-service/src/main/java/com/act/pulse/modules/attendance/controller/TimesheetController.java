@@ -118,6 +118,7 @@ public class TimesheetController {
                         LocalDate end = r.getEndDate() == null || halfDay ? start : r.getEndDate();
                         for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
                             if (!YearMonth.from(cur).equals(ym)) continue;
+                            if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
                             daySymbol.put(cur.getDayOfMonth(), halfDay ? sym + "/0.50" : sym);
                             leave += halfDay ? 0.5 : 1;
                         }
