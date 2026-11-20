@@ -16,6 +16,7 @@ export const ApprovalsPage: React.FC = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [filterDate, setFilterDate] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Reject modal state
   const [rejectingItem, setRejectingItem] = useState<AttendanceRequestItem | null>(null);
@@ -53,6 +54,7 @@ export const ApprovalsPage: React.FC = () => {
     } as AttendanceRequestItem;
   };
   const loadInbox = () => {
+    setRefreshing(true);
     Promise.all([
       fetch('/api/v1/requests/inbox', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
       fetch('/api/v1/requests/history', { headers: authOnly() }).then(r => r.json()).catch(() => ({ data: [] })),
@@ -66,7 +68,7 @@ export const ApprovalsPage: React.FC = () => {
         merged.push(r);
       });
       setRequests(merged.map(mapRequest));
-    }).catch(() => undefined);
+    }).catch(() => undefined).finally(() => setRefreshing(false));
   };
   useEffect(loadInbox, []);
 
@@ -187,6 +189,9 @@ export const ApprovalsPage: React.FC = () => {
               ✓ Phê Duyệt Hàng Loạt ({selectedIds.length} Đơn)
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={loadInbox} disabled={refreshing}>
+            {refreshing ? '↻ Đang tải…' : '↻ Tải lại'}
+          </Button>
         </div>
       </div>
 
@@ -266,7 +271,8 @@ export const ApprovalsPage: React.FC = () => {
 
       {/* Approvals Table */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[1150px] text-left border-collapse text-xs">
           <thead>
             <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
               {activeTab === 'PENDING' && (
@@ -389,6 +395,7 @@ export const ApprovalsPage: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal Duyệt đơn */}
