@@ -51,14 +51,24 @@ export function installAuthFetch(): void {
     const isApi = url.startsWith('/api/') || url.includes('/api/v1/');
     const isAuthCall = url.includes('/auth/login') || url.includes('/auth/refresh');
 
-    const withToken = (token?: string): RequestInit => {
-      if (!token) return init || {};
-      const headers = new Headers(init?.headers || {});
-      headers.set('Authorization', `Bearer ${token}`);
-      return { ...(init || {}), headers };
+    /**
+     * Gửi JWT qua X-Auth-Token, KHÔNG dùng Authorization.
+     * Nhờ vậy có thể chạy sau tunnel dùng Authorization cho basic auth
+     * (ngrok --basic-auth) mà không bị ghi đè header.
+     */
+    const withToken = (token?: string, base?: RequestInit): RequestInit => {
+      const headers = new Headers(base?.headers || {});
+      const auth = headers.get('Authorization');
+      let t = token;
+      if (!t && auth && auth.startsWith('Bearer ')) t = auth.substring(7);
+      headers.delete('Authorization');
+      if (t) headers.set('X-Auth-Token', t);
+      return { ...(base || {}), headers };
     };
 
-    const response = await original(input as RequestInfo, init);
+    // API thường: luôn chuyển Bearer (nếu có) sang X-Auth-Token trước khi gửi.
+    const prepared = isApi && !isAuthCall ? withToken(read().accessToken, init) : init;
+    const response = await original(input as RequestInfo, prepared);
     if (!isApi || isAuthCall || (response.status !== 401 && response.status !== 403)) {
       return response;
     }
@@ -73,6 +83,6 @@ export function installAuthFetch(): void {
       }
       return response;
     }
-    return original(input as RequestInfo, withToken(token));
+    return original(input as RequestInfo, withToken(token, init));
   };
 }

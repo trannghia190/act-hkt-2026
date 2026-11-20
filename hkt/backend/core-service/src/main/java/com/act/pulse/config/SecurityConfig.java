@@ -76,7 +76,7 @@ public class SecurityConfig {
         // Cho phép mọi cổng localhost (run-local.sh có thể chọn 3001/3002… khi 3000 bận).
         configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Device-Fingerprint"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "X-Auth-Token", "Content-Type", "X-Device-Fingerprint"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
