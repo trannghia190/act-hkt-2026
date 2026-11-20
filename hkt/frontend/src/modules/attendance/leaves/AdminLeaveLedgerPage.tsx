@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -20,6 +21,8 @@ interface EnterpriseLeaveLedgerItem {
 }
 
 export const AdminLeaveLedgerPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const userFromUrl = searchParams.get('user') || '';
   const [searchTerm, setSearchTerm] = useState('');
   const [employees, setEmployees] = useState<any[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<{ code: string; name: string }[]>([]);
@@ -33,7 +36,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
   const [adjustEmpCode, setAdjustEmpCode] = useState('');
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('1.0');
-  const [adjustReason, setAdjustReason] = useState('Điều chỉnh thưởng thêm phép cống hiến dự án Q3');
+  const [adjustReason, setAdjustReason] = useState('');
 
   // Sổ cái luôn lấy từ API — không dùng dữ liệu mẫu.
   const [ledgerEntries, setLedgerEntries] = useState<EnterpriseLeaveLedgerItem[]>([]);
@@ -79,10 +82,31 @@ export const AdminLeaveLedgerPage: React.FC = () => {
       .then(j => { if (Array.isArray(j?.data)) setLeaveTypes(j.data.map((x: any) => ({ code: x.code, name: x.name }))); })
       .catch(() => undefined);
     fetch('/api/v1/leaves/table', { headers: authOnly() }).then(r => r.json()).then(j => {
-      if (Array.isArray(j?.data)) { setEmployees(j.data); if (j.data[0]) { setSelectedCode(j.data[0].employeeCode); setAdjustEmpCode(prev => prev || j.data[0].employeeCode); } }
+      if (Array.isArray(j?.data)) {
+        setEmployees(j.data);
+        const fromUrl = j.data.find((x: any) => x.employeeCode === userFromUrl);
+        const initial = fromUrl || j.data[0];
+        if (initial) { setSelectedCode(initial.employeeCode); setAdjustEmpCode(prev => prev || initial.employeeCode); }
+      }
     }).catch(() => undefined);
   }, []);
   useEffect(() => { if (selectedCode) loadLedger(selectedCode); }, [selectedCode, employees.length]);
+
+  const exportLedger = () => {
+    const headers = ['Ngày', 'Loại phép', 'Nghiệp vụ', 'Chi tiết / mã đơn', 'Số ngày', 'Số dư sau', 'Người duyệt'];
+    const label: Record<string, string> = { GRANT: 'Cấp phép đầu kỳ', USED: 'Sử dụng phép', ADJUST: 'HR điều chỉnh', EXPIRED: 'Hết hạn phép tồn' };
+    const lines = filteredEntries.map(e => [
+      e.date, `${leaveTypes.find(x => x.code === e.leaveType)?.name || e.leaveType || 'Phép năm'} (${e.leaveType || 'AL'})`,
+      label[e.type] || e.type, `"${(e.reason || '').replace(/"/g, '""')}"`,
+      e.amount, e.balanceAfter, e.approvedBy,
+    ].join(','));
+    const csv = '\uFEFF' + [headers.join(','), ...lines].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `So_phep_${selectedCode || 'all'}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   const handleAdjustLeave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +122,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
     if (!res.ok) { setAdjustError(json?.message || 'Điều chỉnh số dư phép thất bại'); return; }
     setIsAdjustModalOpen(false);
     setAdjustAmount('1.0');
-    setAdjustReason('Điều chỉnh thưởng thêm phép cống hiến dự án Q3');
+    setAdjustReason('');
     loadLedger(adjustEmpCode.trim());
     alert('Đã ghi sổ cái điều chỉnh phép — có lưu vết người thực hiện');
   };
@@ -120,7 +144,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           <Button variant="primary" size="sm" onClick={() => setIsAdjustModalOpen(true)}>
             + Điều Chỉnh Số Dư Phép
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={exportLedger}>
             Xuất Excel Sổ Cái
           </Button>
         </div>
@@ -136,7 +160,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           className="text-xs p-2.5 rounded-lg border border-line bg-surface flex-1 text-ink placeholder:text-ink-muted"
         />
 
-        <select value={selectedCode} onChange={e => setSelectedCode(e.target.value)} className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink">
+        <select value={selectedCode} onChange={e => { setSelectedCode(e.target.value); setSearchParams({ user: e.target.value }); }} className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink">
           {employees.map((e: any) => <option key={e.employeeCode} value={e.employeeCode}>{e.fullName} ({e.employeeCode})</option>)}
         </select>
         <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink">
@@ -149,9 +173,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
           className="text-xs p-2.5 rounded-lg border border-line bg-surface font-semibold text-ink"
         >
           <option value="ALL">🏢 Tất cả phòng ban</option>
-          <option value="Sirius">Sirius (Software Dev)</option>
-          <option value="Optimus">Optimus (AI & Data)</option>
-          <option value="Zeus">Zeus (DevOps)</option>
+          {[...new Set(employees.map((e: any) => e.department).filter(Boolean))].map((d: any) => <option key={d} value={d}>{d}</option>)}
         </select>
 
         <select
