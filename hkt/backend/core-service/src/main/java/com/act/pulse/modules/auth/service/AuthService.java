@@ -9,7 +9,7 @@ import java.util.UUID;
 public interface AuthService {
     AuthResponse login(LoginRequest request);
 
-    /** Làm mới access token từ refresh token còn hiệu lực. */
+    /** Làm mới access token từ refresh token còn hiệu lực (bắt buộc — không có đường tắt bằng mã nhân viên). */
     AuthResponse refresh(String refreshToken);
 
     void changePassword(String currentPassword, String newPassword);
@@ -25,6 +25,8 @@ public interface AuthService {
 
     /** Thu hồi toàn bộ phiên của tài khoản (đổi mật khẩu / đăng xuất). */
     void revokeAllSessions(UUID userId, String reason);
+
+    void revokeAllSessionsByEmployeeCode(String employeeCode, String reason);
 
     void sendPasswordResetOtp(String email);
 

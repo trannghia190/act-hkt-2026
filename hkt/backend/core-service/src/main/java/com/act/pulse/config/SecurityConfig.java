@@ -34,19 +34,23 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /** Public endpoints accessible without requiring Bearer token. */
+    /**
+     * Endpoint công khai thực sự — không yêu cầu token đăng nhập.
+     * Chỉ bao gồm: Đăng nhập, Làm mới token, Quên/Đặt lại mật khẩu, Tra cứu nội quy công khai, OpenAPI docs, và Health check.
+     * Lưu ý: /auth/test-email · /auth/config-smtp · /auth/smtp-status KHÔNG public —
+     * chỉ ADMIN/HR_ADMIN (xem RBAC bên dưới).
+     */
     private static final String[] PUBLIC_ENDPOINTS = {
             "/auth/login",
             "/auth/refresh",
-            "/auth/reset-password-request",
             "/auth/forgot-password",
-            "/auth/test-email",
-            "/auth/config-smtp",
-            "/auth/smtp-status",
+            "/auth/reset-password",
+            "/auth/reset-password-request",
+            "/rules/public-faq",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
-            "/actuator/**",
+            "/actuator/health",
             "/error"
     };
 
@@ -59,6 +63,21 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // Phân quyền chuyên biệt (RBAC):
+                // 1. Cho phép nhân viên đã đăng nhập xem danh mục ca làm việc và lịch nghỉ lễ
+                .requestMatchers(HttpMethod.GET, "/admin/shifts", "/admin/holidays").authenticated()
+
+                // 2. Toàn bộ quản trị hệ thống, nhân sự, audit log, phân nhóm... chỉ dành cho ADMIN và HR_ADMIN
+                .requestMatchers("/admin/**").hasAnyRole("ADMIN", "HR_ADMIN")
+
+                // 2. Cấu hình bảo mật email / SMTP server chỉ dành riêng cho Quản trị viên
+                .requestMatchers("/auth/config-smtp", "/auth/smtp-status", "/auth/test-email").hasAnyRole("ADMIN", "HR_ADMIN")
+
+                // 3. Kích hoạt tác vụ cron ngầm định kỳ
+                .requestMatchers("/cron/**").hasAnyRole("ADMIN", "HR_ADMIN")
+
+                // 4. Mọi API nghiệp vụ khác bắt buộc phải đăng nhập có JWT hợp lệ
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -10,6 +10,10 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 @Slf4j
@@ -24,6 +28,8 @@ public class EmailServiceImpl implements EmailService {
 
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
+
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
 
     @Override
     public boolean configureSmtp(String host, int port, String username, String password) {
@@ -73,128 +79,507 @@ public class EmailServiceImpl implements EmailService {
         return senderEmail != null ? senderEmail : "Chưa cấu hình";
     }
 
+    // =========================================================================
+    // 1. ACCOUNT ACTIVATION & FIRST LOGIN PASSWORD CHANGE
+    // =========================================================================
     @Override
     public void sendAccountActivationEmail(String toEmail, String fullName, String employeeCode, String temporaryPassword) {
-        String subject = "[ACT PULSE] Kích hoạt tài khoản nhân viên & Đổi mật khẩu lần đầu";
-        String content = String.format("""
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-                <div style="background: linear-gradient(135deg, #15803d, #166534); padding: 20px; border-radius: 8px; color: white; text-align: center;">
-                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">ACT PULSE — Hệ Thống Quản Trị Nhân Sự & OKR</h2>
-                    <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Thông Báo Kích Hoạt Tài Khoản Mới</p>
+        String subject = "[ACT PULSE] Thông Báo Khởi Tạo Tài Khoản Nhân Viên & Kích Hoạt Lần Đầu";
+        String preheader = "Kính gửi " + fullName + ", tài khoản của bạn đã được khởi tạo trên hệ thống ACT PULSE. Vui lòng kích hoạt trong 24 giờ.";
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
+            <p style="color: #334155;">Bộ phận Nhân sự trân trọng thông báo: Tài khoản làm việc của Anh/Chị trên hệ thống quản trị nhân sự tập trung <strong>ACT PULSE</strong> đã được khởi tạo thành công.</p>
+            
+            <!-- Credentials Card -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                    📋 THÔNG TIN ĐĂNG NHẬP KHỞI TẠO
                 </div>
-                <div style="padding: 24px 0; line-height: 1.6;">
-                    <p style="font-size: 15px;">Kính gửi <strong>%s</strong>,</p>
-                    <p>Bộ phận Nhân sự đã khởi tạo tài khoản làm việc của bạn trên hệ thống quản trị nhân sự tập trung <strong>ACT PULSE</strong>.</p>
-                    <div style="background-color: #f8fafc; padding: 18px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                        <p style="margin: 6px 0;">• <strong>Mã nhân viên:</strong> <span style="font-family: monospace; font-weight: bold; color: #15803d; font-size: 14px;">%s</span></p>
-                        <p style="margin: 6px 0;">• <strong>Email đăng nhập:</strong> <span style="font-weight: 600;">%s</span></p>
-                        <p style="margin: 6px 0;">• <strong>Mật khẩu tạm thời:</strong> <span style="font-family: monospace; font-weight: bold; background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 15px; color: #0f172a;">%s</span></p>
-                    </div>
-                    <p style="color: #b45309; background: #fffbeb; padding: 12px; border-radius: 6px; font-size: 12px; border: 1px solid #fef3c7;">
-                        ⚠️ <strong>Lưu ý bảo mật:</strong> Để đảm bảo an toàn thông tin, bạn bắt buộc phải đăng nhập và đổi mật khẩu mới trong lần đầu tiên truy cập.
-                    </p>
-                    <div style="text-align: center; margin: 28px 0;">
-                        <a href="http://localhost:3000/login" style="background-color: #15803d; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Đăng Nhập & Kích Hoạt Ngay</a>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #64748b; text-align: center;">
-                    Email này được gửi tự động từ Hệ thống ACT PULSE Doanh Nghiệp. Vui lòng không trả lời thư này.
-                </div>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="font-size: 14px;">
+                    <tr>
+                        <td style="padding: 7px 0; color: #64748b; width: 140px;">Mã nhân viên:</td>
+                        <td style="padding: 7px 0; font-family: monospace; font-weight: 700; color: #047857; font-size: 15px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 7px 0; color: #64748b;">Email đăng nhập:</td>
+                        <td style="padding: 7px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 7px 0; color: #64748b;">Mật khẩu tạm thời:</td>
+                        <td style="padding: 7px 0;">
+                            <span style="font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-weight: 800; background-color: #e2e8f0; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 15px; letter-spacing: 1px; border: 1px solid #cbd5e1;">%s</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 7px 0; color: #64748b;">Trạng thái tài khoản:</td>
+                        <td style="padding: 7px 0;">
+                            <span style="background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 12px; border: 1px solid #fde68a;">Chờ đổi mật khẩu lần đầu</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Security Notice Box -->
+            <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 14px 16px; margin: 20px 0; font-size: 13px; color: #78350f; line-height: 1.5;">
+                <strong>🛡️ Yêu cầu bảo mật bắt buộc:</strong><br>
+                Nhằm tuân thủ chính sách an toàn thông tin nội bộ, Anh/Chị sẽ được hệ thống tự động hướng dẫn:
+                <ul style="margin: 6px 0 0 0; padding-left: 20px;">
+                    <li><strong>Bước 1:</strong> Thiết lập mật khẩu mới (tối thiểu 8 ký tự, gồm chữ hoa, số &amp; ký tự đặc biệt).</li>
+                    <li><strong>Bước 2:</strong> Hoàn tất đăng ký khuôn mặt sinh trắc học (Face Biometric) để sẵn sàng điểm danh ca làm việc.</li>
+                </ul>
             </div>
             """, fullName, employeeCode, toEmail, temporaryPassword);
 
-        sendHtmlEmail(toEmail, subject, content);
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #064e3b 0%%, #047857 100%%)",
+                "ONBOARDING",
+                "Chào Mừng Thành Viên Mới!",
+                "Kích hoạt tài khoản nhân viên & Đổi mật khẩu lần đầu",
+                body,
+                "ĐĂNG NHẬP & KÍCH HOẠT TÀI KHOẢN NGAY →",
+                "http://localhost:3000/login"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
+    // =========================================================================
+    // 2. PASSWORD RESET OTP VIA GMAIL
+    // =========================================================================
     @Override
     public void sendPasswordResetEmail(String toEmail, String fullName, String resetToken) {
-        String subject = "[ACT PULSE] Yêu cầu đặt lại mật khẩu tài khoản";
-        String content = String.format("""
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-                <div style="background: linear-gradient(135deg, #0284c7, #0369a1); padding: 20px; border-radius: 8px; color: white; text-align: center;">
-                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">ACT PULSE — Đặt Lại Mật Khẩu</h2>
-                    <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Xác thực tài khoản qua Gmail</p>
+        String subject = "[ACT PULSE] Mã Xác Thực OTP Đặt Lại Mật Khẩu";
+        String preheader = "Mã OTP xác thực đặt lại mật khẩu của bạn là " + resetToken + " (hiệu lực 15 phút).";
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
+            <p style="color: #334155;">Hệ thống ACT PULSE vừa tiếp nhận yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <strong>%s</strong>.</p>
+            
+            <!-- OTP Block -->
+            <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 14px; padding: 24px 20px; text-align: center; margin: 24px 0;">
+                <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 1px;">
+                    MÃ XÁC THỰC BẢO MẬT (OTP)
                 </div>
-                <div style="padding: 24px 0; line-height: 1.6;">
-                    <p style="font-size: 15px;">Xin chào <strong>%s</strong>,</p>
-                    <p>Hệ thống nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <strong>%s</strong>.</p>
-                    <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bbf7d0; text-align: center;">
-                        <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">MÃ XÁC THỰC OTP (HIỆU LỰC 15 PHÚT):</p>
-                        <p style="margin: 12px 0 0 0; font-family: monospace; font-size: 32px; letter-spacing: 8px; font-weight: 800; color: #15803d;">%s</p>
-                    </div>
-                    <p style="font-size: 12px; color: #64748b;">Nếu bạn không yêu cầu đặt lại mật khẩu, xin hãy bỏ qua email này hoặc liên hệ ngay bộ phận Quản trị hệ thống để bảo vệ tài khoản.</p>
+                <div style="font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #047857; margin: 12px 0;">
+                    %s
                 </div>
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #64748b; text-align: center;">
-                    Hệ thống Xác thực & An Toàn Thông Tin ACT PULSE.
+                <div style="display: inline-block; background-color: #dcfce7; color: #15803d; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px;">
+                    ⏳ Hiệu lực trong vòng 15 phút
                 </div>
+            </div>
+
+            <!-- Caution Note -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 12px; color: #64748b; line-height: 1.6;">
+                <strong>⚠️ Khuyến cáo bảo mật:</strong><br>
+                • Tuyệt đối <strong>không chia sẻ</strong> mã OTP này cho bất kỳ ai, kể cả nhân sự hoặc kỹ thuật viên.<br>
+                • Nếu Anh/Chị không gửi yêu cầu này, rất có thể ai đó đang cố tình truy cập tài khoản của bạn. Vui lòng bỏ qua email và thông báo ngay cho Quản trị viên hệ thống để phong tỏa tài khoản kịp thời.
             </div>
             """, fullName, toEmail, resetToken);
 
-        sendHtmlEmail(toEmail, subject, content);
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #0369a1 0%%, #0284c7 100%%)",
+                "SECURITY",
+                "Xác Thực Đặt Lại Mật Khẩu",
+                "Mã bảo mật OTP gửi qua Gmail Doanh Nghiệp",
+                body,
+                "TRUY CẬP TRANG ĐẶT LẠI MẬT KHẨU →",
+                "http://localhost:3000/forgot-password"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
+    // =========================================================================
+    // 3. REQUEST DECISION NOTIFICATION (APPROVED / REJECTED)
+    // =========================================================================
     @Override
     public void sendRequestDecisionNotification(String toEmail, String fullName, String requestId, String requestType, String decision, String approverName, String approverComment) {
         boolean isApproved = "APPROVED".equalsIgnoreCase(decision);
         String statusText = isApproved ? "ĐÃ ĐƯỢC PHÊ DUYỆT" : "BỊ TỪ CHỐI";
-        String colorTheme = isApproved ? "#15803d" : "#b91c1c";
-        String subject = String.format("[ACT PULSE] Kết quả xét duyệt đơn: %s (%s)", requestId, statusText);
+        String statusColor = isApproved ? "#047857" : "#b91c1c";
+        String statusBg = isApproved ? "#ecfdf5" : "#fef2f2";
+        String statusBorder = isApproved ? "#a7f3d0" : "#fecaca";
+        String headerGradient = isApproved
+                ? "linear-gradient(135deg, #064e3b 0%%, #047857 100%%)"
+                : "linear-gradient(135deg, #7f1d1d 0%%, #b91c1c 100%%)";
 
-        String content = String.format("""
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-                <div style="background-color: %s; padding: 18px 20px; border-radius: 8px; color: white;">
-                    <h2 style="margin: 0; font-size: 18px; font-weight: 700;">Kết Quả Phê Duyệt Đơn: %s</h2>
-                    <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Trạng thái: %s</p>
-                </div>
-                <div style="padding: 20px 0; line-height: 1.6;">
-                    <p>Xin chào <strong>%s</strong>,</p>
-                    <p>Đơn yêu cầu của bạn đã được cấp quản lý xử lý với kết quả như sau:</p>
-                    <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #e2e8f0; font-size: 13px;">
-                        <p style="margin: 5px 0;">• <strong>Mã đơn:</strong> <span style="font-family: monospace; font-weight: bold;">%s</span></p>
-                        <p style="margin: 5px 0;">• <strong>Loại yêu cầu:</strong> %s</p>
-                        <p style="margin: 5px 0;">• <strong>Người phê duyệt:</strong> %s</p>
-                        <p style="margin: 5px 0;">• <strong>Ý kiến / Lý do:</strong> <em style="color: #475569;">%s</em></p>
-                    </div>
-                    <div style="text-align: center; margin: 24px 0;">
-                        <a href="http://localhost:3000/attendance/requests" style="background-color: #0f172a; color: white; padding: 10px 22px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Xem Chi Tiết Trên Hệ Thống</a>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 11px; color: #64748b; text-align: center;">
-                    Email thông báo tự động từ Hệ thống ACT PULSE.
+        String subject = String.format("[ACT PULSE] Kết Quả Xét Duyệt Đơn: %s — %s", requestId, statusText);
+        String preheader = "Đơn yêu cầu " + requestId + " (" + requestType + ") của bạn đã " + (isApproved ? "được phê duyệt thành công." : "bị từ chối bởi cấp quản lý.");
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
+            <p style="color: #334155;">Cấp quản lý đã tiến hành xem xét và đưa ra kết quả xử lý đối với đơn yêu cầu của Anh/Chị trên hệ thống ACT PULSE:</p>
+
+            <!-- Status Pill Banner -->
+            <div style="background-color: %s; border: 1px solid %s; border-radius: 10px; padding: 14px 18px; margin: 20px 0; text-align: center;">
+                <span style="font-size: 16px; font-weight: 800; color: %s; letter-spacing: 0.5px;">
+                    %s %s
+                </span>
+            </div>
+
+            <!-- Details Card -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0; font-size: 13px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%">
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; width: 140px;">Mã số đơn:</td>
+                        <td style="padding: 6px 0; font-family: monospace; font-weight: 700; color: #0f172a; font-size: 14px;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Loại yêu cầu:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Người phê duyệt:</td>
+                        <td style="padding: 6px 0; font-weight: 600; color: #047857;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Thời gian xử lý:</td>
+                        <td style="padding: 6px 0; color: #475569;">%s</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Approver Comment Card -->
+            <div style="margin: 20px 0;">
+                <div style="font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px;">Ý KIẾN / LÝ DO PHÊ DUYỆT:</div>
+                <div style="background-color: #ffffff; border-left: 4px solid %s; border: 1px solid #e2e8f0; border-left-width: 4px; border-left-color: %s; padding: 14px 18px; border-radius: 0 8px 8px 0; font-style: italic; color: #1e293b; font-size: 13px; line-height: 1.6;">
+                    "%s"
                 </div>
             </div>
-            """, colorTheme, requestId, statusText, fullName, requestId, requestType, approverName,
-            approverComment != null && !approverComment.isBlank() ? approverComment : "Không có ghi chú thêm");
 
-        sendHtmlEmail(toEmail, subject, content);
+            <p style="font-size: 13px; color: #64748b;">Dữ liệu bảng công và quỹ phép cá nhân liên quan đã được tự động đồng bộ hóa tương ứng với kết quả này.</p>
+            """,
+                fullName,
+                statusBg, statusBorder, statusColor,
+                (isApproved ? "✓" : "✕"), statusText,
+                requestId, requestType, approverName, LocalDateTime.now().format(TIME_FORMATTER),
+                statusColor, statusColor,
+                approverComment != null && !approverComment.isBlank() ? approverComment : "Không có ghi chú thêm từ người duyệt."
+        );
+
+        String htmlContent = buildMasterHtml(
+                preheader,
+                headerGradient,
+                isApproved ? "PHÊ DUYỆT" : "TỪ CHỐI",
+                "Thông Báo Kết Quả Xử Lý Đơn",
+                "Đơn yêu cầu: " + requestId + " (" + requestType + ")",
+                body,
+                "XEM CHI TIẾT ĐƠN TRÊN HỆ THỐNG →",
+                "http://localhost:3000/attendance/requests"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
+    // =========================================================================
+    // 4. DAILY MORNING DIGEST (08:00 AM)
+    // =========================================================================
+    @Override
+    public void sendDailyDigestEmail(String toEmail, String fullName, List<Map<String, Object>> tasks, Map<String, Object> leaveSummary) {
+        String subject = "[ACT PULSE] Bản Tin Công Việc Buổi Sáng · 08:00 AM";
+        String preheader = "Bản tin 08:00: Bạn có " + (tasks != null ? tasks.size() : 0) + " việc cần xử lý và số dư phép năm hiện tại.";
+
+        StringBuilder tasksHtml = new StringBuilder();
+        if (tasks == null || tasks.isEmpty()) {
+            tasksHtml.append("""
+                <div style="text-align: center; padding: 24px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">
+                    🎉 Hôm nay bạn không có công việc nào tồn đọng cần xử lý!
+                </div>
+            """);
+        } else {
+            tasksHtml.append("<div style=\"margin: 16px 0;\">");
+            for (Map<String, Object> t : tasks) {
+                String title = String.valueOf(t.getOrDefault("title", "Nhiệm vụ"));
+                String desc = String.valueOf(t.getOrDefault("description", ""));
+                String urgency = String.valueOf(t.getOrDefault("urgency", "today"));
+                String badgeColor = "overdue".equals(urgency) ? "#e11d48" : "soon".equals(urgency) ? "#d97706" : "#059669";
+                String badgeBg = "overdue".equals(urgency) ? "#ffe4e6" : "soon".equals(urgency) ? "#fef3c7" : "#dcfce7";
+                String badgeText = "overdue".equals(urgency) ? "Quá hạn" : "soon".equals(urgency) ? "Sắp hạn" : "Hôm nay";
+
+                tasksHtml.append(String.format("""
+                    <div style="border-left: 3px solid %s; background-color: #f8fafc; padding: 12px 14px; margin-bottom: 10px; border-radius: 0 8px 8px 0; border: 1px solid #e2e8f0; border-left-width: 3px; border-left-color: %s;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; font-size: 13px; color: #0f172a;">%s</span>
+                            <span style="background-color: %s; color: %s; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">%s</span>
+                        </div>
+                        <div style="font-size: 12px; color: #475569; margin-top: 4px;">%s</div>
+                    </div>
+                """, badgeColor, badgeColor, title, badgeBg, badgeColor, badgeText, desc));
+            }
+            tasksHtml.append("</div>");
+        }
+
+        String leaveHtml = "";
+        if (leaveSummary != null) {
+            Object total = leaveSummary.getOrDefault("totalRemaining", 10.5);
+            Object carried = leaveSummary.getOrDefault("carriedRemaining", 3.5);
+            Object annual = leaveSummary.getOrDefault("annualRemaining", 7.0);
+            leaveHtml = String.format("""
+                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+                    <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">🌴 THÔNG TIN PHÉP NĂM CÁ NHÂN</div>
+                    <div style="font-size: 18px; font-weight: 800; color: #047857; margin-top: 4px;">
+                        %s ngày phép khả dụng
+                    </div>
+                    <div style="font-size: 12px; color: #15803d; margin-top: 2px;">
+                        (Phép tồn 2025: <strong>%s</strong> ngày · Phép năm 2026: <strong>%s</strong> ngày)
+                    </div>
+                </div>
+            """, total, carried, annual);
+        }
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Chào buổi sáng <strong>%s</strong>,</p>
+            <p style="color: #334155;">Đây là bản tin tổng hợp tự động lúc 08:00 sáng, giúp bạn nắm bắt nhanh các nhiệm vụ chấm công, đơn từ và cập nhật OKR cần xử lý trong ngày:</p>
+            
+            %s
+            %s
+            
+            <p style="font-size: 12px; color: #64748b;">Chính sách chống spam: Hệ thống chỉ gửi tối đa 1 email digest mỗi ngày vào 08:00 sáng để bảo vệ sự tập trung của bạn.</p>
+            """, fullName, tasksHtml, leaveHtml);
+
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #0f172a 0%%, #1e293b 100%%)",
+                "BẢN TIN 08:00",
+                "Bản Tin Công Việc Buổi Sáng",
+                "Nhiệm vụ trong ngày & Số dư phép năm",
+                body,
+                "MỞ TRANG CẦN LÀM (TODO INBOX) →",
+                "http://localhost:3000/todo"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    // =========================================================================
+    // 5. SLA ESCALATION EMAIL (> 48 HOURS)
+    // =========================================================================
+    @Override
+    public void sendSlaEscalationEmail(String toEmail, String managerName, String requestId, String employeeName, String requestType, long elapsedHours) {
+        String subject = String.format("[ACT PULSE - KHẨN] Cảnh Báo Quá Hạn Phê Duyệt Đơn %s (> %dh)", requestId, elapsedHours);
+        String preheader = "Cảnh báo khẩn: Đơn " + requestId + " của " + employeeName + " đã quá hạn SLA " + elapsedHours + " giờ.";
+
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Kính gửi Quản lý <strong>%s</strong>,</p>
+            <p style="color: #334155;">Hệ thống ACT PULSE phát hiện đơn yêu cầu dưới đây đã chờ phê duyệt quá thời hạn cam kết dịch vụ (SLA &gt; 48 giờ) và cần được xử lý khẩn cấp:</p>
+
+            <!-- Alert Card -->
+            <div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <div style="font-size: 12px; font-weight: 800; color: #be123c; text-transform: uppercase;">
+                    ⚠️ CẢNH BÁO QUÁ HẠN SLA PHÊ DUYỆT
+                </div>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="font-size: 13px; margin-top: 10px;">
+                    <tr>
+                        <td style="padding: 4px 0; color: #881337; width: 140px;">Mã đơn:</td>
+                        <td style="padding: 4px 0; font-family: monospace; font-weight: 700; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; color: #881337;">Nhân viên gửi:</td>
+                        <td style="padding: 4px 0; font-weight: 700; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; color: #881337;">Loại yêu cầu:</td>
+                        <td style="padding: 4px 0; font-weight: 600; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; color: #881337;">Thời gian chờ duyệt:</td>
+                        <td style="padding: 4px 0; font-weight: 800; color: #be123c;">%d giờ (Quá SLA 48h)</td>
+                    </tr>
+                </table>
+            </div>
+
+            <p style="font-size: 13px; color: #475569;">Theo Quy định số 12 (Quy tắc luồng duyệt &amp; SLA), nếu đơn tiếp tục quá hạn sau mốc 72 giờ, hệ thống sẽ tự động chuyển tiếp hồ sơ lên Cấp trên trực tiếp (Manager + 1) và thông báo tới Phòng Nhân sự.</p>
+            """, managerName, requestId, employeeName, requestType, elapsedHours);
+
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #881337 0%%, #be123c 100%%)",
+                "CẢNH BÁO SLA",
+                "Cảnh Báo Quá Hạn Phê Duyệt Đơn",
+                "Yêu cầu cấp bách: Đơn chờ xử lý quá hạn SLA 48h",
+                body,
+                "PHÊ DUYỆT ĐƠN NÀY NGAY TRÊN TODO INBOX →",
+                "http://localhost:3000/todo"
+        );
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    // =========================================================================
+    // 6. SMTP CONNECTION TEST EMAIL
+    // =========================================================================
     @Override
     public boolean sendTestEmail(String toEmail, String message) {
-        String subject = "[ACT PULSE] Kiểm Tra Cấu Hình Gửi Mail Thành Công (Gmail Doanh Nghiệp)";
-        String content = String.format("""
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-                <div style="background-color: #15803d; padding: 18px 20px; border-radius: 8px; color: white;">
-                    <h2 style="margin: 0; font-size: 18px; font-weight: 700;">✓ Kết Nối Gmail Doanh Nghiệp Thành Công!</h2>
-                    <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Giao Thức SMTP smtp.gmail.com:587 (TLS)</p>
-                </div>
-                <div style="padding: 20px 0; color: #1e293b; line-height: 1.6;">
-                    <p>Xin chào,</p>
-                    <p>Email này được gửi trực tiếp từ máy chủ <strong>ACT PULSE (Spring Boot 3)</strong> qua tài khoản Gmail doanh nghiệp thật mà bạn đã thiết lập.</p>
-                    <div style="background-color: #f0fdf4; padding: 16px; border-radius: 8px; margin: 18px 0; border: 1px solid #bbf7d0; color: #166534; font-size: 13px;">
-                        <p style="margin: 0;">• <strong>Địa chỉ nhận thật:</strong> %s</p>
-                        <p style="margin: 6px 0 0 0;">• <strong>Thông điệp kiểm thử:</strong> %s</p>
-                        <p style="margin: 6px 0 0 0;">• <strong>Thời gian gửi:</strong> %s</p>
-                    </div>
-                    <p style="font-size: 13px; color: #334155;">Từ bây giờ, tất cả các sự kiện: tạo tài khoản nhân viên mới, cấp mật khẩu tạm thời, gửi OTP đặt lại mật khẩu và phê duyệt đơn từ sẽ được chuyển thẳng tới hòm thư cá nhân của nhân sự.</p>
-                </div>
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 11px; color: #64748b; text-align: center;">
-                    ACT PULSE Enterprise Notification Service.
-                </div>
-            </div>
-            """, toEmail, message, java.time.LocalDateTime.now());
+        String subject = "[ACT PULSE] Kiểm Tra Kết Nối Gmail Doanh Nghiệp Thành Công";
+        String preheader = "Xác nhận kết nối máy chủ gửi thư Gmail SMTP của ACT PULSE hoạt động hoàn hảo.";
 
-        return sendHtmlEmail(toEmail, subject, content);
+        String body = String.format("""
+            <p style="font-size: 15px; margin-top: 0;">Xin chào Quản trị viên,</p>
+            <p style="color: #334155;">Thư này được gửi trực tiếp từ máy chủ <strong>ACT PULSE (Spring Boot 3)</strong> nhằm kiểm tra tính tương thích và độ tin cậy của cấu hình gửi thư qua giao thức Gmail SMTP Doanh nghiệp.</p>
+
+            <!-- Diagnostics Card -->
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #bbf7d0; padding-bottom: 8px;">
+                    ✓ THÔNG SỐ CHẨN ĐOÁN KẾT NỐI
+                </div>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="font-size: 13px;">
+                    <tr>
+                        <td style="padding: 5px 0; color: #166534; width: 140px;">Địa chỉ nhận kiểm thử:</td>
+                        <td style="padding: 5px 0; font-weight: 700; color: #047857;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #166534;">Máy chủ SMTP:</td>
+                        <td style="padding: 5px 0; font-family: monospace; color: #0f172a;">%s:587 (TLS v1.3)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #166534;">Thông điệp thử nghiệm:</td>
+                        <td style="padding: 5px 0; font-style: italic; color: #0f172a;">"%s"</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #166534;">Thời điểm gửi:</td>
+                        <td style="padding: 5px 0; color: #0f172a;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #166534;">Trạng thái dịch vụ:</td>
+                        <td style="padding: 5px 0;">
+                            <span style="background-color: #dcfce7; color: #15803d; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">HOẠT ĐỘNG HOÀN HẢO (ONLINE)</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <p style="font-size: 13px; color: #334155; line-height: 1.6;">
+                Kể từ thời điểm này, tất cả các luồng thông báo tự động (Cấp tài khoản mới, Gửi OTP đặt lại mật khẩu, Phê duyệt đơn từ, Bản tin 08:00 sáng) sẽ được chuyển giao tức thời và an toàn vào hòm thư Gmail của cán bộ nhân viên.
+            </p>
+            """, toEmail, mailHost, message, LocalDateTime.now().format(TIME_FORMATTER));
+
+        String htmlContent = buildMasterHtml(
+                preheader,
+                "linear-gradient(135deg, #065f46 0%%, #047857 100%%)",
+                "KIỂM THỬ KẾT NỐI",
+                "Kết Nối Gmail SMTP Thành Công",
+                "Hệ thống gửi thư tự động ACT PULSE đã sẵn sàng",
+                body,
+                "TRUY CẬP TRANG QUẢN TRỊ ACT PULSE →",
+                "http://localhost:3000/admin/users"
+        );
+
+        return sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    // =========================================================================
+    // MASTER HTML EMAIL BUILDER (Clean, Responsive, Corporate Identity)
+    // =========================================================================
+    private String buildMasterHtml(String preheader, String headerGradient, String categoryPill,
+                                   String heroTitle, String heroSubtitle, String bodyHtml,
+                                   String ctaText, String ctaUrl) {
+
+        String ctaBlock = "";
+        if (ctaText != null && !ctaText.isBlank() && ctaUrl != null && !ctaUrl.isBlank()) {
+            ctaBlock = String.format("""
+                <div style="text-align: center; margin: 32px 0 16px 0;">
+                    <a href="%s" style="background-color: #047857; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(4, 120, 87, 0.3); letter-spacing: 0.3px;">
+                        %s
+                    </a>
+                </div>
+            """, ctaUrl, ctaText);
+        }
+
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>ACT PULSE Enterprise</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6;">
+                <!-- Preheader snippet -->
+                <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all;">
+                    %s
+                </div>
+
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="background-color: #f1f5f9; padding: 32px 12px;">
+                    <tr>
+                        <td align="center">
+                            <!-- Main Container Card -->
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04); border: 1px solid #e2e8f0;">
+                                <!-- Header Banner -->
+                                <tr>
+                                    <td style="background: %s; padding: 32px 36px; color: #ffffff;">
+                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%">
+                                            <tr>
+                                                <td>
+                                                    <div style="display: inline-block; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #ffffff;">
+                                                        ACT <span style="color: #6ee7b7;">PULSE</span>
+                                                    </div>
+                                                    <span style="display: inline-block; margin-left: 10px; background: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: middle;">
+                                                        %s
+                                                    </span>
+                                                </td>
+                                                <td align="right" style="font-size: 11px; opacity: 0.85; font-family: monospace; color: #e2e8f0;">
+                                                    🔒 NỘI BỘ BẢO MẬT
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="2" style="padding-top: 18px;">
+                                                    <h1 style="margin: 0; font-size: 21px; font-weight: 800; line-height: 1.35; color: #ffffff;">%s</h1>
+                                                    <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; color: #e2e8f0;">%s</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Body Content -->
+                                <tr>
+                                    <td style="padding: 32px 36px 28px 36px; color: #1e293b; font-size: 14px; line-height: 1.65;">
+                                        %s
+                                        %s
+                                    </td>
+                                </tr>
+
+                                <!-- Corporate Footer -->
+                                <tr>
+                                    <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 36px; font-size: 12px; color: #64748b; line-height: 1.6;">
+                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%">
+                                            <tr>
+                                                <td>
+                                                    <strong style="color: #334155; font-size: 13px;">Hệ Thống Quản Trị Nhân Sự &amp; Hiệu Suất ACT PULSE</strong>
+                                                    <div style="margin-top: 4px; color: #475569;">CÔNG TY CỔ PHẦN CÔNG NGHỆ VÀ TRUYỀN THÔNG ACT</div>
+                                                    <div style="margin-top: 2px;">Tầng 12, Tòa nhà ACT Tower, Phố Duy Tân, Cầu Giấy, Hà Nội</div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding-top: 14px; border-top: 1px dashed #cbd5e1; margin-top: 14px;">
+                                                    <div style="font-size: 11px; color: #94a3b8; line-height: 1.5;">
+                                                        • Thư điện tử tự động từ máy chủ ACT PULSE. Vui lòng không trả lời thư này (No-reply).<br>
+                                                        • Cần hỗ trợ? Bộ phận Nhân sự: <a href="mailto:hr@act.vn" style="color: #047857; font-weight: 600; text-decoration: none;">hr@act.vn</a> · Hotline kỹ thuật: <strong style="color: #0f172a;">1900 6868</strong>.<br>
+                                                        • Cam kết bảo mật: ACT PULSE không bao giờ yêu cầu bạn cung cấp mật khẩu qua điện thoại hoặc tin nhắn.
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+            """,
+                preheader != null ? preheader : "Thông báo từ ACT PULSE",
+                headerGradient,
+                categoryPill,
+                heroTitle,
+                heroSubtitle,
+                bodyHtml,
+                ctaBlock
+        );
     }
 
     private boolean sendHtmlEmail(String toEmail, String subject, String htmlContent) {
@@ -206,7 +591,7 @@ public class EmailServiceImpl implements EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            
+
             String from = (senderEmail != null && !senderEmail.isBlank()) ? senderEmail : "act.pulse.hr@gmail.com";
             helper.setFrom(from, "ACT PULSE Notification System");
             helper.setTo(toEmail);

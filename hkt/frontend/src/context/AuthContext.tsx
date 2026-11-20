@@ -70,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: authData.status || 'ACTIVE',
           };
           setUser(matchedUser);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(matchedUser));
           return true;
         }
       }

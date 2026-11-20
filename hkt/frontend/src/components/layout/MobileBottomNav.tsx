@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Inbox, Fingerprint, FilePlus, Target, Menu } from 'lucide-react';
+import { CheckSquare, Fingerprint, FilePlus, Target, Menu } from 'lucide-react';
 
 interface MobileBottomNavProps {
   onOpenDrawer: () => void;
@@ -8,7 +8,7 @@ interface MobileBottomNavProps {
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenDrawer }) => {
   const navItems = [
-    { label: 'Cần Làm', path: '/todo', icon: Inbox },
+    { label: 'Cần Làm', path: '/todo', icon: CheckSquare },
     { label: 'Chấm Công', path: '/attendance/checkin', icon: Fingerprint, isAccent: true },
     { label: 'Đơn Từ', path: '/attendance/requests', icon: FilePlus },
     { label: 'OKR', path: '/okr/dashboard', icon: Target },
@@ -16,7 +16,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenDrawer }
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#101715]/95 backdrop-blur-md border-t border-[#1f2b28] px-2 py-1 select-none shadow-lg">
-      <div className="flex items-center justify-around">
+      <div className="flex items-center justify-around max-w-[390px] mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -24,7 +24,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenDrawer }
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all ${
+                `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
                   isActive
                     ? 'text-emerald-400 font-bold scale-105'
                     : 'text-[#8fa39d] hover:text-white font-medium'
@@ -45,11 +45,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenDrawer }
           );
         })}
 
-        {/* 5th Button: Open Full Drawer Menu */}
+        {/* 5th Action: Mở Full Drawer Menu cuộn (S00) */}
         <button
           type="button"
           onClick={onOpenDrawer}
           className="flex flex-col items-center justify-center py-1.5 px-2 text-[#8fa39d] hover:text-white rounded-xl transition-all font-medium cursor-pointer"
+          title="Mở toàn bộ menu"
         >
           <Menu className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] leading-tight">Menu</span>
