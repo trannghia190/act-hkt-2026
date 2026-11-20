@@ -145,3 +145,12 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 * **Quá hạn 2 ngày** → `EXPIRED`, tự đóng, mọi thao tác xử lý bị chặn.
 * **Hiệu lực thật**: FIX ghi `timesheet_cells` + audit ô; MAKEUP tạo đơn bổ sung công; REJECT bắt buộc lý do; tất cả ghi audit + gửi thông báo.
 * **Chốt & khoá** vẫn bị chặn khi còn khiếu nại `PENDING`.
+
+### Sổ phép & Bảng phép — rà soát 21/11/2026
+* **D5 Sổ phép (S34)**: nút **Xuất Excel Sổ Cái** xuất CSV UTF‑8 đúng các cột đang lọc (ngày · loại phép · nghiệp vụ · chi tiết · số ngày · số dư sau · người duyệt); hỗ trợ mở trực tiếp `?user=CODE` và đồng bộ URL khi đổi nhân viên.
+* **E10 Bảng phép (S46)**: click tên nhân viên mở **đúng** sổ phép người đó; tổng chân bảng tính trên các dòng đang lọc; người còn < 2 ngày tô vàng.
+* **E1/E2 (S15)**: đủ 5+31+17 cột, nhấp đúp ô để sửa (ô đã sửa màu đỏ, bắt buộc lý do), khoá kỳ có confirm; lưu view + chia sẻ link.
+* **E3/E4/E5**: 19 luật có phiên bản/ngày hiệu lực, rollback có lý do, confirm khi lưu; trang tra cứu cùng nguồn API, hiện `vN · hiệu lực`.
+* **E6**: ca thường/linh hoạt/ngoại lệ, bộ gán theo nhóm+chức danh, ngày lễ CRUD, geofence + IP.
+* **E7**: loại nghỉ CRUD (gồm hiếu hỉ, tang gia, thai sản nam/nữ + biến thể), 3 tầng kế thừa, duyệt 1 cấp quản lý.
+* **E8**: mặc định 2 thiết bị (rule `attendance_security.max_devices`), yêu cầu máy thứ 3 cần lý do, HR duyệt/thu hồi + audit.

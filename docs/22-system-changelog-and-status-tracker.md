@@ -67,6 +67,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 * Sửa lỗi WFH chọn khoảng ngày bị lệch 1 ngày do timezone (26/11–1/12 từng sinh ngày25/11 và báo vượt quota); nay ngày gửi đúng theo lịch địa phương.
 * Quota đơn chỉ tính đơn chờ/đã duyệt; không tính nháp, bị từ chối, đã hủy/tự hủy trùng ngày; UI lấy `/requests/my-quota` server-side.
 * Thêm tài khoản QA độc lập `137ACT/123456` (cùng nhóm/quản lý/ca với 136ACT, có sổ phép 11 kỳ + log thiếu check-out hôm qua).
+* D5: nút Xuất Excel Sổ Cái hoạt động (CSV theo bộ lọc) + mở sổ phép đúng nhân viên qua `?user=`; E10 click người mở đúng sổ phép.
 * Khiếu nại: thêm từ chối hàng loạt (P1) + chặn FIX khi kỳ khoá + validate action/ký hiệu/lý do; danh sách lọc theo trạng thái + sắp theo hạn + đếm ngược; chi tiết 3 cột dùng **dữ liệu thật** (log/đơn từ/ô bảng công) + gợi ý rule; xử lý chỉ HR/quản lý trực tiếp; chặn xử lý lại & quá hạn 2 ngày; FIX ghi ô + audit, MAKEUP tạo đơn ADJUST, REJECT bắt buộc lý do; mọi thao tác audit + notification.
 * Thêm tài khoản Trưởng nhóm `138ACT/123456` (EMPLOYEE, leader_id nhóm Optimus; lịch nhóm scope nhóm mình, không thấy công ty).
 * Trùng ngày nghỉ phép/WFH: confirm hủy đơn cũ rồi áp dụng đơn mới (theo ngày+buổi), có audit `AUTO_CANCEL_DUPLICATE`.
