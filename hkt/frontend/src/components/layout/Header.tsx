@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/auth.types';
 import { Button } from '../common/Button';
 import { Menu, Search, Camera, LogOut } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -19,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenMobileMenu,
 }) => {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -90,21 +89,6 @@ export const Header: React.FC<HeaderProps> = ({
             {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt'}
           </span>
         </button>
-
-        {/* Role Switcher Dropdown (Phục vụ Manual Testing phân quyền) */}
-        <div className="flex items-center gap-1 pl-1 sm:pl-2 border-l border-line text-xs">
-          <select
-            value={user?.role || 'ADMIN'}
-            onChange={(e) => switchRole(e.target.value as UserRole)}
-            className="text-[11px] sm:text-xs font-bold py-1 px-1.5 sm:px-2 border border-accent-line rounded-md bg-accent-soft text-accent focus:outline-none cursor-pointer max-w-[90px] sm:max-w-none"
-            title="Chuyển vai trò nhanh để kiểm thử phân quyền"
-          >
-            <option value="ADMIN">👑 Admin</option>
-            <option value="HR_ADMIN">👩‍💼 HR</option>
-            <option value="MANAGER">👔 Lead</option>
-            <option value="EMPLOYEE">👨‍💻 Dev</option>
-          </select>
-        </div>
 
         {/* User Profile Avatar & Logout */}
         <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-line">
