@@ -123,6 +123,9 @@ public class RequestController {
                     .count();
             if (monthly >= 5) throw new RuntimeException("Đã dùng đủ 5 lần bổ sung công trong tháng");
             int deadlineDays = ruleService.getInt("makeup", "deadline_working_days", 3);
+            if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isAfter(LocalDate.now())) {
+                throw new RuntimeException("Bổ sung chấm công chỉ áp dụng cho hôm nay hoặc ngày đã qua");
+            }
             if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(deadlineDays))) {
                 throw new RuntimeException("Bổ sung chấm công chỉ được gửi trong vòng " + deadlineDays + " ngày kể từ ngày quên chấm");
             }
@@ -481,17 +484,21 @@ public class RequestController {
         RequestEntity saved = requestRepository.save(r);
 
         // Đơn đi muộn/về sớm được duyệt → cập nhật giờ vào/ra tương ứng trong bảng công.
-        if (approve && "LATE_EARLY".equals(r.getRequestType()) && r.getWorkDate() != null && r.getPayload() != null) {
+        if (approve && ("LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType()))
+                && r.getWorkDate() != null && r.getPayload() != null) {
             try {
                 Map<?, ?> payload = objectMapper.readValue(r.getPayload(), Map.class);
-                String kind = String.valueOf(payload.get("late_early"));
+                String kind = "ADJUST".equals(r.getRequestType())
+                        ? String.valueOf(payload.get("adjust_kind"))
+                        : String.valueOf(payload.get("late_early"));
                 String time = payload.get("time") == null ? null : String.valueOf(payload.get("time"));
                 if (time != null && time.matches("^\\d{2}:\\d{2}$")) {
                     LocalTime t = LocalTime.parse(time);
                     AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(owner.getId(), r.getWorkDate())
                             .orElseGet(() -> AttendanceLog.builder()
                                     .userId(owner.getId()).workDate(r.getWorkDate()).status("INCOMPLETE").build());
-                    if ("EARLY".equals(kind)) log.setCheckOutAt(r.getWorkDate().atTime(t));
+                    boolean out = "EARLY".equals(kind) || "OUT".equals(kind);
+                    if (out) log.setCheckOutAt(r.getWorkDate().atTime(t));
                     else log.setCheckInAt(r.getWorkDate().atTime(t));
                     log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
                     attendanceLogRepository.save(log);
