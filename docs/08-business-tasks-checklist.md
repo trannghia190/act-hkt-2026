@@ -297,6 +297,7 @@
 
 **Prompt AI:** Đọc `docs/02-business-attendance-time-tracking.md` §2.3, mockup S30, code `RequestsPage.tsx`, `LeaveController.java` (`/leave-types`), `LeaveType.java` và bảng `leave_ledger`. Hoàn thiện form xin nghỉ đủ 8 loại lấy từ cấu hình DB (không hard-code), đơn vị ngày/nửa ngày, tự tính ngày làm việc trừ cuối tuần + lễ, hiện số dư ngay trong form, lưu snapshot `applied_parameters`, gửi từ bất kỳ đâu (không GPS/mạng công ty). **Cách test:** dựng stack `./run-local.sh`; gọi API thật kèm header `Authorization: Bearer <token>` (token lấy từ `POST /api/v1/auth/login` với tài khoản seed trong `db/migration/V3__fix_demo_seed_passwords.sql`); UI dùng Playwright — đăng nhập thật, assert dữ liệu hiện ra khớp API, thu console error + mọi request 4xx/5xx (cả hai phải rỗng) và chụp screenshot làm bằng chứng. **TEST SERVICE (bắt buộc):** cần đạt: `GET /api/v1/leave-types` → đủ 8 loại; `POST /api/v1/requests` type=LEAVE với ngày trải qua cuối tuần → số ngày làm việc tính ra khớp số ngày làm việc thật; đổi cấu hình loại nghỉ rồi đọc lại đơn cũ → `applied_parameters` phải giữ nguyên giá trị lúc gửi. **TEST GIAO DIỆN (bắt buộc):** cần đạt: route `/attendance/requests` tab nghỉ phép: dropdown loại nghỉ hiện đúng 8 loại lấy từ API; chọn ngày → số ngày làm việc tự tính (bỏ cuối tuần + lễ) khớp API; số dư phép hiện ngay trong form; đơn nghỉ chỉ cần quản lý duyệt, KHÔNG chuyển HR. **ĐIỀU KIỆN DONE (thiếu 1 là chưa xong):** (1) lệnh curl đã chạy kèm HTTP status + response thật; (2) script Playwright chạy exit 0, in ra các assert đã pass, 0 lỗi console, 0 request 4xx/5xx; (3) MỌI tiêu chí nghiệm thu phía trên đã được tick KÈM bằng chứng test — không tick bằng mắt thấy là chạy được. Nếu có chạy Robot/JUnit thì ghi kết quả vào ticket; lưu ý `tests/robot/` hiện assert theo model cũ (rule key cũ, endpoint đã 404) nên phải sửa theo business hiện tại trước khi tính là xanh.
 - [ ] Cho phép xin nghỉ cho ngày tương lai (tháng sau/năm sau), không giới hạn
+- [ ] Khi đơn nghỉ trùng ngày/buổi với đơn LEAVE/WFH đang chờ/đã duyệt → hiện confirm hủy đơn cũ; đồng ý thì hủy đơn cũ và tạo đơn mới
 
 ### C5c · Đăng ký WFH 🔴 · S10
 > **Cập nhật 20/11:** không giới hạn địa điểm, không lặp tuần; cả ngày chọn khoảng ngày (mỗi ngày làm việc 1 đơn, quota 2/tuần) hoặc nửa ngày 0.5 (1 ngày, sáng/chiều).
@@ -308,6 +309,8 @@
 - [ ] Cho đăng ký lùi tối đa 3 ngày (hôm nay và 3 ngày trước) + ngày tương lai; quá 3 ngày bị chặn với lý do rõ
 - [ ] Ngày WFH đã duyệt → **chấm công được ngoài mạng và ngoài bán kính GPS** (ngoại lệ duy nhất)
 - [ ] Cho phép WFH ngày tương lai không giới hạn
+
+- [ ] WFH trùng ngày/buổi với đơn khác → confirm hủy đơn cũ trước khi tạo
 
 **Phụ thuộc:** E7
 

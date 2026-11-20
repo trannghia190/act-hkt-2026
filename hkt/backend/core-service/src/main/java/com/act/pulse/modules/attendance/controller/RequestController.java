@@ -3,6 +3,7 @@ package com.act.pulse.modules.attendance.controller;
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.AttendanceLog;
+import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
@@ -14,6 +15,7 @@ import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import java.math.BigDecimal;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,11 +57,24 @@ public class RequestController {
     private final RequestAttachmentRepository requestAttachmentRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final HolidayRepository holidayRepository;
+    private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
     private String leaveTypeName(String code) {
         if (code == null) return null;
         return leaveTypeRepository.findByCode(code).map(lt -> lt.getName()).orElse(code);
+    }
+
+    @PostMapping("/check-conflicts")
+    @Operation(summary = "Kiểm tra trùng ngày với đơn nghỉ phép/WFH đang chờ hoặc đã duyệt")
+    public ApiResponse<List<Map<String, Object>>> checkConflicts(@RequestBody CreateRequest body) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) throw new RuntimeException("Chưa đăng nhập");
+        LocalDate start = body.getWorkDate();
+        LocalDate end = body.getEndDate() == null ? start : body.getEndDate();
+        UUID exclude = null;
+        try { if (body.getExcludeId() != null) exclude = UUID.fromString(body.getExcludeId()); } catch (Exception ignored) { }
+        return ApiResponse.ok(findDayConflicts(userId, body.getType(), start, end, body.getPayload(), exclude), "Kiểm tra trùng ngày");
     }
 
     @PostMapping
@@ -178,6 +193,18 @@ public class RequestController {
             appliedJson = objectMapper.writeValueAsString(applied);
         } catch (Exception e) {
             appliedJson = "{}";
+        }
+
+        List<Map<String, Object>> conflicts = findDayConflicts(userId, body.getType(),
+                body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate(),
+                body.getEndDate() == null ? (body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate()) : body.getEndDate(),
+                body.getPayload(), null);
+        if (!conflicts.isEmpty()) {
+            if (!Boolean.TRUE.equals(body.getReplaceConflicts())) {
+                throw new RuntimeException("Đơn trùng ngày với " + conflicts.size() + " đơn đã có. Xác nhận hủy đơn cũ để tiếp tục.");
+            }
+            cancelConflicts(conflicts, (body.getType() == null ? "đơn mới" : body.getType())
+                    + " " + (body.getWorkDate() == null ? "" : body.getWorkDate()));
         }
 
         RequestEntity entity = RequestEntity.builder()
@@ -495,6 +522,16 @@ public class RequestController {
             if (r.getMinutes() > maxMinutes) throw new RuntimeException("Đi muộn/về sớm tối đa " + maxMinutes + " phút mỗi lần");
         }
 
+        List<Map<String, Object>> conflicts = findDayConflicts(r.getUserId(), r.getRequestType(),
+                r.getWorkDate(), r.getEndDate(), r.getPayload(), r.getId());
+        if (!conflicts.isEmpty()) {
+            if (!Boolean.TRUE.equals(body.getReplaceConflicts())) {
+                throw new RuntimeException("Đơn trùng ngày với " + conflicts.size() + " đơn đã có. Xác nhận hủy đơn cũ để tiếp tục.");
+            }
+            cancelConflicts(conflicts, (r.getRequestType() == null ? "đơn sửa" : r.getRequestType())
+                    + " " + (r.getWorkDate() == null ? "" : r.getWorkDate()));
+        }
+
         r.setStatus("PENDING_APPROVAL");
         r.setDecidedBy(null);
         r.setDecidedAt(null);
@@ -520,6 +557,80 @@ public class RequestController {
         List<RequestEntity> result = new ArrayList<>();
         for (UUID id : ids) result.add(decide(id, true, null).getData());
         return ApiResponse.ok(result, "Đã duyệt " + result.size() + " đơn");
+    }
+
+    private java.util.Set<String> requestSlots(String payload, LocalDate day) {
+        java.util.Set<String> slots = new java.util.HashSet<>();
+        boolean half = payload != null && payload.contains("half_day_period");
+        if (!half) {
+            slots.add("MORNING"); slots.add("AFTERNOON");
+        } else if (payload.contains("MORNING")) {
+            slots.add("MORNING");
+        } else {
+            slots.add("AFTERNOON");
+        }
+        return slots;
+    }
+
+    private boolean dayInRange(RequestEntity r, LocalDate day) {
+        if (r.getWorkDate() == null || day.isBefore(r.getWorkDate())) return false;
+        LocalDate end = r.getEndDate() == null ? r.getWorkDate() : r.getEndDate();
+        return !day.isAfter(end);
+    }
+
+    private List<Map<String, Object>> findDayConflicts(UUID userId, String type, LocalDate start, LocalDate end,
+                                                       String payload, UUID excludeId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (start == null) return result;
+        if (!"LEAVE".equals(type) && !"WFH".equals(type)) return result;
+        LocalDate to = end == null ? start : end;
+        java.util.Set<String> newSlots = requestSlots(payload, start);
+        for (RequestEntity old : requestRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+            if (excludeId != null && excludeId.equals(old.getId())) continue;
+            if (!("LEAVE".equals(old.getRequestType()) || "WFH".equals(old.getRequestType()))) continue;
+            if (!("PENDING_APPROVAL".equals(old.getStatus()) || "APPROVED".equals(old.getStatus()))) continue;
+            boolean overlaps = false;
+            for (LocalDate day = start; !day.isAfter(to); day = day.plusDays(1)) {
+                if (!dayInRange(old, day)) continue;
+                java.util.Set<String> oldSlots = requestSlots(old.getPayload(), day);
+                for (String slot : newSlots) if (oldSlots.contains(slot)) { overlaps = true; break; }
+                if (overlaps) break;
+            }
+            if (overlaps) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", old.getId().toString());
+                m.put("type", old.getRequestType());
+                m.put("typeName", "LEAVE".equals(old.getRequestType()) ? "Nghỉ phép" : "WFH");
+                m.put("leaveTypeName", leaveTypeName(old.getLeaveType()));
+                m.put("workDate", String.valueOf(old.getWorkDate()));
+                m.put("endDate", String.valueOf(old.getEndDate() == null ? old.getWorkDate() : old.getEndDate()));
+                m.put("status", old.getStatus());
+                m.put("reason", old.getReason());
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    private int cancelConflicts(List<Map<String, Object>> conflicts, String newDescription) {
+        int canceled = 0;
+        for (Map<String, Object> c : conflicts) {
+            UUID id = UUID.fromString(String.valueOf(c.get("id")));
+            RequestEntity old = requestRepository.findById(id).orElse(null);
+            if (old == null || !("PENDING_APPROVAL".equals(old.getStatus()) || "APPROVED".equals(old.getStatus()))) continue;
+            old.setStatus("WITHDRAWN");
+            old.setDecisionComment("Tự động hủy do trùng ngày với đơn mới: " + newDescription);
+            old.setDecidedBy(CurrentUser.userId());
+            old.setDecidedAt(LocalDateTime.now());
+            old.setUpdatedAt(LocalDateTime.now());
+            requestRepository.save(old);
+            AuditLog log = AuditLog.builder().action("AUTO_CANCEL_DUPLICATE").entityName("REQUEST")
+                    .entityId(id.toString()).userId(CurrentUser.userId()).reason("Đơn mới: " + newDescription).build();
+            log.setCreatedAt(LocalDateTime.now());
+            auditLogRepository.save(log);
+            canceled++;
+        }
+        return canceled;
     }
 
     private double leaveDayCount(RequestEntity r) {
@@ -627,6 +738,8 @@ public class RequestController {
         private String reason;
         private Boolean draft;
         private Boolean urgent;
+        private Boolean replaceConflicts;
+        private String excludeId;
         private Boolean locationAllowed;
     }
 }

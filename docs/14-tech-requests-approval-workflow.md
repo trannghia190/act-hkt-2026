@@ -49,7 +49,15 @@ graph TD
 * Cho phép đăng ký **lùi tối đa `wfh.submit_within_days` (mặc định3) ngày** (kể cả hôm nay) và **ngày tương lai không giới hạn**; quá hạn →400. Ngày WFH đã duyệt được chấm công ngoài mạng/GPS.
 * Trên bảng công: `R` (cả ngày) hoặc `R/0.50` (nửa ngày); lịch nhóm hiện "WFH sáng/chiều".
 
-### 1.5. Danh sách & chi tiết đơn của nhân viên (S08)
+### 1.5. Trùng ngày giữa đơn nghỉ phép & WFH
+* Chỉ xét đơn **LEAVE/WFH** chưa hủy/chưa từ chối (PENDING_APPROVAL hoặc APPROVED).
+* So khớp theo **ngày + buổi**: đơn cả ngày chiếm sáng+chiều; nửa ngày chiếm đúng buổi trong payload. Chồng lấn khi cùng ngày và cùng buổi.
+* Trước khi gửi, UI gọi `POST /requests/check-conflicts`; nếu có trùng hiện **confirm** liệt kê đơn cũ + trạng thái:
+  * Chọn **Hủy** → giữ đơn cũ, không tạo đơn mới.
+  * Chọn **OK** → gửi kèm `replaceConflicts=true`; backend hủy đơn cũ (WITHDRAWN + lý do + audit `AUTO_CANCEL_DUPLICATE`) rồi tạo đơn mới.
+* Backend tự chặn nếu client bỏ qua bước kiểm tra; áp dụng cả tạo mới và sửa đơn (exclude chính đơn đang sửa).
+
+### 1.6. Danh sách & chi tiết đơn của nhân viên (S08)
 * Phân trang **server-side** (`page`, `size`, mặc định 10/trang); tổng số đơn theo server.
 * Lọc server-side: loại đơn, trạng thái, **khoảng ngày áp dụng**, từ khoá lý do.
 * Cột hiển thị: Mã đơn · Loại đơn (tên loại nghỉ, không dùng mã S/AL) · **Ngày áp dụng** (1 ngày hoặc khoảng) · **Ngày tạo** · Thời lượng · Lý do · Người phê duyệt · Trạng thái · Thao tác.
