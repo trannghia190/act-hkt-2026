@@ -759,17 +759,28 @@ export const RequestsPage: React.FC = () => {
                 {newReq.type === 'LEAVE' && <>Hạn gửi loại nghỉ này: <b>{leaveSubmitDays} ngày</b> kể từ ngày nghỉ — chọn từ <b>{minDateForSelected}</b>.</>}
               </div>
 
-              <div>
-                <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
-                  value={newReq.duration}
-                  onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-                />
-              </div>
+              {newReq.type === 'LEAVE' ? (
+                <div>
+                  <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
+                  <div className="w-full p-2 border border-line rounded-lg bg-canvas text-ink">
+                    {leaveUnit === 'HALF_DAY'
+                      ? <>0.5 ngày{halfDayWindow ? ` — ${halfDayWindow.text}` : ''}</>
+                      : <>{leaveDays} ngày làm việc</>}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block font-medium text-ink mb-1">Số Lượng / Thời Lượng</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: 1.0 ngày hoặc 3.5 giờ OT"
+                    value={newReq.duration}
+                    onChange={e => setNewReq({ ...newReq, duration: e.target.value })}
+                    className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
+                  />
+                </div>
+              )}
             </>
           )}
 
