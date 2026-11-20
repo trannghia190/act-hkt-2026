@@ -63,7 +63,10 @@ export function installAuthFetch(): void {
       if (!t && auth && auth.startsWith('Bearer ')) t = auth.substring(7);
       if (t) {
         headers.set('X-Auth-Token', t);
-        headers.set('Authorization', `Bearer ${t}`);
+        // KHÔNG set Authorization: header này thuộc về tunnel (ngrok Basic Auth).
+        // Nếu set Bearer ở đây, ngrok sẽ không thấy Basic và trả 401 → trình duyệt
+        // hỏi lại user/pass liên tục. Backend đọc JWT từ X-Auth-Token.
+        headers.delete('Authorization');
       }
       return { ...(base || {}), headers };
     };

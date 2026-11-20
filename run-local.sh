@@ -25,6 +25,8 @@
 #   ./run-local.sh stop            # dừng các process do script này đã start
 #
 # Có thể kết hợp: ./run-local.sh --no-frontend --no-ai  → chỉ Core
+# HMR mặc định TẮT (an toàn khi share qua tunnel Basic Auth).
+# Muốn hot-reload khi dev local: VITE_DISABLE_HMR=0 ./run-local.sh
 # Ghi đè cấu hình bằng biến môi trường, ví dụ:
 #   DB_USER=postgres CORE_PORT=8081 ./run-local.sh
 # ==============================================================================
@@ -391,6 +393,7 @@ start_frontend() {
     cd "$FRONTEND_DIR"
     VITE_CORE_URL="http://127.0.0.1:${CORE_PORT}" \
     VITE_AI_FACE_URL="http://127.0.0.1:${AI_PORT}" \
+    VITE_DISABLE_HMR="${VITE_DISABLE_HMR:-1}" \
     exec npm run dev -- --port "$FRONTEND_PORT" --host 0.0.0.0
   ) >"$LOG_DIR/frontend.log" 2>&1 &
   FRONTEND_PID=$!
