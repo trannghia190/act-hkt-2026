@@ -9,10 +9,14 @@ import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
+import com.act.pulse.modules.attendance.entity.RequestAttachment;
+import com.act.pulse.modules.attendance.entity.DisputeAttachment;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.TimesheetDispute;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
+import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
+import com.act.pulse.modules.attendance.repository.DisputeAttachmentRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
@@ -71,6 +75,8 @@ public class BusinessGapController {
     private final TimesheetRepository timesheetRepository;
     private final TimesheetCellRepository timesheetCellRepository;
     private final TimesheetCellAuditRepository timesheetCellAuditRepository;
+    private final DisputeAttachmentRepository disputeAttachmentRepository;
+    private final RequestAttachmentRepository requestAttachmentRepository;
     private final RuleService ruleService;
     private final ObjectMapper objectMapper;
 
@@ -753,14 +759,23 @@ public class BusinessGapController {
     }
 
     /** Tạo đơn đã duyệt (LEAVE/WFH) từ khiếu nại để mọi bảng công tính đúng như đơn thường. */
-    private void createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type, String leaveType, String reason) {
-        requestRepository.save(RequestEntity.builder()
+    private RequestEntity createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type, String leaveType, String reason) {
+        return requestRepository.save(RequestEntity.builder()
                 .userId(userId).requestType(type).leaveType(leaveType)
                 .payload("{}").workDate(workDate).endDate(workDate)
                 .reason(reason).status("APPROVED").currentStep(1)
                 .decidedBy(CurrentUser.userId()).decidedAt(LocalDateTime.now())
                 .decisionComment("Duyệt qua khiếu nại bảng công")
                 .build());
+    }
+
+    /** Chuyển giấy tờ đính kèm của khiếu nại sang đơn đã duyệt để HR xem/tải lại như đơn thường. */
+    private void copyDisputeAttachmentsToRequest(String disputeId, UUID requestId) {
+        for (DisputeAttachment a : disputeAttachmentRepository.findByDisputeIdOrderByCreatedAtAsc(disputeId)) {
+            requestAttachmentRepository.save(RequestAttachment.builder()
+                    .requestId(requestId).fileName(a.getFileName()).contentType(a.getContentType())
+                    .sizeBytes(a.getSizeBytes()).data(a.getData()).uploadedBy(a.getUploadedBy()).build());
+        }
     }
 
     /** Trừ quỹ phép giống luồng duyệt đơn nghỉ (1 ngày; bỏ qua cuối tuần/ngày lễ). */
@@ -824,6 +839,18 @@ public class BusinessGapController {
             }
         }
         result.put("currentCell", currentCell);
+        // Giấy tờ đính kèm — loại nghỉ yêu cầu giấy tờ thì HR cần thấy trước khi duyệt thành nghỉ.
+        List<Map<String, Object>> attachments = new ArrayList<>();
+        for (DisputeAttachment a : disputeAttachmentRepository.findByDisputeIdOrderByCreatedAtAsc(d.getId())) {
+            Map<String, Object> am = new HashMap<>();
+            am.put("id", a.getId().toString());
+            am.put("fileName", a.getFileName());
+            am.put("contentType", a.getContentType());
+            am.put("sizeBytes", a.getSizeBytes());
+            am.put("downloadUrl", "/api/v1/disputes/" + d.getId() + "/attachments/" + a.getId());
+            attachments.add(am);
+        }
+        result.put("attachments", attachments);
         // Gợi ý nguyên nhân theo rule
         String hint;
         boolean hasApproved = related.stream().anyMatch(m -> "APPROVED".equals(m.get("status")));
@@ -872,6 +899,7 @@ public class BusinessGapController {
         m.put("requestedKind", d.getRequestedKind() == null ? "TIME_FIX" : d.getRequestedKind());
         m.put("requestedLeaveType", d.getRequestedLeaveType());
         m.put("requestedLeaveTypeName", leaveTypeName(d.getRequestedLeaveType()));
+        m.put("attachmentCount", disputeAttachmentRepository.countByDisputeId(d.getId()));
         m.put("status", d.getStatus());
         m.put("deadline", d.getDeadline() == null ? null : d.getDeadline().toLocalDate().toString());
         if (d.getDeadline() != null) {
@@ -885,30 +913,56 @@ public class BusinessGapController {
         return m;
     }
 
+    /** Đọc một trường chuỗi từ body JSON (body nhận Map<String,Object> vì có cả mảng giấy tờ). */
+    private static String str(Map<String, Object> body, String key) {
+        Object v = body.get(key);
+        return v == null ? null : String.valueOf(v).trim();
+    }
+
     @PostMapping("/disputes")
     @Operation(summary = "Nhân viên tạo khiếu nại bảng công (S33)")
-    public ApiResponse<Map<String, Object>> createDispute(@RequestBody Map<String, String> body) {
+    public ApiResponse<Map<String, Object>> createDispute(@RequestBody Map<String, Object> body) {
         UUID userId = CurrentUser.userId();
         if (userId == null) throw new RuntimeException("Chưa đăng nhập");
-        if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
-        java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
+        String reason = str(body, "reason");
+        if (reason == null || reason.isEmpty()) throw new RuntimeException("Khiếu nại phải có lý do");
+        String workDateRaw = str(body, "workDate");
+        java.time.LocalDate workDate = workDateRaw == null || workDateRaw.isEmpty()
+                ? java.time.LocalDate.now() : java.time.LocalDate.parse(workDateRaw);
         // Chế độ nhân viên xin cho ngày đó: sửa giờ (mặc định) | công nhận WFH | chuyển thành nghỉ.
-        String kind = body.get("requestedKind") == null || body.get("requestedKind").isBlank()
-                ? "TIME_FIX" : body.get("requestedKind").trim().toUpperCase();
+        String kind = str(body, "requestedKind");
+        kind = kind == null || kind.isEmpty() ? "TIME_FIX" : kind.toUpperCase();
         if (!Set.of("TIME_FIX", "WFH", "LEAVE").contains(kind)) {
             throw new RuntimeException("Chế độ khiếu nại không hợp lệ (" + kind + ") — chỉ nhận TIME_FIX, WFH, LEAVE");
         }
         String leaveType = null;
+        LeaveType leaveCfg = null;
         if ("LEAVE".equals(kind)) {
-            leaveType = body.get("requestedLeaveType") == null ? null : body.get("requestedLeaveType").trim().toUpperCase();
+            leaveType = str(body, "requestedLeaveType");
+            leaveType = leaveType == null ? null : leaveType.toUpperCase();
             if (leaveType == null || leaveType.isEmpty()) throw new RuntimeException("Chuyển thành nghỉ phải chọn loại nghỉ cụ thể");
             requireActiveLeaveType(leaveType);
+            leaveCfg = leaveTypeRepository.findByCode(leaveType).orElse(null);
         }
-        // Đề xuất giờ vào/ra chỉ có nghĩa khi sửa giờ — tuỳ chọn, nhưng nếu cả hai phải theo đúng thứ tự.
-        java.time.LocalTime reqIn = "TIME_FIX".equals(kind) ? parseHhMm(body.get("requestedCheckIn"), "Giờ vào đề xuất") : null;
-        java.time.LocalTime reqOut = "TIME_FIX".equals(kind) ? parseHhMm(body.get("requestedCheckOut"), "Giờ ra đề xuất") : null;
-        if (reqIn != null && reqOut != null && !reqOut.isAfter(reqIn)) {
-            throw new RuntimeException("Giờ ra phải sau giờ vào (" + reqIn.format(HHMM) + " → " + reqOut.format(HHMM) + ")");
+        // Sửa giờ: nhân viên có thể chỉ nêu lý do (để HR tự đối chiếu), nhưng nếu đề xuất giờ
+        // thì phải đủ CẢ cặp vào+ra — công ngày đó tính theo đúng cặp giờ này, thiếu một đầu là vô nghĩa.
+        java.time.LocalTime reqIn = null, reqOut = null;
+        if ("TIME_FIX".equals(kind)) {
+            reqIn = parseHhMm(str(body, "requestedCheckIn"), "Giờ vào đề xuất");
+            reqOut = parseHhMm(str(body, "requestedCheckOut"), "Giờ ra đề xuất");
+            if ((reqIn == null) != (reqOut == null)) {
+                throw new RuntimeException("Đề xuất sửa giờ phải nhập đủ CẢ giờ vào và giờ ra (hoặc bỏ trống cả hai để HR tự đối chiếu)");
+            }
+            if (reqIn != null && reqOut != null && !reqOut.isAfter(reqIn)) {
+                throw new RuntimeException("Giờ ra phải sau giờ vào (" + reqIn.format(HHMM) + " → " + reqOut.format(HHMM) + ")");
+            }
+        }
+        // Giấy tờ đính kèm (base64) — loại nghỉ yêu cầu giấy tờ thì bắt buộc phải có.
+        List<Map<String, Object>> files = parseDisputeFiles(body.get("attachments"));
+        if ("LEAVE".equals(kind) && leaveCfg != null && Boolean.TRUE.equals(leaveCfg.getRequiresAttachment())
+                && files.isEmpty()) {
+            throw new RuntimeException("Loại nghỉ " + leaveCfg.getName() + " (" + leaveType
+                    + ") bắt buộc có giấy tờ đính kèm — tải lên ít nhất 1 tệp khi gửi khiếu nại");
         }
         // Quy tắc kỳ MỞ: kỳ đang chạy (chưa chốt) → khiếu nại được ngay.
         // Kỳ đã chốt → chỉ trong cửa sổ `dispute_window_days` sau ngày chốt; đã khoá → không khiếu nại nữa.
@@ -942,12 +996,52 @@ public class BusinessGapController {
         }
         TimesheetDispute d = TimesheetDispute.builder()
                 .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
-                .userId(userId).workDate(workDate).reason(body.get("reason")).status("PENDING")
+                .userId(userId).workDate(workDate).reason(reason).status("PENDING")
                 .requestedCheckIn(reqIn).requestedCheckOut(reqOut)
                 .requestedKind(kind).requestedLeaveType(leaveType)
                 .deadline(java.time.LocalDateTime.now().plusDays(2)).build();
         timesheetDisputeRepository.save(d);
+        for (Map<String, Object> f : files) {
+            disputeAttachmentRepository.save(DisputeAttachment.builder()
+                    .disputeId(d.getId())
+                    .fileName((String) f.get("fileName"))
+                    .contentType((String) f.get("contentType"))
+                    .sizeBytes((long) ((byte[]) f.get("bytes")).length)
+                    .data((byte[]) f.get("bytes"))
+                    .uploadedBy(userId).build());
+        }
         return ApiResponse.ok(disputeMap(d), "Đã gửi khiếu nại bảng công");
+    }
+
+    /** Chuẩn hoá danh sách giấy tờ đính kèm gửi kèm khiếu nại (base64 trong JSON). */
+    private List<Map<String, Object>> parseDisputeFiles(Object raw) {
+        if (raw == null) return List.of();
+        if (!(raw instanceof List<?> list)) throw new RuntimeException("Danh sách giấy tờ đính kèm không hợp lệ");
+        if (list.size() > 5) throw new RuntimeException("Tối đa 5 tệp đính kèm mỗi khiếu nại");
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> m)) throw new RuntimeException("Tệp đính kèm không hợp lệ");
+            String name = m.get("fileName") == null ? "" : String.valueOf(m.get("fileName")).trim();
+            String data = m.get("data") == null ? "" : String.valueOf(m.get("data")).trim();
+            String type = m.get("contentType") == null ? null : String.valueOf(m.get("contentType")).trim();
+            if (name.isEmpty() || data.isEmpty()) throw new RuntimeException("Tệp đính kèm phải có tên và nội dung");
+            int comma = data.indexOf(',');
+            if (data.startsWith("data:") && comma > 0) data = data.substring(comma + 1);
+            byte[] bytes;
+            try {
+                bytes = java.util.Base64.getDecoder().decode(data.replaceAll("\\s", ""));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Tệp " + name + " không giải mã được (nội dung base64 hỏng)");
+            }
+            if (bytes.length == 0) throw new RuntimeException("Tệp " + name + " rỗng");
+            if (bytes.length > 10L * 1024 * 1024) throw new RuntimeException("Tệp " + name + " vượt quá 10 MB");
+            Map<String, Object> f = new HashMap<>();
+            f.put("fileName", name);
+            f.put("contentType", type);
+            f.put("bytes", bytes);
+            out.add(f);
+        }
+        return out;
     }
 
     @GetMapping("/disputes")
@@ -987,6 +1081,44 @@ public class BusinessGapController {
             throw new RuntimeException("Không có quyền xem khiếu nại này");
         }
         return ApiResponse.ok(buildDisputeDetail(d), "Chi tiết khiếu nại");
+    }
+
+    @GetMapping("/disputes/{id}/attachments")
+    @Operation(summary = "Danh sách giấy tờ đính kèm của khiếu nại")
+    public ApiResponse<List<Map<String, Object>>> disputeAttachments(@PathVariable String id) {
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        if (!canManageDispute(d) && !d.getUserId().equals(CurrentUser.userId())) {
+            throw new RuntimeException("Không có quyền xem giấy tờ của khiếu nại này");
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (DisputeAttachment a : disputeAttachmentRepository.findByDisputeIdOrderByCreatedAtAsc(id)) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", a.getId().toString());
+            m.put("fileName", a.getFileName());
+            m.put("contentType", a.getContentType());
+            m.put("sizeBytes", a.getSizeBytes());
+            m.put("downloadUrl", "/api/v1/disputes/" + id + "/attachments/" + a.getId());
+            out.add(m);
+        }
+        return ApiResponse.ok(out, "Giấy tờ đính kèm khiếu nại");
+    }
+
+    @GetMapping("/disputes/{id}/attachments/{attachmentId}")
+    @Operation(summary = "Tải giấy tờ đính kèm của khiếu nại")
+    public ResponseEntity<byte[]> downloadDisputeAttachment(@PathVariable String id, @PathVariable UUID attachmentId) {
+        TimesheetDispute d = timesheetDisputeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khiếu nại"));
+        if (!canManageDispute(d) && !d.getUserId().equals(CurrentUser.userId())) {
+            throw new RuntimeException("Không có quyền tải giấy tờ của khiếu nại này");
+        }
+        DisputeAttachment a = disputeAttachmentRepository.findById(attachmentId)
+                .filter(x -> id.equals(x.getDisputeId()))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giấy tờ đính kèm"));
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + a.getFileName() + "\"")
+                .header("Content-Type", a.getContentType() == null ? "application/octet-stream" : a.getContentType())
+                .body(a.getData());
     }
 
     @PostMapping("/disputes/{id}/resolve")
@@ -1090,54 +1222,64 @@ public class BusinessGapController {
                     throw new RuntimeException("Ngày " + d.getWorkDate() + " đã có đơn " + kind
                             + " được duyệt — không tạo thêm");
                 }
+                // Loại nghỉ yêu cầu giấy tờ (ốm/thai sản…) → khiếu nại phải có giấy tờ mới duyệt được,
+                // đúng như luồng duyệt đơn nghỉ thường (RequestController kiểm tra attachment trước khi duyệt).
+                LeaveType leaveCfg = "LEAVE".equals(kind)
+                        ? leaveTypeRepository.findByCode(leaveType).orElse(null) : null;
+                if (leaveCfg != null && Boolean.TRUE.equals(leaveCfg.getRequiresAttachment())
+                        && disputeAttachmentRepository.countByDisputeId(d.getId()) == 0) {
+                    throw new RuntimeException("Loại nghỉ " + leaveCfg.getName() + " (" + leaveType
+                            + ") bắt buộc có giấy tờ đính kèm — khiếu nại này chưa có giấy tờ nên chưa duyệt được");
+                }
                 if ("LEAVE".equals(kind)) {
                     deductLeaveForDispute(d.getUserId(), d.getWorkDate(), leaveType);
                 }
-                createApprovedRequest(d.getUserId(), d.getWorkDate(), kind, leaveType, reason);
+                RequestEntity created = createApprovedRequest(d.getUserId(), d.getWorkDate(), kind, leaveType, reason);
+                // Giấy tờ nhân viên gửi kèm khiếu nại được chuyển sang đơn đã duyệt để HR xem/tải lại.
+                if ("LEAVE".equals(kind)) {
+                    copyDisputeAttachmentsToRequest(d.getId(), created.getId());
+                }
                 // Bỏ ô công đánh tay cũ để ngày này hiển thị theo đơn đã duyệt, không bị ô cũ đè.
                 timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
                         .ifPresent(timesheetCellRepository::delete);
                 timesNote = " [chuyển thành " + ("WFH".equals(kind) ? "WFH" : "nghỉ " + leaveType) + "]";
             } else {
-                // Giờ HR chốt: ưu tiên giờ HR nhập, không có thì lấy đúng giờ nhân viên đề xuất trong khiếu nại.
+                // Sửa giờ: BẮT BUỘC đủ cả giờ vào và giờ ra (HR nhập, không nhập thì dùng giờ nhân viên đề xuất).
+                // Công ngày đó luôn tính lại từ đúng cặp giờ này — không cho ghi đè ký hiệu bằng tay,
+                // nếu muốn thành nghỉ/WFH thì chọn đúng chế độ tương ứng ở trên.
                 java.time.LocalTime reqIn = (body.get("requestedCheckIn") != null && !body.get("requestedCheckIn").isBlank())
                         ? parseHhMm(body.get("requestedCheckIn"), "Giờ vào") : d.getRequestedCheckIn();
                 java.time.LocalTime reqOut = (body.get("requestedCheckOut") != null && !body.get("requestedCheckOut").isBlank())
                         ? parseHhMm(body.get("requestedCheckOut"), "Giờ ra") : d.getRequestedCheckOut();
-                boolean hasTimes = reqIn != null || reqOut != null;
-                String symbol = body.get("symbol");
-                if (!hasTimes && (symbol == null || symbol.isBlank())) {
-                    throw new RuntimeException("Sửa công phải chọn ký hiệu công mới hoặc duyệt giờ vào/ra");
+                if (reqIn == null || reqOut == null) {
+                    throw new RuntimeException("Duyệt sửa giờ phải có đủ CẢ giờ vào và giờ ra — công ngày đó tính theo cặp giờ này");
                 }
-                if (hasTimes) {
-                    // Áp giờ vào bản ghi chấm công gốc → bảng công, giờ làm, đi muộn và số công tự tính lại.
-                    AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(d.getUserId(), d.getWorkDate())
-                            .orElseGet(() -> AttendanceLog.builder().userId(d.getUserId()).workDate(d.getWorkDate()).build());
-                    java.time.LocalDateTime inAt = reqIn != null ? d.getWorkDate().atTime(reqIn) : log.getCheckInAt();
-                    java.time.LocalDateTime outAt = reqOut != null ? d.getWorkDate().atTime(reqOut) : log.getCheckOutAt();
-                    if (inAt != null && outAt != null && !outAt.isAfter(inAt)) {
-                        throw new RuntimeException("Giờ ra phải sau giờ vào (" + hhmm(inAt.toLocalTime()) + " → " + hhmm(outAt.toLocalTime()) + ")");
-                    }
-                    log.setCheckInAt(inAt);
-                    log.setCheckOutAt(outAt);
-                    log.setStatus(inAt != null && outAt != null ? "VALID" : "INCOMPLETE");
-                    // Gắn ca hiệu lực cho log để giờ duyệt được tính theo đúng ca (kể cả ca 7 giờ).
-                    Shift logShift = shiftResolver.resolveFor(userRepository.findById(d.getUserId()).orElse(null), log);
-                    if (log.getShiftId() == null && logShift != null) log.setShiftId(logShift.getId());
-                    attendanceLogRepository.save(log);
-                    timesNote = " [giờ duyệt " + (inAt == null ? "—" : hhmm(inAt.toLocalTime()))
-                            + "→" + (outAt == null ? "—" : hhmm(outAt.toLocalTime())) + "]";
-                    // Không chọn ký hiệu riêng → suy ra từ giờ đã duyệt theo số giờ ca yêu cầu.
-                    if (symbol == null || symbol.isBlank()) symbol = shiftResolver.workSymbol(logShift, log);
+                if (!reqOut.isAfter(reqIn)) {
+                    throw new RuntimeException("Giờ ra phải sau giờ vào (" + hhmm(reqIn) + " → " + hhmm(reqOut) + ")");
                 }
+                // Áp giờ vào bản ghi chấm công gốc → bảng công, giờ làm, đi muộn và số công tự tính lại.
+                AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(d.getUserId(), d.getWorkDate())
+                        .orElseGet(() -> AttendanceLog.builder().userId(d.getUserId()).workDate(d.getWorkDate()).build());
+                java.time.LocalDateTime inAt = d.getWorkDate().atTime(reqIn);
+                java.time.LocalDateTime outAt = d.getWorkDate().atTime(reqOut);
+                log.setCheckInAt(inAt);
+                log.setCheckOutAt(outAt);
+                log.setStatus("VALID");
+                // Gắn ca hiệu lực cho log để giờ duyệt được tính theo đúng ca (kể cả ca 7 giờ).
+                Shift logShift = shiftResolver.resolveFor(userRepository.findById(d.getUserId()).orElse(null), log);
+                if (log.getShiftId() == null && logShift != null) log.setShiftId(logShift.getId());
+                attendanceLogRepository.save(log);
+                timesNote = " [giờ duyệt " + hhmm(inAt.toLocalTime()) + "→" + hhmm(outAt.toLocalTime()) + "]";
+                // Công thực tế suy ra từ số giờ đã duyệt theo ca yêu cầu (đủ ca = 1.00, đủ nửa = 0.50, còn lại 0.00).
+                String symbol = shiftResolver.workSymbol(logShift, log);
                 TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
                         .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
                 String oldSymbol = cell.getSymbol();
-                cell.setSymbol(symbol.trim());
+                cell.setSymbol(symbol);
                 cell.setIsManual(true);
                 cell = timesheetCellRepository.save(cell);
                 timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
-                        .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol.trim())
+                        .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol)
                         .reason("Xử lý khiếu nại " + id + ": " + reason + timesNote)
                         .changedBy(CurrentUser.userId()).build());
             }

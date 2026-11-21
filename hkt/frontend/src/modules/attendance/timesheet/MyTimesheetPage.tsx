@@ -123,7 +123,9 @@ export const MyTimesheetPage: React.FC = () => {
   // Ngày đó nên thành gì: sửa giờ | WFH | nghỉ theo danh mục loại nghỉ.
   const [disputeKind, setDisputeKind] = useState<'TIME_FIX' | 'WFH' | 'LEAVE'>('TIME_FIX');
   const [disputeLeaveType, setDisputeLeaveType] = useState('');
-  const [leaveTypeOptions, setLeaveTypeOptions] = useState<{ code: string; name: string }[]>([]);
+  const [leaveTypeOptions, setLeaveTypeOptions] = useState<{ code: string; name: string; requiresAttachment?: boolean }[]>([]);
+  // Giấy tờ đính kèm khiếu nại — bắt buộc với loại nghỉ có requires_attachment (ốm, thai sản…).
+  const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
   const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
 
@@ -185,7 +187,11 @@ export const MyTimesheetPage: React.FC = () => {
     fetch('/api/v1/leave-types', { headers: authHeaders() })
       .then((r) => r.json())
       .then((j) => {
-        if (Array.isArray(j?.data)) setLeaveTypeOptions(j.data.map((x: any) => ({ code: x.code, name: x.name })));
+        if (Array.isArray(j?.data)) setLeaveTypeOptions(j.data.map((x: any) => ({
+          code: x.code,
+          name: x.name,
+          requiresAttachment: x.requiresAttachment === true,
+        })));
       })
       .catch(() => undefined);
   }, []);
@@ -216,8 +222,24 @@ export const MyTimesheetPage: React.FC = () => {
     setDisputeCheckOut(day.checkOut || '');
     setDisputeKind('TIME_FIX');
     setDisputeLeaveType('');
+    setDisputeFiles([]);
     setDisputeError(null);
   };
+
+  // Loại nghỉ đang chọn — quyết định có bắt buộc giấy tờ hay không.
+  const selectedLeaveCfg = leaveTypeOptions.find((t) => t.code === disputeLeaveType);
+
+  /** Đọc tệp thành base64 (bỏ tiền tố data:…) để gửi kèm khiếu nại trong 1 request. */
+  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const comma = raw.indexOf(',');
+      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
+    };
+    reader.onerror = () => reject(new Error(`Không đọc được tệp ${file.name}`));
+    reader.readAsDataURL(file);
+  });
 
   const handleSubmitDispute = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,15 +252,34 @@ export const MyTimesheetPage: React.FC = () => {
       setDisputeError('Chọn loại nghỉ cụ thể');
       return;
     }
-    // "HH:mm" so sánh chuỗi là đủ; backend vẫn kiểm tra lại.
-    if (disputeKind === 'TIME_FIX' && disputeCheckIn && disputeCheckOut && disputeCheckOut <= disputeCheckIn) {
-      setDisputeError('Giờ ra phải sau giờ vào');
+    // Sửa giờ: bắt buộc đủ cả giờ vào và giờ ra — công ngày đó tính theo đúng cặp giờ này.
+    if (disputeKind === 'TIME_FIX') {
+      if (!disputeCheckIn || !disputeCheckOut) {
+        setDisputeError('Nhập đủ CẢ giờ vào và giờ ra — bảng công tính công theo cặp giờ này');
+        return;
+      }
+      // "HH:mm" so sánh chuỗi là đủ; backend vẫn kiểm tra lại.
+      if (disputeCheckOut <= disputeCheckIn) {
+        setDisputeError('Giờ ra phải sau giờ vào');
+        return;
+      }
+    }
+    // Loại nghỉ yêu cầu giấy tờ (ốm/thai sản…) → phải đính kèm ít nhất 1 tệp.
+    if (disputeKind === 'LEAVE' && selectedLeaveCfg?.requiresAttachment && disputeFiles.length === 0) {
+      setDisputeError(`Loại nghỉ ${selectedLeaveCfg.name} bắt buộc có giấy tờ đính kèm — tải lên ít nhất 1 tệp`);
       return;
     }
     setSubmittingDispute(true);
     setDisputeError(null);
 
     try {
+      const attachments = disputeFiles.length
+        ? await Promise.all(disputeFiles.map(async (f) => ({
+            fileName: f.name,
+            contentType: f.type || 'application/octet-stream',
+            data: await fileToBase64(f),
+          })))
+        : [];
       const res = await fetch('/api/v1/disputes', {
         method: 'POST',
         headers: {
@@ -250,8 +291,8 @@ export const MyTimesheetPage: React.FC = () => {
           reason: disputeReason.trim(),
           requestedKind: disputeKind,
           ...(disputeKind === 'LEAVE' ? { requestedLeaveType: disputeLeaveType } : {}),
-          ...(disputeKind === 'TIME_FIX' && disputeCheckIn ? { requestedCheckIn: disputeCheckIn } : {}),
-          ...(disputeKind === 'TIME_FIX' && disputeCheckOut ? { requestedCheckOut: disputeCheckOut } : {}),
+          ...(disputeKind === 'TIME_FIX' ? { requestedCheckIn: disputeCheckIn, requestedCheckOut: disputeCheckOut } : {}),
+          ...(attachments.length ? { attachments } : {}),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -659,22 +700,25 @@ export const MyTimesheetPage: React.FC = () => {
               {disputeKind === 'TIME_FIX' ? (
                 <>
               <p className="text-[11px] text-ink-muted">
-                HR duyệt thì giờ này được ghi thẳng vào bảng công; ngày hôm đó tự tính lại số công, giờ làm và đi muộn.
+                Bắt buộc đủ cả giờ vào và giờ ra. HR duyệt thì giờ này được ghi thẳng vào bảng công;
+                ngày hôm đó tự tính lại số công, giờ làm và đi muộn theo đúng cặp giờ này.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="block text-ink-muted mb-1">Giờ vào</span>
+                  <span className="block text-ink-muted mb-1">Giờ vào <span className="text-rose-500">*</span></span>
                   <input
                     type="time"
+                    required
                     value={disputeCheckIn}
                     onChange={(e) => setDisputeCheckIn(e.target.value)}
                     className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-ink-muted mb-1">Giờ ra</span>
+                  <span className="block text-ink-muted mb-1">Giờ ra <span className="text-rose-500">*</span></span>
                   <input
                     type="time"
+                    required
                     value={disputeCheckOut}
                     onChange={(e) => setDisputeCheckOut(e.target.value)}
                     className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
@@ -690,6 +734,39 @@ export const MyTimesheetPage: React.FC = () => {
                 </p>
               )}
             </div>
+
+            {disputeKind === 'LEAVE' && (
+              <div className={`p-3 rounded-lg border space-y-2 ${
+                selectedLeaveCfg?.requiresAttachment ? 'bg-amber-50 border-amber-200' : 'bg-canvas border-line'
+              }`}>
+                <div className="font-semibold text-ink">
+                  Giấy tờ đính kèm
+                  {selectedLeaveCfg?.requiresAttachment
+                    ? <span className="text-rose-600"> * (Bắt buộc với {selectedLeaveCfg.name})</span>
+                    : <span className="text-ink-muted font-normal"> (tuỳ chọn)</span>}
+                </div>
+                {selectedLeaveCfg?.requiresAttachment && (
+                  <p className="text-[11px] text-amber-800">
+                    Loại nghỉ này yêu cầu giấy tờ chứng minh — thiếu giấy tờ thì khiếu nại không gửi được và HR cũng không duyệt được.
+                  </p>
+                )}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={(e) => setDisputeFiles(Array.from(e.target.files || []))}
+                  className="block w-full text-[11px] text-ink"
+                />
+                {disputeFiles.length > 0 && (
+                  <ul className="text-[11px] text-ink-muted space-y-0.5">
+                    {disputeFiles.map((f) => (
+                      <li key={f.name}>📎 {f.name} — {(f.size / 1024).toFixed(0)} KB</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-[11px] text-ink-muted">Tối đa 5 tệp, mỗi tệp ≤ 10 MB. Giấy tờ được chuyển kèm đơn nghỉ khi HR duyệt.</p>
+              </div>
+            )}
 
             {disputeError && (
               <div className="p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-xs">

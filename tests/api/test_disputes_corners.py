@@ -28,12 +28,12 @@ chk('1. Khiếu nại không tồn tại bị chặn', c==400 and 'Không tìm t
 # 2. action sai
 d=mk(); c,j=call('POST',f'/disputes/{d}/resolve',H,{'action':'FOO','reason':'x'})
 chk('2. Action không hợp lệ bị chặn', c==400 and 'không hợp lệ' in (j.get('message') or ''), (c,j.get('message')))
-# 3. FIX thiếu ký hiệu
+# 3. FIX sửa giờ thiếu cả giờ vào lẫn giờ ra
 c,j=call('POST',f'/disputes/{d}/resolve',H,{'action':'FIX','reason':'x'})
-chk('3. FIX thiếu ký hiệu bị chặn', c==400 and 'ký hiệu' in (j.get('message') or ''), (c,j.get('message')))
-# 4. FIX ký hiệu toàn khoảng trắng
-c,j=call('POST',f'/disputes/{d}/resolve',H,{'action':'FIX','reason':'x','symbol':'   '})
-chk('4. FIX ký hiệu rỗng bị chặn', c==400, (c,j.get('message')))
+chk('3. FIX thiếu cặp giờ vào/ra bị chặn', c==400 and 'giờ' in (j.get('message') or ''), (c,j.get('message')))
+# 4. FIX chỉ có giờ vào — thiếu giờ ra
+c,j=call('POST',f'/disputes/{d}/resolve',H,{'action':'FIX','reason':'x','requestedCheckIn':'08:30'})
+chk('4. FIX thiếu giờ ra bị chặn', c==400, (c,j.get('message')))
 # 5. REJECT lý do khoảng trắng
 c,j=call('POST',f'/disputes/{d}/resolve',H,{'action':'REJECT','reason':'   '})
 chk('5. Từ chối lý do rỗng bị chặn', c==400, (c,j.get('message')))

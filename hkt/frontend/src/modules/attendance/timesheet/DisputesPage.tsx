@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 interface Dispute {
   id: string; employee: string; date: string; reason: string; status: string; deadline?: string; daysLeft?: number;
   requestedKind?: string; requestedLeaveType?: string; requestedLeaveTypeName?: string;
-  requestedCheckIn?: string; requestedCheckOut?: string;
+  requestedCheckIn?: string; requestedCheckOut?: string; attachmentCount?: number;
 }
 
 // Chế độ nhân viên xin cho ngày đó — quyết định nhãn + tooltip của nút duyệt.
@@ -14,7 +14,7 @@ const fixTitle = (d: Dispute) => kindOf(d) === 'WFH'
   ? 'Có hiệu lực NGAY: công nhận ngày này là làm việc từ xa — tạo đơn WFH đã duyệt, bảng công hiện ô R. Không cần ký hiệu công.'
   : kindOf(d) === 'LEAVE'
     ? 'Có hiệu lực NGAY: chuyển ngày này thành ngày nghỉ theo loại nhân viên xin — tạo đơn nghỉ đã duyệt và trừ 1 ngày quỹ phép.'
-    : 'Có hiệu lực NGAY: ghi ký hiệu công mới (và giờ nhân viên đề xuất, nếu có) vào bảng công. Ô công lưu nhật ký thay đổi.';
+    : 'Có hiệu lực NGAY: ghi giờ vào/ra đã chốt vào log chấm công — công ngày đó tự tính lại theo số giờ của ca. Bắt buộc đủ cả giờ vào và giờ ra.';
 const MAKEUP_TITLE = 'KHÔNG sửa bảng công ngay: tạo đơn điều chỉnh công (ADJUST) ở trạng thái chờ duyệt — chỉ khi đơn đó được duyệt thì ngày công mới thay đổi.';
 const REJECT_TITLE = 'Đóng khiếu nại (không đổi bảng công). Bắt buộc nhập lý do; nhân viên nhận thông báo.';
 
@@ -47,6 +47,7 @@ export const DisputesPage: React.FC = () => {
             requestedKind: d.requestedKind || 'TIME_FIX', requestedLeaveType: d.requestedLeaveType,
             requestedLeaveTypeName: d.requestedLeaveTypeName,
             requestedCheckIn: d.requestedCheckIn, requestedCheckOut: d.requestedCheckOut,
+            attachmentCount: d.attachmentCount ?? 0,
           })));
           setSelected(prev => prev.filter(id => j.data.some((d: any) => d.id === id && d.status === 'PENDING')));
           setError(null);
@@ -67,17 +68,22 @@ export const DisputesPage: React.FC = () => {
       if (action === 'REJECT') setError('Từ chối khiếu nại phải nhập lý do');
       return;
     }
-    // Chỉ đơn "sửa giờ" mới cần ký hiệu công; đơn WFH/nghỉ thì hệ thống tự sinh đơn tương ứng.
-    let symbol: string | undefined;
+    // Đơn "sửa giờ" phải chốt đủ cả giờ vào và giờ ra — công ngày đó tính từ cặp giờ này.
+    // WFH/nghỉ thì hệ thống tự sinh đơn tương ứng, không cần giờ.
+    let times: { requestedCheckIn?: string; requestedCheckOut?: string } = {};
     if (action === 'FIX' && kind === 'TIME_FIX') {
-      const s = window.prompt('Ký hiệu công mới cho ô ngày (VD: 1.00, 0.50, R, AL):', '1.00');
-      if (!s || !s.trim()) { setError('Sửa ô phải nhập ký hiệu công mới'); return; }
-      symbol = s.trim();
+      const ci = window.prompt('Giờ vào duyệt (HH:mm):', d.requestedCheckIn || '');
+      if (ci === null) return;
+      const co = window.prompt('Giờ ra duyệt (HH:mm):', d.requestedCheckOut || '');
+      if (co === null) return;
+      if (!ci.trim() || !co.trim()) { setError('Duyệt sửa giờ phải nhập đủ cả giờ vào và giờ ra'); return; }
+      if (co.trim() <= ci.trim()) { setError('Giờ ra phải sau giờ vào'); return; }
+      times = { requestedCheckIn: ci.trim(), requestedCheckOut: co.trim() };
     }
     setError(null);
     const res = await fetch(`/api/v1/disputes/${d.id}/resolve`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ action, reason, symbol }),
+      body: JSON.stringify({ action, reason, ...times }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Xử lý khiếu nại thất bại'); load(); return; }
@@ -121,23 +127,21 @@ export const DisputesPage: React.FC = () => {
     const reason = window.prompt(
       `Duyệt & sửa ô cho ${chosen.length} khiếu nại đang chọn (${summary})?`
       + '\nCó hiệu lực NGAY lên bảng công; đơn nghỉ thì trừ 1 ngày quỹ phép.'
+      + (timeNoTimes.length > 0 ? `\n${timeNoTimes.length} đơn sửa giờ không kèm giờ đề xuất sẽ bị bỏ qua — mở từng đơn để nhập giờ.` : '')
       + '\nLý do xử lý chung (bắt buộc):',
       'Đã đối chiếu log chấm công và sửa ô');
     if (reason === null) return;
     if (!reason.trim()) { setError('Duyệt hàng loạt phải nhập lý do'); return; }
-    // Đơn sửa giờ không kèm giờ đề xuất thì cần ký hiệu công chung; để trống = bỏ qua các đơn đó.
-    let symbol: string | undefined;
-    if (timeNoTimes.length > 0) {
-      const s = window.prompt(
-        `${timeNoTimes.length} đơn sửa giờ không kèm giờ đề xuất — nhập ký hiệu công chung (VD: 1.00, 0.50, R, AL).`
-        + '\nĐể trống = bỏ qua các đơn này (giữ nguyên bảng công).', '1.00');
-      if (s === null) return;
-      if (s.trim()) symbol = s.trim();
+    // Không có giờ vào/ra đề xuất thì không có cơ sở tính công → bỏ qua các đơn đó.
+    const fixableIds = selected.filter((id) => !timeNoTimes.some((d) => d.id === id));
+    if (fixableIds.length === 0) {
+      setError('Các đơn đang chọn đều thiếu giờ vào/ra đề xuất — mở từng đơn để nhập giờ trước khi duyệt');
+      return;
     }
     setError(null);
     const res = await fetch('/api/v1/disputes/bulk-resolve', {
       method: 'POST', headers: { 'Content-Type': 'application/json', ...headers() },
-      body: JSON.stringify({ ids: selected, action: 'FIX', reason: reason.trim(), ...(symbol ? { symbol } : {}) }),
+      body: JSON.stringify({ ids: fixableIds, action: 'FIX', reason: reason.trim() }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Duyệt hàng loạt thất bại'); return; }
@@ -228,6 +232,14 @@ export const DisputesPage: React.FC = () => {
                   <div className="text-[11px] text-emerald-700 font-mono">
                     NV xin giờ: {d.requestedCheckIn || '—'} → {d.requestedCheckOut || '—'}
                   </div>
+                )}
+                {kindOf(d) === 'TIME_FIX' && !d.requestedCheckIn && !d.requestedCheckOut && (
+                  <div className="text-[11px] text-rose-600">
+                    NV chưa đề xuất giờ vào/ra — khi duyệt phải nhập đủ cả hai mới tính được công
+                  </div>
+                )}
+                {(d.attachmentCount ?? 0) > 0 && (
+                  <div className="text-[11px] text-ink-muted">📎 {d.attachmentCount} giấy tờ đính kèm</div>
                 )}
                 {d.status === 'PENDING' && d.daysLeft !== undefined && d.daysLeft >= 0 && (
                   <div className="text-[11px] text-amber-700">⏳ Còn {d.daysLeft} ngày (hạn {fmtDate(d.deadline)})</div>
