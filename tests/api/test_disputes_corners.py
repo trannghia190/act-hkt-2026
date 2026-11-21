@@ -63,11 +63,11 @@ chk('12. Bulk bỏ qua đơn đã đóng, xử lý đơn còn mở', ok, (c,j))
 d4=mk(); c,j=call('POST','/disputes/bulk-resolve',E,{'ids':[d4],'action':'REJECT','reason':'x'})
 chk('13. Bulk bởi nhân viên bị từ chối từng đơn', c==200 and j['data']['resolved']==0 and len(j['data']['skipped'])==1, (c,j))
 # 14. FIX khi kỳ đã khoá: công bố kỳ test (để được tạo khiếu nại) → khoá force
-c,j=call('POST','/timesheets/publish?month=2049-02',H)
-chk('14a. Công bố kỳ test 2049-02', c==200, (c,j.get('message')))
-d5=mk('2049-02-10','Kỳ khoá')
-c,j=call('POST','/timesheets/lock?month=2049-02&force=true',H)
-chk('14b. Khoá kỳ test 2049-02', c==200, (c,j.get('message')))
+c,j=call('POST','/timesheets/publish?month=2024-02',H)
+chk('14a. Công bố kỳ test 2024-02', c==200, (c,j.get('message')))
+d5=mk('2024-02-10','Kỳ khoá')
+c,j=call('POST','/timesheets/lock?month=2024-02&force=true',H)
+chk('14b. Khoá kỳ test 2024-02', c==200, (c,j.get('message')))
 c,j=call('POST',f'/disputes/{d5}/resolve',H,{'action':'FIX','reason':'x','symbol':'1.00'})
 chk('14. FIX bị chặn khi kỳ công đã khoá', c==400 and 'khoá' in (j.get('message') or ''), (c,j.get('message')))
 c,j=call('POST',f'/disputes/{d5}/resolve',H,{'action':'REJECT','reason':'đóng đơn test kỳ khoá'})
@@ -78,7 +78,7 @@ if j['data']:
 d6=mk()
 subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',
  f"update timesheet_disputes set deadline=now()-interval '1 day' where id='{d6}'"],capture_output=True)
-c,j=call('POST','/timesheets/lock?month=2048-06',H)
+c,j=call('POST','/timesheets/lock?month=2024-06',H)
 chk('15. Khiếu nại quá hạn không chặn khoá kỳ', c==200, (c,j.get('message')))
 # 16. Lọc theo trạng thái
 c,j=call('GET','/disputes?status=RESOLVED',H)
@@ -92,5 +92,5 @@ chk('18. Bulk không xử lý lại đơn đã đóng', j['data']['resolved']==0
 # cleanup: đóng các đơn còn mở của test + xoá timesheets test
 c,j=call('GET','/disputes?status=PENDING',H)
 call('POST','/disputes/bulk-resolve',H,{'ids':[x['id'] for x in j['data']],'action':'REJECT','reason':'Dọn dữ liệu test'})
-subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',"delete from timesheets where period_year in (2048,2049)"],capture_output=True)
+subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',"delete from timesheets where period_year in (2024,2048)"],capture_output=True)
 print('\nALL CORNER TESTS PASSED')

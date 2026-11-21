@@ -811,7 +811,7 @@ Lưu ý: HR nói "trừ công theo đúng giờ làm việc thực tế" → ngh
 | **Tạo đơn** | Form ngắn, validate tức thì, hiện lý do bị chặn | "Bạn đã dùng 2/2 lượt đi muộn tháng này" |
 | **Số dư phép** | Card từng loại nghỉ + **thẻ Tổng phép còn lại = phép năm + phép tồn**; lịch sử phép **có bộ lọc theo loại phép / năm** | Nhân viên không phải tự cộng; lọc "Phép năm" để xem riêng cách dùng phép năm |
 | **Đăng ký WFH** | Chọn ngày / lịch cố định, quota, cảnh báo đăng gấp | |
-| **Bảng công** | **Chọn tháng** (mặc định = tháng hiện tại): **lịch tháng dạng ô vuông** (mỗi ngày 1 ô, xếp theo tuần T2→CN) + bảng số liệu + nút khiếu nại | Trạng thái "còn N ngày để khiếu nại" đếm ngược (chỉ sau khi HR công bố ngày 11); kỳ đã chốt → chỉ đọc |
+| **Bảng công** | **Chọn tháng** (mặc định = tháng hiện tại): **lịch tháng dạng ô vuông** (mỗi ngày 1 ô, xếp theo tuần T2→CN) + bảng số liệu + nút khiếu nại | **Kỳ đang mở → khiếu nại được ngay.** Ngày `close_day` (mặc định mùng 1) chốt bảng công tháng trước; sau chốt còn `dispute_window_days` ngày để khiếu nại; quá hạn tự khoá hoàn toàn. HR vẫn điều chỉnh được (bắt buộc lý do + audit) |
 
 ### 4.2 Quản lý
 

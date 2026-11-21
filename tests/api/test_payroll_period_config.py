@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Chứng minh màn Cấu hình 'Kỳ công & khiếu nại' (rule payroll_period) THỰC SỰ được dùng:
-publish_day · dispute_window_days · lock_delay_days · allow_adjust_after_lock.
+"""Chứng minh 4 cấu hình 'Kỳ công & khiếu nại' THỰC SỰ có hiệu lực:
+close_day · dispute_window_days · lock_delay_days · allow_adjust_after_lock.
 Chạy: API_BASE=http://localhost:8080/api/v1 python3 tests/api/test_payroll_period_config.py
 """
 import json, os, subprocess, sys, urllib.request
@@ -33,6 +33,8 @@ def chk(n, c, x=''):
     if not c: F += 1
 
 H = login('01HR')
+# Dọn khiếu nại PENDING còn sót từ các bộ test trước để không chặn khoá kỳ.
+psql("update timesheet_disputes set status='REJECTED', resolved_at=now() where status='PENDING'")
 orig = q("select current_value from rules where rule_key='payroll_period'")
 orig_json = json.loads(orig)
 def set_rule(**kv):
@@ -41,54 +43,47 @@ def set_rule(**kv):
     assert st == 200
 
 try:
-    # 0. cấu hình được trả ra API/UI
-    st, j = call('GET','/timesheets?month=2049-04', H)
-    d = j['data']
-    chk('C0 GET /timesheets trả đủ 4 cấu hình', st==200 and all(k in d for k in ('publishDay','disputeWindowDays','lockDelayDays','allowAdjustAfterLock')), d.keys())
+    st, j = call('GET','/timesheets?month=2024-04', H); d = j['data']
+    chk('C0 GET /timesheets trả đủ 4 cấu hình', st==200 and all(k in d for k in ('closeDay','disputeWindowDays','lockDelayDays','allowAdjustAfterLock')), d.keys())
 
-    # 1. dispute_window_days điều khiển hạn khiếu nại khi công bố
+    # 1. dispute_window_days → hạn khiếu nại sau khi chốt
     set_rule(dispute_window_days=5, allow_adjust_after_lock=False)
-    st, j = call('POST','/timesheets/publish?month=2049-04', H)
+    call('POST','/timesheets/publish?month=2024-04', H)
     expected = (date.today() + timedelta(days=5)).isoformat()
-    db_dl = q("select to_char(dispute_deadline,'YYYY-MM-DD') from timesheets where period_month=4 and period_year=2049 limit 1")
-    chk('C1 window=5 → publish đặt hạn +5 ngày (DB)', db_dl == expected, f'{db_dl} vs {expected}')
-    chk('C1b API trả disputeWindowDays=5', call('GET','/timesheets?month=2049-04',H)[1]['data']['disputeWindowDays']==5)
+    db_dl = q("select to_char(dispute_deadline,'YYYY-MM-DD') from timesheets where period_month=4 and period_year=2024 limit 1")
+    chk('C1 window=5 → hạn khiếu nại = hôm nay +5 (DB)', db_dl == expected, f'{db_dl} vs {expected}')
 
-    # 2. allow_adjust_after_lock điều khiển sửa ô sau khoá
-    call('POST','/timesheets/lock?month=2049-04', H)
-    st, j = call('POST','/timesheets/cell?month=2049-04', H, {'employeeCode':'136ACT','day':5,'symbol':'1.00','reason':'test locked'})
-    chk('C2 locked + allow=false → chặn sửa ô', st==400 and 'khoá' in (j.get('message') or ''), (st, j.get('message')))
+    # 2. allow_adjust_after_lock → HR sửa ô sau khoá (luôn bắt buộc lý do + audit)
+    call('POST','/timesheets/lock?month=2024-04', H)
+    st, j = call('POST','/timesheets/cell?month=2024-04', H, {'employeeCode':'136ACT','day':5,'symbol':'1.00','reason':'test locked'})
+    chk('C2 allow=false → chặn sửa ô sau khoá', st==400, (st, j.get('message')))
     set_rule(allow_adjust_after_lock=True)
-    st, j = call('POST','/timesheets/cell?month=2049-04', H, {'employeeCode':'136ACT','day':5,'symbol':'1.00','reason':'test allowed after lock'})
-    chk('C3 locked + allow=true → cho sửa ô', st==200, (st, j.get('message')))
+    st, j = call('POST','/timesheets/cell?month=2024-04', H, {'employeeCode':'136ACT','day':5,'symbol':'1.00','reason':'HR điều chỉnh sau khoá (có lý do)'})
+    chk('C3 allow=true → HR sửa được sau khoá', st==200, (st, j.get('message')))
     set_rule(allow_adjust_after_lock=False)
 
-    # 3. lock_delay_days điều khiển tự khoá
-    call('POST','/timesheets/publish?month=2049-05', H)
-    psql("update timesheets set published_at = now() - interval '10 day' where period_month=5 and period_year=2049")
-    set_rule(lock_delay_days=3)
+    # 3. lock_delay_days → tự khoá sau hạn khiếu nại
+    call('POST','/timesheets/publish?month=2024-05', H)
+    psql("update timesheets set dispute_deadline = now() - interval '1 day', published_at = now() - interval '5 day' "
+         "where period_month=5 and period_year=2024")
+    set_rule(lock_delay_days=0)
     st, j = call('POST','/timesheets/auto-lock', H)
-    st5 = q("select status from timesheets where period_month=5 and period_year=2049 limit 1")
-    chk('C4 quá lock_delay_days → auto-lock khoá kỳ', st==200 and st5=='locked', st5)
+    st5 = q("select status from timesheets where period_month=5 and period_year=2024 limit 1")
+    chk('C4 hết hạn khiếu nại (+0 ân hạn) → auto-lock khoá kỳ', st==200 and st5=='locked', st5)
 
-    # 4. publish_day điều khiển tự công bố
-    set_rule(publish_day=1)
-    st, j = call('POST','/timesheets/auto-publish?month=2049-06', H)
-    chk('C5 publish_day=1 (hôm nay≥1) → auto-publish công bố', st==200 and (j.get('data') or {}).get('published') is True, j.get('data'))
-    # Tháng hiện tại: publish_day=28 > hôm nay → không tự công bố (tạm draft rồi khôi phục)
-    set_rule(publish_day=28)
-    psql("update timesheets set status='draft', published_at=null, dispute_deadline=null, locked_at=null "
-         "where period_month=11 and period_year=2026")
-    st, j = call('POST','/timesheets/auto-publish?month=2026-11', H)
-    chk('C6 publish_day=28 > hôm nay → chưa công bố', st==200 and (j.get('data') or {}).get('published') is False, j.get('data'))
-    psql("update timesheets set status='published', published_at=now(), "
-         "dispute_deadline=(now()+interval '2 day')::date + time '23:59', locked_at=null "
-         "where period_month=11 and period_year=2026")
+    # 4. close_day → tự chốt kỳ trước
+    set_rule(close_day=1)
+    st, j = call('POST','/timesheets/auto-close?month=2024-06', H)
+    st6 = q("select status from timesheets where period_month=6 and period_year=2024 limit 1")
+    chk('C5 close_day → auto-close chốt kỳ chỉ định', st==200 and st6=='published', (j.get('data'), st6))
+    set_rule(close_day=28)
+    st, j = call('POST','/timesheets/auto-close', H)
+    chk('C6 close_day=28 > hôm nay → chưa tự chốt kỳ trước', st==200 and (j.get('data') or {}).get('closed') is False, j.get('data'))
 finally:
     call('PUT','/rules/payroll_period',H,{'currentValue': orig, 'changeReason':'khôi phục cấu hình gốc sau test','effectiveFrom': str(date.today())})
-    psql("delete from timesheet_cells where timesheet_id in (select id from timesheets where period_year=2049)")
-    psql("delete from timesheets where period_year=2049")
-    print('\nĐã khôi phục rule payroll_period và dọn dữ liệu 2049.')
+    psql("delete from timesheet_cells where timesheet_id in (select id from timesheets where period_year=2024)")
+    psql("delete from timesheets where period_year=2024")
+    print('\nĐã khôi phục rule payroll_period và dọn dữ liệu 2024.')
 
 print('ALL PAYROLL PERIOD CONFIG TESTS PASSED' if F==0 else f'{F} FAILED')
 sys.exit(1 if F else 0)

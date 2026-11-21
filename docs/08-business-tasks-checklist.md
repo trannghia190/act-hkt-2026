@@ -196,7 +196,7 @@
 - [ ] **Có chọn tháng, mặc định = tháng hiện tại**; đổi tháng bằng dropdown hoặc nút ‹ ›; URL đổi theo `?month=YYYY-MM`
 - [ ] **Lịch tháng dạng ô vuông** — mỗi ngày 1 ô, **căn đúng cột thứ thật (T2 → CN)**, chèn ô trống đầu tháng; nhìn 1 cái thấy ngay ngày nào có vấn đề
 - [ ] Đủ **11 cột** số liệu, khớp với bảng điều khiển
-- [ ] **Chỉ khiếu nại được sau khi HR công bố** (ngày 11 hàng tháng) — trước đó xem số tạm tính nhưng khoá nút khiếu nại
+- [ ] **Kỳ đang mở → khiếu nại được ngay**; `close_day` (mặc định mùng 1) chốt kỳ tháng trước, còn `dispute_window_days` ngày để khiếu nại bổ sung, quá hạn tự khoá; HR vẫn điều chỉnh được kèm lý do + audit
 - [ ] Trong 2 ngày → khiếu nại được; quá 2 ngày → nút bị disable + giải thích
 - [ ] Khiếu nại đã gửi → hiện trạng thái "HR đang xử lý"
 - [ ] Chọn kỳ đã chốt → xem được nhưng chỉ đọc

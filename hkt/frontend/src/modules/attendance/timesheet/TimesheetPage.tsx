@@ -300,7 +300,7 @@ export const TimesheetPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Tổng Hợp Công &amp; Chốt Lương (Master Timesheet)</h1>
-            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá' : sheetStatus === 'published' ? 'Đang khiếu nại' : 'Bản nháp'}</Badge>
+            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá (hết hạn khiếu nại)' : sheetStatus === 'published' ? 'Đã chốt — đang nhận khiếu nại' : 'Đang mở (đang chạy)'}</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Bảng điều khiển 45 chỉ tiêu công, tự động tính trừ chuyên cần theo luật, cộng công thêm giờ (OT) và cho phép HR điều chỉnh kèm lưu vết
