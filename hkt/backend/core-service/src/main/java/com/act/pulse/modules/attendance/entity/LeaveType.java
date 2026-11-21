@@ -24,6 +24,10 @@ public class LeaveType extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+    /** TRUE = loại nghỉ khởi tạo sẵn (master data) → chỉ được tắt, không được xóa. */
+    @Column(name = "is_system", nullable = false)
+    @Builder.Default
+    private Boolean isSystem = false;
     @Column(name = "config", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private String config;

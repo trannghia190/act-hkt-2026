@@ -87,7 +87,7 @@ export const MANAGER_GROUPS: NavGroup[] = [
 ];
 
 // =========================================================================
-// 3. NHÓM RIÊNG CỦA HR (HR: 10 MỤC)
+// 3. NHÓM RIÊNG CỦA HR (HR: 12 MỤC)
 // =========================================================================
 export const HR_GROUPS: NavGroup[] = [
   {
@@ -98,6 +98,7 @@ export const HR_GROUPS: NavGroup[] = [
       { id: 'leave', label: 'Bảng phép', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46' },
       { id: 'rules', label: 'Cấu hình quy định', path: '/admin/rules', icon: 'Sliders', screenId: 'S16' },
       { id: 'shift', label: 'Ca & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26' },
+      { id: 'leavetypes', label: 'Quản lý loại nghỉ', path: '/admin/leave-types', icon: 'Tag', screenId: 'S32' },
       { id: 'okrcycle', label: 'Chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44' },
       { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
       { id: 'audit', label: 'Nhật ký thay đổi', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
@@ -111,7 +112,7 @@ export const HR_GROUPS: NavGroup[] = [
 // =========================================================================
 // 4. SINH 3 BIẾN THỂ TỪ 1 NGUỒN CẤU HÌNH DUY NHẤT
 // =========================================================================
-// Employee (14) ⊂ Manager (17) ⊂ HR (24) / Admin (27)
+// Employee (13) ⊂ Manager (17) ⊂ HR (25) / Admin (29)
 export const VARIANTS = {
   employee: COMMON_GROUPS,
   manager: [...COMMON_GROUPS, ...MANAGER_GROUPS],

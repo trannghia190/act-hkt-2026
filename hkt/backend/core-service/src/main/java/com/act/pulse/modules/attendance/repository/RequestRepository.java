@@ -15,6 +15,7 @@ import java.util.UUID;
 
 public interface RequestRepository extends JpaRepository<RequestEntity, UUID>, JpaSpecificationExecutor<RequestEntity> {
     List<RequestEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    boolean existsByLeaveTypeIgnoreCase(String leaveType);
     List<RequestEntity> findByUserIdInAndStatusOrderByCreatedAtDesc(Collection<UUID> userIds, String status);
     List<RequestEntity> findByUserIdAndStatus(UUID userId, String status);
 

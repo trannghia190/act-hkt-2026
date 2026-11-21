@@ -40,6 +40,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   MessageCircle,
+  Tag,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -73,6 +74,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   HelpCircle,
   ClipboardCheck,
   MessageCircle,
+  Tag,
 };
 
 interface SidebarProps {

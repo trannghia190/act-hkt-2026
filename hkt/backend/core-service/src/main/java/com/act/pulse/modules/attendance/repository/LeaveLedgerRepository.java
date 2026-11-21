@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface LeaveLedgerRepository extends JpaRepository<LeaveLedgerEntry, UUID> {
     List<LeaveLedgerEntry> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    boolean existsByLeaveTypeIgnoreCase(String leaveType);
 }
