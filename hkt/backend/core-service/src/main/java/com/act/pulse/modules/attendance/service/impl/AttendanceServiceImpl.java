@@ -7,10 +7,10 @@ import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.DeviceRegistration;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
-import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.service.AttendanceService;
 import com.act.pulse.modules.attendance.service.RuleService;
+import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.FaceProfileRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -53,7 +53,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final RuleService ruleService;
     private final FaceProfileRepository faceProfileRepository;
     private final UserRepository userRepository;
-    private final ShiftRepository shiftRepository;
+    private final ShiftResolver shiftResolver;
     private final RequestRepository requestRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
@@ -207,31 +207,23 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
         layers.add(layer("GPS", "Trong bán kính văn phòng", gpsPassed, gpsDetail));
 
-        // ── Lớp 4 · CA LÀM VIỆC: áp ca được gán cho user ──────────────────
+        // ── Lớp 4 · CA LÀM VIỆC: ca ngoại lệ được gán đè ca chuẩn toàn công ty ─
+        // Ca chuẩn (SHIFT_STANDARD) là base áp dụng cho MỌI nhân sự; nếu người dùng được gán
+        // ca ngoại lệ theo nhóm/chức danh/cá nhân thì ca đó có ưu tiên cao hơn.
         boolean shiftPassed = true;
         String shiftDetail = null;
-        if (requester.getShiftId() != null) {
-            var shiftOpt = shiftRepository.findById(requester.getShiftId());
-            if (shiftOpt.isEmpty()) {
-                shiftPassed = false;
-                shiftDetail = "Ca làm việc được gán không còn tồn tại — liên hệ HR";
-            } else {
-                var shift = shiftOpt.get();
-                java.time.LocalTime nowTime = java.time.LocalTime.now();
-                boolean inWindow = !nowTime.isBefore(shift.getCheckInStart()) && !nowTime.isAfter(shift.getCheckOutEnd());
-                if (Boolean.TRUE.equals(shift.getIsFlexible())) {
-                    inWindow = !nowTime.isBefore(shift.getFlexibleCheckinFrom() != null ? shift.getFlexibleCheckinFrom() : shift.getCheckInStart())
-                            && !nowTime.isAfter(shift.getFlexibleCheckoutTo() != null ? shift.getFlexibleCheckoutTo() : shift.getCheckOutEnd());
-                }
-                if (!inWindow) {
-                    shiftPassed = false;
-                    shiftDetail = String.format("Ngoài khung giờ ca %s (%s–%s)", shift.getName(), shift.getCheckInStart(), shift.getCheckOutEnd());
-                }
+        var shift = shiftResolver.resolveFor(requester);
+        if (shift != null) {
+            java.time.LocalTime nowTime = java.time.LocalTime.now();
+            boolean inWindow = !nowTime.isBefore(shift.getCheckInStart()) && !nowTime.isAfter(shift.getCheckOutEnd());
+            if (Boolean.TRUE.equals(shift.getIsFlexible())) {
+                inWindow = !nowTime.isBefore(shift.getFlexibleCheckinFrom() != null ? shift.getFlexibleCheckinFrom() : shift.getCheckInStart())
+                        && !nowTime.isAfter(shift.getFlexibleCheckoutTo() != null ? shift.getFlexibleCheckoutTo() : shift.getCheckOutEnd());
             }
-        } else {
-            boolean hasShift = ruleService.exists("shift") || ruleService.exists("shift_times");
-            shiftPassed = hasShift;
-            shiftDetail = hasShift ? null : "Hôm nay bạn không có ca làm việc";
+            if (!inWindow) {
+                shiftPassed = false;
+                shiftDetail = String.format("Ngoài khung giờ ca %s (%s–%s)", shift.getName(), shift.getCheckInStart(), shift.getCheckOutEnd());
+            }
         }
         layers.add(layer("SHIFT", "Đúng ca làm việc", shiftPassed, shiftDetail));
 
@@ -319,6 +311,9 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         entity.setStatus("VALID");
+        // Ghi lại ca hiệu lực tại thời điểm chấm để bảng công tính đúng giờ/đi muộn theo ca
+        // kể cả khi HR đổi thứ tự ưu tiên hoặc tắt ca về sau.
+        entity.setShiftId(shift == null ? null : shift.getId());
         entity.setWifiBssid(request.getWifiBssid());
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());

@@ -26,6 +26,13 @@ BASE = resolve_base_url()
 TOKEN = None
 FAILED = []
 
+# Dọn dữ liệu test trước mỗi lần chạy (mỗi ngày tối đa 2 đơn khiếu nại, kỳ 2020-01 phải mở lại được).
+import subprocess as _sp
+def psql(sql):
+    return _sp.run(['psql', '-h', '127.0.0.1', '-p', '5432', '-U',
+                    _sp.check_output(['whoami']).decode().strip(), '-d', 'pulse_db', '-c', sql],
+                   capture_output=True, text=True).stdout.strip()
+
 
 def call(method, path, body=None, expect=200, token=True):
     data = None if body is None else json.dumps(body).encode()
@@ -178,23 +185,33 @@ check("đi muộn quá hạn 3 ngày bị chặn", status == 400)
 status, data = call("POST", "/requests", {"type": "LEAVE", "leaveType": "AL", "workDate": old_date, "reason": "Nghỉ phép", "payload": "{}"}, expect=400)
 check("nghỉ phép quá hạn gửi bị chặn", status == 400)
 
-status, data = call("POST", "/timesheets/publish?month=2049-01")
-check("công bố bảng công", status == 200 and (data.get("data") or {}).get("status") == "published")
+# Chốt/khoá kỳ công chỉ dành cho ADMIN/HR_ADMIN → dùng token HR cho phần bảng công.
+_, _hlog = call("POST", "/auth/login", {"employeeCodeOrEmail": "01HR", "password": "123456"}, token=False)
+TOKEN = (_hlog.get("data") or {}).get("accessToken")
+# Mô hình kỳ MỞ: chỉ chốt được kỳ đã kết thúc, không chốt kỳ đang chạy/tương lai.
+status, data = call("POST", "/timesheets/publish?month=2049-01", expect=400)
+check("chặn chốt kỳ tương lai", status == 400 and "kết thúc" in (data.get("message") or ""))
+psql("update timesheets set status='draft', published_at=null, dispute_deadline=null, locked_at=null "
+     "where period_year=2020 and period_month=1")
+status, data = call("POST", "/timesheets/publish?month=2020-01")
+check("chốt bảng công kỳ đã kết thúc", status == 200 and (data.get("data") or {}).get("status") == "published")
 # Sửa ô + sửa hàng loạt có audit
-status, data = call("POST", "/timesheets/cell?month=2049-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": "Đối chiếu log"}, expect=200)
+status, data = call("POST", "/timesheets/cell?month=2020-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": "Đối chiếu log"}, expect=200)
 check("sửa ô bảng công có lý do", status == 200 and (data.get("data") or {}).get("edited") is True)
-status, data = call("POST", "/timesheets/cell?month=2049-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": ""}, expect=400)
+status, data = call("POST", "/timesheets/cell?month=2020-01", {"employeeCode": "136ACT", "day": 5, "symbol": "1.00", "reason": ""}, expect=400)
 check("sửa ô thiếu lý do bị chặn", status == 400)
-status, data = call("POST", "/timesheets/bulk?month=2049-01", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
+status, data = call("POST", "/timesheets/bulk?month=2020-01", {"employeeCodes": ["136ACT", "05ACT"], "day": 6, "symbol": "0.50", "reason": "Bù công cả lô"})
 check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).get("updated") == 2)
 
 # Còn khiếu nại chưa xử lý → khoá bị chặn (dùng token HR để thấy & xử lý mọi khiếu nại)
-call("POST", "/disputes", {"workDate": date.today().isoformat(), "reason": "Đối chiếu log — test lock"})
+# Mỗi ngày tối đa 2 đơn khiếu nại (chặn khi còn PENDING) — dọn đơn còn sót của lần chạy trước.
+psql("delete from timesheet_disputes where work_date='2020-01-05'")
+call("POST", "/disputes", {"workDate": "2020-01-05", "reason": "Đối chiếu log — test lock"})
 _, hlog = call("POST", "/auth/login", {"employeeCodeOrEmail": "01HR", "password": "123456"}, token=False)
 hr_early = (hlog.get("data") or {}).get("accessToken")
 _prev_token = TOKEN
 TOKEN = hr_early
-status, data = call("POST", "/timesheets/lock?month=2049-01", expect=400)
+status, data = call("POST", "/timesheets/lock?month=2020-01", expect=400)
 check("khoá bị chặn khi còn khiếu nại", status == 400)
 _, dl = call("GET", "/disputes")
 for d in (dl.get("data") or []):
@@ -202,10 +219,10 @@ for d in (dl.get("data") or []):
         call("POST", f"/disputes/{d['id']}/resolve", {"action": "FIX", "symbol": "1.00", "reason": "Đã đối chiếu log"})
 _, dl2 = call("GET", "/disputes")
 check("khiếu nại có hạn xử lý (daysLeft)", all(("daysLeft" in d) or d.get("status") != "PENDING" for d in (dl2.get("data") or [])))
-status, data = call("POST", "/timesheets/lock?month=2049-01")
+status, data = call("POST", "/timesheets/lock?month=2020-01")
 check("khoá kỳ công", status == 200 and (data.get("data") or {}).get("status") == "locked")
 TOKEN = _prev_token
-status, data = call("GET", "/timesheets?month=2049-01")
+status, data = call("GET", "/timesheets?month=2020-01")
 check("trạng thái sau khoá = locked", (data.get("data") or {}).get("status") == "locked")
 
 # 9. Khiếu nại
@@ -238,6 +255,7 @@ lt_rows = data.get("data") or []
 check("bảng phép có teamName", bool(lt_rows) and all("teamName" in r for r in lt_rows))
 
 # 13. Từ chối khiếu nại: bắt buộc lý do + nhân viên nhận thông báo
+psql("delete from timesheet_disputes where work_date='{}'".format(date.today().isoformat()))
 _, fresh = call("POST", "/disputes", {"workDate": date.today().isoformat(), "reason": "Test từ chối khiếu nại"})
 fresh_id = (fresh.get("data") or {}).get("id")
 status, data = call("POST", f"/disputes/{fresh_id}/resolve", {"action": "REJECT"}, expect=400)

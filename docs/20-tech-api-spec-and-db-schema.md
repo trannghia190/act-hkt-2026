@@ -39,6 +39,13 @@ erDiagram
   * `face_enrolled`: BOOLEAN DEFAULT FALSE
   * `face_embedding`: vector(512) -- pgvector
   * `created_at`, `updated_at`: TIMESTAMP WITH TIME ZONE
+* **`shifts`** (V27):
+  * `code` UNIQUE NOT NULL — `SHIFT_STANDARD` là ca chuẩn base toàn công ty
+  * khung giờ: `check_in_start/end`, `check_out_start/end`, `lunch_break_start/end`, `required_work_hours`
+  * `is_active` (ca ngoại lệ tắt được; ca chuẩn luôn bật), `is_exception`
+  * `priority` INTEGER — số càng lớn càng ở dưới danh sách, **ưu tiên ghi đè càng cao**
+  * `target_group`, `target_position`, `target_employees` (CSV mã NV) — phạm vi áp dụng (OR)
+  * `exclude_employees` (CSV mã NV) — loại trừ khỏi ca
 * **`devices`**:
   * `id`: UUID PRIMARY KEY
   * `user_id`: UUID REFERENCES `users(id)`
@@ -271,7 +278,7 @@ erDiagram
 | S22 | `POST /api/v1/okr/check-ins` |
 | S23 | `PUT /api/v1/okr/reviews/{id}/self-assessment` |
 | S24 | `GET /api/v1/okr/team-review` |
-| S26 | `GET /api/v1/admin/shifts` |
+| S26 | `GET /api/v1/admin/shifts` · `POST /api/v1/admin/shifts` · `PUT/DELETE /api/v1/admin/shifts/{code}` · `PUT /api/v1/admin/shifts/order` |
 | S27 | `GET /api/v1/devices` |
 | S28 | `GET /api/v1/admin/devices` |
 | S29 | `POST /api/v1/devices/request` |
@@ -313,8 +320,8 @@ erDiagram
 | GET | `/requests/{id}/attachments` | Danh sách file (chủ đơn/quản lý/HR) |
 | GET | `/requests/{id}/attachments/{attachmentId}` | Tải file thật |
 | GET | `/requests/{id}` | Chi tiết + timeline + `endDate`, `leaveTypeName`, `approverName`, `attachmentCount`, `durationText`, `editHistory` |
-| GET | `/requests/inbox` | Kèm `employeeCode/Name`, `endDate`, `leaveTypeName`, `attachmentCount` |
-| POST | `/requests/{id}/approve` | Chặn nếu loại nghỉ cần giấy tờ mà chưa có file |
+| GET | `/requests/inbox` | Kèm `employeeCode/Name`, `endDate`, `leaveTypeName`, `attachmentCount`, `selfRequest`. Gồm đơn của nhân viên trực tiếp + đơn của chính mình khi `approval_flow.allow_self_approval` cho phép; HR thấy mọi đơn đang chờ |
+| POST | `/requests/{id}/approve` | Chặn nếu loại nghỉ cần giấy tờ mà chưa có file. Tự duyệt theo `approval_flow` (`allow_self_approval`, `self_approval_min_role`, `self_approval_scope`) — vai trò phải ≥ mức cấu hình; thiếu lý do thì ghi chú "Tự duyệt đơn của tôi theo cấu hình luồng duyệt" |
 | POST | `/requests/{id}/reject` | Bắt buộc lý do |
 
 ### Endpoints bảng công / khiếu nại

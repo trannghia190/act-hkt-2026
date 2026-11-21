@@ -71,6 +71,12 @@ try:
     st5 = q("select status from timesheets where period_month=5 and period_year=2024 limit 1")
     chk('C4 hết hạn khiếu nại (+0 ân hạn) → auto-lock khoá kỳ', st==200 and st5=='locked', st5)
 
+    # 3b. Guard trạng thái: không chốt lại kỳ đã khoá; không khoá kỳ chưa chốt
+    c,j=call('POST','/timesheets/publish?month=2024-04',H)
+    chk('C4a chốt lại kỳ đã khoá bị chặn', c==400 and 'khoá' in (j.get('message') or ''), (c,j.get('message')))
+    c,j=call('POST','/timesheets/lock?month=2024-07',H)
+    chk('C4b khoá kỳ chưa chốt bị chặn', c==400 and 'chưa chốt' in (j.get('message') or ''), (c,j.get('message')))
+
     # 4. close_day → tự chốt kỳ trước
     set_rule(close_day=1)
     st, j = call('POST','/timesheets/auto-close?month=2024-06', H)

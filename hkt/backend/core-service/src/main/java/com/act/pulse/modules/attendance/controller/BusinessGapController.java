@@ -14,10 +14,13 @@ import com.act.pulse.modules.attendance.entity.TimesheetDispute;
 import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
-import com.act.pulse.modules.attendance.repository.ShiftRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
+import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
+import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
+import com.act.pulse.modules.attendance.entity.LeaveType;
 import com.act.pulse.modules.attendance.repository.TimesheetRepository;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.Timesheet;
@@ -26,6 +29,7 @@ import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
 import com.act.pulse.modules.attendance.repository.TimesheetCellRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetCellAuditRepository;
 import com.act.pulse.modules.attendance.service.RuleService;
+import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,10 +61,12 @@ public class BusinessGapController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
-    private final ShiftRepository shiftRepository;
+    private final ShiftResolver shiftResolver;
     private final TeamRepository teamRepository;
     private final TimesheetDisputeRepository timesheetDisputeRepository;
     private final HolidayRepository holidayRepository;
+    private final LeaveTypeRepository leaveTypeRepository;
+    private final LeaveLedgerRepository leaveLedgerRepository;
     private final TimesheetRepository timesheetRepository;
     private final TimesheetCellRepository timesheetCellRepository;
     private final TimesheetCellAuditRepository timesheetCellAuditRepository;
@@ -151,10 +157,12 @@ public class BusinessGapController {
         }
 
         Map<java.time.LocalDate, TimesheetDispute> disputesByDate = new HashMap<>();
+        Map<java.time.LocalDate, Integer> disputeCountByDate = new HashMap<>();
         for (TimesheetDispute d : timesheetDisputeRepository.findAllByOrderByCreatedAtDesc()) {
             if (userId.equals(d.getUserId()) && d.getWorkDate() != null
                     && !d.getWorkDate().isBefore(start) && !d.getWorkDate().isAfter(end)) {
                 disputesByDate.putIfAbsent(d.getWorkDate(), d);
+                disputeCountByDate.merge(d.getWorkDate(), 1, Integer::sum);
             }
         }
 
@@ -242,20 +250,15 @@ public class BusinessGapController {
             String checkOutStr = (log != null && log.getCheckOutAt() != null)
                     ? log.getCheckOutAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : null;
 
-            double hoursWorked = 0;
-            if (log != null && log.getCheckInAt() != null && log.getCheckOutAt() != null) {
-                long minutes = java.time.Duration.between(log.getCheckInAt(), log.getCheckOutAt()).toMinutes();
-                long net = Math.max(0, minutes - 60);
-                hoursWorked = Math.round((net / 60.0) * 10.0) / 10.0;
-            }
-
-            int lateMinutes = 0;
-            if (log != null && log.getCheckInAt() != null) {
-                java.time.LocalTime cin = log.getCheckInAt().toLocalTime();
-                if (cin.isAfter(java.time.LocalTime.of(8, 30))) {
-                    lateMinutes = (int) java.time.Duration.between(java.time.LocalTime.of(8, 30), cin).toMinutes();
-                }
-            }
+            // Ca hiệu lực của ngày: ca đã ghi trên log (nếu có), ngược lại ca hiệu lực hiện tại
+            // theo luật ưu tiên (nhóm/chức danh/nhân viên → loại trừ → gán tay → ca chuẩn).
+            Shift dayShift = shiftResolver.resolveFor(target, log);
+            double hoursWorked = log == null ? 0
+                    : Math.round(shiftResolver.workedHours(dayShift, log) * 10.0) / 10.0;
+            int lateMinutes = shiftResolver.lateMinutes(dayShift, log);
+            double dayUnits = shiftResolver.workUnits(dayShift, log);
+            String daySymbol = shiftResolver.workSymbol(dayShift, log);
+            double requiredHours = shiftResolver.requiredHours(dayShift);
 
             String dayStatus;
             String statusText;
@@ -288,27 +291,31 @@ public class BusinessGapController {
                 statusText = "Làm việc từ xa (WFH)";
             } else if (log != null) {
                 if (log.getCheckInAt() != null && log.getCheckOutAt() != null) {
-                    if (lateMinutes > 0 && lateReq == null) {
-                        dayStatus = "LATE";
-                        lateCount++;
-                        actualDays += 1.0;
-                        symbol = "1.00";
-                        statusText = "Đi muộn " + lateMinutes + " phút";
+                    if (dayUnits > 0) {
+                        actualDays += dayUnits;
+                        symbol = daySymbol;
+                        if (lateMinutes > 0 && lateReq == null) {
+                            dayStatus = "LATE";
+                            lateCount++;
+                            statusText = "Đi muộn " + lateMinutes + " phút";
+                        } else {
+                            dayStatus = "ON_TIME";
+                            statusText = "Đúng giờ (" + hoursWorked + "h)";
+                        }
                     } else {
-                        dayStatus = "ON_TIME";
-                        actualDays += 1.0;
-                        symbol = "1.00";
-                        statusText = "Đúng giờ (" + hoursWorked + "h)";
+                        // Có đủ giờ vào/ra nhưng chưa đủ nửa số giờ ca yêu cầu → không tính công.
+                        dayStatus = "INCOMPLETE";
+                        symbol = "0.00";
+                        statusText = "Chưa đủ giờ làm (" + hoursWorked + "h/" + requiredHours + "h)";
                     }
                 } else if (log.getCheckInAt() != null) {
                     dayStatus = "INCOMPLETE";
-                    actualDays += 0.5;
-                    symbol = "0.50";
-                    statusText = "Thiếu giờ ra";
+                    symbol = "0.00";
+                    statusText = "Thiếu giờ ra — chưa tính công";
                 } else {
                     dayStatus = "INCOMPLETE";
-                    symbol = "0.50";
-                    statusText = "Thiếu giờ vào";
+                    symbol = "0.00";
+                    statusText = "Thiếu giờ vào — chưa tính công";
                 }
             } else if (isWeekend) {
                 dayStatus = "WEEKEND";
@@ -327,11 +334,18 @@ public class BusinessGapController {
             TimesheetDispute dispute = disputesByDate.get(date);
             Map<String, Object> disputeInfo = null;
             if (dispute != null) {
-                disputeInfo = Map.of(
-                        "id", dispute.getId(),
-                        "status", dispute.getStatus(),
-                        "reason", dispute.getReason()
-                );
+                Map<String, Object> di = new HashMap<>();
+                di.put("id", dispute.getId());
+                di.put("status", dispute.getStatus());
+                // Số đơn đã gửi cho ngày này (tối đa 2) — UI quyết định còn nút "khiếu nại lại" hay không.
+                di.put("count", disputeCountByDate.getOrDefault(date, 0));
+                di.put("reason", dispute.getReason());
+                di.put("requestedCheckIn", hhmm(dispute.getRequestedCheckIn()));
+                di.put("requestedCheckOut", hhmm(dispute.getRequestedCheckOut()));
+                di.put("requestedKind", dispute.getRequestedKind() == null ? "TIME_FIX" : dispute.getRequestedKind());
+                di.put("requestedLeaveType", dispute.getRequestedLeaveType());
+                di.put("requestedLeaveTypeName", leaveTypeName(dispute.getRequestedLeaveType()));
+                disputeInfo = di;
             }
 
             Map<String, Object> dayMap = new HashMap<>();
@@ -383,6 +397,19 @@ public class BusinessGapController {
         out.put("employeeCode", target.getEmployeeCode());
         out.put("employeeName", target.getFullName());
 
+        // Ca hiệu lực đang áp cho nhân sự — UI hiển thị đúng khung giờ thay vì hard-code ca chuẩn.
+        Shift effectiveShift = shiftResolver.resolveFor(target);
+        if (effectiveShift != null) {
+            out.put("shiftCode", effectiveShift.getCode());
+            out.put("shiftName", effectiveShift.getName());
+            out.put("shiftCheckInStart", String.valueOf(effectiveShift.getCheckInStart()));
+            out.put("shiftCheckInEnd", String.valueOf(effectiveShift.getCheckInEnd()));
+            out.put("shiftCheckOutStart", String.valueOf(effectiveShift.getCheckOutStart()));
+            out.put("shiftCheckOutEnd", String.valueOf(effectiveShift.getCheckOutEnd()));
+            out.put("shiftRequiredWorkHours", shiftResolver.requiredHours(effectiveShift));
+            out.put("shiftIsException", !shiftResolver.isStandard(effectiveShift));
+        }
+
         return ApiResponse.ok(out, "Bảng công " + ym);
     }
 
@@ -394,21 +421,11 @@ public class BusinessGapController {
     @Operation(summary = "Ca làm việc của tôi — khung giờ chuẩn để tính đi muộn/về sớm (S07/S30)")
     public ApiResponse<Map<String, Object>> myShift() {
         UUID userId = CurrentUser.userId();
-        Shift shift = null;
-        boolean assigned = false;
-        if (userId != null) {
-            User u = userRepository.findById(userId).orElse(null);
-            if (u != null && u.getShiftId() != null) {
-                shift = shiftRepository.findById(u.getShiftId()).orElse(null);
-                assigned = shift != null;
-            }
-        }
-        if (shift == null) {
-            shift = shiftRepository.findAll().stream()
-                    .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
-                    .filter(s -> !Boolean.TRUE.equals(s.getIsException()))
-                    .findFirst().orElse(null);
-        }
+        // Ca ngoại lệ gán riêng (nếu có) đè ca chuẩn; không có → ca chuẩn toàn công ty.
+        User u = userId == null ? null : userRepository.findById(userId).orElse(null);
+        Shift shift = shiftResolver.resolveFor(u);
+        // Ca ngoại lệ áp khi người này khớp một luật ca (nhóm/chức danh/nhân viên) hoặc được gán tay.
+        boolean exceptionAssigned = shift != null && !shiftResolver.isStandard(shift);
         Map<String, Object> out = new HashMap<>();
         if (shift != null) {
             out.put("code", shift.getCode());
@@ -425,7 +442,8 @@ public class BusinessGapController {
             out.put("flexibleCheckinTo", String.valueOf(shift.getFlexibleCheckinTo()));
             out.put("flexibleCheckoutFrom", String.valueOf(shift.getFlexibleCheckoutFrom()));
             out.put("flexibleCheckoutTo", String.valueOf(shift.getFlexibleCheckoutTo()));
-            out.put("assigned", assigned);
+            out.put("assigned", exceptionAssigned);
+            out.put("isBase", shiftResolver.isStandard(shift));
         }
         return ApiResponse.ok(out, shift == null ? "Chưa cấu hình ca làm việc" : "Ca làm việc của tôi");
     }
@@ -700,6 +718,55 @@ public class BusinessGapController {
         return userRepository.findById(d.getUserId()).map(u -> me.equals(u.getManagerId())).orElse(false);
     }
 
+    // ── Khiếu nại đổi chế độ ngày công (sửa giờ / WFH / nghỉ theo danh mục) ──────────────
+
+    private void requireActiveLeaveType(String code) {
+        LeaveType lt = leaveTypeRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Loại nghỉ " + code + " không tồn tại trong danh mục"));
+        if (!Boolean.TRUE.equals(lt.getIsActive())) {
+            throw new RuntimeException("Loại nghỉ " + lt.getName() + " (" + code + ") đã tắt — chọn loại khác");
+        }
+    }
+
+    private String leaveTypeName(String code) {
+        if (code == null) return null;
+        return leaveTypeRepository.findByCode(code).map(LeaveType::getName).orElse(code);
+    }
+
+    private boolean hasApprovedRequestOn(UUID userId, java.time.LocalDate day, String type) {
+        return requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .anyMatch(r -> type.equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
+                        && r.getWorkDate() != null
+                        && !day.isBefore(r.getWorkDate())
+                        && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()));
+    }
+
+    /** Tạo đơn đã duyệt (LEAVE/WFH) từ khiếu nại để mọi bảng công tính đúng như đơn thường. */
+    private void createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type, String leaveType, String reason) {
+        requestRepository.save(RequestEntity.builder()
+                .userId(userId).requestType(type).leaveType(leaveType)
+                .payload("{}").workDate(workDate).endDate(workDate)
+                .reason(reason).status("APPROVED").currentStep(1)
+                .decidedBy(CurrentUser.userId()).decidedAt(LocalDateTime.now())
+                .decisionComment("Duyệt qua khiếu nại bảng công")
+                .build());
+    }
+
+    /** Trừ quỹ phép giống luồng duyệt đơn nghỉ (1 ngày; bỏ qua cuối tuần/ngày lễ). */
+    private void deductLeaveForDispute(UUID userId, java.time.LocalDate day, String leaveType) {
+        boolean workday = day.getDayOfWeek().getValue() < 6
+                && holidayRepository.findAll().stream().noneMatch(h -> day.equals(h.getHolidayDate()));
+        if (!workday) return;
+        java.math.BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(LeaveLedgerEntry::getAmount).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        java.math.BigDecimal amount = java.math.BigDecimal.valueOf(-1);
+        leaveLedgerRepository.save(LeaveLedgerEntry.builder()
+                .userId(userId).leaveType(leaveType).action("USED").amount(amount)
+                .balanceAfter(prev.add(amount))
+                .reason("Duyệt khiếu nại ngày " + day + " thành nghỉ " + leaveType)
+                .performedBy(CurrentUser.userId()).performedBySystem(false).build());
+    }
+
     private Map<String, Object> buildDisputeDetail(TimesheetDispute d) {
         Map<String, Object> result = new HashMap<>(disputeMap(d));
         // 1) Log chấm công gốc (không sửa được)
@@ -760,6 +827,27 @@ public class BusinessGapController {
         return result;
     }
 
+    private static final java.time.format.DateTimeFormatter HHMM =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+
+    private String hhmm(java.time.LocalTime t) {
+        return t == null ? null : t.format(HHMM);
+    }
+
+    /** Nhận "HH:mm" hoặc "H:mm[:ss]" — trả null nếu rỗng, ném lỗi 400 nếu sai định dạng. */
+    private java.time.LocalTime parseHhMm(String raw, String fieldLabel) {
+        if (raw == null || raw.isBlank()) return null;
+        java.util.regex.Matcher mt = java.util.regex.Pattern
+                .compile("^(\\d{1,2}):(\\d{2})(?::\\d{2})?$").matcher(raw.trim());
+        if (!mt.matches()) {
+            throw new RuntimeException(fieldLabel + " không hợp lệ (" + raw.trim() + ") — dùng định dạng HH:mm");
+        }
+        int h = Integer.parseInt(mt.group(1));
+        int mi = Integer.parseInt(mt.group(2));
+        if (h > 23 || mi > 59) throw new RuntimeException(fieldLabel + " không hợp lệ (" + raw.trim() + ")");
+        return java.time.LocalTime.of(h, mi);
+    }
+
     private Map<String, Object> disputeMap(TimesheetDispute d) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", d.getId());
@@ -768,6 +856,11 @@ public class BusinessGapController {
         m.put("date", d.getWorkDate() == null ? "" : d.getWorkDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         m.put("workDate", d.getWorkDate() == null ? null : d.getWorkDate().toString());
         m.put("reason", d.getReason());
+        m.put("requestedCheckIn", hhmm(d.getRequestedCheckIn()));
+        m.put("requestedCheckOut", hhmm(d.getRequestedCheckOut()));
+        m.put("requestedKind", d.getRequestedKind() == null ? "TIME_FIX" : d.getRequestedKind());
+        m.put("requestedLeaveType", d.getRequestedLeaveType());
+        m.put("requestedLeaveTypeName", leaveTypeName(d.getRequestedLeaveType()));
         m.put("status", d.getStatus());
         m.put("deadline", d.getDeadline() == null ? null : d.getDeadline().toLocalDate().toString());
         if (d.getDeadline() != null) {
@@ -788,6 +881,24 @@ public class BusinessGapController {
         if (userId == null) throw new RuntimeException("Chưa đăng nhập");
         if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
         java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
+        // Chế độ nhân viên xin cho ngày đó: sửa giờ (mặc định) | công nhận WFH | chuyển thành nghỉ.
+        String kind = body.get("requestedKind") == null || body.get("requestedKind").isBlank()
+                ? "TIME_FIX" : body.get("requestedKind").trim().toUpperCase();
+        if (!Set.of("TIME_FIX", "WFH", "LEAVE").contains(kind)) {
+            throw new RuntimeException("Chế độ khiếu nại không hợp lệ (" + kind + ") — chỉ nhận TIME_FIX, WFH, LEAVE");
+        }
+        String leaveType = null;
+        if ("LEAVE".equals(kind)) {
+            leaveType = body.get("requestedLeaveType") == null ? null : body.get("requestedLeaveType").trim().toUpperCase();
+            if (leaveType == null || leaveType.isEmpty()) throw new RuntimeException("Chuyển thành nghỉ phải chọn loại nghỉ cụ thể");
+            requireActiveLeaveType(leaveType);
+        }
+        // Đề xuất giờ vào/ra chỉ có nghĩa khi sửa giờ — tuỳ chọn, nhưng nếu cả hai phải theo đúng thứ tự.
+        java.time.LocalTime reqIn = "TIME_FIX".equals(kind) ? parseHhMm(body.get("requestedCheckIn"), "Giờ vào đề xuất") : null;
+        java.time.LocalTime reqOut = "TIME_FIX".equals(kind) ? parseHhMm(body.get("requestedCheckOut"), "Giờ ra đề xuất") : null;
+        if (reqIn != null && reqOut != null && !reqOut.isAfter(reqIn)) {
+            throw new RuntimeException("Giờ ra phải sau giờ vào (" + reqIn.format(HHMM) + " → " + reqOut.format(HHMM) + ")");
+        }
         // Quy tắc kỳ MỞ: kỳ đang chạy (chưa chốt) → khiếu nại được ngay.
         // Kỳ đã chốt → chỉ trong cửa sổ `dispute_window_days` sau ngày chốt; đã khoá → không khiếu nại nữa.
         java.time.YearMonth wm = java.time.YearMonth.from(workDate);
@@ -806,9 +917,23 @@ public class BusinessGapController {
                 throw new RuntimeException("Đã quá hạn khiếu nại kỳ " + wm + " (hạn " + period.getDisputeDeadline().toLocalDate() + ")");
             }
         }
+        // Giới hạn 2 đơn/ngày: chặn khi còn đơn chờ xử lý; bị từ chối thì chỉ được gửi lại 1 lần.
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.util.List<TimesheetDispute> sameDay = timesheetDisputeRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(x -> userId.equals(x.getUserId()) && workDate.equals(x.getWorkDate())).toList();
+        boolean stillPending = sameDay.stream().anyMatch(x -> "PENDING".equals(x.getStatus())
+                && (x.getDeadline() == null || x.getDeadline().isAfter(now)));
+        if (stillPending) {
+            throw new RuntimeException("Ngày " + workDate + " đang có khiếu nại chờ HR xử lý — chờ kết quả rồi gửi lại");
+        }
+        if (sameDay.size() >= 2) {
+            throw new RuntimeException("Ngày " + workDate + " đã khiếu nại 2 lần — không gửi thêm được nữa");
+        }
         TimesheetDispute d = TimesheetDispute.builder()
                 .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
                 .userId(userId).workDate(workDate).reason(body.get("reason")).status("PENDING")
+                .requestedCheckIn(reqIn).requestedCheckOut(reqOut)
+                .requestedKind(kind).requestedLeaveType(leaveType)
                 .deadline(java.time.LocalDateTime.now().plusDays(2)).build();
         timesheetDisputeRepository.save(d);
         return ApiResponse.ok(disputeMap(d), "Đã gửi khiếu nại bảng công");
@@ -920,9 +1045,15 @@ public class BusinessGapController {
             throw new RuntimeException("Khiếu nại đã quá hạn 2 ngày — tự đóng, không xử lý được");
         }
 
+        String timesNote = "";
         if ("FIX".equals(action)) {
-            String symbol = body.get("symbol");
-            if (symbol == null || symbol.isBlank()) throw new RuntimeException("Sửa ô phải chọn ký hiệu công mới");
+            // Chế độ HR chốt: ưu tiên body, không có thì theo đúng chế độ nhân viên đã xin trong khiếu nại.
+            String kind = (body.get("requestedKind") != null && !body.get("requestedKind").isBlank())
+                    ? body.get("requestedKind").trim().toUpperCase()
+                    : (d.getRequestedKind() == null ? "TIME_FIX" : d.getRequestedKind());
+            if (!Set.of("TIME_FIX", "WFH", "LEAVE").contains(kind)) {
+                throw new RuntimeException("Chế độ xử lý không hợp lệ (" + kind + ")");
+            }
             java.time.YearMonth ym = java.time.YearMonth.from(d.getWorkDate());
             Timesheet sheet = timesheetRepository
                     .findByUserIdAndPeriodMonthAndPeriodYear(d.getUserId(), ym.getMonthValue(), ym.getYear())
@@ -931,16 +1062,74 @@ public class BusinessGapController {
             if ("locked".equals(sheet.getStatus())) {
                 throw new RuntimeException("Kỳ công " + ym + " đã khoá — không sửa được ô");
             }
-            TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
-                    .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
-            String oldSymbol = cell.getSymbol();
-            cell.setSymbol(symbol.trim());
-            cell.setIsManual(true);
-            cell = timesheetCellRepository.save(cell);
-            timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
-                    .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol.trim())
-                    .reason("Xử lý khiếu nại " + id + ": " + reason)
-                    .changedBy(CurrentUser.userId()).build());
+
+            if (!"TIME_FIX".equals(kind)) {
+                // WFH / nghỉ: tạo đơn đã duyệt để bảng công, sổ phép và danh sách đơn của nhân viên cùng khớp.
+                String leaveType = null;
+                if ("LEAVE".equals(kind)) {
+                    leaveType = (body.get("requestedLeaveType") != null && !body.get("requestedLeaveType").isBlank())
+                            ? body.get("requestedLeaveType").trim().toUpperCase() : d.getRequestedLeaveType();
+                    if (leaveType == null || leaveType.isEmpty()) {
+                        throw new RuntimeException("Chuyển thành nghỉ phải chọn loại nghỉ cụ thể");
+                    }
+                    requireActiveLeaveType(leaveType);
+                }
+                // Ngày đó đã có đơn cùng loại được duyệt → không tạo trùng (tránh trừ phép 2 lần).
+                if (hasApprovedRequestOn(d.getUserId(), d.getWorkDate(), kind)) {
+                    throw new RuntimeException("Ngày " + d.getWorkDate() + " đã có đơn " + kind
+                            + " được duyệt — không tạo thêm");
+                }
+                if ("LEAVE".equals(kind)) {
+                    deductLeaveForDispute(d.getUserId(), d.getWorkDate(), leaveType);
+                }
+                createApprovedRequest(d.getUserId(), d.getWorkDate(), kind, leaveType, reason);
+                // Bỏ ô công đánh tay cũ để ngày này hiển thị theo đơn đã duyệt, không bị ô cũ đè.
+                timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
+                        .ifPresent(timesheetCellRepository::delete);
+                timesNote = " [chuyển thành " + ("WFH".equals(kind) ? "WFH" : "nghỉ " + leaveType) + "]";
+            } else {
+                // Giờ HR chốt: ưu tiên giờ HR nhập, không có thì lấy đúng giờ nhân viên đề xuất trong khiếu nại.
+                java.time.LocalTime reqIn = (body.get("requestedCheckIn") != null && !body.get("requestedCheckIn").isBlank())
+                        ? parseHhMm(body.get("requestedCheckIn"), "Giờ vào") : d.getRequestedCheckIn();
+                java.time.LocalTime reqOut = (body.get("requestedCheckOut") != null && !body.get("requestedCheckOut").isBlank())
+                        ? parseHhMm(body.get("requestedCheckOut"), "Giờ ra") : d.getRequestedCheckOut();
+                boolean hasTimes = reqIn != null || reqOut != null;
+                String symbol = body.get("symbol");
+                if (!hasTimes && (symbol == null || symbol.isBlank())) {
+                    throw new RuntimeException("Sửa công phải chọn ký hiệu công mới hoặc duyệt giờ vào/ra");
+                }
+                if (hasTimes) {
+                    // Áp giờ vào bản ghi chấm công gốc → bảng công, giờ làm, đi muộn và số công tự tính lại.
+                    AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(d.getUserId(), d.getWorkDate())
+                            .orElseGet(() -> AttendanceLog.builder().userId(d.getUserId()).workDate(d.getWorkDate()).build());
+                    java.time.LocalDateTime inAt = reqIn != null ? d.getWorkDate().atTime(reqIn) : log.getCheckInAt();
+                    java.time.LocalDateTime outAt = reqOut != null ? d.getWorkDate().atTime(reqOut) : log.getCheckOutAt();
+                    if (inAt != null && outAt != null && !outAt.isAfter(inAt)) {
+                        throw new RuntimeException("Giờ ra phải sau giờ vào (" + hhmm(inAt.toLocalTime()) + " → " + hhmm(outAt.toLocalTime()) + ")");
+                    }
+                    log.setCheckInAt(inAt);
+                    log.setCheckOutAt(outAt);
+                    log.setStatus(inAt != null && outAt != null ? "VALID" : "INCOMPLETE");
+                    // Gắn ca hiệu lực cho log để giờ duyệt được tính theo đúng ca (kể cả ca 7 giờ).
+                    Shift logShift = shiftResolver.resolveFor(userRepository.findById(d.getUserId()).orElse(null), log);
+                    if (log.getShiftId() == null && logShift != null) log.setShiftId(logShift.getId());
+                    attendanceLogRepository.save(log);
+                    timesNote = " [giờ duyệt " + (inAt == null ? "—" : hhmm(inAt.toLocalTime()))
+                            + "→" + (outAt == null ? "—" : hhmm(outAt.toLocalTime())) + "]";
+                    // Không chọn ký hiệu riêng → suy ra từ giờ đã duyệt theo số giờ ca yêu cầu.
+                    if (symbol == null || symbol.isBlank()) symbol = shiftResolver.workSymbol(logShift, log);
+                }
+                TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
+                        .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
+                String oldSymbol = cell.getSymbol();
+                cell.setSymbol(symbol.trim());
+                cell.setIsManual(true);
+                cell = timesheetCellRepository.save(cell);
+                timesheetCellAuditRepository.save(TimesheetCellAudit.builder()
+                        .timesheetCellId(cell.getId()).oldValue(oldSymbol).newValue(symbol.trim())
+                        .reason("Xử lý khiếu nại " + id + ": " + reason + timesNote)
+                        .changedBy(CurrentUser.userId()).build());
+            }
         } else if ("MAKEUP".equals(action)) {
             RequestEntity makeup = RequestEntity.builder()
                     .userId(d.getUserId()).requestType("ADJUST").workDate(d.getWorkDate())
@@ -958,7 +1147,7 @@ public class BusinessGapController {
         timesheetDisputeRepository.save(d);
 
         AuditLog log = AuditLog.builder().action("RESOLVE_DISPUTE").entityName("DISPUTE").entityId(id)
-                .userId(CurrentUser.userId()).reason(reason).newValue(action).build();
+                .userId(CurrentUser.userId()).reason(reason).newValue(action + timesNote).build();
         log.setCreatedAt(LocalDateTime.now());
         auditLogRepository.save(log);
 
@@ -966,7 +1155,7 @@ public class BusinessGapController {
                 .userId(d.getUserId())
                 .title("REJECT".equals(action) ? "Khiếu nại bảng công bị từ chối" : "Khiếu nại bảng công đã được xử lý")
                 .content("Khiếu nại ngày " + d.getWorkDate() + ": " + d.getReason()
-                        + ". Lý do xử lý: " + reason)
+                        + ". Lý do xử lý: " + reason + timesNote)
                 .type("DISPUTE")
                 .priority("REJECT".equals(action) ? "HIGH" : "MEDIUM")
                 .actionUrl("/attendance/disputes/" + id)

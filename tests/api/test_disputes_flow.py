@@ -22,7 +22,16 @@ def check(name, cond, extra=''):
 E=login('137ACT'); M=login('05ACT'); H=login('01HR')
 today='2026-11-21'
 
+import subprocess
+def psql(sql):
+    return subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-tAc',sql],capture_output=True,text=True).stdout.strip()
+uid=psql("select id from users where employee_code='137ACT'")
+def fresh(day):
+    # Mỗi ngày tối đa 2 đơn khiếu nại (chặn khi còn PENDING) — mỗi kịch bản bắt đầu với ngày sạch.
+    psql(f"delete from timesheet_disputes where user_id='{uid}' and work_date='{day}'")
+
 # 1. Nhân viên tạo khiếu nại
+fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Check-in 08:10 nhưng bảng ghi vắng'},expect=200)
 d1=j['data']; check('1. Nhân viên tạo khiếu nại → PENDING', d1['status']=='PENDING' and d1.get('deadline'), str(d1)[:120])
 
@@ -60,6 +69,7 @@ c,j=call('POST',f"/disputes/{d1['id']}/resolve",M,{'action':'REJECT','reason':'l
 check('7. Không xử lý lại khiếu nại đã đóng', 'đã' in (j.get('message') or ''))
 
 # 8. Sửa ô (FIX) → cập nhật bảng công thật
+fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Sửa giúp ô công'},expect=200)
 d2=j['data']
 c,j=call('POST',f"/disputes/{d2['id']}/resolve",M,{'action':'FIX','reason':'Đối chiếu log thấy có mặt','symbol':'1.00'},expect=200)
@@ -68,6 +78,7 @@ c,j=call('GET',f"/disputes/{d2['id']}",H,expect=200)
 check('8b. Ô bảng công đã cập nhật 1.00', j['data'].get('currentCell')=='1.00', str(j['data'].get('currentCell')))
 
 # 9. MAKEUP → tạo đơn bổ sung công
+fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Quên check-out'},expect=200)
 d3=j['data']
 c,j=call('POST',f"/disputes/{d3['id']}/resolve",M,{'action':'MAKEUP','reason':'Tạo đơn bổ sung theo log'},expect=200)
@@ -77,6 +88,7 @@ reqs=j['data']['content'] if isinstance(j['data'],dict) else j['data']
 check('9b. Sinh đơn ADJUST chờ duyệt', any(r['requestType']=='ADJUST' and 'khiếu nại' in (r.get('reason') or '').lower() and r['status']=='PENDING_APPROVAL' for r in reqs))
 
 # 10. Quá hạn → tự đóng + không xử lý được
+fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Khiếu nại sẽ quá hạn'},expect=200)
 d4=j['data']
 import subprocess
@@ -89,6 +101,7 @@ c,j=call('POST',f"/disputes/{d4['id']}/resolve",M,{'action':'FIX','symbol':'1.00
 check('10b. Xử lý khiếu nại quá hạn bị chặn', 'quá hạn' in (j.get('message') or ''))
 
 # 11. Nhân viên không được xử lý / xem khiếu nại người khác
+fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Của nhân viên'},expect=200)
 d5=j['data']
 other=login('136ACT')
@@ -97,16 +110,28 @@ check('11. Nhân viên khác không xem được chi tiết', True)
 c,j=call('POST',f"/disputes/{d5['id']}/resolve",other,{'action':'REJECT','reason':'x'},expect=400)
 check('11b. Nhân viên thường không được xử lý khiếu nại', True)
 
-# 12. Chốt & khoá bị chặn khi còn khiếu nại mở
-c,j=call('POST','/timesheets/lock?month=2049-03',H,expect=400)
-check('12. Chốt & khoá bị chặn khi còn khiếu nại mở', 'khiếu nại' in (j.get('message') or '').lower())
+# 12. Khoá kỳ chỉ bị chặn bởi khiếu nại MỞ ĐÚNG KỲ — đơn của tháng khác không chặn.
+# d5 đang PENDING nhưng thuộc tháng hiện tại; khoá kỳ 2024-09 phải thành công.
+call('POST','/timesheets/publish?month=2024-09',H,expect=200)
+c,j=call('POST','/timesheets/lock?month=2024-09',H,expect=200)
+check('12. Khiếu nại kỳ khác không chặn khoá kỳ này', (j.get('data') or {}).get('status')=='locked')
+
+# 12b. Cùng kỳ còn khiếu nại mở → chặn khoá; xử lý xong mới khoá được
+call('POST','/timesheets/publish?month=2024-10',H,expect=200)
+fresh('2024-10-15')
+c,j=call('POST','/disputes',E,{'workDate':'2024-10-15','reason':'Khoá kỳ 10'},expect=200)
+d6=j['data']
+c,j=call('POST','/timesheets/lock?month=2024-10',H,expect=400)
+check('12b. Cùng kỳ còn khiếu nại mở → chặn khoá', 'khiếu nại' in (j.get('message') or '').lower())
+call('POST',f"/disputes/{d6['id']}/resolve",M,{'action':'REJECT','reason':'Dọn dữ liệu test'},expect=200)
+c,j=call('POST','/timesheets/lock?month=2024-10',H,expect=200)
+check('12c. Xử lý hết khiếu nại trong kỳ → khoá được', (j.get('data') or {}).get('status')=='locked')
 
 # 13. Audit log ghi nhận
 c,j=call('GET','/admin/audit-logs',H,expect=200)
 logs=j['data'] if isinstance(j['data'],list) else j['data'].get('content',[])
 check('13. Audit log có RESOLVE_DISPUTE', any((l.get('action')=='RESOLVE_DISPUTE') for l in logs))
 
-# cleanup: resolve d5 và khoá thử kỳ 2049-03 (không đụng kỳ demo)
+# cleanup: resolve d5 (kỳ hiện tại) — không đụng kỳ demo
 call('POST',f"/disputes/{d5['id']}/resolve",M,{'action':'REJECT','reason':'Dọn dữ liệu test'})
-call('POST','/timesheets/lock?month=2049-03',H)
 print('\nALL DISPUTE TESTS PASSED')

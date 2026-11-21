@@ -77,7 +77,12 @@ public class SecurityConfig {
                 // 3. Kích hoạt tác vụ cron ngầm định kỳ
                 .requestMatchers("/cron/**").hasAnyRole("ADMIN", "HR_ADMIN")
 
-                // 4. Mọi API nghiệp vụ khác bắt buộc phải đăng nhập có JWT hợp lệ
+                // 4. Chốt/khoá kỳ công và các job chốt-khoá chỉ dành cho ADMIN/HR_ADMIN
+                .requestMatchers("/timesheets/publish", "/timesheets/lock",
+                        "/timesheets/auto-close", "/timesheets/auto-publish", "/timesheets/auto-lock")
+                    .hasAnyRole("ADMIN", "HR_ADMIN")
+
+                // 5. Mọi API nghiệp vụ khác bắt buộc phải đăng nhập có JWT hợp lệ
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

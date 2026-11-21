@@ -9,12 +9,14 @@ import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Rule;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.Team;
+import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.RuleRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -40,6 +42,12 @@ public class OrgStructureController {
 
     @Autowired
     private ShiftRepository shiftRepository;
+
+    @Autowired
+    private ShiftResolver shiftResolver;
+
+    @Autowired
+    private AttendanceLogRepository attendanceLogRepository;
 
     @Autowired
     private HolidayRepository holidayRepository;
@@ -584,12 +592,8 @@ public class OrgStructureController {
             }
         }
 
-        // Tự gán ca mặc định (theo bộ gán ca)
-        UUID defaultShiftId = null;
-        List<Shift> allShifts = shiftRepository.findAll();
-        if (!allShifts.isEmpty()) {
-            defaultShiftId = allShifts.get(0).getId();
-        }
+        // Ca mặc định: ca chuẩn toàn công ty (SHIFT_STANDARD) — nhân sự mới không có ca ngoại lệ.
+        UUID defaultShiftId = shiftResolver.standardShiftId();
 
         // Tự gán quản lý trực tiếp mặc định (05ACT)
         UUID defaultManagerId = null;
@@ -1870,58 +1874,178 @@ public class OrgStructureController {
     }
 
     @GetMapping("/admin/shifts")
-    @Operation(summary = "Danh sách ca làm việc (S26)")
+    @Operation(summary = "Danh sách ca làm việc (S26) — ca chuẩn đầu bảng, ca ngoại lệ xếp theo ưu tiên tăng dần")
     public ApiResponse<List<Shift>> getShifts() {
-        return ApiResponse.ok(shiftRepository.findAll(), "Lấy danh sách ca làm việc thành công");
+        List<Shift> data = shiftRepository.findAll().stream()
+                .sorted(Comparator
+                        .comparing((Shift s) -> shiftResolver.isStandard(s) ? 0 : 1)
+                        .thenComparing(s -> shiftResolver.isStandard(s) || s.getPriority() == null ? 0 : s.getPriority())
+                        .thenComparing(Shift::getCode))
+                .toList();
+        return ApiResponse.ok(data, "Lấy danh sách ca làm việc thành công");
     }
 
     @PostMapping("/admin/shifts")
-    @Operation(summary = "Thêm ca làm việc / ca linh hoạt")
+    @Operation(summary = "Thêm ca làm việc / ca linh hoạt — ca mới nằm cuối danh sách (ưu tiên cao nhất)")
     public ApiResponse<Shift> createShift(@RequestBody Shift shift) {
         if (shift.getCode() == null || shift.getCode().isBlank())
             throw new RuntimeException("Thiếu mã ca");
         if (shiftRepository.findByCode(shift.getCode()).isPresent())
             throw new RuntimeException("Mã ca đã tồn tại");
+        int maxPriority = shiftRepository.findAll().stream()
+                .filter(s -> !shiftResolver.isStandard(s))
+                .mapToInt(s -> s.getPriority() == null ? 0 : s.getPriority())
+                .max().orElse(0);
+        shift.setPriority(maxPriority + 1);
+        if (shift.getIsActive() == null) shift.setIsActive(true);
+        shift.setIsException(true);
+        assertHasTarget(shift);
         return ApiResponse.ok(shiftRepository.save(shift), "Đã thêm ca làm việc");
     }
 
+    /** Ca ngoại lệ phải có ít nhất một phạm vi áp dụng — nếu không sẽ không bao giờ khớp ai. */
+    private void assertHasTarget(Shift shift) {
+        if (shiftResolver.isStandard(shift)) return;
+        boolean any = java.util.stream.Stream.of(shift.getTargetGroup(), shift.getTargetPosition(), shift.getTargetEmployees())
+                .anyMatch(v -> v != null && !v.isBlank());
+        if (!any) {
+            throw new RuntimeException("Ca ngoại lệ phải chọn ít nhất một nhóm, chức danh hoặc nhân viên áp dụng");
+        }
+    }
+
     @PutMapping("/admin/shifts/{code}")
-    @Operation(summary = "Sửa ca làm việc")
+    @Operation(summary = "Sửa ca làm việc / bật-tắt ca ngoại lệ (ca chuẩn luôn bật)")
     public ApiResponse<Shift> updateShift(@PathVariable String code, @RequestBody Shift payload) {
         Shift shift = shiftRepository.findByCode(code)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
         payload.setId(shift.getId());
         payload.setCode(shift.getCode());
         payload.setUpdatedAt(LocalDateTime.now());
+        if (payload.getPriority() == null) payload.setPriority(shift.getPriority());
+        if (payload.getTargetGroup() == null) payload.setTargetGroup(shift.getTargetGroup());
+        if (payload.getTargetPosition() == null) payload.setTargetPosition(shift.getTargetPosition());
+        if (payload.getTargetEmployees() == null) payload.setTargetEmployees(shift.getTargetEmployees());
+        if (payload.getExcludeEmployees() == null) payload.setExcludeEmployees(shift.getExcludeEmployees());
+        if (payload.getIsActive() == null) payload.setIsActive(shift.getIsActive());
+        // Ca chuẩn là base toàn công ty: luôn bật, không ngoại lệ, không target/loại trừ.
+        if (shiftResolver.isStandard(shift)) {
+            payload.setIsActive(true);
+            payload.setIsException(false);
+            payload.setTargetGroup(null);
+            payload.setTargetPosition(null);
+            payload.setTargetEmployees(null);
+            payload.setExcludeEmployees(null);
+        } else {
+            assertHasTarget(payload);
+        }
         return ApiResponse.ok(shiftRepository.save(payload), "Đã cập nhật ca làm việc");
     }
 
+    @DeleteMapping("/admin/shifts/{code}")
+    @Operation(summary = "Xóa ca ngoại lệ — nhân sự đang dùng ca được đưa về ca chuẩn")
+    public ApiResponse<Map<String, Object>> deleteShift(@PathVariable String code) {
+        Shift shift = shiftRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
+        if (shiftResolver.isStandard(shift)) {
+            throw new RuntimeException("Ca chuẩn là ca mặc định toàn công ty — không thể xóa. "
+                    + "Chỉ có thể sửa khung giờ.");
+        }
+        UUID standardId = shiftResolver.standardShiftId();
+        int moved = 0;
+        for (User user : userRepository.findAll()) {
+            if (shift.getId().equals(user.getShiftId())) {
+                user.setShiftId(standardId);
+                userRepository.save(user);
+                moved++;
+            }
+        }
+        // Log đã ghi ca này sẽ mất tham chiếu (không chặn xóa vì lịch sử chấm công)…
+        attendanceLogRepository.clearShiftReference(shift.getId());
+        shiftRepository.delete(shift);
+        return ApiResponse.ok(Map.of("moved", moved, "shiftCode", code),
+                "Đã xóa ca — " + moved + " nhân sự trở về ca chuẩn");
+    }
+
+    @PutMapping("/admin/shifts/order")
+    @Operation(summary = "Sắp xếp lại thứ tự ca — ca ở cuối danh sách có ưu tiên ghi đè cao nhất")
+    public ApiResponse<List<Shift>> reorderShifts(@RequestBody Map<String, Object> body) {
+        Object raw = body == null ? null : body.get("codes");
+        List<String> codes = raw instanceof List<?> list
+                ? list.stream().map(String::valueOf).toList()
+                : List.of();
+        if (codes.isEmpty()) throw new RuntimeException("Thiếu danh sách mã ca cần sắp xếp");
+        Map<String, Shift> byCode = shiftRepository.findAll().stream()
+                .filter(s -> !shiftResolver.isStandard(s))
+                .collect(Collectors.toMap(Shift::getCode, s -> s, (a, b) -> a, LinkedHashMap::new));
+        Set<String> seen = new HashSet<>();
+        int priority = 1;
+        for (String code : codes) {
+            Shift shift = byCode.get(code);
+            if (shift == null || !seen.add(code)) continue;
+            shift.setPriority(priority++);
+            shift.setUpdatedAt(LocalDateTime.now());
+            shiftRepository.save(shift);
+        }
+        // Ca không có trong danh sách gửi lên: giữ thứ tự cũ, xếp sau cùng.
+        List<Shift> remaining = byCode.values().stream()
+                .filter(s -> !seen.contains(s.getCode()))
+                .sorted(Comparator.comparing(s -> s.getPriority() == null ? Integer.MAX_VALUE : s.getPriority()))
+                .toList();
+        for (Shift s : remaining) {
+            s.setPriority(priority++);
+            s.setUpdatedAt(LocalDateTime.now());
+            shiftRepository.save(s);
+        }
+        return getShifts();
+    }
+
     @PostMapping("/admin/shifts/{code}/assign")
-    @Operation(summary = "Áp ca cho nhóm/chức danh theo cấu hình target của ca")
+    @Operation(summary = "Áp ca theo cấu hình nhóm/chức danh/nhân viên — chỉ nhân sự mà ca này thắng theo thứ tự ưu tiên")
     public ApiResponse<Map<String, Object>> assignShift(@PathVariable String code) {
         Shift shift = shiftRepository.findByCode(code)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
+        if (shiftResolver.isStandard(shift)) {
+            throw new RuntimeException("Ca chuẩn đã áp dụng mặc định cho toàn công ty — không cần áp ca. "
+                    + "Dùng \"Bỏ áp ca\" trên ca ngoại lệ để đưa nhân sự về ca chuẩn.");
+        }
         int assigned = 0;
-        if (shift.getTargetPosition() != null && !shift.getTargetPosition().isBlank()) {
-            for (var user : userRepository.findByPositionName(shift.getTargetPosition().trim())) {
+        for (User user : userRepository.findAll()) {
+            Shift resolved = shiftResolver.resolveFor(user);
+            if (resolved != null && shift.getId().equals(resolved.getId())) {
                 user.setShiftId(shift.getId());
                 userRepository.save(user);
                 assigned++;
             }
         }
-        if (shift.getTargetGroup() != null && !shift.getTargetGroup().isBlank()) {
-            for (String groupName : shift.getTargetGroup().split(",")) {
-                var teamOpt = teamRepository.findByName(groupName.trim());
-                if (teamOpt.isPresent()) {
-                    for (var user : userRepository.findByTeamId(teamOpt.get().getId())) {
-                        user.setShiftId(shift.getId());
-                        userRepository.save(user);
-                        assigned++;
-                    }
-                }
+        return ApiResponse.ok(Map.of("assigned", assigned, "shiftCode", code),
+                "Đã áp ca — ca này đang là ca hiệu lực cho " + assigned + " nhân sự");
+    }
+
+    @PostMapping("/admin/shifts/{code}/unassign")
+    @Operation(summary = "Bỏ áp ca ngoại lệ (tắt ca) — nhân sự trở về ca chuẩn hoặc ca ưu tiên thấp hơn")
+    public ApiResponse<Map<String, Object>> unassignShift(@PathVariable String code) {
+        Shift shift = shiftRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca: " + code));
+        if (shiftResolver.isStandard(shift)) {
+            throw new RuntimeException("Ca chuẩn áp dụng mặc định cho toàn công ty — không thể bỏ áp");
+        }
+        int reverted = 0;
+        for (User user : userRepository.findAll()) {
+            Shift resolved = shiftResolver.resolveFor(user);
+            if (resolved != null && shift.getId().equals(resolved.getId())) reverted++;
+        }
+        shift.setIsActive(false);
+        shift.setUpdatedAt(LocalDateTime.now());
+        shiftRepository.save(shift);
+        UUID standardId = shiftResolver.standardShiftId();
+        for (User user : userRepository.findAll()) {
+            if (shift.getId().equals(user.getShiftId())) {
+                user.setShiftId(standardId);
+                userRepository.save(user);
             }
         }
-        return ApiResponse.ok(Map.of("assigned", assigned, "shiftCode", code), "Đã áp ca cho nhóm theo cấu hình");
+        return ApiResponse.ok(Map.of("reverted", reverted, "shiftCode", code),
+                "Đã bỏ áp ca — " + reverted + " nhân sự về ca chuẩn");
     }
 
     @GetMapping("/media/preview/{fileId}")

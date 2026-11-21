@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RuleValueSummary } from './RuleValueSummary';
 
 interface RuleApi {
   ruleKey: string;
@@ -93,7 +94,9 @@ export const PolicyDocPage: React.FC = () => {
             </summary>
             <div className="mt-2 text-xs text-ink-secondary">{r.description}</div>
             {dynamicExample(r) && <div className="mt-1 text-xs text-emerald-700">Ví dụ: {dynamicExample(r)}</div>}
-            <pre className="mt-2 bg-canvas rounded-lg p-2 text-[11px] overflow-x-auto">{r.currentValue}</pre>
+            <div className="mt-2 bg-canvas rounded-lg p-3">
+              <RuleValueSummary ruleKey={r.ruleKey} value={r.currentValue} />
+            </div>
           </details>
         ))}
       </div>
