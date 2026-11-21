@@ -34,4 +34,10 @@ public class Shift extends BaseEntity {
     @Column(name = "requires_hr_approval") @Builder.Default private Boolean requiresHrApproval = false;
     @Column(name = "target_group", length = 100) private String targetGroup;
     @Column(name = "target_position", length = 100) private String targetPosition;
+    /** Mã nhân viên áp dụng trực tiếp (CSV). */
+    @Column(name = "target_employees", columnDefinition = "text") private String targetEmployees;
+    /** Mã nhân viên bị loại trừ khỏi ca này (CSV) — chỉ ca ngoại lệ mới có. */
+    @Column(name = "exclude_employees", columnDefinition = "text") private String excludeEmployees;
+    /** Thứ tự hiển thị: số càng lớn càng ở dưới danh sách → ưu tiên ghi đè càng cao. */
+    @Column(name = "priority") @Builder.Default private Integer priority = 100;
 }

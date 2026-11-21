@@ -9,6 +9,7 @@ import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
 import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.Holiday;
+import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
@@ -20,6 +21,7 @@ import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.act.pulse.modules.attendance.service.RuleService;
+import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,6 +60,7 @@ public class RequestController {
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final HolidayRepository holidayRepository;
     private final AuditLogRepository auditLogRepository;
+    private final ShiftResolver shiftResolver;
     private final ObjectMapper objectMapper;
 
     private String leaveTypeName(String code) {
@@ -366,12 +369,30 @@ public class RequestController {
     @GetMapping("/inbox")
     @Operation(summary = "Hộp thư duyệt của quản lý (S12)")
     public ApiResponse<List<Map<String, Object>>> inbox() {
+        UUID me = CurrentUser.userId();
         List<UUID> managed = userRepository.findAll().stream()
-                .filter(u -> CurrentUser.userId().equals(u.getManagerId()))
+                .filter(u -> me.equals(u.getManagerId()))
                 .map(User::getId)
                 .collect(Collectors.toList());
-        List<Map<String, Object>> rows = new ArrayList<>();
+        // Gộp theo id: đơn của nhân viên trực tiếp + (nếu cấu hình cho phép) đơn của chính mình
+        // để quản lý tự duyệt ngay trong hộp thư; HR thấy toàn bộ đơn chờ để xử lý đơn không có người duyệt.
+        Map<UUID, RequestEntity> pending = new LinkedHashMap<>();
         for (RequestEntity r : requestRepository.findByUserIdInAndStatusOrderByCreatedAtDesc(managed, "PENDING_APPROVAL")) {
+            pending.putIfAbsent(r.getId(), r);
+        }
+        User meUser = me == null ? null : userRepository.findById(me).orElse(null);
+        if (meUser != null && canSelfApprove(meUser)) {
+            for (RequestEntity r : requestRepository.findByUserIdAndStatus(me, "PENDING_APPROVAL")) {
+                pending.putIfAbsent(r.getId(), r);
+            }
+        }
+        if (CurrentUser.isHr()) {
+            for (RequestEntity r : requestRepository.findAll()) {
+                if ("PENDING_APPROVAL".equals(r.getStatus())) pending.putIfAbsent(r.getId(), r);
+            }
+        }
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (RequestEntity r : pending.values()) {
             Map<String, Object> m = new HashMap<>();
             m.put("id", r.getId());
             m.put("userId", r.getUserId());
@@ -387,6 +408,7 @@ public class RequestController {
             m.put("payload", r.getPayload());
             m.put("leaveTypeName", leaveTypeName(r.getLeaveType()));
             m.put("attachmentCount", requestAttachmentRepository.countByRequestId(r.getId()));
+            m.put("selfRequest", me != null && me.equals(r.getUserId()));
             userRepository.findById(r.getUserId()).ifPresent(u -> {
                 m.put("employeeCode", u.getEmployeeCode());
                 m.put("employeeName", u.getFullName());
@@ -775,9 +797,16 @@ public class RequestController {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         User owner = userRepository.findById(r.getUserId()).orElseThrow();
         UUID me = CurrentUser.userId();
+        boolean selfApprove = me.equals(owner.getId()) && canSelfApprove(owner);
         boolean isManager = me.equals(owner.getManagerId())
-                || userRepository.findById(me).map(u -> "HR_ADMIN".equals(u.getRole()) || "ADMIN".equals(u.getRole())).orElse(false);
-        if (!isManager) throw new RuntimeException("Chỉ quản lý trực tiếp (hoặc HR) được duyệt");
+                || userRepository.findById(me).map(u -> "HR_ADMIN".equals(u.getRole()) || "ADMIN".equals(u.getRole())).orElse(false)
+                || selfApprove;
+        if (!isManager) {
+            throw new RuntimeException("Chỉ quản lý trực tiếp (hoặc HR) được duyệt — đơn của chính bạn chỉ được tự duyệt khi quy định cho phép");
+        }
+        if (selfApprove && (comment == null || comment.isBlank())) {
+            comment = "Tự duyệt đơn của tôi theo cấu hình luồng duyệt";
+        }
         if (approve && "LEAVE".equals(r.getRequestType())
                 && leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType())
                     .map(lt -> Boolean.TRUE.equals(lt.getRequiresAttachment())).orElse(false)
@@ -831,6 +860,11 @@ public class RequestController {
                     if (out) log.setCheckOutAt(r.getWorkDate().atTime(t));
                     else log.setCheckInAt(r.getWorkDate().atTime(t));
                     log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
+                    // Log tạo/sửa qua đơn duyệt cũng phải mang ca hiệu lực để bảng công tính đúng.
+                    if (log.getShiftId() == null) {
+                        Shift shift = shiftResolver.resolveFor(owner);
+                        if (shift != null) log.setShiftId(shift.getId());
+                    }
                     attendanceLogRepository.save(log);
                 }
             } catch (Exception ignored) { /* payload cũ/không hợp lệ: chỉ duyệt đơn, không sửa log */ }
@@ -849,6 +883,32 @@ public class RequestController {
                 .build());
 
         return ApiResponse.ok(saved, approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
+    }
+
+    /** Thứ bậc vai trò — dùng cho cấu hình "cấp manager trở lên" được tự duyệt đơn của mình. */
+    private static final List<String> ROLE_RANK = List.of("EMPLOYEE", "MANAGER", "EXECUTIVE", "HR_ADMIN", "ADMIN");
+
+    /**
+     * Quy định {@code approval_flow}: quản lý có được tự duyệt đơn của chính mình không.
+     * <ul>
+     *   <li>{@code allow_self_approval} — bật/tắt (mặc định tắt)</li>
+     *   <li>{@code self_approval_min_role} — vai trò tối thiểu, mặc định MANAGER</li>
+     *   <li>{@code self_approval_scope} — NO_MANAGER: chỉ khi không có quản lý trực tiếp hợp lệ;
+     *       ALWAYS: mọi lúc (mặc định NO_MANAGER)</li>
+     * </ul>
+     */
+    private boolean canSelfApprove(User owner) {
+        if (!ruleService.getBoolean("approval_flow", "allow_self_approval", false)) return false;
+        String minRole = ruleService.getString("approval_flow", "self_approval_min_role", "MANAGER");
+        if (roleRank(owner.getRole()) < roleRank(minRole)) return false;
+        String scope = ruleService.getString("approval_flow", "self_approval_scope", "NO_MANAGER");
+        if ("ALWAYS".equalsIgnoreCase(scope)) return true;
+        return owner.getManagerId() == null || !userRepository.existsById(owner.getManagerId());
+    }
+
+    private int roleRank(String role) {
+        int idx = ROLE_RANK.indexOf(role == null ? "EMPLOYEE" : role.toUpperCase(Locale.ROOT));
+        return idx < 0 ? 0 : idx;
     }
 
     @lombok.Data

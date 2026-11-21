@@ -12,6 +12,7 @@ import com.act.pulse.modules.attendance.entity.TimesheetCell;
 import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
 import com.act.pulse.modules.attendance.repository.*;
 import com.act.pulse.modules.attendance.service.RuleService;
+import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +32,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/timesheets")
 @RequiredArgsConstructor
-@Tag(name = "8. Timesheet API", description = "Bảng công 53 cột, công bố ngày 11, khiếu nại 2 ngày, khoá kỳ")
+@Tag(name = "8. Timesheet API", description = "Bảng công 53 cột — kỳ đang mở cho khiếu nại ngay; cuối kỳ chốt theo close_day rồi khoá sau cửa sổ khiếu nại")
 public class TimesheetController {
 
     private final UserRepository userRepository;
@@ -40,6 +41,7 @@ public class TimesheetController {
     private final HolidayRepository holidayRepository;
     private final TeamRepository teamRepository;
     private final RuleService ruleService;
+    private final ShiftResolver shiftResolver;
     private final AuditLogRepository auditLogRepository;
     private final TimesheetRepository timesheetRepository;
     private final TimesheetCellRepository timesheetCellRepository;
@@ -61,6 +63,19 @@ public class TimesheetController {
         return rows.isEmpty() ? "draft" : rows.get(0).getStatus();
     }
 
+    /**
+     * Kỳ đang chạy phải giữ MỞ để nhân viên khiếu nại ngay (mô hình kỳ MỞ).
+     * Chỉ được chốt kỳ đã kết thúc; kỳ đang chạy/tương lai do job close_day tự chốt đầu tháng sau.
+     */
+    private void assertPeriodClosed(YearMonth ym) {
+        if (!ym.isBefore(YearMonth.now())) {
+            int closeDay = ruleService.getInt("payroll_period", "close_day", 1);
+            throw new RuntimeException("Chỉ chốt được kỳ đã kết thúc — kỳ " + ym
+                    + " đang chạy hoặc ở tương lai. Hệ thống tự chốt kỳ trước theo ngày chốt (mùng "
+                    + closeDay + ") ở đầu tháng sau.");
+        }
+    }
+
     private Timesheet sheetOf(UUID userId, YearMonth ym) {
         return timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, ym.getMonthValue(), ym.getYear())
                 .orElseGet(() -> timesheetRepository.save(Timesheet.builder()
@@ -69,6 +84,57 @@ public class TimesheetController {
 
     private void ensureAllSheets(YearMonth ym) {
         for (User u : userRepository.findAll()) sheetOf(u.getId(), ym);
+    }
+
+    /**
+     * Số ngày công của một ký hiệu ô: 1.00 → 1, 0.50 → 0.5, R (WFH cả ngày) → 1,
+     * R/0.50 → 0.5. Ký hiệu nghỉ (AL, S, NL…) hoặc rỗng → 0.
+     */
+    private static double workUnits(String raw) {
+        if (raw == null) return 0;
+        String base = raw.trim().replace("*", "").replace("?", "").trim();
+        if (base.isEmpty()) return 0;
+        if ("R".equalsIgnoreCase(base)) return 1.0;
+        int slash = base.indexOf('/');
+        boolean isCounted = base.matches("\\d+(\\.\\d+)?")
+                || (slash == 1 && base.regionMatches(true, 0, "R/", 0, 2));
+        if (!isCounted) return 0;
+        String numeric = slash >= 0 ? base.substring(slash + 1) : base;
+        try {
+            return Double.parseDouble(numeric);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    /**
+     * Số ngày phép năm (AL) của một ô: AL → 1, AL/0.50 hoặc 0.50/AL → 0.5.
+     * Nghỉ ốm/chế độ/không lương (S, RO, UP, ML…) trả 0 — không trừ vào phép năm.
+     */
+    private static double annualLeaveUnits(String raw) {
+        if (raw == null) return 0;
+        String base = raw.trim().replace("*", "").replace("?", "").trim().toUpperCase();
+        if (base.isEmpty()) return 0;
+        if ("AL".equals(base)) return 1.0;
+        int slash = base.indexOf('/');
+        if (slash < 0) return 0;
+        String left = base.substring(0, slash), right = base.substring(slash + 1);
+        if ("AL".equals(left) && right.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(right);
+        if ("AL".equals(right) && left.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(left);
+        return 0;
+    }
+
+    /** Số ngày WFH của một ô: R → 1, R/0.50 hoặc 0.50/R → 0.5, ký hiệu khác → 0. */
+    private static double wfhUnits(String raw) {
+        if (raw == null) return 0;
+        String base = raw.trim().replace("*", "").replace("?", "").trim().toUpperCase();
+        if ("R".equals(base)) return 1.0;
+        int slash = base.indexOf('/');
+        if (slash < 0) return 0;
+        String left = base.substring(0, slash), right = base.substring(slash + 1);
+        if ("R".equals(left) && right.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(right);
+        if ("R".equals(right) && left.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(left);
+        return 0;
     }
 
     @GetMapping
@@ -82,15 +148,14 @@ public class TimesheetController {
         for (User u : userRepository.findAll()) {
             Map<Integer, String> daySymbol = new HashMap<>();
             List<AttendanceLog> logs = attendanceLogRepository.findByUserIdOrderByWorkDateDesc(u.getId());
-            double present = 0;
             for (AttendanceLog log : logs) {
                 if (log.getWorkDate() == null || !YearMonth.from(log.getWorkDate()).equals(ym)) continue;
-                boolean full = log.getCheckInAt() != null && log.getCheckOutAt() != null;
-                daySymbol.put(log.getWorkDate().getDayOfMonth(), full ? "1.00" : "0.50");
-                present += full ? 1 : 0;
+                // Công tính theo ca hiệu lực (ưu tiên ca ghi trên log): đủ giờ ca = 1.00,
+                // đủ nửa = 0.50, thiếu giờ vào/ra hoặc dưới nửa = 0.00.
+                daySymbol.put(log.getWorkDate().getDayOfMonth(),
+                        shiftResolver.workSymbol(shiftResolver.resolveFor(u, log), log));
             }
             int late = 0;
-            double leave = 0, wfh = 0;
             for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
                 if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null) continue;
                 boolean rangeType = "LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType());
@@ -108,8 +173,6 @@ public class TimesheetController {
                             if (!YearMonth.from(cur).equals(ym)) continue;
                             if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
                             daySymbol.put(cur.getDayOfMonth(), halfDay ? "R/0.50" : "R");
-                            wfh += halfDay ? 0.5 : 1;
-                            present += halfDay ? 0.5 : 1;
                         }
                     }
                     case "LEAVE" -> {
@@ -121,7 +184,6 @@ public class TimesheetController {
                             if (!YearMonth.from(cur).equals(ym)) continue;
                             if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
                             daySymbol.put(cur.getDayOfMonth(), halfDay ? sym + "/0.50" : sym);
-                            leave += halfDay ? 0.5 : 1;
                         }
                     }
                     default -> { if ("LATE_EARLY".equals(r.getRequestType())) late++; }
@@ -144,21 +206,41 @@ public class TimesheetController {
 
             // Đếm theo ký hiệu gốc của từng ô để export khớp file HR (Pine 53 cột).
             Map<String, Integer> symCount = new HashMap<>();
-            double totalDays = 0;
-            for (String s : daySymbol.values()) {
+            // Công thực tế phải khớp đúng các ô đang hiển thị trên lưới — gồm cả ô HR
+            // sửa tay / duyệt khiếu nại (timesheet_cells). Trước đây chỉ đếm attendance_logs
+            // nên lưới hiện 21 ô "1.00" mà tổng vẫn là 2–3. Chỉ tính ngày làm việc
+            // (bỏ cuối tuần/lễ) và không vượt công chuẩn.
+            double workDays = 0;
+            // Ngày phép năm (AL) lấy từ chính ô trên lưới — không cộng dồn từ đơn LEAVE,
+            // vì đơn nghỉ ốm/chế độ/không lương (S, RO, UP, ML…) không được trừ vào phép năm
+            // và từng bị đếm trùng ở cả cột AL lẫn cột S trước đây.
+            double annualLeave = 0;
+            // WFH cũng lấy từ ô lưới: HR sửa R → 1.00/AL thì cột WFH phải giảm theo,
+            // nếu cộng từ đơn đã duyệt sẽ lệch với file xuất và với lưới.
+            double wfhDays = 0;
+            for (Map.Entry<Integer, String> e : daySymbol.entrySet()) {
+                String s = e.getValue();
                 if (s == null || s.isBlank()) continue;
+                boolean isWorkDay = e.getKey() <= ym.lengthOfMonth()
+                        && ym.atDay(e.getKey()).getDayOfWeek().getValue() < 6
+                        && !holidays.contains(ym.atDay(e.getKey()));
                 String base = s.trim().replace("*", "").replace("?", "").trim();
-                int slash = base.indexOf('/');
-                String numeric = slash >= 0 ? base.substring(slash + 1) : base;
-                // Chỉ ký hiệu công (1.00/0.50) hoặc R/0.50 mới cộng vào tổng ngày công;
-                // AL/0.50 là nghỉ nửa ngày, không phải công.
-                if (base.matches("\\d+(\\.\\d+)?") || base.startsWith("R/")) {
-                    try { totalDays += Double.parseDouble(numeric); } catch (NumberFormatException ignored) { }
-                } else {
+                // Ký hiệu công: 1.00/0.50, R (WFH cả ngày), R/0.50; AL/0.50 là nghỉ nửa ngày, không phải công.
+                double units = workUnits(base);
+                if (units > 0 && isWorkDay) {
+                    workDays += units;
+                } else if (units == 0 && isWorkDay) {
+                    int slash = base.indexOf('/');
                     String code = slash >= 0 ? base.substring(0, slash) : base;
                     symCount.merge(code.toUpperCase(), 1, Integer::sum);
                 }
+                // Nghỉ chỉ trừ quỹ khi rơi vào ngày làm việc — ô nghỉ trên cuối tuần/lễ không tính.
+                if (isWorkDay) {
+                    annualLeave += annualLeaveUnits(base);
+                    wfhDays += wfhUnits(base);
+                }
             }
+            double totalDays = workDays;
 
             String teamName = u.getTeamId() == null ? null
                     : teamRepository.findById(u.getTeamId()).map(Team::getName).orElse(null);
@@ -173,9 +255,9 @@ public class TimesheetController {
             row.put("managerCode", managerCode);
             row.put("days", daySymbol);
             row.put("standardDays", workingDays);
-            row.put("actualDays", Math.min(present, workingDays));
-            row.put("wfhDays", wfh);
-            row.put("leaveDays", leave);
+            row.put("actualDays", Math.min(workDays, workingDays));
+            row.put("wfhDays", wfhDays);
+            row.put("leaveDays", annualLeave);
             row.put("lateCount", late);
             row.put("holidayDays", holidayCount);
             row.put("sickDays", symCount.getOrDefault("S", 0));
@@ -186,7 +268,7 @@ public class TimesheetController {
             row.put("paternityDays", symCount.getOrDefault("PL", 0));
             row.put("specialLeaveDays", symCount.getOrDefault("CL", 0));
             row.put("totalDays", totalDays);
-            row.put("remainingLeave", ruleService.getInt("leave_accrual", "base_days_per_year", 12) - leave);
+            row.put("remainingLeave", ruleService.getInt("leave_accrual", "base_days_per_year", 12) - annualLeave);
             rows.add(row);
         }
 
@@ -197,8 +279,14 @@ public class TimesheetController {
         out.put("status", statusOf(ym));
         out.put("closeDay", ruleService.getInt("payroll_period", "close_day", 1));
         out.put("disputeWindowDays", ruleService.getInt("payroll_period", "dispute_window_days", 2));
-        out.put("lockDelayDays", ruleService.getInt("payroll_period", "lock_delay_days", 3));
+        out.put("lockDelayDays", ruleService.getInt("payroll_period", "lock_delay_days", 0));
         out.put("allowAdjustAfterLock", ruleService.getBoolean("payroll_period", "allow_adjust_after_lock", false));
+        // Hạn khiếu nại THẬT đã lưu khi chốt kỳ — để UI hiển thị đúng số ngày còn lại,
+        // không lấy số ngày cấu hình (sau hạn vẫn có thể hiện "còn N ngày").
+        List<Timesheet> periodSheets = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
+        java.time.LocalDateTime periodDeadline = periodSheets.stream()
+                .map(Timesheet::getDisputeDeadline).filter(java.util.Objects::nonNull).findFirst().orElse(null);
+        out.put("disputeDeadline", periodDeadline == null ? null : periodDeadline.toLocalDate().toString());
         return ApiResponse.ok(out, "Bảng công " + ym);
     }
 
@@ -287,17 +375,17 @@ public class TimesheetController {
     }
 
     @PostMapping("/publish")
-    @Operation(summary = "Công bố bảng công (mặc định ngày 11) — mở cửa sổ khiếu nại")
+    @Operation(summary = "Chốt bảng công kỳ đã kết thúc — mở cửa sổ khiếu nại")
     public ApiResponse<Map<String, Object>> publish(@RequestParam(required = false) String month) {
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        assertPeriodClosed(ym);
+        String cur = statusOf(ym);
+        if ("locked".equals(cur)) throw new RuntimeException("Kỳ " + ym + " đã khoá — không chốt lại được");
+        if ("published".equals(cur)) throw new RuntimeException("Kỳ " + ym + " đã chốt — không chốt lại (hạn khiếu nại giữ nguyên)");
         Map<String, Object> out = doPublish(ym);
         return ApiResponse.ok(out, "Đã công bố bảng công — khiếu nại đến " + out.get("disputeDeadline"));
     }
 
-    /**
-     * Tự động công bố khi tới `payroll_period.publish_day` (chạy hằng ngày).
-     * Bỏ qua tháng đã published/locked.
-     */
     /**
      * Tự CHỐT bảng công của kỳ trước khi tới `close_day` (vd mùng 1).
      * Kỳ đang chạy vẫn MỞ và nhân viên khiếu nại được; chỉ khi chốt mới mở cửa sổ sau chốt.
@@ -313,6 +401,7 @@ public class TimesheetController {
         int closeDay = ruleService.getInt("payroll_period", "close_day", 1);
         boolean explicit = month != null && !month.isBlank();
         YearMonth ym = explicit ? YearMonth.parse(month) : YearMonth.now().minusMonths(1);
+        assertPeriodClosed(ym);
         String st = statusOf(ym);
         if (!explicit && LocalDate.now().getDayOfMonth() < closeDay) {
             return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "closed", false, "closeDay", closeDay),
@@ -335,10 +424,21 @@ public class TimesheetController {
 
     private Map<String, Object> doLock(YearMonth ym, boolean force) {
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        // Chỉ đếm khiếu nại còn hạn CỦA ĐÚNG KỲ này — đơn của tháng khác không được chặn khoá.
         long pending = timesheetDisputeRepository.findByStatus("PENDING").stream()
-                .filter(d -> d.getDeadline() == null || d.getDeadline().isAfter(now)).count();
+                .filter(d -> d.getWorkDate() != null && YearMonth.from(d.getWorkDate()).equals(ym))
+                .filter(d -> d.getDeadline() == null || d.getDeadline().isAfter(now))
+                .count();
         if (!force && pending > 0) {
-            throw new RuntimeException("Còn " + pending + " khiếu nại chưa xử lý — xử lý hết trước khi khoá kỳ công");
+            throw new RuntimeException("Còn " + pending + " khiếu nại chưa xử lý trong kỳ " + ym
+                    + " — xử lý hết trước khi khoá kỳ công");
+        }
+        if (force && pending > 0) {
+            AuditLog log = AuditLog.builder().action("FORCE_LOCK_TIMESHEET").entityName("TIMESHEET_PERIOD")
+                    .entityId(ym.toString()).userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
+                    .reason("Khoá cưỡng bức — còn " + pending + " khiếu nại đang mở trong kỳ").build();
+            log.setCreatedAt(now);
+            auditLogRepository.save(log);
         }
         ensureAllSheets(ym);
         List<Timesheet> rows = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
@@ -392,6 +492,9 @@ public class TimesheetController {
     public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month,
                                                  @RequestParam(required = false, defaultValue = "false") boolean force) {
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        if ("draft".equals(statusOf(ym))) {
+            throw new RuntimeException("Kỳ " + ym + " chưa chốt — hãy chốt bảng công trước khi khoá (để nhân viên còn cửa sổ khiếu nại)");
+        }
         return ApiResponse.ok(doLock(ym, force), "Đã khoá kỳ công");
     }
 }

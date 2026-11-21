@@ -44,6 +44,9 @@ export const CheckInPage: React.FC = () => {
   const [faceAttemptsRemaining, setFaceAttemptsRemaining] = useState(3);
   const [isLockedByAttempts, setIsLockedByAttempts] = useState(false);
 
+  // Ca hiệu lực của tôi (ca ngoại lệ theo ưu tiên có thể đè ca chuẩn)
+  const [myShift, setMyShift] = useState<any>(null);
+
   // Status for today and yesterday (Criterion B2 #2)
   const [yesterdayMissingCheckout, setYesterdayMissingCheckout] = useState(false);
   const [yesterdayDate, setYesterdayDate] = useState('');
@@ -142,6 +145,13 @@ export const CheckInPage: React.FC = () => {
         }
       })
       .catch((err) => console.warn('Could not fetch today status:', err));
+
+    fetch('/api/v1/attendance/my-shift', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => r.json())
+      .then((j) => setMyShift(j?.data ?? null))
+      .catch((err) => console.warn('Could not fetch my shift:', err));
   }, [user]);
 
   // Handle Real Camera stream cleanup
@@ -539,7 +549,9 @@ export const CheckInPage: React.FC = () => {
             {currentDate}
           </div>
           <div className="text-[11px] text-accent font-semibold mt-0.5">
-            Ca làm việc chuẩn: 08:30 – 17:30 (Nghỉ trưa 12:00–13:00)
+            {myShift
+              ? `${myShift.isBase ? 'Ca chuẩn' : 'Ca ngoại lệ'} · ${myShift.name}: ${(myShift.checkInStart || '').slice(0, 5)}–${(myShift.checkOutEnd || '').slice(0, 5)} · nghỉ trưa ${(myShift.lunchBreakStart || '').slice(0, 5)}–${(myShift.lunchBreakEnd || '').slice(0, 5)} · ${myShift.requiredWorkHours}h/ngày`
+              : 'Ca làm việc chuẩn: 08:00 – 17:30 (Nghỉ trưa 12:00–13:00)'}
           </div>
         </div>
 

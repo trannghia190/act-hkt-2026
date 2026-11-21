@@ -462,7 +462,9 @@
 **Nghiệm thu:**
 - [ ] Giờ vào/ra, giờ nghỉ trưa, đủ 8h/ngày · 4h/nửa ngày — đều cấu hình được
 - [ ] **Ca linh hoạt**: cấu hình được khung giờ (ví dụ check-in 8h–10h · check-out 17h–19h) — làm đủ 8h trong khung thì **tính đủ 1 ngày công**, không bắt buộc đúng giờ
-- [ ] **Bộ gán ca**: nhóm + chức danh → ca
+- [ ] **Bộ gán ca**: nhóm + chức danh + mã nhân viên cụ thể → ca; có danh sách **loại trừ** thành viên
+- [ ] **Thứ tự ưu tiên**: ca càng ở dưới danh sách càng ưu tiên cao; sắp xếp lại bằng ↑/↓; người khớp nhiều ca nhận ca dưới cùng
+- [ ] Ca ngoại lệ bật/tắt và xóa được; ca chuẩn luôn bật, không xóa được, nhân sự tắt/xóa ca rơi về ca thấp hơn/ca chuẩn
 - [ ] Ca ngoại lệ (7h30–16h30 · 7h00–16h00 · 10h00–19h00) gán cho nhóm, cần HR duyệt
 - [ ] Lịch nghỉ lễ theo năm — thêm ngày lễ không cần sửa code
 - [ ] Cấu hình **geofence bán kính + dải IP mạng nội bộ** cho văn phòng

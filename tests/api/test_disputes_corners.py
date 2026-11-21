@@ -15,7 +15,11 @@ def chk(n,c,x=''):
 E=login('137ACT'); E2=login('136ACT'); M=login('05ACT'); H=login('01HR')
 uid=subprocess.check_output(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-tAc',"select id from users where employee_code='137ACT'"]).decode().strip()
 
+def psql(sql):
+    return subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-tAc',sql],capture_output=True,text=True).stdout.strip()
 def mk(day='2026-11-25', reason='Test corner'):
+    # Mỗi ngày tối đa 2 đơn khiếu nại (chặn khi còn PENDING) — mỗi kịch bản bắt đầu với ngày sạch.
+    psql(f"delete from timesheet_disputes where user_id='{uid}' and work_date='{day}'")
     c,j=call('POST','/disputes',E,{'workDate':day,'reason':reason}); return j['data']['id']
 
 # 1. id không tồn tại
@@ -63,6 +67,8 @@ chk('12. Bulk bỏ qua đơn đã đóng, xử lý đơn còn mở', ok, (c,j))
 d4=mk(); c,j=call('POST','/disputes/bulk-resolve',E,{'ids':[d4],'action':'REJECT','reason':'x'})
 chk('13. Bulk bởi nhân viên bị từ chối từng đơn', c==200 and j['data']['resolved']==0 and len(j['data']['skipped'])==1, (c,j))
 # 14. FIX khi kỳ đã khoá: công bố kỳ test (để được tạo khiếu nại) → khoá force
+subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',
+ "update timesheets set status='draft', published_at=null, dispute_deadline=null, locked_at=null where period_month=2 and period_year=2024"],capture_output=True)
 c,j=call('POST','/timesheets/publish?month=2024-02',H)
 chk('14a. Công bố kỳ test 2024-02', c==200, (c,j.get('message')))
 d5=mk('2024-02-10','Kỳ khoá')
@@ -78,6 +84,11 @@ if j['data']:
 d6=mk()
 subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',
  f"update timesheet_disputes set deadline=now()-interval '1 day' where id='{d6}'"],capture_output=True)
+# Kỳ test phải được chốt trước khi khoá (mô hình kỳ MỞ) — tự cấp dữ liệu, không phụ thuộc thứ tự bộ test.
+subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',
+ "update timesheets set status='draft', published_at=null, dispute_deadline=null, locked_at=null where period_month=6 and period_year=2024"],capture_output=True)
+c,j=call('POST','/timesheets/publish?month=2024-06',H)
+chk('15a. Công bố kỳ test 2024-06', c==200, (c,j.get('message')))
 c,j=call('POST','/timesheets/lock?month=2024-06',H)
 chk('15. Khiếu nại quá hạn không chặn khoá kỳ', c==200, (c,j.get('message')))
 # 16. Lọc theo trạng thái

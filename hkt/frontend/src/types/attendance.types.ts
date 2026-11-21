@@ -77,6 +77,8 @@ export interface AttendanceRequestItem {
   approver: string;
   approverComment?: string;
   attachmentCount?: number;
+  /** Đơn do chính người đang đăng nhập gửi — được tự duyệt khi quy định luồng duyệt cho phép. */
+  selfRequest?: boolean;
   leaveType?: string;
   payload?: string;
   minutes?: number;

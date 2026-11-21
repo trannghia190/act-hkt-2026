@@ -23,9 +23,22 @@ interface Shift {
   requiresHrApproval: boolean;
   targetGroup: string;
   targetPosition: string;
+  /** Mã nhân viên áp dụng trực tiếp (CSV). */
+  targetEmployees: string;
+  /** Mã nhân viên bị loại trừ (CSV) — chỉ ca ngoại lệ mới có. */
+  excludeEmployees: string;
+  /** Số càng lớn càng ở dưới danh sách → ưu tiên ghi đè càng cao. */
+  priority?: number;
 }
 
 interface Holiday { id?: string; name: string; holidayDate: string; isPaid: boolean; }
+
+interface EmployeeOption {
+  employeeCode: string;
+  fullName: string;
+  team?: string;
+  positionName?: string;
+}
 
 const authHeaders = (): Record<string, string> => {
   try {
@@ -38,11 +51,82 @@ const emptyShift: Shift = {
   code: '', name: '', checkInStart: '08:00', checkInEnd: '09:30', checkOutStart: '17:00', checkOutEnd: '18:30',
   lunchBreakStart: '12:00', lunchBreakEnd: '13:00', requiredWorkHours: 8, isActive: true, isFlexible: false,
   flexibleCheckinFrom: '08:00', flexibleCheckinTo: '10:00', flexibleCheckoutFrom: '17:00', flexibleCheckoutTo: '19:00',
-  geofenceRadiusM: 150, ipRanges: '10.0.0.0/8,192.168.0.0/16', isException: false, requiresHrApproval: false,
-  targetGroup: '', targetPosition: '',
+  geofenceRadiusM: 150, ipRanges: '10.0.0.0/8,192.168.0.0/16', isException: true, requiresHrApproval: false,
+  targetGroup: '', targetPosition: '', targetEmployees: '', excludeEmployees: '',
 };
 
+/** Ca chuẩn là base toàn công ty — mọi ca khác là ngoại lệ đè lên ca chuẩn. */
+const BASE_SHIFT_CODE = 'SHIFT_STANDARD';
+const isBaseShift = (s: Shift) => s.code === BASE_SHIFT_CODE;
+
 const t = (v: string) => (v && v.length === 5 ? `${v}:00` : v);
+
+const csv = (v: string | undefined) => (v || '').split(',').map(s => s.trim()).filter(Boolean);
+
+/** Chọn nhiều giá trị từ danh sách có sẵn, lưu dạng CSV cho backend. */
+const CsvPicker: React.FC<{
+  label: string;
+  hint?: string;
+  options: { value: string; label?: string; sub?: string }[];
+  value: string;
+  disabled?: boolean;
+  onChange: (v: string) => void;
+}> = ({ label, hint, options, value, disabled, onChange }) => {
+  const [q, setQ] = useState('');
+  const selected = csv(value);
+  const toggle = (v: string) => {
+    const next = selected.includes(v) ? selected.filter(x => x !== v) : [...selected, v];
+    onChange(next.join(','));
+  };
+  const needle = q.trim().toLowerCase();
+  const shown = options.filter(o =>
+    !needle || o.value.toLowerCase().includes(needle) || (o.label || '').toLowerCase().includes(needle));
+  const labelOf = (v: string) => {
+    const o = options.find(x => x.value === v);
+    return o?.sub ? `${v} — ${o.sub}` : (o?.label || v);
+  };
+
+  return (
+    <div className={disabled ? 'opacity-50' : ''}>
+      <div className="font-semibold">{label}</div>
+      <details className="mt-1 border border-line rounded-lg bg-surface">
+        <summary className="cursor-pointer px-2 py-1.5 text-[11px] text-ink-muted">
+          {selected.length ? `${selected.length} đã chọn — bấm để sửa` : 'Chưa chọn — bấm để chọn'}
+        </summary>
+        <div className="p-2 border-t border-line space-y-1">
+          <input
+            disabled={disabled}
+            className="w-full border border-line rounded p-1.5 text-[11px]"
+            placeholder="Tìm…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
+          <div className="max-h-36 overflow-auto space-y-0.5">
+            {shown.map(o => (
+              <label key={o.value} className="flex items-center gap-2 text-[11px]">
+                <input type="checkbox" disabled={disabled} checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
+                <span>{o.label || o.value}</span>
+                {o.sub && <span className="text-ink-muted">{o.sub}</span>}
+              </label>
+            ))}
+            {!shown.length && <div className="text-[11px] text-ink-muted">Không có lựa chọn phù hợp</div>}
+          </div>
+        </div>
+      </details>
+      {selected.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {selected.map(v => (
+            <span key={v} className="inline-flex items-center gap-1 rounded bg-canvas border border-line px-1.5 py-0.5 text-[10px]">
+              {labelOf(v)}
+              <button type="button" disabled={disabled} className="text-ink-muted hover:text-red-600" onClick={() => toggle(v)}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {hint && <div className="mt-0.5 text-[10px] text-ink-muted">{hint}</div>}
+    </div>
+  );
+};
 
 export const ShiftHolidayPage: React.FC = () => {
   const [tab, setTab] = useState<'shifts' | 'holidays'>('shifts');
@@ -54,6 +138,9 @@ export const ShiftHolidayPage: React.FC = () => {
   const [holidayForm, setHolidayForm] = useState<Holiday>({ name: '', holidayDate: '', isPaid: true });
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Danh bạ để chọn nhóm / chức danh / nhân viên áp dụng thay vì gõ tay (tránh nhập sai).
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [pickersLoaded, setPickersLoaded] = useState(false);
 
   const load = () => {
     fetch('/api/v1/admin/shifts', { headers: authHeaders() }).then(r => r.json()).then(j => { if (Array.isArray(j?.data)) setShifts(j.data); }).catch(() => undefined);
@@ -62,14 +149,52 @@ export const ShiftHolidayPage: React.FC = () => {
   useEffect(load, []);
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
 
-  const openAdd = () => { setEditing(null); setForm(emptyShift); setIsShiftOpen(true); };
-  const openEdit = (s: Shift) => { setEditing(s); setForm({ ...s }); setIsShiftOpen(true); };
+  // Ca chuẩn luôn đứng đầu; ca ngoại lệ xếp theo priority tăng dần (dưới cùng ưu tiên cao nhất).
+  const orderedShifts: Shift[] = [
+    ...shifts.filter(isBaseShift),
+    ...shifts.filter(s => !isBaseShift(s)).sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999) || a.code.localeCompare(b.code)),
+  ];
+
+  const loadPickerOptions = () => {
+    if (pickersLoaded) return;
+    fetch('/api/v1/admin/users?size=1000', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(j => {
+        const rows = Array.isArray(j?.data?.content) ? j.data.content : [];
+        setEmployees(rows
+          .filter((e: any) => e?.employeeCode)
+          .map((e: any) => ({ employeeCode: e.employeeCode, fullName: e.fullName, team: e.team, positionName: e.positionName })));
+        setPickersLoaded(true);
+      })
+      .catch(() => undefined);
+  };
+
+  const openAdd = () => { setEditing(null); setForm(emptyShift); loadPickerOptions(); setIsShiftOpen(true); };
+  const openEdit = (s: Shift) => { setEditing(s); setForm({ ...s }); loadPickerOptions(); setIsShiftOpen(true); };
+
+  const teamOptions = Array.from(new Set(employees.map(e => e.team || '').filter(Boolean)))
+    .filter(name => name !== 'Chưa có nhóm') // nhãn hiển thị, không phải tên nhóm thật để khớp luật ca
+    .sort().map(name => ({ value: name, label: name }));
+  const positionOptions = Array.from(new Set(employees.map(e => e.positionName || '').filter(Boolean)))
+    .sort().map(name => ({ value: name, label: name }));
+  const employeeOptions = employees
+    .slice()
+    .sort((a, b) => a.employeeCode.localeCompare(b.employeeCode))
+    .map(e => ({ value: e.employeeCode, label: e.employeeCode, sub: e.fullName }));
 
   const saveShift = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) return;
+    // Ca ngoại lệ phải có ít nhất một phạm vi áp dụng, nếu không sẽ không bao giờ khớp ai.
+    if (!isBaseShift(form)
+      && !csv(form.targetGroup).length && !csv(form.targetPosition).length && !csv(form.targetEmployees).length) {
+      setError('Chọn ít nhất một nhóm, chức danh hoặc nhân viên áp dụng cho ca ngoại lệ');
+      return;
+    }
     const body = {
       ...form,
+      // "Ca ngoại lệ" suy ra từ việc ca khác ca chuẩn — không cần người dùng tick.
+      isException: !isBaseShift(form),
       checkInStart: t(form.checkInStart), checkInEnd: t(form.checkInEnd),
       checkOutStart: t(form.checkOutStart), checkOutEnd: t(form.checkOutEnd),
       lunchBreakStart: t(form.lunchBreakStart), lunchBreakEnd: t(form.lunchBreakEnd),
@@ -82,6 +207,43 @@ export const ShiftHolidayPage: React.FC = () => {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) { setError(json?.message || 'Lưu ca thất bại'); return; }
     setEditing(null); setForm(emptyShift); setIsShiftOpen(false); setError(null); showToast('Đã lưu ca làm việc'); load();
+  };
+
+  /** Bật/tắt ca ngoại lệ — tắt thì nhân sự rơi về ca ưu tiên thấp hơn hoặc ca chuẩn. */
+  const toggleShift = async (s: Shift) => {
+    const res = await fetch(`/api/v1/admin/shifts/${encodeURIComponent(s.code)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ ...s, isActive: !s.isActive }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Cập nhật ca thất bại'); return; }
+    setError(null); showToast(s.isActive ? 'Đã tắt ca' : 'Đã bật ca'); load();
+  };
+
+  /** Xóa ca ngoại lệ — nhân sự đang dùng sẽ về ca chuẩn (server xử lý). */
+  const deleteShift = async (s: Shift) => {
+    if (!window.confirm(`Xóa ca "${s.name}"? Nhân sự đang dùng ca này sẽ trở về ca chuẩn.`)) return;
+    const res = await fetch(`/api/v1/admin/shifts/${encodeURIComponent(s.code)}`, { method: 'DELETE', headers: authHeaders() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Xóa ca thất bại'); return; }
+    setError(null); showToast(json?.message || 'Đã xóa ca'); load();
+  };
+
+  /** Đổi thứ tự ưu tiên — ca ở dưới cùng có ưu tiên ghi đè cao nhất. */
+  const moveShift = async (s: Shift, dir: -1 | 1) => {
+    const rules = orderedShifts.filter(x => !isBaseShift(x));
+    const idx = rules.findIndex(x => x.code === s.code);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= rules.length) return;
+    const codes = rules.map(x => x.code);
+    [codes[idx], codes[target]] = [codes[target], codes[idx]];
+    const res = await fetch('/api/v1/admin/shifts/order', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ codes }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Sắp xếp ca thất bại'); return; }
+    setError(null); load();
   };
 
   const addHoliday = async (e: React.FormEvent) => {
@@ -100,7 +262,7 @@ export const ShiftHolidayPage: React.FC = () => {
       {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Ca làm việc & lịch nghỉ lễ</h1>
-        <p className="text-xs text-ink-muted mt-1">Ca thường / ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · bộ gán ca theo nhóm + chức danh · geofence + dải IP · ngày lễ theo năm.</p>
+        <p className="text-xs text-ink-muted mt-1">Ca chuẩn (SHIFT_STANDARD) là <b className="text-ink">base mặc định cho toàn công ty</b> — sửa được, không tắt/xóa được, không cần áp ca. Ca khác là <b className="text-ink">ca ngoại lệ</b>: áp theo <b className="text-ink">nhóm / chức danh / mã nhân viên</b>, có thể <b className="text-ink">loại trừ</b> thành viên và xếp thứ tự ưu tiên (ca dưới cùng thắng). Ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · geofence + dải IP · ngày lễ theo năm.</p>
         <div className="flex gap-2 mt-3">
           {(['shifts', 'holidays'] as const).map(x => (
             <button key={x} onClick={() => setTab(x)} className={`text-xs px-3 py-1.5 rounded-full border ${tab === x ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
@@ -113,31 +275,65 @@ export const ShiftHolidayPage: React.FC = () => {
 
       {tab === 'shifts' ? (
         <div className="bg-surface border border-line rounded-xl p-4">
-          <div className="flex justify-end mb-2"><button className="text-xs px-3 py-1.5 rounded bg-accent text-white" onClick={openAdd}>+ Thêm ca</button></div>
-          {shifts.map(s => (
-            <div key={s.code} className="border border-line rounded-lg p-3 mb-2 text-sm">
-              <div className="flex items-center justify-between">
-                <div><span className="font-mono text-xs text-accent mr-2">{s.code}</span><span className="font-semibold">{s.name}</span>
-                  {s.isException && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ca ngoại lệ</span>}
-                  {s.isFlexible && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">linh hoạt</span>}
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="text-xs text-ink-muted">
+              <b className="text-ink">Ca chuẩn</b> luôn áp dụng toàn công ty — không tắt/xóa được, chỉ sửa khung giờ.
+              Ca ngoại lệ xếp từ trên xuống: <b className="text-ink">ca càng ở dưới càng ưu tiên cao</b> — một người khớp
+              nhiều ca sẽ nhận ca ở dưới cùng. Dùng <b className="text-ink">↑/↓</b> để đổi thứ tự ghi đè.
+            </p>
+            <button className="text-xs px-3 py-1.5 rounded bg-accent text-white shrink-0" onClick={openAdd}>+ Thêm ca</button>
+          </div>
+          {orderedShifts.map(s => {
+            const ruleShifts = orderedShifts.filter(x => !isBaseShift(x));
+            const ruleIndex = ruleShifts.findIndex(x => x.code === s.code);
+            const ruleCount = ruleShifts.length;
+            return (
+              <div key={s.code} className={`border rounded-lg p-3 mb-2 text-sm ${isBaseShift(s) ? 'border-accent/40 bg-accent/5' : 'border-line'} ${!isBaseShift(s) && !s.isActive ? 'opacity-60' : ''}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center flex-wrap gap-y-1">
+                    <span className="font-mono text-xs text-accent mr-2">{s.code}</span><span className="font-semibold">{s.name}</span>
+                    {isBaseShift(s)
+                      ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent text-white">Mặc định toàn công ty</span>
+                      : <>
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ca ngoại lệ</span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${s.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                            {s.isActive ? `ưu tiên #${ruleIndex + 1}/${ruleCount}` : 'đang tắt'}
+                          </span>
+                          {s.isActive && ruleIndex === ruleCount - 1 && (
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">ưu tiên cao nhất</span>
+                          )}
+                        </>}
+                    {s.isFlexible && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">linh hoạt</span>}
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    {!isBaseShift(s) && (
+                      <>
+                        <button className="text-xs px-2 py-1 rounded border border-line disabled:opacity-40" disabled={ruleIndex <= 0}
+                          title="Đưa ca lên — ưu tiên thấp hơn" onClick={() => moveShift(s, -1)}>↑</button>
+                        <button className="text-xs px-2 py-1 rounded border border-line disabled:opacity-40" disabled={ruleIndex >= ruleCount - 1}
+                          title="Đưa ca xuống — ưu tiên cao hơn" onClick={() => moveShift(s, 1)}>↓</button>
+                        <button className="text-xs px-2 py-1 rounded border border-line" title={s.isActive ? 'Tắt ca — nhân sự rơi về ca thấp hơn/ca chuẩn' : 'Bật ca'}
+                          onClick={() => toggleShift(s)}>{s.isActive ? 'Tắt' : 'Bật'}</button>
+                      </>
+                    )}
+                    <button className="text-xs px-2 py-1 rounded border border-line" title={isBaseShift(s) ? 'Sửa khung giờ ca chuẩn — áp dụng ngay cho toàn công ty' : undefined} onClick={() => openEdit(s)}>Sửa</button>
+                    {!isBaseShift(s) && (
+                      <button className="text-xs px-2 py-1 rounded border border-rose-200 text-rose-700" title="Xóa ca — nhân sự đang dùng về ca chuẩn" onClick={() => deleteShift(s)}>Xóa</button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="text-xs px-2 py-1 rounded border border-line" onClick={async () => {
-                    const res = await fetch(`/api/v1/admin/shifts/${encodeURIComponent(s.code)}/assign`, { method: 'POST', headers: authHeaders() });
-                    const json = await res.json().catch(() => ({}));
-                    if (res.ok) showToast(`Đã áp ca cho ${json?.data?.assigned ?? 0} nhân sự`);
-                    else setError(json?.message || 'Áp ca thất bại');
-                  }}>Áp ca</button>
-                  <button className="text-xs px-2 py-1 rounded border border-line" onClick={() => openEdit(s)}>Sửa</button>
+                <div className="text-xs text-ink-muted mt-1">
+                  {s.checkInStart?.slice(0,5)}–{s.checkInEnd?.slice(0,5)} / {s.checkOutStart?.slice(0,5)}–{s.checkOutEnd?.slice(0,5)} · nghỉ trưa {s.lunchBreakStart?.slice(0,5)}–{s.lunchBreakEnd?.slice(0,5)} · {s.requiredWorkHours}h
+                </div>
+                {s.isFlexible && <div className="text-xs text-emerald-700 mt-1">Khung linh hoạt: vào {s.flexibleCheckinFrom?.slice(0,5)}–{s.flexibleCheckinTo?.slice(0,5)} · ra {s.flexibleCheckoutFrom?.slice(0,5)}–{s.flexibleCheckoutTo?.slice(0,5)} — đủ {s.requiredWorkHours}h trong khung = 1 công</div>}
+                <div className="text-xs text-ink-muted mt-1">
+                  {isBaseShift(s)
+                    ? 'Áp dụng mặc định cho mọi nhân sự không khớp ca ngoại lệ nào · geofence ' + s.geofenceRadiusM + 'm · IP ' + (s.ipRanges || '—')
+                    : `Gán: nhóm ${s.targetGroup || '—'} · chức danh ${s.targetPosition || '—'} · nhân viên ${s.targetEmployees || '—'} · loại trừ ${s.excludeEmployees || '—'} · geofence ${s.geofenceRadiusM}m`}
                 </div>
               </div>
-              <div className="text-xs text-ink-muted mt-1">
-                {s.checkInStart}–{s.checkInEnd} / {s.checkOutStart}–{s.checkOutEnd} · nghỉ trưa {s.lunchBreakStart?.slice(0,5)}–{s.lunchBreakEnd?.slice(0,5)} · {s.requiredWorkHours}h
-              </div>
-              {s.isFlexible && <div className="text-xs text-emerald-700 mt-1">Khung linh hoạt: vào {s.flexibleCheckinFrom?.slice(0,5)}–{s.flexibleCheckinTo?.slice(0,5)} · ra {s.flexibleCheckoutFrom?.slice(0,5)}–{s.flexibleCheckoutTo?.slice(0,5)} — đủ 8h trong khung = 1 công</div>}
-              <div className="text-xs text-ink-muted mt-1">Gán: nhóm {s.targetGroup || 'tất cả'} · chức danh {s.targetPosition || 'tất cả'} · geofence {s.geofenceRadiusM}m · IP {s.ipRanges || '—'}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="bg-surface border border-line rounded-xl p-4">
@@ -181,14 +377,46 @@ export const ShiftHolidayPage: React.FC = () => {
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <label className="font-semibold">Nhóm áp dụng<input className="mt-1 w-full border border-line rounded-lg p-2" placeholder="Sirius, Optimus…" value={form.targetGroup} onChange={e => setForm({ ...form, targetGroup: e.target.value })} /></label>
-              <label className="font-semibold">Chức danh áp dụng<input className="mt-1 w-full border border-line rounded-lg p-2" placeholder="Developer, QA…" value={form.targetPosition} onChange={e => setForm({ ...form, targetPosition: e.target.value })} /></label>
+              <CsvPicker
+                label="Nhóm áp dụng"
+                hint="Chọn một hoặc nhiều nhóm — ca khớp nếu nhân sự thuộc bất kỳ nhóm nào."
+                options={teamOptions}
+                value={form.targetGroup}
+                disabled={isBaseShift(form)}
+                onChange={v => setForm({ ...form, targetGroup: v })}
+              />
+              <CsvPicker
+                label="Chức danh áp dụng"
+                hint="Chọn một hoặc nhiều chức danh."
+                options={positionOptions}
+                value={form.targetPosition}
+                disabled={isBaseShift(form)}
+                onChange={v => setForm({ ...form, targetPosition: v })}
+              />
+              <CsvPicker
+                label="Nhân viên áp dụng"
+                hint="Chọn trực tiếp nhân sự cụ thể (ngoài phạm vi nhóm/chức danh)."
+                options={employeeOptions}
+                value={form.targetEmployees}
+                disabled={isBaseShift(form)}
+                onChange={v => setForm({ ...form, targetEmployees: v })}
+              />
+              <CsvPicker
+                label="Loại trừ nhân viên"
+                hint="Nhân sự bị loại trừ không nhận ca này dù khớp nhóm/chức danh."
+                options={employeeOptions}
+                value={form.excludeEmployees}
+                disabled={isBaseShift(form)}
+                onChange={v => setForm({ ...form, excludeEmployees: v })}
+              />
               <label className="font-semibold col-span-2">Dải IP mạng nội bộ<input className="mt-1 w-full border border-line rounded-lg p-2" value={form.ipRanges} onChange={e => setForm({ ...form, ipRanges: e.target.value })} /></label>
             </div>
             <div className="flex gap-4 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isException} onChange={e => setForm({ ...form, isException: e.target.checked })} /> Ca ngoại lệ</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.requiresHrApproval} onChange={e => setForm({ ...form, requiresHrApproval: e.target.checked })} /> Cần HR duyệt</label>
             </div>
+            {isBaseShift(form) && (
+              <div className="text-xs text-accent">Ca chuẩn luôn áp dụng cho toàn công ty — không cần chọn nhóm/chức danh/nhân viên và không có loại trừ. Mọi ca khác đều là ca ngoại lệ đè lên ca chuẩn theo thứ tự ưu tiên.</div>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>Huỷ</button>
               <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu ca</button>

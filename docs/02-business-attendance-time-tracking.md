@@ -67,6 +67,13 @@
 | **Duyệt đơn nghỉ phép** | **CHỈ quản lý trực tiếp duyệt — không chuyển HR**, không phụ thuộc nhóm | `approval_flow` |
 | Xuất phiếu lương | Chỉ xuất bảng công chuẩn | Không tính lương |
 
+> **Quản lý tự duyệt đơn của chính mình:** với đơn của cấp quản lý, nếu không còn cấp trên hợp lệ
+> duyệt được (hoặc công ty chọn cho tự duyệt), hệ thống cho phép **tự duyệt** theo `approval_flow`:
+> `allow_self_approval` (bật/tắt), `self_approval_min_role` (manager trở lên), `self_approval_scope`
+> (mọi lúc / chỉ khi không có quản lý trực tiếp hợp lệ). Đơn hiện trong hộp thư duyệt của chính họ
+> với nhãn **"Đơn của tôi — tự duyệt"**, và **HR luôn thấy mọi đơn đang chờ** để kiểm soát.
+> Mặc định hiện tại: **manager trở lên, mọi lúc**.
+
 > **Ca làm việc linh hoạt (flexible window):** giờ check-in/ra có thể nằm trong **khung linh hoạt** do HR cấu hình.
 > Nếu **tổng giờ làm ≥ 8h** và **cả check-in lẫn check-out đều nằm trong khung linh hoạt** → **tính đủ 1 ngày công**,
 > và **không phạt vì check-in muộn**. Nếu **tổng giờ làm < 8h** → tính theo **giờ thực tế** (không đủ 1 ngày công).

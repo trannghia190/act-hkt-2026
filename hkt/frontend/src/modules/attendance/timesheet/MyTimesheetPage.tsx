@@ -23,6 +23,7 @@ interface DayItem {
     id: string;
     status: string;
     reason: string;
+    count?: number; // số đơn đã gửi cho ngày này (tối đa 2)
   } | null;
 }
 
@@ -48,6 +49,12 @@ interface TimesheetData {
   remainingLeave: number;
   employeeCode?: string;
   employeeName?: string;
+  shiftCode?: string;
+  shiftName?: string;
+  shiftCheckInStart?: string;
+  shiftCheckOutEnd?: string;
+  shiftRequiredWorkHours?: number;
+  shiftIsException?: boolean;
   days: DayItem[];
 }
 
@@ -110,6 +117,13 @@ export const MyTimesheetPage: React.FC = () => {
   // Dispute modal state
   const [disputeDay, setDisputeDay] = useState<DayItem | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
+  // Giờ vào/ra nhân viên đề xuất — HR duyệt FIX sẽ áp thẳng vào bảng công.
+  const [disputeCheckIn, setDisputeCheckIn] = useState('');
+  const [disputeCheckOut, setDisputeCheckOut] = useState('');
+  // Ngày đó nên thành gì: sửa giờ | WFH | nghỉ theo danh mục loại nghỉ.
+  const [disputeKind, setDisputeKind] = useState<'TIME_FIX' | 'WFH' | 'LEAVE'>('TIME_FIX');
+  const [disputeLeaveType, setDisputeLeaveType] = useState('');
+  const [leaveTypeOptions, setLeaveTypeOptions] = useState<{ code: string; name: string }[]>([]);
   const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
 
@@ -166,6 +180,16 @@ export const MyTimesheetPage: React.FC = () => {
     loadData();
   }, [selectedMonth, user]);
 
+  // Danh mục loại nghỉ đang áp dụng — dùng cho lựa chọn "chuyển thành nghỉ" trong khiếu nại.
+  useEffect(() => {
+    fetch('/api/v1/leave-types', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((j) => {
+        if (Array.isArray(j?.data)) setLeaveTypeOptions(j.data.map((x: any) => ({ code: x.code, name: x.name })));
+      })
+      .catch(() => undefined);
+  }, []);
+
   const handleMonthChange = (newMonth: string) => {
     const next: Record<string, string> = { month: newMonth };
     if (viewedEmployeeCode) next.employeeCode = viewedEmployeeCode;
@@ -187,6 +211,11 @@ export const MyTimesheetPage: React.FC = () => {
   const openDisputeModal = (day: DayItem) => {
     setDisputeDay(day);
     setDisputeReason('');
+    // Prefill giờ đang ghi nhận để nhân viên chỉ cần sửa phần sai.
+    setDisputeCheckIn(day.checkIn || '');
+    setDisputeCheckOut(day.checkOut || '');
+    setDisputeKind('TIME_FIX');
+    setDisputeLeaveType('');
     setDisputeError(null);
   };
 
@@ -195,6 +224,15 @@ export const MyTimesheetPage: React.FC = () => {
     if (!disputeDay) return;
     if (!disputeReason.trim()) {
       setDisputeError('Bắt buộc nhập lý do khiếu nại');
+      return;
+    }
+    if (disputeKind === 'LEAVE' && !disputeLeaveType) {
+      setDisputeError('Chọn loại nghỉ cụ thể');
+      return;
+    }
+    // "HH:mm" so sánh chuỗi là đủ; backend vẫn kiểm tra lại.
+    if (disputeKind === 'TIME_FIX' && disputeCheckIn && disputeCheckOut && disputeCheckOut <= disputeCheckIn) {
+      setDisputeError('Giờ ra phải sau giờ vào');
       return;
     }
     setSubmittingDispute(true);
@@ -210,6 +248,10 @@ export const MyTimesheetPage: React.FC = () => {
         body: JSON.stringify({
           workDate: disputeDay.date,
           reason: disputeReason.trim(),
+          requestedKind: disputeKind,
+          ...(disputeKind === 'LEAVE' ? { requestedLeaveType: disputeLeaveType } : {}),
+          ...(disputeKind === 'TIME_FIX' && disputeCheckIn ? { requestedCheckIn: disputeCheckIn } : {}),
+          ...(disputeKind === 'TIME_FIX' && disputeCheckOut ? { requestedCheckOut: disputeCheckOut } : {}),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -243,6 +285,16 @@ export const MyTimesheetPage: React.FC = () => {
         return '';
     }
   };
+
+  // Nhãn/màu trạng thái đơn khiếu nại của ngày (PENDING/RESOLVED/REJECTED/EXPIRED).
+  const disputeStatusText = (s: string) => s === 'PENDING' ? 'HR đang xử lý'
+    : s === 'RESOLVED' ? 'Đã xử lý' : s === 'REJECTED' ? 'Đã từ chối' : s === 'EXPIRED' ? 'Quá hạn' : s;
+  const disputeIcon = (s: string) => s === 'PENDING' ? '⏳'
+    : s === 'RESOLVED' ? '✔' : s === 'REJECTED' ? '✖' : s === 'EXPIRED' ? '⌛' : '•';
+  const disputeBadgeCls = (s: string) => s === 'PENDING' ? 'text-amber-700 bg-amber-50 border-amber-200'
+    : s === 'RESOLVED' ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+      : s === 'REJECTED' ? 'text-rose-700 bg-rose-50 border-rose-200'
+        : 'text-slate-600 bg-slate-100 border-slate-200';
 
   return (
     <div className="space-y-6">
@@ -449,7 +501,9 @@ export const MyTimesheetPage: React.FC = () => {
                 )}
                 {data?.days.map((r) => {
                   const isIssue = r.status === 'LATE' || r.status === 'INCOMPLETE' || r.status === 'ABSENT';
-                  const canDisputeThisDay = isOwnTimesheet && data.canDispute && !r.isWeekend && !r.dispute;
+                  // Ngày được phép khiếu nại (chưa xét đã có đơn hay chưa) — dùng cho cả "Khiếu nại lại".
+                  const dayDisputable = isOwnTimesheet && data.canDispute && !r.isWeekend;
+                  const canDisputeThisDay = dayDisputable && !r.dispute;
 
                   return (
                     <tr
@@ -460,7 +514,11 @@ export const MyTimesheetPage: React.FC = () => {
                     >
                       <td className="py-2.5 px-3 font-mono font-medium">{r.date}</td>
                       <td className="py-2.5 px-3 text-ink-secondary">{r.weekday}</td>
-                      <td className="py-2.5 px-3 text-ink-secondary">Ca chuẩn (08:30–17:30)</td>
+                      <td className="py-2.5 px-3 text-ink-secondary">
+                        {data.shiftName
+                          ? `${data.shiftIsException ? 'Ca ngoại lệ' : 'Ca chuẩn'} · ${data.shiftName} (${(data.shiftCheckInStart || '').slice(0, 5)}–${(data.shiftCheckOutEnd || '').slice(0, 5)}) · ${data.shiftRequiredWorkHours ?? 8}h`
+                          : 'Ca chuẩn (08:00–17:00)'}
+                      </td>
                       <td className="py-2.5 px-3 text-center font-mono">{r.checkIn || '—'}</td>
                       <td className="py-2.5 px-3 text-center font-mono">{r.checkOut || '—'}</td>
                       <td className="py-2.5 px-3 text-center font-mono">
@@ -493,13 +551,30 @@ export const MyTimesheetPage: React.FC = () => {
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         {r.dispute ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200"
-                            title={r.dispute.reason}
-                          >
-                            <span>⏳</span>
-                            <span>{r.dispute.status === 'PENDING' ? 'HR đang xử lý' : r.dispute.status}</span>
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${disputeBadgeCls(r.dispute.status)}`}
+                              title={r.dispute.reason}
+                            >
+                              <span>{disputeIcon(r.dispute.status)}</span>
+                              <span>{disputeStatusText(r.dispute.status)}</span>
+                            </span>
+                            {r.dispute.status !== 'PENDING' && dayDisputable && (r.dispute.count ?? 1) < 2 && (
+                              <button
+                                type="button"
+                                onClick={() => openDisputeModal(r)}
+                                title="Đã bị từ chối/kết luận — bạn còn 1 lần gửi lại cho ngày này"
+                                className="text-[11px] text-amber-700 underline hover:text-amber-800 cursor-pointer"
+                              >
+                                Khiếu nại lại
+                              </button>
+                            )}
+                            {(r.dispute.count ?? 1) >= 2 && (
+                              <span className="text-[10px] text-ink-muted" title="Mỗi ngày chỉ được gửi tối đa 2 đơn khiếu nại">
+                                Đã hết lượt
+                              </span>
+                            )}
+                          </div>
                         ) : canDisputeThisDay ? (
                           <button
                             type="button"
@@ -550,6 +625,70 @@ export const MyTimesheetPage: React.FC = () => {
                 <span className="text-ink-muted">Trạng thái ghi nhận:</span>
                 <span className="ml-2 font-semibold text-rose-700">{disputeDay.statusText}</span>
               </div>
+            </div>
+
+            <div className="p-3 bg-canvas rounded-lg border border-line space-y-2">
+              <label className="block">
+                <span className="block font-semibold text-ink mb-1">Ngày này nên được ghi nhận là</span>
+                <select
+                  value={disputeKind === 'LEAVE' && disputeLeaveType ? `LEAVE:${disputeLeaveType}` : disputeKind}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v.startsWith('LEAVE:')) {
+                      setDisputeKind('LEAVE');
+                      setDisputeLeaveType(v.slice('LEAVE:'.length));
+                    } else {
+                      setDisputeKind(v as 'TIME_FIX' | 'WFH');
+                      setDisputeLeaveType('');
+                    }
+                  }}
+                  className="w-full border border-line rounded-lg p-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="TIME_FIX">Sửa giờ vào/ra</option>
+                  <option value="WFH">Công nhận làm việc từ xa (WFH)</option>
+                  {leaveTypeOptions.length > 0 && (
+                    <optgroup label="Chuyển thành nghỉ">
+                      {leaveTypeOptions.map((t) => (
+                        <option key={t.code} value={`LEAVE:${t.code}`}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </label>
+
+              {disputeKind === 'TIME_FIX' ? (
+                <>
+              <p className="text-[11px] text-ink-muted">
+                HR duyệt thì giờ này được ghi thẳng vào bảng công; ngày hôm đó tự tính lại số công, giờ làm và đi muộn.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="block text-ink-muted mb-1">Giờ vào</span>
+                  <input
+                    type="time"
+                    value={disputeCheckIn}
+                    onChange={(e) => setDisputeCheckIn(e.target.value)}
+                    className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-ink-muted mb-1">Giờ ra</span>
+                  <input
+                    type="time"
+                    value={disputeCheckOut}
+                    onChange={(e) => setDisputeCheckOut(e.target.value)}
+                    className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </label>
+              </div>
+                </>
+              ) : (
+                <p className="text-[11px] text-ink-muted">
+                  {disputeKind === 'WFH'
+                    ? 'HR duyệt thì ngày này được công nhận làm việc từ xa — không cần giờ vào/ra.'
+                    : 'HR duyệt thì ngày này thành ngày nghỉ theo loại đã chọn và trừ quỹ phép tương ứng.'}
+                </p>
+              )}
             </div>
 
             {disputeError && (

@@ -35,7 +35,12 @@ flowchart TD
 
 > **Nguồn sự thật:** `docs/06-business-rule-builder.md` §3.1. Mỗi rule có `rule_id` (snake_case),
 > một bộ **field** (kiểu, mặc định, khoảng giá trị, mô tả) và được lưu trong `rules.current_value`
-> dưới dạng **JSON object**. Tổng cộng **121 field**. Hệ thống đọc rule qua `RuleService` — **không hard-code**.
+> dưới dạng **JSON object**. Tổng cộng **124 field**. Hệ thống đọc rule qua `RuleService` — **không hard-code**.
+>
+> **Tự duyệt đơn (`approval_flow`):** `RequestController.decide()` cho phép người gửi tự duyệt khi
+> `allow_self_approval`=true, vai trò ≥ `self_approval_min_role`, và `self_approval_scope`=ALWAYS
+> (hoặc NO_MANAGER + không có quản lý trực tiếp hợp lệ). `GET /requests/inbox` trả thêm cờ
+> `selfRequest`; HR luôn thấy mọi đơn đang chờ.
 
 | # | `rule_id` | Tên | Nhóm | Field chính (mặc định) |
 |---|---|---|---|---|
@@ -43,7 +48,7 @@ flowchart TD
 | 2 | `makeup` | Bổ sung chấm công | Đơn từ | `max_count`=5 · `deadline_working_days`=3 · `allow_overdue_with_approval`=false |
 | 3 | `wfh` | Làm việc từ xa | Đơn từ | `max_count`=2/tuần · `min_duration_days`=0.5 · `block_third_day`=true |
 | 4 | `hr_approval` | Nhóm có bước HR duyệt thêm | Đơn từ | `teams`=["CA","Mobile"] · chỉ `LATE_EARLY/ADJUST/WFH` — **nghỉ phép không chuyển HR** |
-| 5 | `approval_flow` | Luồng duyệt đơn | Đơn từ | 1 bước quản lý trực tiếp · `sla_hours`=48 · `allow_withdraw`=true |
+| 5 | `approval_flow` | Luồng duyệt đơn | Đơn từ | 1 bước quản lý trực tiếp · `sla_hours`=48 · `allow_withdraw`=true · `allow_self_approval`=true · `self_approval_min_role`=MANAGER · `self_approval_scope`=ALWAYS |
 | 6 | `attendance_security` | Kiểm tra khi chấm công | Chấm công | `require_internal_network`=Bật · `geofence_radius_m`=150 · `gps_accuracy_tolerance_m`=100 · `allow_offline_punch`=Bật · `offline_max_hours`=24 · `max_devices`=**2** · `require_face_verification`=Bật · `face_match_threshold`=**85** · `require_liveness`=Bật · `face_max_attempts`=3 · `grace_minutes`=0 |
 | 7 | `share_account` | Chống dùng chung tài khoản | Chấm công | `max_checkin_per_day`=1 · `require_password_change`=Bật · `device_confirm_required`=Bật · `max_additional_devices`=1 · `device_expiry_days`=90 |
 | 8 | `shift_times` | Giờ làm việc | Chấm công | khung 08:00–09:30 / 17:00–18:30 · nghỉ trưa 12:00–13:00 · `required_work_hours`=8 · `is_flexible`=false · khung linh hoạt 08–10 / 17–19 |

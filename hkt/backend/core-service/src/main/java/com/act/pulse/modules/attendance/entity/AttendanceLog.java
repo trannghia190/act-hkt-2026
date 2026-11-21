@@ -33,6 +33,14 @@ public class AttendanceLog extends BaseEntity {
     @Column(name = "work_date", nullable = false)
     private LocalDate workDate;
 
+    /**
+     * Cột phân loại punch có sẵn trong DB (NOT NULL). Mô hình hiện tại lưu cả giờ vào + giờ ra trên
+     * cùng 1 dòng/ngày nên giá trị luôn là {@code CHECK_IN} — giữ để INSERT không vỡ ràng buộc.
+     */
+    @Column(name = "type", nullable = false, length = 20)
+    @Builder.Default
+    private String type = "CHECK_IN";
+
     /** Giờ vào — thời gian máy chủ (NTP), không bao giờ dùng client_time. */
     @Column(name = "check_in_at")
     private LocalDateTime checkInAt;

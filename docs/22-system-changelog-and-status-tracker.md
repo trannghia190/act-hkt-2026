@@ -48,6 +48,23 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 ## 3. NHẬT KÝ THAY ĐỔI VỀ MẶT NGHIỆP VỤ (BUSINESS CHANGELOG)
 
+### [2026-11-22] — Bản Cập Nhật v2.5.0 (Ca làm việc theo luật + thứ tự ưu tiên)
+
+**Nghiệp vụ & UI**
+* `S26` — Ca làm việc: ca chuẩn `SHIFT_STANDARD` là base toàn công ty, **không tắt/xóa được**, chỉ sửa khung giờ.
+* Ca ngoại lệ áp dụng theo **tên nhóm**, **chức danh** hoặc **mã nhân viên cụ thể**; có thêm danh sách **loại trừ** thành viên (chỉ ca ngoại lệ mới có).
+* Mỗi ca ngoại lệ có **thứ tự ưu tiên**: ca càng ở dưới danh sách càng ưu tiên cao; một người khớp nhiều ca nhận ca dưới cùng. UI có nút ↑/↓ sắp xếp lại, badge thứ tự và dòng chú thích "ưu tiên cao nhất".
+* Ca ngoại lệ **bật/tắt** và **xóa** được; tắt/xóa thì nhân sự rơi về ca ưu tiên thấp hơn hoặc ca chuẩn. Chi tiết tại `docs/13-tech-attendance-checkin.md` §4.2.
+
+### [2026-11-21] — Bản Cập Nhật v2.4.0 (Quản lý tự duyệt đơn của mình)
+
+**Nghiệp vụ & UI**
+* Rule `approval_flow` có thêm 3 cấu hình: `allow_self_approval` (mặc định bật), `self_approval_min_role` (mặc định manager trở lên), `self_approval_scope` (mặc định "mọi lúc"; tùy chọn "chỉ khi không có quản lý trực tiếp hợp lệ").
+* Cấp quản lý trở lên tự duyệt được đơn do chính mình gửi — trước đây đơn của quản lý cấp cao nhất (không còn ai duyệt) bị kẹt vô hình.
+* Hộp thư duyệt (S12): đơn của chính người duyệt hiện kèm nhãn **"Đơn của tôi — tự duyệt"**; HR thấy **mọi** đơn đang chờ của toàn công ty để kiểm soát.
+* Khi tự duyệt mà không nhập lý do, hệ thống ghi chú "Tự duyệt đơn của tôi theo cấu hình luồng duyệt" vào lịch sử đơn.
+* Cấu hình tại `Cấu hình quy định (S16)` → rule **Luồng duyệt đơn** (`approval_flow`); chi tiết nghiệp vụ tại `docs/06-business-rule-builder.md` §3.1.5.
+
 ### [2026-11-20] — Bản Cập Nhật v2.3.0 (Đơn từ, đính kèm, bảng công lưu DB)
 
 **Nghiệp vụ & UI**
@@ -139,6 +156,23 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 ---
 
 ## 4. NHẬT KÝ THAY ĐỔI VỀ MẶT KỸ THUẬT & KIẾN TRÚC (TECHNICAL CHANGELOG)
+
+### [2026-11-22] — Technical Updates v2.5.0 (Shift resolver theo priority)
+
+1. **DB** — Flyway `V27__shift_priority_targets_exclusions.sql`: thêm `priority` (default 100), `target_employees`, `exclude_employees`; backfill priority theo thứ tự tạo ca.
+2. **Backend** — `ShiftResolver`: `resolveFor()` duyệt ca ngoại lệ đang bật từ dưới lên (priority lớn nhất trước), khớp nhóm/chức danh/mã NV và trừ `exclude_employees`; fallback ca gán tay → ca chuẩn.
+3. **API `OrgStructureController`** — `GET /admin/shifts` sắp ca chuẩn đầu bảng rồi theo priority; `POST` gán priority cuối; `PUT /{code}` giữ nguyên priority/target khi payload không gửi và ép ca chuẩn luôn bật; thêm `DELETE /{code}` (chặn ca chuẩn, đưa nhân sự về ca chuẩn) và `PUT /order` (đổi thứ tự); `assign` chỉ gán người mà ca này thắng theo priority; `unassign` tắt ca + đếm người bị đổi.
+4. **Frontend** — `ShiftHolidayPage` (S26): danh sách ưu tiên + ↑/↓, badge bật/tắt, nút xóa, form thêm/sửa có ô nhân viên áp dụng & loại trừ (khóa với ca chuẩn).
+5. **Test** — `tests/api/test_shift_rules_priority.py` phủ: ca chuẩn bất biến, khớp nhóm/chức danh/mã NV, loại trừ, priority dưới cùng thắng, đảo thứ tự, tắt/xóa ca và fallback ca chuẩn.
+
+### [2026-11-21] — Technical Updates v2.4.0 (Self-approval trong Approval Engine)
+1. **Backend** — `RequestController`:
+   - `canSelfApprove(user)` đọc `approval_flow` qua `RuleService`: `allow_self_approval`, `self_approval_min_role`, `self_approval_scope` (thứ bậc vai trò EMPLOYEE < MANAGER < EXECUTIVE < HR_ADMIN < ADMIN).
+   - `decide()`: thêm nhánh tự duyệt hợp lệ; tự sinh ghi chú duyệt khi thiếu lý do.
+   - `inbox()`: gộp đơn nhân viên trực tiếp + đơn của chính mình (khi được tự duyệt) + toàn bộ đơn chờ khi là HR; trả cờ `selfRequest`.
+2. **DB** — Flyway `V25__approval_self_approval.sql` seed 3 field mới; `V26__approval_self_approval_default_always.sql` đặt mặc định `self_approval_scope=ALWAYS` (không ghi đè nếu HR đã chỉnh).
+3. **Frontend** — S16 hiển thị 3 field mới (2 field con ẩn khi tắt tự duyệt); S12 hiện badge "Đơn của tôi — tự duyệt" (`AttendanceRequestItem.selfRequest`).
+4. **Test** — `tests/api/test_request_self_approval.py` phủ 2 scope, tắt cấu hình, chặn nhân viên thường, và HR thấy đơn chờ của manager.
 
 ### [2026-11-18] — Technical Updates v2.1.2 (Kiến Trúc Điều Hướng & Chuẩn Hóa Phân Quyền)
 1. **Kiến Trúc Điều Hướng Liền Mạch (Seamless Tab & Route Synchronization)**:

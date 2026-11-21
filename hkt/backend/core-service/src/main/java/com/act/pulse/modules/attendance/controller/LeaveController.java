@@ -124,29 +124,24 @@ public class LeaveController {
     @Operation(summary = "Bảng phép tất cả mọi người (S46)")
     public ApiResponse<List<Map<String, Object>>> table() {
         List<Map<String, Object>> rows = userRepository.findAll().stream().map(u -> {
+            // Dùng đúng số liệu của sổ phép cá nhân để bảng tổng hợp và sổ cá nhân không lệch nhau.
             Map<String, Object> b = balanceOf(u.getId());
-            BigDecimal annualGrant = BigDecimal.ZERO, annualUsed = BigDecimal.ZERO, sickUsed = BigDecimal.ZERO;
-            BigDecimal seniorityGrant = BigDecimal.ZERO, otherUsed = BigDecimal.ZERO;
-            for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
-                boolean seniority = e.getReason() != null && e.getReason().toLowerCase().contains("thâm niên");
-                if ("GRANT".equals(e.getAction())) {
-                    if (seniority) seniorityGrant = seniorityGrant.add(e.getAmount());
-                    else annualGrant = annualGrant.add(e.getAmount());
-                } else if ("USED".equals(e.getAction())) {
-                    if ("S".equals(e.getLeaveType())) sickUsed = sickUsed.add(e.getAmount());
-                    else annualUsed = annualUsed.add(e.getAmount());
-                    otherUsed = otherUsed.add(e.getAmount());
-                }
-            }
+            BigDecimal baseAnnual = (BigDecimal) b.get("baseAnnual");
+            BigDecimal adjust = (BigDecimal) b.get("adjust");
+            BigDecimal carriedGrant = (BigDecimal) b.get("carriedGrant");
+            BigDecimal seniority = (BigDecimal) b.get("seniority");
+            BigDecimal used = (BigDecimal) b.get("used");
+            BigDecimal sickUsed = (BigDecimal) b.get("sickUsed");
             b.put("employeeCode", u.getEmployeeCode());
             b.put("fullName", u.getFullName());
             b.put("teamName", u.getTeamId() == null ? null
                     : teamRepository.findById(u.getTeamId()).map(Team::getName).orElse(null));
-            b.put("annualRemaining", annualGrant.subtract(annualUsed));
-            b.put("carriedOver", b.getOrDefault("carriedRemaining", BigDecimal.ZERO));
-            b.put("sickUsed", sickUsed);
-            b.put("seniority", seniorityGrant);
-            b.put("totalUsed", otherUsed);
+            // 7 chỉ tiêu chi tiết của sổ phép.
+            b.put("grantedThisYear", baseAnnual.add(adjust)); // cấp trong năm + điều chỉnh HR
+            b.put("annualUsed", used);                        // nghỉ phép đã dùng (không gồm ốm)
+            // Khoá cũ giữ lại để client khác không gãy.
+            b.put("carriedOver", b.get("carriedRemaining"));
+            b.put("totalUsed", used.add(sickUsed));
             return b;
         }).collect(Collectors.toList());
         return ApiResponse.ok(rows, "Bảng phép");

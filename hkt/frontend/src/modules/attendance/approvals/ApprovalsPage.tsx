@@ -51,6 +51,7 @@ export const ApprovalsPage: React.FC = () => {
       approver: '—', createdAt: r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '',
       approverComment: r.decisionComment || undefined,
       attachmentCount: Number(r.attachmentCount || 0),
+      selfRequest: Boolean(r.selfRequest),
     } as AttendanceRequestItem;
   };
   const loadInbox = () => {
@@ -326,7 +327,14 @@ export const ApprovalsPage: React.FC = () => {
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    <div className="font-semibold text-ink">{item.requesterName}</div>
+                    <div className="font-semibold text-ink">
+                      {item.requesterName}
+                      {item.selfRequest && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium align-middle">
+                          Đơn của tôi — tự duyệt
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-ink-muted font-mono">{item.requesterCode} · {item.team}</div>
                   </td>
                   <td className="py-3 px-4">

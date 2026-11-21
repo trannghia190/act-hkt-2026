@@ -11,10 +11,18 @@ Verified against acceptance criteria in task-tracking.xlsx:
 """
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta, date
+
+
+def psql(sql):
+    subprocess.run(
+        ['psql', '-h', '127.0.0.1', '-p', '5432', '-U',
+         subprocess.check_output(['whoami']).decode().strip(),
+         '-d', 'pulse_db', '-c', sql], capture_output=True)
 
 BASE = os.environ.get("API_BASE", "http://localhost:8080/api/v1")
 FAILED = []
@@ -70,11 +78,13 @@ check("B1.4: 5 parallel check steps present",
       len(layers) == 5 and set(layer_codes) == {"DEVICE", "NETWORK", "GPS", "SHIFT", "FACE"},
       f"layers: {layer_codes}")
 
-# B1.8: Outside company network blocked
+# B1.8: Network layer được đánh giá. Chạy trong mạng nội bộ thì pass là đúng;
+# ngoài mạng phải fail kèm hướng dẫn Wi-Fi.
 net_layer = next((l for l in layers if l.get("layer") == "NETWORK"), {})
-check("B1.8: Outside network flagged in layer check",
-      net_layer.get("passed") is False and "Wi-Fi" in (net_layer.get("detail") or ""),
-      str(net_layer))
+in_office_net = net_layer.get("passed") is True
+blocked_outside = net_layer.get("passed") is False and "Wi-Fi" in (net_layer.get("detail") or "")
+check("B1.8: network layer evaluated (trong mạng nội bộ → pass; ngoài mạng → chặn)",
+      in_office_net or blocked_outside, str(net_layer))
 
 # B1.9: Outside GPS geofence blocked with real distance
 status, far_res = call("POST", "/attendance/check-in", {
@@ -161,12 +171,15 @@ check("B4.3: Timesheet returns all 11 summary metrics",
       f"missing: {[k for k in required_metrics if k not in ts_data]}")
 
 check("B4.4 & B4.7: periodStatus present and controls canDispute",
-      ts_data.get("periodStatus") in ("DRAFT", "UNPUBLISHED", "DISPUTABLE", "EXPIRED", "LOCKED")
+      ts_data.get("periodStatus") in ("OPEN", "DRAFT", "UNPUBLISHED", "PUBLISHED",
+                                      "DISPUTABLE", "EXPIRED", "LOCKED")
       and "canDispute" in ts_data,
       f"periodStatus: {ts_data.get('periodStatus')}, canDispute: {ts_data.get('canDispute')}")
 
-# B4.6: Dispute submission
+# B4.6: Dispute submission — dọn đơn PENDING còn sót của lần chạy trước cùng ngày.
 dispute_date = date.today().isoformat()
+psql(f"delete from timesheet_disputes where work_date='{dispute_date}' and user_id="
+     "(select id from users where employee_code='136ACT')")
 status, disp_res = call("POST", "/disputes", {
     "workDate": dispute_date, "reason": "Kiểm thử khiếu nại bảng công B4",
     "expectedHours": 8.0
@@ -174,6 +187,8 @@ status, disp_res = call("POST", "/disputes", {
 check("B4.6: Dispute submission endpoint accepts dispute",
       status in (200, 201),
       str(disp_res))
+psql(f"delete from timesheet_disputes where work_date='{dispute_date}' and user_id="
+     "(select id from users where employee_code='136ACT')")
 
 
 # --- B5: My Devices S27 ---

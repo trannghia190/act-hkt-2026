@@ -191,10 +191,13 @@ Catalog gồm **19 quy định**, chia theo 4 nhóm nghiệp vụ: **Đơn từ*
 | `viewer_see_reason` | Người xem thấy lý do từ chối | Công tắc | Bật | — | Người được xem đơn có đọc được lý do từ chối không. |
 | `viewer_see_attachments` | Người xem thấy file đính kèm | Công tắc | Tắt | — | Mặc định KHÔNG — đơn nghỉ ốm có giấy khám là dữ liệu nhạy cảm. |
 | `team_lead_step_enabled` | Cho phép bước duyệt bởi trưởng nhóm | Công tắc | Bật | — | Áp dụng cho các nhóm cần duyệt qua trưởng nhóm thay vì quản lý trực tiếp. |
+| `allow_self_approval` | Cho phép quản lý tự duyệt đơn của mình | Công tắc | Bật | — | Bật: nhân sự từ vai trò tối thiểu trở lên được duyệt đơn do chính mình gửi; đơn hiện trong hộp thư duyệt của họ với cờ `selfRequest` để HR kiểm soát. |
+| `self_approval_min_role` | Vai trò tối thiểu được tự duyệt | Lựa chọn | Manager trở lên | Manager trở lên · Executive trở lên · HR Admin trở lên · Chỉ Admin · chỉ hiện khi `allow_self_approval` = Bật | Nhân sự có vai trò thấp hơn vẫn phải qua quản lý trực tiếp. |
+| `self_approval_scope` | Phạm vi tự duyệt | Lựa chọn | Mọi lúc | Mọi lúc · Chỉ khi không có quản lý trực tiếp hợp lệ · chỉ hiện khi `allow_self_approval` = Bật | "Mọi lúc": mọi quản lý tự duyệt đơn của mình. "Chỉ khi không có quản lý trực tiếp hợp lệ": chỉ đơn của quản lý cấp cao nhất (không còn ai duyệt) mới tự duyệt. |
 
 | Thuộc tính | Nội dung |
 |---|---|
-| Giá trị mặc định (`default_value`) | `steps` = rỗng · `default_viewer_teams` = rỗng · `viewer_see_reason` = Bật · `viewer_see_attachments` = Tắt · `team_lead_step_enabled` = Bật |
+| Giá trị mặc định (`default_value`) | `steps` = rỗng · `default_viewer_teams` = rỗng · `viewer_see_reason` = Bật · `viewer_see_attachments` = Tắt · `team_lead_step_enabled` = Bật · `allow_self_approval` = Bật · `self_approval_min_role` = Manager · `self_approval_scope` = Mọi lúc |
 | Câu thông báo (`policy_template`) | "Đơn của bạn sẽ được **{approver_label}** xét duyệt. Bạn nhận được thông báo khi có kết quả." |
 
 ##### 3.1.6 · Kiểm tra khi chấm công — `attendance_security`
@@ -596,7 +599,7 @@ Mọi giá trị mặc định trong catalog **khớp đúng** với cột "Quy�
 | `late_early` | Quota engine khi tạo đơn đi muộn/về sớm | Số lần/tháng + số phút/lần + giờ phải gửi |
 | `makeup` | Quota engine khi tạo đơn bổ sung công | Quota + hạn nộp theo ngày làm việc + cho phép nộp quá hạn |
 | `wfh` | Quota engine khi đăng ký WFH | Quota/tuần (2 ngày) · chặn ngày thứ 3 · đơn tối thiểu 0,5 ngày · hạn đăng ký |
-| `approval_flow` | Approval engine — cấu hình luồng duyệt theo nhóm | **Approver (bắt buộc)** + **viewer (tùy chọn — để phối hợp)** + SLA. Không hardcode tên trưởng nhóm |
+| `approval_flow` | Approval engine — cấu hình luồng duyệt theo nhóm + quyền tự duyệt | **Approver (bắt buộc)** + **viewer (tùy chọn — để phối hợp)** + SLA. Không hardcode tên trưởng nhóm. **Tự duyệt:** `allow_self_approval` / `self_approval_min_role` / `self_approval_scope` — manager trở lên được duyệt đơn của mình; hộp thư duyệt trả cờ `selfRequest` |
 | `hr_approval` | Approval engine khi tạo task bước 2 | Phòng ban nào mọi đơn đều qua HR (CA + Mobile) |
 | `attendance_security` | Punch service khi check-in | Mạng nội bộ + geofence + **khuôn mặt (khớp + liveness)** + số thiết bị + phút miễn trễ |
 | `share_account` | Punch service + trang "Thiết bị đăng ký" | 1 check-in/ngày + 2 thiết bị + bắt buộc đổi mật khẩu + chính sách thiết bị mới |

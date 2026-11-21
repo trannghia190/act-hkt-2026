@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { RuleFieldEditor } from './RuleFieldEditor';
+import { RuleValueSummary } from './RuleValueSummary';
+import { fieldMeta } from './ruleFieldMeta';
 
 interface RuleApi {
   ruleKey: string;
@@ -167,44 +170,20 @@ export const RuleEnginePage: React.FC = () => {
       return Boolean(values.require_face_verification);
     }
     if (key.startsWith('flexible_')) return Boolean(values.is_flexible);
+    if (key === 'self_approval_min_role' || key === 'self_approval_scope') return Boolean(values.allow_self_approval);
     return true;
   };
 
-  const renderField = (key: string, value: any) => {
-    if (typeof value === 'boolean') {
-      return (
-        <label key={key} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 text-sm">
-          <span className="font-mono text-xs">{key}</span>
-          <input type="checkbox" checked={value} onChange={(e) => setFormValues((v) => ({ ...v, [key]: e.target.checked }))} />
-        </label>
-      );
-    }
-    if (typeof value === 'number') {
-      return (
-        <label key={key} className="block text-sm">
-          <span className="font-mono text-xs text-ink-muted">{key}</span>
-          <input type="number" className="mt-1 w-full border border-line rounded-lg p-2 text-sm"
-            value={value} onChange={(e) => setFormValues((v) => ({ ...v, [key]: Number(e.target.value) }))} />
-        </label>
-      );
-    }
-    if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
-      return (
-        <label key={key} className="block text-sm">
-          <span className="font-mono text-xs text-ink-muted">{key} (JSON)</span>
-          <textarea className="mt-1 w-full border border-line rounded-lg p-2 text-xs font-mono" rows={2}
-            value={JSON.stringify(value)} onChange={(e) => { try { setFormValues((v) => ({ ...v, [key]: JSON.parse(e.target.value) })); } catch { /* ignore */ } }} />
-        </label>
-      );
-    }
-    return (
-      <label key={key} className="block text-sm">
-        <span className="font-mono text-xs text-ink-muted">{key}</span>
-        <input className="mt-1 w-full border border-line rounded-lg p-2 text-sm" value={String(value)}
-          onChange={(e) => setFormValues((v) => ({ ...v, [key]: e.target.value }))} />
-      </label>
-    );
-  };
+  /** Field được render theo metadata nghiệp vụ — không còn ô JSON thô cho HR. */
+  const renderField = (key: string, value: any) => (
+    <RuleFieldEditor
+      key={key}
+      field={key}
+      meta={fieldMeta(editing!.ruleKey, key, value)}
+      value={value}
+      onChange={(next) => setFormValues((v) => ({ ...v, [key]: next }))}
+    />
+  );
 
   const q = search.trim().toLowerCase();
   const filtered = rules.filter((r) => {
@@ -281,8 +260,9 @@ export const RuleEnginePage: React.FC = () => {
           <div className="bg-surface rounded-xl p-5 w-full max-w-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold">Sửa quy định — {editing.name}</h3>
             <div className="text-[11px] text-ink-muted">Scope: toàn công ty · {editing.ruleKey}</div>
-            <label className="block text-xs font-semibold">Các field của quy định</label>
-            <div className="grid sm:grid-cols-2 gap-2 max-h-[45vh] overflow-auto pr-1">
+            {editing.description && <div className="text-xs text-ink-secondary">{editing.description}</div>}
+            <div className="text-xs font-semibold">Thiết lập quy định</div>
+            <div className="grid sm:grid-cols-2 gap-2 max-h-[50vh] overflow-auto pr-1">
               {Object.entries(formValues || {})
                 .filter(([key]) => isFieldVisible(key, formValues))
                 .map(([key, value]) => renderField(key, value))}
@@ -319,7 +299,7 @@ export const RuleEnginePage: React.FC = () => {
                   <button className="px-2 py-1 rounded border border-line" onClick={() => rollback(v.id)}>Rollback</button>
                 </div>
                 <div className="text-ink-muted">Lý do: {v.changeReason}</div>
-                <pre className="bg-canvas p-2 rounded overflow-x-auto">{v.value}</pre>
+                <RuleValueSummary ruleKey={historyRule.ruleKey} value={v.value} />
               </div>
             ))}
             <div className="text-right"><button className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setHistoryRule(null)}>Đóng</button></div>

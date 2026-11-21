@@ -92,8 +92,13 @@ Trong trường hợp nhân viên vào hầm gửi xe hoặc khu vực mất só
   * Dưới 4 tiếng $\implies$ Tính **0.0 công** (yêu cầu nộp đơn giải trình hoặc tính nghỉ không lương).
 
 ### 4.2. Các Ca Ngoại Lệ Được Cấu Hình (Exceptions)
-HR có thể gán ca đặc thù cho từng đối tượng trong `S26`:
-* **Ca linh hoạt 1:** 07:00 – 16:00
-* **Ca linh hoạt 2:** 07:30 – 16:30
-* **Ca linh hoạt 3:** 10:00 – 19:00
-* **Chính sách thai sản / Con nhỏ dưới 12 tháng:** Giảm 1 giờ làm việc mỗi ngày $\rightarrow$ Chỉ cần đủ **7 tiếng/ngày** vẫn được tính tròn **1.0 công**.
+HR cấu hình ca đặc thù trong `S26`. Mỗi ca ngoại lệ là một **luật ca**:
+* **Phạm vi áp dụng** (OR): `target_group` (tên nhóm), `target_position` (chức danh), `target_employees` (mã nhân viên cụ thể, CSV).
+* **Loại trừ**: `exclude_employees` (mã nhân viên, CSV) — thành viên bị loại trừ không nhận ca này dù khớp phạm vi.
+* **Thứ tự ưu tiên**: `priority` tăng dần theo danh sách; **ca ở dưới cùng có ưu tiên cao nhất**. Một người khớp nhiều ca sẽ nhận ca có priority lớn nhất (đang bật). Không khớp ca nào → ca đã gán tay (nếu còn hiệu lực) → ca chuẩn.
+* **Bật/tắt**: chỉ ca ngoại lệ mới tắt được; ca chuẩn luôn bật, không có phạm vi/loại trừ. Ca ngoại lệ bị tắt hoặc xóa → nhân sự rơi về ca thấp hơn hoặc ca chuẩn.
+* Các ca mẫu:
+  * **Ca linh hoạt 1:** 07:00 – 16:00
+  * **Ca linh hoạt 2:** 07:30 – 16:30
+  * **Ca linh hoạt 3:** 10:00 – 19:00
+  * **Chính sách thai sản / Con nhỏ dưới 12 tháng:** Giảm 1 giờ làm việc mỗi ngày $\rightarrow$ Chỉ cần đủ **7 tiếng/ngày** vẫn được tính tròn **1.0 công**.
