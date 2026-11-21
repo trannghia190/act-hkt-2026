@@ -59,6 +59,37 @@ const authHeaders = (): Record<string, string> => {
   }
 };
 
+type PeriodStatus = TimesheetData['periodStatus'];
+
+/**
+ * Bảng ánh xạ trạng thái kỳ → banner. Dùng Record để TypeScript bắt buộc
+ * phải khai báo ĐỦ mọi trạng thái — thêm trạng thái mới mà quên xử lý sẽ lỗi build,
+ * thay vì rơi vào nhánh else và hiển thị sai (lỗi đã từng xảy ra: draft hiện "đã khoá").
+ */
+const PERIOD_BANNER: Record<PeriodStatus, { icon: string; title: string; cls: string; badge: 'accent' | 'warn' | 'gray' }> = {
+  UNPUBLISHED: { icon: '⏳', title: 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)', cls: 'bg-amber-50 border-amber-300 text-amber-900', badge: 'warn' },
+  DRAFT: { icon: '📝', title: 'BẢNG CÔNG ĐANG TẠM TÍNH — CHƯA CÔNG BỐ', cls: 'bg-amber-50 border-amber-300 text-amber-900', badge: 'warn' },
+  DISPUTABLE: { icon: '🟢', title: 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI', cls: 'bg-emerald-50 border-emerald-300 text-emerald-900', badge: 'accent' },
+  EXPIRED: { icon: '⏰', title: 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)', cls: 'bg-zinc-50 border-zinc-300 text-zinc-800', badge: 'gray' },
+  LOCKED: { icon: '🔒', title: 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)', cls: 'bg-rose-50 border-rose-300 text-rose-900', badge: 'gray' },
+};
+
+/** Mô tả phụ — switch có kiểm tra `never` để không bao giờ bỏ sót trạng thái. */
+const periodDescription = (s: PeriodStatus, d: TimesheetData): string => {
+  switch (s) {
+    case 'DISPUTABLE': {
+      const [y, m, dd] = String(d.disputeDeadline || '').slice(0, 10).split('-');
+      const shown = dd ? `${dd}/${m}/${y}` : String(d.disputeDeadline || '—');
+      return `Hạn khiếu nại công: đến hết ngày ${shown}. Hãy kiểm tra kỹ từng ngày công.`;
+    }
+    case 'UNPUBLISHED': return `Số liệu đang tạm tính. HR sẽ công bố chính thức vào ngày ${d.publishDay} hàng tháng, lúc đó nút khiếu nại mới mở.`;
+    case 'DRAFT': return `Số liệu đang tạm tính, HR chưa công bố chính thức. Nút khiếu nại sẽ mở khi HR công bố (ngày ${d.publishDay} hàng tháng).`;
+    case 'EXPIRED': return 'Đã qua thời hạn 2 ngày kể từ khi công bố. Nút khiếu nại đã bị khóa tự động theo quy chế.';
+    case 'LOCKED': return 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.';
+    default: { const unreachable: never = s; return unreachable; }
+  }
+};
+
 export const MyTimesheetPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -253,72 +284,23 @@ export const MyTimesheetPage: React.FC = () => {
       )}
 
       {/* Period Status Notification Banner */}
-      {data && (
-        <div
-          className={`p-3.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${
-            data.periodStatus === 'DISPUTABLE'
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-              : data.periodStatus === 'UNPUBLISHED'
-              ? 'bg-amber-50 border-amber-300 text-amber-900'
-              : data.periodStatus === 'EXPIRED'
-              ? 'bg-zinc-50 border-zinc-300 text-zinc-800'
-              : data.periodStatus === 'LOCKED'
-              ? 'bg-rose-50 border-rose-300 text-rose-900'
-              : 'bg-amber-50 border-amber-300 text-amber-900'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">
-              {data.periodStatus === 'DISPUTABLE'
-                ? '🟢'
-                : data.periodStatus === 'UNPUBLISHED'
-                ? '⏳'
-                : data.periodStatus === 'EXPIRED'
-                ? '⏰'
-                : data.periodStatus === 'LOCKED'
-                ? '🔒'
-                : '📝'}
-            </span>
+      {data && (() => {
+        const b = PERIOD_BANNER[data.periodStatus];
+        return (
+          <div className={`p-3.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${b.cls}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-base">{b.icon}</span>
+              <div>
+                <span className="font-bold">{b.title}</span>
+                <p className="text-[11px] opacity-90 mt-0.5">{periodDescription(data.periodStatus, data)}</p>
+              </div>
+            </div>
             <div>
-              <span className="font-bold">
-                {data.periodStatus === 'DISPUTABLE'
-                  ? 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI'
-                  : data.periodStatus === 'UNPUBLISHED'
-                  ? 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)'
-                  : data.periodStatus === 'EXPIRED'
-                  ? 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)'
-                  : data.periodStatus === 'LOCKED'
-                  ? 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)'
-                  : 'BẢNG CÔNG ĐANG TẠM TÍNH — CHƯA CÔNG BỐ'}
-              </span>
-              <p className="text-[11px] opacity-90 mt-0.5">
-                {data.periodStatus === 'DISPUTABLE'
-                  ? `Hạn khiếu nại công: đến hết ngày ${data.disputeDeadline}. Hãy kiểm tra kỹ từng ngày công.`
-                  : data.periodStatus === 'UNPUBLISHED'
-                  ? `Số liệu đang tạm tính. HR sẽ công bố chính thức vào ngày ${data.publishDay} hàng tháng, lúc đó nút khiếu nại mới mở.`
-                  : data.periodStatus === 'EXPIRED'
-                  ? 'Đã qua thời hạn 2 ngày kể từ khi công bố. Nút khiếu nại đã bị khóa tự động theo quy chế.'
-                  : data.periodStatus === 'LOCKED'
-                  ? 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.'
-                  : `Số liệu đang tạm tính, HR chưa công bố chính thức. Nút khiếu nại sẽ mở khi HR công bố (ngày ${data.publishDay} hàng tháng).`}
-              </p>
+              <Badge variant={b.badge}>{data.periodStatus}</Badge>
             </div>
           </div>
-          <div>
-            <Badge
-              variant={
-                data.periodStatus === 'DISPUTABLE'
-                  ? 'accent'
-                  : data.periodStatus === 'UNPUBLISHED'
-                  ? 'warn'
-                  : 'gray'
-              }
-            >
-              {data.periodStatus}
-            </Badge>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 11 KPI / Summary Metrics Cards (Criterion B4 #3) */}
       {data && (

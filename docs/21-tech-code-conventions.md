@@ -222,3 +222,9 @@ Khởi chạy đồng bộ 5 dịch vụ cốt lõi với 1 lệnh `docker compo
 
 ### Kubernetes Manifests (`hkt/deploy/k8s/base/`)
 Gồm đầy đủ các manifest cho Deployment (có HPA và probes), Services, Ingress định tuyến và Kustomization sẵn sàng đưa vào môi trường Production.
+
+### Kiểm thử trạng thái (bắt buộc khi sửa màn hình có status)
+* **Không** dùng chuỗi ternary có nhánh `else` chung cho nhiều trạng thái: khai báo `Record<StatusUnion, …>` + `switch` có kiểm tra `never` để TypeScript báo lỗi khi thiếu trạng thái (`MyTimesheetPage.PERIOD_BANNER`).
+* Giá trị hiển thị (hạn, quota, tổng, số dư) phải lấy từ **một nguồn chuẩn**; test phải so **giá trị UI/API == giá trị DB**, không so với công thức tính lại ở nơi khác.
+* Mỗi luồng trạng thái cần test chuyển tiếp thật: `draft → published → expired → locked → restore` (`tests/api/test_period_state_matrix.py`).
+* Không đưa bug đã sửa vào trạng thái "xong" nếu chưa có **test hồi quy**.
