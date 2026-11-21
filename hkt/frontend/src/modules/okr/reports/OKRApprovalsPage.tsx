@@ -1,257 +1,482 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 
-interface OKRApprovalItem {
+interface OKRItem {
+  id: string;
+  groupType: 'BUSINESS' | 'PEOPLE';
+  title: string;
+  detail?: string;
+  progress: number;
+}
+
+interface TeamApprovalItem {
+  reviewId: string;
   id: string;
   employeeName: string;
   employeeCode: string;
   department: string;
+  position: string;
   quarter: string;
-  objectiveTitle: string;
-  krCount: number;
-  totalWeight: number;
-  submittedDate: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  keyResults: { title: string; target: string; weight: number }[];
+  status: 'DRAFT' | 'SUBMITTED' | 'LOCKED' | 'REOPENED' | 'RETURNED';
+  submittedDate: string | null;
+  submittedAt?: string;
+  selfProposal?: string;
+  selfImprovementArea?: string;
+  businessItems: OKRItem[];
+  peopleItems: OKRItem[];
+  totalItems: number;
 }
 
 export const OKRApprovalsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'APPROVED'>('PENDING');
-  const [selectedItem, setSelectedItem] = useState<OKRApprovalItem | null>(null);
-  const [managerComment, setManagerComment] = useState('Đồng ý phê duyệt mục tiêu');
-  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
-
-  const [items, setItems] = useState<OKRApprovalItem[]>([
-    {
-      id: 'OKR-REQ-001',
-      employeeName: 'Nguyễn Văn Minh',
-      employeeCode: 'ACT0142',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      quarter: 'Quý 4 / 2026',
-      objectiveTitle: 'Tối ưu hóa hiệu năng hạ tầng và bảo mật toàn diện cho nền tảng ACT-HKT',
-      krCount: 3,
-      totalWeight: 100,
-      submittedDate: '15/11/2026',
-      status: 'PENDING',
-      keyResults: [
-        { title: 'Tối ưu P99 API response time < 80ms trên toàn hệ thống', target: 'P99 < 80ms', weight: 40 },
-        { title: 'Hoàn thiện 53 cột Timesheet Master và công thức tính phép', target: '100% test pass', weight: 30 },
-        { title: 'Tích hợp nhận diện khuôn mặt AI Liveness 3 góc chuẩn xác', target: 'Độ chính xác > 98%', weight: 30 },
-      ],
-    },
-    {
-      id: 'OKR-REQ-002',
-      employeeName: 'Lê Hải Đăng',
-      employeeCode: 'ACT0156',
-      department: 'Phát Triển Phần Mềm (Sirius)',
-      quarter: 'Quý 4 / 2026',
-      objectiveTitle: 'Triển khai Rule Engine linh hoạt cấu hình 19 quy chế nhân sự',
-      krCount: 2,
-      totalWeight: 100,
-      submittedDate: '16/11/2026',
-      status: 'PENDING',
-      keyResults: [
-        { title: 'Xây dựng Dry-run simulator kiểm thử rule trước khi áp dụng', target: 'Hoàn thành module', weight: 50 },
-        { title: 'Sinh văn bản quy chế tự động khớp 100% với Rule Config', target: '19/19 điều khoản', weight: 50 },
-      ],
-    },
-    {
-      id: 'OKR-REQ-003',
-      employeeName: 'Trần Thị Thu Hà',
-      employeeCode: 'ACT0088',
-      department: 'AI & Khoa Học Dữ Liệu (Optimus)',
-      quarter: 'Quý 4 / 2026',
-      objectiveTitle: 'Nâng cấp mô hình AI Face Matcher & chống gian lận Check-in 5 tầng',
-      krCount: 3,
-      totalWeight: 100,
-      submittedDate: '10/11/2026',
-      status: 'APPROVED',
-      keyResults: [
-        { title: 'Huấn luyện mạng nơ-ron nhận diện khuôn mặt góc nghiêng 45 độ', target: 'F1 Score 0.96', weight: 40 },
-        { title: 'Giảm thời gian xử lý AI pipeline < 200ms', target: 'Latency < 200ms', weight: 30 },
-        { title: 'Chống ảnh giả mạo màn hình (Anti-spoofing check)', target: '0% False Acceptance', weight: 30 },
-      ],
-    },
-  ]);
+  const [activeTab, setActiveTab] = useState<'SUBMITTED' | 'LOCKED' | 'ALL'>('SUBMITTED');
+  const [items, setItems] = useState<TeamApprovalItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<TeamApprovalItem | null>(null);
+  const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; action: 'RETURN' | 'APPROVE' | 'REOPEN' }>({
+    isOpen: false,
+    action: 'APPROVE',
+  });
+  const [managerComment, setManagerComment] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
-    setFeedbackToast(msg);
-    setTimeout(() => setFeedbackToast(null), 3000);
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const handleApprove = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'APPROVED' as const } : item))
-    );
-    setSelectedItem(null);
-    showToast('Đã phê duyệt thành công bộ mục tiêu OKR!');
+  const loadData = useCallback(() => {
+    setLoading(true);
+    fetch('/api/v1/okr/team-approvals')
+      .then((res) => {
+        if (!res.ok) throw new Error('Không thể tải danh sách duyệt');
+        return res.json();
+      })
+      .then((json) => {
+        if (json?.data) {
+          setItems(json.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi tải duyệt OKR:', err);
+        showToast('Lỗi kết nối máy chủ');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleAction = async (action: 'APPROVE' | 'RETURN' | 'REOPEN') => {
+    if (!selectedItem) return;
+
+    if (action === 'RETURN' && !managerComment.trim()) {
+      showToast('Góp ý / lý do là bắt buộc khi trả lại yêu cầu');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/okr/reviews/${selectedItem.reviewId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          feedback: managerComment.trim() || (action === 'APPROVE' ? 'Đồng ý phê duyệt' : 'Mở cho nhân viên sửa'),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Lỗi khi xử lý');
+
+      showToast(
+        action === 'APPROVE'
+          ? 'Đã phê duyệt bộ mục tiêu OKR!'
+          : action === 'RETURN'
+          ? 'Đã trả lại yêu cầu kèm góp ý!'
+          : 'Đã mở lại quyền sửa cho nhân viên!'
+      );
+      setFeedbackModal({ isOpen: false, action: 'APPROVE' });
+      setSelectedItem(null);
+      setManagerComment('');
+      loadData();
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi xử lý duyệt');
+    }
   };
 
-  const handleReject = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'REJECTED' as const } : item))
-    );
-    setSelectedItem(null);
-    showToast('Đã trả về yêu cầu nhân viên điều chỉnh lại mục tiêu.');
-  };
+  const displayedItems = items.filter((item) => {
+    if (activeTab === 'ALL') return true;
+    if (activeTab === 'SUBMITTED') return item.status === 'SUBMITTED';
+    if (activeTab === 'LOCKED') return item.status === 'LOCKED';
+    return true;
+  });
 
-  const displayedItems = items.filter((item) => item.status === activeTab);
+  const getStatusBadge = (st: string) => {
+    switch (st) {
+      case 'SUBMITTED':
+        return <Badge variant="accent">Chờ Quản lý duyệt</Badge>;
+      case 'LOCKED':
+        return <Badge variant="ok">Đã duyệt (Khoá sửa)</Badge>;
+      case 'REOPENED':
+        return <Badge variant="info">Đang mở sửa bổ sung</Badge>;
+      case 'RETURNED':
+        return <Badge variant="danger">Đã trả lại (Cần sửa)</Badge>;
+      default:
+        return <Badge variant="gray">Đang soạn thảo</Badge>;
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      {toast && (
+        <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu &amp; Check-in OKR Nhóm</h1>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu OKR Cấp Dưới (S42)</h1>
           <p className="text-xs text-ink-muted mt-1">
-            Phê duyệt bộ Mục tiêu (Objectives) và Kết quả then chốt (Key Results) của thành viên trong nhóm, kiểm tra trọng số đủ 100%
+            Phê duyệt hoặc trả lại bộ mục tiêu 2 nhóm (Business & People) của nhân viên thuộc phạm vi quản lý trực tiếp.
           </p>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line">
+        <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line text-xs">
           <button
-            onClick={() => setActiveTab('PENDING')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'PENDING'
-                ? 'bg-accent text-white shadow-xs'
-                : 'text-ink-secondary hover:text-ink hover:bg-canvas'
+            onClick={() => setActiveTab('SUBMITTED')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              activeTab === 'SUBMITTED' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
-            Chờ Duyệt ({items.filter((i) => i.status === 'PENDING').length})
+            Chờ duyệt ({items.filter((i) => i.status === 'SUBMITTED').length})
           </button>
           <button
-            onClick={() => setActiveTab('APPROVED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'APPROVED'
-                ? 'bg-accent text-white shadow-xs'
-                : 'text-ink-secondary hover:text-ink hover:bg-canvas'
+            onClick={() => setActiveTab('LOCKED')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              activeTab === 'LOCKED' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
-            Đã Phê Duyệt ({items.filter((i) => i.status === 'APPROVED').length})
+            Đã duyệt ({items.filter((i) => i.status === 'LOCKED').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('ALL')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              activeTab === 'ALL' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
+            }`}
+          >
+            Tất cả ({items.length})
           </button>
         </div>
       </div>
 
-      {feedbackToast && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in">
-          ✓ {feedbackToast}
-        </div>
-      )}
-
-      {/* List of OKR Submissions */}
-      <div className="space-y-4">
-        {displayedItems.length === 0 ? (
-          <div className="p-12 text-center bg-surface rounded-xl border border-line text-ink-muted text-xs">
-            Không có hồ sơ mục tiêu nào trong danh sách này.
-          </div>
-        ) : (
-          displayedItems.map((item) => (
-            <div
-              key={item.id}
-              className="p-5 bg-surface rounded-xl border border-line hover:border-line-focus transition-all shadow-2xs space-y-3"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <div>
+      {loading ? (
+        <div className="p-12 text-center text-xs text-ink-muted">Đang tải danh sách mục tiêu cấp dưới...</div>
+      ) : displayedItems.length === 0 ? (
+        <Card className="p-12 text-center text-ink-muted text-xs">
+          Không có nhân viên nào trong danh sách {activeTab === 'SUBMITTED' ? 'chờ duyệt' : 'này'}.
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {displayedItems.map((item) => (
+            <Card key={item.reviewId} className="space-y-4 hover:border-line-hover transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-ink">{item.employeeName}</span>
-                    <span className="font-mono text-emerald-400 text-xs">{item.employeeCode}</span>
-                    <Badge variant="accent">{item.quarter}</Badge>
-                    {item.status === 'PENDING' ? (
-                      <Badge variant="warn">Chờ duyệt</Badge>
-                    ) : (
-                      <Badge variant="ok">Đã duyệt</Badge>
-                    )}
+                    <span className="font-bold text-ink text-sm">{item.employeeName}</span>
+                    <span className="text-xs text-ink-muted font-mono">({item.employeeCode})</span>
+                    {getStatusBadge(item.status)}
                   </div>
-                  <div className="text-xs text-ink-muted mt-0.5">{item.department} · Nộp ngày {item.submittedDate}</div>
+                  <div className="text-xs text-ink-secondary">
+                    {item.department} · {item.position} · Ngày nộp: {item.submittedDate || '—'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedItem(item)}>
+                    Xem chi tiết 2 nhóm
+                  </Button>
+                </div>
+              </div>
+
+              {/* Tóm tắt 2 nhóm Business & People */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-lg border border-line bg-surface space-y-2">
+                  <div className="font-semibold text-accent flex items-center justify-between">
+                    <span>Business (Thành tựu công việc)</span>
+                    <span className="text-[11px] text-ink-muted font-normal">{item.businessItems.length} mục</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {item.businessItems.map((b) => (
+                      <div key={b.id} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
+                        <span className="text-accent">•</span>
+                        <span className="line-clamp-1 flex-1">{b.title}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSelectedItem(item)}>
-                    Xem Chi Tiết KRs
+                <div className="p-3 rounded-lg border border-line bg-surface space-y-2">
+                  <div className="font-semibold text-emerald-600 flex items-center justify-between">
+                    <span>People (Thành tựu con người)</span>
+                    <span className="text-[11px] text-ink-muted font-normal">{item.peopleItems.length} mục</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {item.peopleItems.map((p) => (
+                      <div key={p.id} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
+                        <span className="text-emerald-500">•</span>
+                        <span className="line-clamp-1 flex-1">{p.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nút thao tác nhanh của Quản lý */}
+              {(item.status === 'SUBMITTED' || item.status === 'LOCKED') && (
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setManagerComment(
+                        item.status === 'LOCKED'
+                          ? 'Mở lại để nhân viên bổ sung/cập nhật theo đợt review'
+                          : 'Mở cho nhân viên bổ sung thêm mục tiêu phát sinh'
+                      );
+                      setFeedbackModal({ isOpen: true, action: 'REOPEN' });
+                    }}
+                  >
+                    🔓 {item.status === 'LOCKED' ? 'Mở lại để nhân viên sửa' : 'Mở cho nhân viên sửa'}
                   </Button>
-                  {item.status === 'PENDING' && (
-                    <Button variant="primary" size="sm" onClick={() => handleApprove(item.id)}>
-                      Duyệt Nhanh
-                    </Button>
+                  {item.status === 'SUBMITTED' && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-danger border-danger/40 hover:bg-danger-soft"
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setManagerComment('');
+                          setFeedbackModal({ isOpen: true, action: 'RETURN' });
+                        }}
+                      >
+                        ↩️ Trả lại kèm góp ý
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setManagerComment('Đồng ý phê duyệt bộ mục tiêu OKR đầu năm');
+                          setFeedbackModal({ isOpen: true, action: 'APPROVE' });
+                        }}
+                      >
+                        ✅ Phê duyệt OKR
+                      </Button>
+                    </>
                   )}
                 </div>
-              </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
 
-              {/* Objective statement */}
-              <div className="p-3 bg-canvas rounded-lg text-xs font-medium text-ink border border-line/60">
-                🎯 <strong>Mục tiêu:</strong> {item.objectiveTitle}
-              </div>
-
-              {/* Summary of KRs */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                {item.keyResults.map((kr, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg border border-line bg-surface flex flex-col justify-between">
-                    <span className="text-ink font-medium leading-snug">{kr.title}</span>
-                    <div className="flex items-center justify-between text-[11px] text-ink-muted mt-2 pt-1 border-t border-line/60">
-                      <span>Chỉ tiêu: <strong className="text-ink">{kr.target}</strong></span>
-                      <span className="font-bold text-emerald-400">Trọng số: {kr.weight}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Review & Feedback Modal */}
-      {selectedItem && (
-        <Modal
-          isOpen={Boolean(selectedItem)}
-          onClose={() => setSelectedItem(null)}
-          title={`Thẩm Định Mục Tiêu OKR - ${selectedItem.employeeName}`}
-        >
-          <div className="space-y-4 text-xs">
-            <div>
-              <span className="text-ink-muted block text-[11px]">Mục tiêu chính:</span>
-              <p className="font-bold text-ink mt-0.5">{selectedItem.objectiveTitle}</p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-ink-muted block text-[11px]">Danh sách Key Results ({selectedItem.keyResults.length}):</span>
-              {selectedItem.keyResults.map((kr, idx) => (
-                <div key={idx} className="p-2.5 bg-canvas rounded-lg border border-line flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold text-ink">KR {idx + 1}: {kr.title}</div>
-                    <div className="text-[11px] text-ink-muted">Chỉ tiêu định lượng: {kr.target}</div>
-                  </div>
-                  <span className="font-bold text-emerald-400 font-mono">{kr.weight}%</span>
+      {/* Modal Xem chi tiết 2 nhóm cạnh nhau */}
+      <Modal
+        isOpen={Boolean(selectedItem) && !feedbackModal.isOpen}
+        onClose={() => setSelectedItem(null)}
+        title={`Chi tiết OKR: ${selectedItem?.employeeName} (${selectedItem?.employeeCode})`}
+        maxWidth="4xl"
+      >
+        {selectedItem && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nhóm Business */}
+              <div className="border border-line rounded-xl p-4 space-y-3 bg-surface">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <h3 className="font-bold text-sm text-accent flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-accent" />
+                    Business (Mục tiêu công việc & Dự án)
+                  </h3>
+                  <Badge variant="ok">{selectedItem.businessItems.length} mục</Badge>
                 </div>
-              ))}
+                <div className="space-y-3">
+                  {selectedItem.businessItems.map((b, idx) => (
+                    <div key={b.id} className="p-3 bg-canvas rounded-lg border border-line text-xs space-y-1">
+                      <div className="font-semibold text-ink">
+                        {idx + 1}. {b.title}
+                      </div>
+                      {b.detail && <p className="text-ink-muted text-[11px]">{b.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nhóm People */}
+              <div className="border border-line rounded-xl p-4 space-y-3 bg-surface">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <h3 className="font-bold text-sm text-emerald-600 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    People (Mục tiêu con người & Đội ngũ)
+                  </h3>
+                  <Badge variant="ok">{selectedItem.peopleItems.length} mục</Badge>
+                </div>
+                <div className="space-y-3">
+                  {selectedItem.peopleItems.map((p, idx) => (
+                    <div key={p.id} className="p-3 bg-canvas rounded-lg border border-line text-xs space-y-1">
+                      <div className="font-semibold text-ink">
+                        {idx + 1}. {p.title}
+                      </div>
+                      {p.detail && <p className="text-ink-muted text-[11px]">{p.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-ink font-semibold mb-1">Nhận xét &amp; Góp ý của Quản lý</label>
-              <textarea
-                rows={3}
-                value={managerComment}
-                onChange={(e) => setManagerComment(e.target.value)}
-                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink"
-              />
-            </div>
+            {/* Self proposal */}
+            {(selectedItem.selfProposal || selectedItem.selfImprovementArea) && (
+              <div className="p-3.5 bg-canvas rounded-xl border border-line text-xs space-y-2">
+                <div>
+                  <span className="font-bold text-purple-600">Self Proposal Năm Sau:</span>
+                  <p className="text-ink-secondary">{selectedItem.selfProposal || '—'}</p>
+                </div>
+                {selectedItem.selfImprovementArea && (
+                  <div>
+                    <span className="font-bold text-purple-600">Điểm cần cải thiện:</span>
+                    <p className="text-ink-secondary">{selectedItem.selfImprovementArea}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => handleReject(selectedItem.id)}>
-                Yêu Cầu Sửa Lại
+            {/* Action footer */}
+            <div className="flex justify-end gap-2 pt-3 border-t border-line">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedItem(null)}>
+                Đóng
               </Button>
-              <Button variant="primary" onClick={() => handleApprove(selectedItem.id)}>
-                Chấp Thuận &amp; Khóa Mục Tiêu
-              </Button>
+              {(selectedItem.status === 'SUBMITTED' || selectedItem.status === 'LOCKED') && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-600 border-amber-300"
+                    onClick={() => {
+                      setManagerComment(
+                        selectedItem.status === 'LOCKED'
+                          ? 'Mở lại để nhân viên bổ sung/cập nhật theo đợt review'
+                          : 'Mở cho nhân viên bổ sung thêm mục tiêu phát sinh'
+                      );
+                      setFeedbackModal({ isOpen: true, action: 'REOPEN' });
+                    }}
+                  >
+                    🔓 {selectedItem.status === 'LOCKED' ? 'Mở lại để nhân viên sửa' : 'Mở cho nhân viên sửa'}
+                  </Button>
+                  {selectedItem.status === 'SUBMITTED' && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-danger border-danger/40"
+                        onClick={() => {
+                          setManagerComment('');
+                          setFeedbackModal({ isOpen: true, action: 'RETURN' });
+                        }}
+                      >
+                        ↩️ Trả lại kèm góp ý
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setManagerComment('Đồng ý phê duyệt bộ mục tiêu OKR đầu năm');
+                          setFeedbackModal({ isOpen: true, action: 'APPROVE' });
+                        }}
+                      >
+                        ✅ Phê duyệt OKR
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
+
+      {/* Modal Nhập góp ý / Xác nhận duyệt */}
+      <Modal
+        isOpen={feedbackModal.isOpen}
+        onClose={() => setFeedbackModal({ isOpen: false, action: 'APPROVE' })}
+        title={
+          feedbackModal.action === 'APPROVE'
+            ? 'Xác nhận phê duyệt OKR'
+            : feedbackModal.action === 'RETURN'
+            ? 'Trả lại yêu cầu chỉnh sửa kèm góp ý'
+            : 'Mở lại quyền chỉnh sửa cho nhân viên'
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-ink">
+            Nhân viên: <b>{selectedItem?.employeeName} ({selectedItem?.employeeCode})</b>
+          </p>
+
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">
+              {feedbackModal.action === 'RETURN' ? (
+                <>
+                  Góp ý điều chỉnh <span className="text-danger">* (Bắt buộc theo quy định)</span>:
+                </>
+              ) : (
+                'Nhận xét / Ghi chú của Quản lý:'
+              )}
+            </label>
+            <textarea
+              rows={3}
+              required={feedbackModal.action === 'RETURN'}
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
+              placeholder={
+                feedbackModal.action === 'RETURN'
+                  ? 'Ví dụ: Cần bổ sung thêm chỉ số đo lường cho mục tiêu thứ 2...'
+                  : 'Ghi chú cho nhân viên...'
+              }
+              value={managerComment}
+              onChange={(e) => setManagerComment(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFeedbackModal({ isOpen: false, action: 'APPROVE' })}
+            >
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              variant={feedbackModal.action === 'RETURN' ? 'danger' : 'primary'}
+              size="sm"
+              disabled={feedbackModal.action === 'RETURN' && !managerComment.trim()}
+              onClick={() => handleAction(feedbackModal.action)}
+            >
+              {feedbackModal.action === 'APPROVE'
+                ? 'Xác nhận duyệt'
+                : feedbackModal.action === 'RETURN'
+                ? 'Gửi trả lại'
+                : 'Mở quyền sửa'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

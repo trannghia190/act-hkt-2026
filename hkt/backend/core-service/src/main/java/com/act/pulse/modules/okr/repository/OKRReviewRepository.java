@@ -10,4 +10,7 @@ import java.util.UUID;
 @Repository
 public interface OKRReviewRepository extends JpaRepository<OKRReview, UUID> {
     Optional<OKRReview> findByUserIdAndCycleYear(UUID userId, Integer cycleYear);
+    java.util.List<OKRReview> findByManagerIdAndCycleYear(UUID managerId, Integer cycleYear);
+    java.util.List<OKRReview> findByCycleYear(Integer cycleYear);
+    java.util.List<OKRReview> findByManagerId(UUID managerId);
 }

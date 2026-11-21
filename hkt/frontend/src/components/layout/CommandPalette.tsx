@@ -60,7 +60,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { title: 'Dashboard OKR cá nhân', subtitle: 'S20 · Tiến độ mục tiêu và kết quả then chốt', kind: 'page', url: '/okr/dashboard', keywords: 'okr dashboard muc tieu kr tien do' },
     { title: 'Thiết lập & Check-in tiến độ OKR', subtitle: 'S21 · Cập nhật chỉ số thực tế Key Results', kind: 'action', url: '/okr/my-okr', keywords: 'check in okr thiet lap my okr cap nhat tien do' },
     { title: 'Duyệt mục tiêu OKR nhóm', subtitle: 'S42 · Quản lý phê duyệt mục tiêu cấp dưới', kind: 'page', url: '/okr/team-approvals', keywords: 'duyet okr phe duyet muc tieu nhom' },
-    { title: 'Form Đánh giá OKR cuối năm 4 Box', subtitle: 'S23 · Tự chấm điểm Business & People', kind: 'action', url: '/okr/assessment', keywords: 'danh gia okr form 4 box business people cuoi nam' },
+    { title: 'Đánh giá OKR cuối năm', subtitle: 'S23 · Tự chấm điểm Business & People', kind: 'action', url: '/okr/assessment', keywords: 'danh gia okr form 4 box business people cuoi nam' },
 
     // 4. Quản trị & Hệ thống
     { title: 'Quản lý nhân viên & tài khoản', subtitle: 'S40 · Danh sách nhân sự, chuỗi cấp trên', kind: 'page', url: '/admin/employees', keywords: 'quan ly nhan vien employees danh ba tai khoan' },

@@ -16,6 +16,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.act.pulse.modules.okr.service.OKRRuleException.class)
+    public ResponseEntity<ApiResponse<Object>> handleOkrRule(com.act.pulse.modules.okr.service.OKRRuleException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(
             org.springframework.web.bind.MethodArgumentNotValidException ex) {

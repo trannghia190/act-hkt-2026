@@ -1,119 +1,547 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
+import { Modal } from '../../../components/common/Modal';
+
+interface MidYearRow {
+  reviewId: string;
+  employeeCode: string;
+  fullName: string;
+  team?: string;
+  jobTitle?: string;
+  businessProgress: number;
+  peopleProgress: number;
+  overallProgress: number;
+  selfBusiness?: number | null;
+  selfPeople?: number | null;
+  selfAverage?: number | null;
+  proposedScore: number;
+  gap?: number | null;
+  warningCount: number;
+  warnings: { code: string; level: string; message: string }[];
+  status: string;
+  riskScore: number;
+}
+
+interface TrendRow {
+  id: string;
+  period: string;
+  previousValue?: number | null;
+  newValue: number;
+  progressSnapshot: number;
+  note?: string | null;
+  createdAt?: string | null;
+}
+
+interface ItemRow {
+  id: string;
+  groupType: 'BUSINESS' | 'PEOPLE';
+  title: string;
+  detail?: string | null;
+  progress: number;
+  dueDate?: string | null;
+  checkInTrend: TrendRow[];
+}
+
+interface AuditRow {
+  id: string;
+  actorName?: string;
+  action: string;
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  reason?: string;
+  createdAt?: string;
+}
+
+interface DetailData extends MidYearRow {
+  email?: string;
+  joinedDate?: string | null;
+  businessItems: ItemRow[];
+  peopleItems: ItemRow[];
+  midYear: {
+    id?: string | null;
+    employeeFeedback: string;
+    managerCoaching: string;
+    h2Commitment: string;
+    status: string;
+    updatedAt?: string | null;
+  };
+  auditTrail: AuditRow[];
+  midYearWritable?: boolean;
+  midYearLockReason?: string | null;
+}
+
+const statusLabel = (status: string) => {
+  if (status === 'DA_HOAN_TAT') return 'Đã chấm xong';
+  if (status === 'CHO_QL_CHAM') return 'Chờ QL chấm';
+  if (status === 'CHUA_CO_OKR') return 'Chưa có OKR được duyệt';
+  return 'Chưa tự đánh giá';
+};
 
 export const MidYearReviewPage: React.FC = () => {
-  const [selectedQuarter] = useState('Giữa Năm (H1 2026)');
-  const [employeeFeedback, setEmployeeFeedback] = useState(
-    'Trong 6 tháng đầu năm, nhóm Sirius đã hoàn thành việc tách module và ổn định kiến trúc. Tuy nhiên phần tích hợp AI nhận diện khuôn mặt cần hỗ trợ thêm tài nguyên hạ tầng GPU.'
-  );
-  const [managerCoachingNotes, setManagerCoachingNotes] = useState(
-    'Minh cần chủ động hơn trong việc phối hợp với team Optimus AI. Trong H2 sẽ cần tăng tốc hoàn thành các module chốt công 53 cột và rule engine.'
-  );
-  const [h2Commitment, setH2Commitment] = useState(
-    'Cam kết đạt 100% các KR trong Quý 3 và Quý 4, sẵn sàng kèm cặp 1 Junior Dev mới gia nhập.'
-  );
-  const [isSaved, setIsSaved] = useState(false);
+  const [rows, setRows] = useState<MidYearRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<DetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  const [notes, setNotes] = useState({ employeeFeedback: '', managerCoaching: '', h2Commitment: '' });
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const [editItem, setEditItem] = useState<ItemRow | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', detail: '', dueDate: '', reason: '' });
+  const [savingItem, setSavingItem] = useState(false);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ groupType: 'BUSINESS' as 'BUSINESS' | 'PEOPLE', title: '', detail: '', dueDate: '', reason: '' });
+
+  const [deleteItem, setDeleteItem] = useState<ItemRow | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('Mở lại để bổ sung trong review giữa năm');
+  const [reopening, setReopening] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm (Mid-Year Review)</h1>
-          </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Đánh giá tiến độ 6 tháng đầu năm (H1), điều chỉnh mục tiêu nửa cuối năm (H2) và ghi nhận biên bản 1-on-1 coaching giữa Quản lý và Nhân viên
-          </p>
-        </div>
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/v1/okr/midyear/reviews');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không tải được danh sách');
+      setRows(json.data || []);
+      if (!selectedId && json.data?.length) setSelectedId(json.data[0].reviewId);
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được danh sách review giữa năm');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedId]);
 
-        <div className="flex items-center gap-2">
-          <Button variant="primary" size="sm" onClick={handleSave}>
-            Lưu Biên Bản Coaching
+  const loadDetail = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${id}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không tải được chi tiết');
+      setDetail(json.data);
+      setNotes({
+        employeeFeedback: json.data.midYear?.employeeFeedback || '',
+        managerCoaching: json.data.midYear?.managerCoaching || '',
+        h2Commitment: json.data.midYear?.h2Commitment || '',
+      });
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được chi tiết review');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadList(); }, [loadList]);
+  useEffect(() => { if (selectedId) loadDetail(selectedId); }, [selectedId, loadDetail]);
+
+  const refresh = async () => {
+    if (selectedId) await loadDetail(selectedId);
+    await loadList();
+  };
+
+  const saveNotes = async () => {
+    if (!selectedId) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notes),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không lưu được biên bản');
+      showToast('Đã lưu biên bản coaching giữa năm');
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không lưu được biên bản');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const openEdit = (item: ItemRow) => {
+    setEditItem(item);
+    setEditForm({
+      title: item.title,
+      detail: item.detail || '',
+      dueDate: item.dueDate ? item.dueDate.substring(0, 10) : '',
+      reason: '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!selectedId || !editItem) return;
+    if (!editForm.reason.trim()) { showToast('Lý do điều chỉnh là bắt buộc'); return; }
+    setSavingItem(true);
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}/items/${editItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editForm.title,
+          detail: editForm.detail,
+          dueDate: editForm.dueDate || null,
+          reason: editForm.reason,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không lưu được điều chỉnh');
+      showToast('Đã điều chỉnh mục tiêu + ghi audit');
+      setEditItem(null);
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không lưu được điều chỉnh');
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
+  const removeItem = async () => {
+    if (!selectedId || !deleteItem) return;
+    if (!deleteReason.trim()) { showToast('Lý do bớt mục tiêu là bắt buộc'); return; }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}/items/${deleteItem.id}?reason=${encodeURIComponent(deleteReason.trim())}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không bớt được mục tiêu');
+      showToast('Đã bớt mục tiêu (lưu vết lịch sử)');
+      setDeleteItem(null);
+      setDeleteReason('');
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không bớt được mục tiêu');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const addItem = async () => {
+    if (!selectedId) return;
+    if (!addForm.title.trim() || !addForm.reason.trim()) {
+      showToast('Tên mục tiêu và lý do là bắt buộc');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...addForm, dueDate: addForm.dueDate || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không thêm được mục tiêu');
+      showToast('Đã thêm mục tiêu giữa năm');
+      setAddOpen(false);
+      setAddForm({ groupType: 'BUSINESS', title: '', detail: '', dueDate: '', reason: '' });
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không thêm được mục tiêu');
+    }
+  };
+
+  const openReopen = () => {
+    setReopenReason('Mở lại để bổ sung trong review giữa năm');
+    setReopenOpen(true);
+  };
+
+  const reopen = async () => {
+    if (!selectedId) return;
+    if (!reopenReason.trim()) { showToast('Lý do mở lại là bắt buộc'); return; }
+    setReopening(true);
+    try {
+      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reopenReason.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không mở lại được');
+      showToast('Đã mở lại quyền sửa cho nhân viên');
+      setReopenOpen(false);
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không mở lại được');
+    } finally {
+      setReopening(false);
+    }
+  };
+
+  const canWrite = detail?.midYearWritable !== false;
+
+  const renderItems = (title: string, items: ItemRow[], group: 'BUSINESS' | 'PEOPLE') => (
+    <Card className="space-y-3">
+      <div className="flex items-center justify-between border-b border-line pb-2">
+        <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} />
+          {title}
+        </h3>
+        {canWrite && (
+          <Button size="sm" variant="outline" onClick={() => { setAddForm({ groupType: group, title: '', detail: '', dueDate: '', reason: '' }); setAddOpen(true); }}>
+            + Thêm mục tiêu
           </Button>
-        </div>
+        )}
       </div>
-
-      {isSaved && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in">
-          ✓ Đã lưu biên bản Review &amp; Coaching Giữa Năm thành công!
+      {items.length === 0 ? (
+        <div className="text-xs text-ink-muted py-4 text-center bg-canvas rounded-lg border border-dashed border-line">Chưa có mục tiêu.</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-lg border border-line p-3 bg-surface space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-ink">{item.title}</div>
+                  {item.detail && <div className="text-[11px] text-ink-muted mt-0.5">{item.detail}</div>}
+                  <div className="text-[11px] text-ink-muted mt-1">
+                    Tiến độ: <b className="text-ink">{item.progress}%</b>
+                    {item.dueDate ? ` · Hạn: ${item.dueDate.substring(0, 10)}` : ''}
+                  </div>
+                </div>
+                {canWrite && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button className="text-[11px] font-semibold text-accent hover:underline" onClick={() => openEdit(item)}>Điều chỉnh</button>
+                    <button className="text-[11px] font-semibold text-danger hover:underline" onClick={() => { setDeleteItem(item); setDeleteReason(''); }}>Bớt</button>
+                  </div>
+                )}
+              </div>
+              <div className="h-1.5 bg-line rounded-full overflow-hidden">
+                <div className={`h-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, item.progress)}%` }} />
+              </div>
+              {item.checkInTrend.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {item.checkInTrend.map((t) => (
+                    <span key={t.id} className="rounded-full border border-line bg-canvas px-2 py-0.5 text-[10px] text-ink-muted">
+                      {t.period}: {t.previousValue ?? '—'}% → {t.newValue}%
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
+    </Card>
+  );
 
-      {/* Progress H1 Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs space-y-1">
-          <div className="text-xs text-ink-muted">Tiến Độ Quý 1 / 2026</div>
-          <div className="text-2xl font-bold text-ink">94.0%</div>
-          <Badge variant="ok">Hoàn thành xuất sắc</Badge>
+  return (
+    <div className="space-y-5 pb-12">
+      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm (S43)</h1>
+          <p className="text-xs text-ink-muted mt-1">Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.</p>
         </div>
+        {detail && canWrite && (
+          <Button size="sm" variant="outline" onClick={openReopen}>🔓 Mở cho nhân viên sửa</Button>
+        )}
+      </div>
 
-        <div className="p-4 bg-surface rounded-xl border border-line shadow-2xs space-y-1">
-          <div className="text-xs text-ink-muted">Tiến Độ Quý 2 / 2026</div>
-          <div className="text-2xl font-bold text-ink">88.5%</div>
-          <Badge variant="ok">Đạt chỉ tiêu đề ra</Badge>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
+        <Card className="space-y-2 lg:sticky lg:top-4">
+          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider pb-2 border-b border-line">Nhân viên ({rows.length})</div>
+          {loading ? <div className="text-xs text-ink-muted p-3">Đang tải...</div> : rows.length === 0 ? <div className="text-xs text-ink-muted p-3">Không có nhân viên trong phạm vi quản lý.</div> : rows.map((r) => (
+            <button
+              key={r.reviewId}
+              onClick={() => setSelectedId(r.reviewId)}
+              className={`w-full text-left rounded-lg border p-2.5 transition-colors ${selectedId === r.reviewId ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface hover:border-accent/40'}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-ink">{r.fullName}</span>
+                {r.warningCount > 0 && <Badge variant="warn">{r.warningCount} cảnh báo</Badge>}
+              </div>
+              <div className="text-[11px] text-ink-muted mt-0.5">{r.employeeCode} · Tiến độ {r.overallProgress}%</div>
+              <div className="text-[11px] text-ink-muted">Tự chấm: {r.selfAverage ?? '—'} · Đề xuất: {r.proposedScore}</div>
+            </button>
+          ))}
+        </Card>
 
-        <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20 shadow-2xs space-y-1">
-          <div className="text-xs text-accent-dark font-medium">Trung Bình 6 Tháng (H1)</div>
-          <div className="text-2xl font-black text-accent">91.3%</div>
-          <Badge variant="accent">Xếp loại: A (On-Track)</Badge>
+        <div className="space-y-4">
+          {detailLoading ? (
+            <Card><div className="text-xs text-ink-muted p-6 text-center">Đang tải chi tiết...</div></Card>
+          ) : !detail ? (
+            <Card><div className="text-xs text-ink-muted p-6 text-center">Chọn một nhân viên để review.</div></Card>
+          ) : (
+            <>
+              {detail.midYearWritable === false && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+                  🔒 Chỉ xem: {detail.midYearLockReason}
+                </div>
+              )}
+              <Card className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-ink">{detail.fullName} <span className="text-xs font-normal text-ink-muted">({detail.employeeCode})</span></h2>
+                    <div className="text-xs text-ink-muted mt-0.5">{detail.team || '—'} · {detail.jobTitle || '—'} · {statusLabel(detail.status)}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="accent">Tự chấm (dự kiến) TB: {detail.selfAverage ?? '—'}</Badge>
+                    <Badge variant="warn">Đề xuất theo tiến độ: {Number(detail.proposedScore).toFixed(1)}</Badge>
+                    {detail.gap != null && <Badge variant={Math.abs(detail.gap) > 0.2 ? 'danger' : 'ok'}>Lệch: {detail.gap > 0 ? '+' : ''}{detail.gap}</Badge>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs">
+                    <div className="text-ink-muted">Business</div>
+                    <div className="font-bold text-ink">{detail.businessProgress}%</div>
+                  </div>
+                  <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs">
+                    <div className="text-ink-muted">People</div>
+                    <div className="font-bold text-ink">{detail.peopleProgress}%</div>
+                  </div>
+                </div>
+                {detail.warnings.length > 0 && (
+                  <div className="space-y-1">
+                    {detail.warnings.map((w, idx) => (
+                      <div key={idx} className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800">
+                        ⚠️ {w.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {renderItems('Business', detail.businessItems, 'BUSINESS')}
+              {renderItems('People', detail.peopleItems, 'PEOPLE')}
+
+              <Card className="space-y-3">
+                <div className="text-sm font-bold text-ink border-b border-line pb-2">Biên bản coaching 1-on-1</div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">Nhân viên chia sẻ thuận lợi / khó khăn</label>
+                  <textarea rows={3} disabled={!canWrite} value={notes.employeeFeedback} onChange={(e) => setNotes({ ...notes, employeeFeedback: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">Định hướng &amp; coaching của Quản lý</label>
+                  <textarea rows={3} disabled={!canWrite} value={notes.managerCoaching} onChange={(e) => setNotes({ ...notes, managerCoaching: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">Cam kết / kế hoạch H2</label>
+                  <textarea rows={3} disabled={!canWrite} value={notes.h2Commitment} onChange={(e) => setNotes({ ...notes, h2Commitment: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="primary" onClick={saveNotes} disabled={savingNotes || !canWrite}>{savingNotes ? 'Đang lưu...' : 'Lưu biên bản coaching'}</Button>
+                </div>
+              </Card>
+
+              <Card className="space-y-2">
+                <div className="text-sm font-bold text-ink border-b border-line pb-2">Audit trail ({detail.auditTrail.length})</div>
+                {detail.auditTrail.length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có thay đổi nào.</div> : detail.auditTrail.map((a) => (
+                  <div key={a.id} className="rounded-lg border border-line bg-surface p-2.5 text-[11px] space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-ink">{a.actorName || 'Hệ thống'} · {a.action}</span>
+                      <span className="text-ink-muted">{a.createdAt ? new Date(a.createdAt).toLocaleString('vi-VN') : ''}</span>
+                    </div>
+                    {a.fieldName && <div className="text-ink-secondary">Trường: <b>{a.fieldName}</b>{a.oldValue || a.newValue ? ` · ${a.oldValue ?? '—'} → ${a.newValue ?? '—'}` : ''}</div>}
+                    {a.reason && <div className="text-ink-muted">Lý do: {a.reason}</div>}
+                  </div>
+                ))}
+              </Card>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Coaching & Alignment Form */}
-      <Card title="Nội Dung Biên Bản Đối Thoại 1-on-1 Giữa Năm">
-        <div className="space-y-5 text-xs">
+      <Modal isOpen={Boolean(editItem)} onClose={() => setEditItem(null)} title="Điều chỉnh mục tiêu giữa năm" maxWidth="lg">
+        <div className="space-y-3">
+          <div className="rounded-lg bg-amber-50 border border-amber-300 p-2.5 text-[11px] text-amber-800">Mọi thay đổi bắt buộc nhập lý do và sẽ ghi vào audit trail.</div>
           <div>
-            <label className="block text-ink font-semibold mb-1">
-              1. Nhân viên tự chia sẻ thuận lợi &amp; khó khăn trong 6 tháng qua
-            </label>
-            <textarea
-              rows={3}
-              value={employeeFeedback}
-              onChange={(e) => setEmployeeFeedback(e.target.value)}
-              className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink"
-            />
+            <label className="block text-xs font-semibold text-ink mb-1">Tên mục tiêu</label>
+            <textarea rows={2} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
           </div>
-
           <div>
-            <label className="block text-ink font-semibold mb-1">
-              2. Định hướng &amp; Coaching của Quản lý trực tiếp (Manager Guidance)
-            </label>
-            <textarea
-              rows={3}
-              value={managerCoachingNotes}
-              onChange={(e) => setManagerCoachingNotes(e.target.value)}
-              className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink"
-            />
+            <label className="block text-xs font-semibold text-ink mb-1">Chi tiết</label>
+            <textarea rows={3} value={editForm.detail} onChange={(e) => setEditForm({ ...editForm, detail: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
           </div>
-
           <div>
-            <label className="block text-ink font-semibold mb-1">
-              3. Kế hoạch hành động &amp; Cam kết mục tiêu nửa cuối năm (H2 Alignment)
-            </label>
-            <textarea
-              rows={3}
-              value={h2Commitment}
-              onChange={(e) => setH2Commitment(e.target.value)}
-              className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink"
-            />
+            <label className="block text-xs font-semibold text-ink mb-1">Hạn chót mục tiêu (kéo hạn)</label>
+            <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
           </div>
-
-          <div className="p-3 bg-canvas rounded-lg border border-line text-[11px] text-ink-muted space-y-1">
-            <div>• Người đánh giá: <strong>Phạm Minh Tuấn (Tech Lead)</strong></div>
-            <div>• Nhân viên được đánh giá: <strong>Nguyễn Văn Minh (Senior Developer)</strong></div>
-            <div>• Chu kỳ: {selectedQuarter} · Trạng thái: Đã hoàn tất buổi đối thoại trực tiếp</div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Lý do điều chỉnh <span className="text-danger">*</span></label>
+            <textarea rows={2} value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setEditItem(null)}>Huỷ</Button>
+            <Button size="sm" variant="primary" onClick={saveEdit} disabled={savingItem}>{savingItem ? 'Đang lưu...' : 'Lưu điều chỉnh'}</Button>
           </div>
         </div>
-      </Card>
+      </Modal>
+
+      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Thêm mục tiêu giữa năm" maxWidth="lg">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Nhóm</label>
+            <select value={addForm.groupType} onChange={(e) => setAddForm({ ...addForm, groupType: e.target.value as 'BUSINESS' | 'PEOPLE' })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas">
+              <option value="BUSINESS">Business</option>
+              <option value="PEOPLE">People</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Tên mục tiêu <span className="text-danger">*</span></label>
+            <textarea rows={2} value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Chi tiết</label>
+            <textarea rows={2} value={addForm.detail} onChange={(e) => setAddForm({ ...addForm, detail: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Hạn chót</label>
+            <input type="date" value={addForm.dueDate} onChange={(e) => setAddForm({ ...addForm, dueDate: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Lý do thêm <span className="text-danger">*</span></label>
+            <textarea rows={2} value={addForm.reason} onChange={(e) => setAddForm({ ...addForm, reason: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setAddOpen(false)}>Huỷ</Button>
+            <Button size="sm" variant="primary" onClick={addItem}>Thêm mục tiêu</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(deleteItem)} onClose={() => setDeleteItem(null)} title="Bớt mục tiêu giữa năm" maxWidth="md">
+        <div className="space-y-3">
+          <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink-secondary">
+            Mục tiêu: <b>{deleteItem?.title}</b>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Lý do bớt <span className="text-danger">*</span></label>
+            <textarea rows={3} value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div className="text-[11px] text-ink-muted">Mục tiêu sẽ được xoá mềm, vẫn còn trong lịch sử và audit trail.</div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setDeleteItem(null)}>Huỷ</Button>
+            <Button size="sm" variant="danger" onClick={removeItem} disabled={deleting || !deleteReason.trim()}>{deleting ? 'Đang xử lý...' : 'Xác nhận bớt'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={reopenOpen} onClose={() => setReopenOpen(false)} title="Mở cho nhân viên sửa bổ sung" maxWidth="md">
+        <div className="space-y-3">
+          <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
+            Nhân viên sẽ sửa/bổ sung OKR và nộp lại. Khi nộp lại, bộ mục tiêu sẽ khoá cho tới lần mở tiếp theo.
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Lý do mở lại <span className="text-danger">*</span></label>
+            <textarea rows={3} value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setReopenOpen(false)}>Huỷ</Button>
+            <Button size="sm" variant="primary" onClick={reopen} disabled={reopening || !reopenReason.trim()}>{reopening ? 'Đang mở...' : 'Xác nhận mở'}</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
