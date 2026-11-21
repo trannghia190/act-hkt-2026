@@ -98,7 +98,7 @@ c,j=call('POST',f"/disputes/{d5['id']}/resolve",other,{'action':'REJECT','reason
 check('11b. Nhân viên thường không được xử lý khiếu nại', True)
 
 # 12. Chốt & khoá bị chặn khi còn khiếu nại mở
-c,j=call('POST','/timesheets/lock',H,expect=400)
+c,j=call('POST','/timesheets/lock?month=2049-03',H,expect=400)
 check('12. Chốt & khoá bị chặn khi còn khiếu nại mở', 'khiếu nại' in (j.get('message') or '').lower())
 
 # 13. Audit log ghi nhận
@@ -106,6 +106,7 @@ c,j=call('GET','/admin/audit-logs',H,expect=200)
 logs=j['data'] if isinstance(j['data'],list) else j['data'].get('content',[])
 check('13. Audit log có RESOLVE_DISPUTE', any((l.get('action')=='RESOLVE_DISPUTE') for l in logs))
 
-# cleanup: resolve d5 để không kẹt khoá
+# cleanup: resolve d5 và khoá thử kỳ 2049-03 (không đụng kỳ demo)
 call('POST',f"/disputes/{d5['id']}/resolve",M,{'action':'REJECT','reason':'Dọn dữ liệu test'})
+call('POST','/timesheets/lock?month=2049-03',H)
 print('\nALL DISPUTE TESTS PASSED')
