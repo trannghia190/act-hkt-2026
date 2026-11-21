@@ -31,7 +31,18 @@ interface Shift {
   priority?: number;
 }
 
-interface Holiday { id?: string; name: string; holidayDate: string; isPaid: boolean; }
+interface Holiday {
+  id?: string;
+  name: string;
+  /** Ngày bắt đầu (hoặc ngày duy nhất). */
+  holidayDate: string;
+  /** Ngày kết thúc (bao gồm) — trống nghĩa là lễ 1 ngày. */
+  endDate?: string | null;
+  isPaid: boolean;
+  createdByName?: string | null;
+}
+
+interface HolidayForm { name: string; startDate: string; endDate: string; isPaid: boolean; }
 
 interface EmployeeOption {
   employeeCode: string;
@@ -135,7 +146,9 @@ export const ShiftHolidayPage: React.FC = () => {
   const [editing, setEditing] = useState<Shift | null>(null);
   const [isShiftOpen, setIsShiftOpen] = useState(false);
   const [form, setForm] = useState<Shift>(emptyShift);
-  const [holidayForm, setHolidayForm] = useState<Holiday>({ name: '', holidayDate: '', isPaid: true });
+  const [holidayForm, setHolidayForm] = useState<HolidayForm>({ name: '', startDate: '', endDate: '', isPaid: true });
+  const [isHolidayOpen, setIsHolidayOpen] = useState(false);
+  const [editingHolidayId, setEditingHolidayId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Danh bạ để chọn nhóm / chức danh / nhân viên áp dụng thay vì gõ tay (tránh nhập sai).
@@ -246,13 +259,45 @@ export const ShiftHolidayPage: React.FC = () => {
     setError(null); load();
   };
 
-  const addHoliday = async (e: React.FormEvent) => {
+  const openHolidayModal = (h?: Holiday) => {
+    setEditingHolidayId(h?.id || null);
+    setHolidayForm({
+      name: h?.name || '',
+      startDate: h?.holidayDate || '',
+      endDate: h?.endDate || '',
+      isPaid: h?.isPaid ?? true,
+    });
+    setError(null);
+    setIsHolidayOpen(true);
+  };
+
+  const saveHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!holidayForm.name.trim() || !holidayForm.holidayDate) return;
-    const res = await fetch('/api/v1/admin/holidays', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(holidayForm) });
+    const isEdit = !!editingHolidayId;
+    // Báo lỗi rõ thay vì im lặng khi thiếu dữ liệu.
+    if (!holidayForm.name.trim()) { setError('Nhập tên ngày nghỉ lễ'); return; }
+    if (!holidayForm.startDate) { setError('Chọn ngày bắt đầu nghỉ lễ'); return; }
+    const endDate = holidayForm.endDate || holidayForm.startDate;
+    if (endDate < holidayForm.startDate) { setError('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu'); return; }
+    const res = await fetch(isEdit ? `/api/v1/admin/holidays/${editingHolidayId}` : '/api/v1/admin/holidays', {
+      method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: holidayForm.name.trim(), holidayDate: holidayForm.startDate, endDate, isPaid: holidayForm.isPaid }),
+    });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) { setError(json?.message || 'Thêm ngày lễ thất bại'); return; }
-    setHolidayForm({ name: '', holidayDate: '', isPaid: true }); setError(null); showToast('Đã thêm ngày lễ'); load();
+    if (!res.ok) { setError(json?.message || (isEdit ? 'Cập nhật ngày lễ thất bại' : 'Thêm ngày lễ thất bại')); return; }
+    setIsHolidayOpen(false);
+    setEditingHolidayId(null);
+    setHolidayForm({ name: '', startDate: '', endDate: '', isPaid: true });
+    setError(null); showToast(json?.message || (isEdit ? 'Đã cập nhật ngày lễ' : 'Đã thêm ngày lễ')); load();
+  };
+
+  const deleteHoliday = async (h: Holiday) => {
+    if (!h.id) return;
+    if (!window.confirm(`Xóa ngày lễ “${h.name}”? Các ngày đã cấu hình sẽ trở lại là ngày làm việc.`)) return;
+    const res = await fetch(`/api/v1/admin/holidays/${h.id}`, { method: 'DELETE', headers: authHeaders() });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Xóa ngày lễ thất bại'); return; }
+    setError(null); showToast(json?.message || 'Đã xóa ngày lễ'); load();
   };
 
 
@@ -337,17 +382,60 @@ export const ShiftHolidayPage: React.FC = () => {
         </div>
       ) : (
         <div className="bg-surface border border-line rounded-xl p-4">
-          <form onSubmit={addHoliday} className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3 text-xs">
-            <input className="border border-line rounded-lg p-2" placeholder="Tên ngày lễ" value={holidayForm.name} onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })} />
-            <input type="date" className="border border-line rounded-lg p-2" value={holidayForm.holidayDate} onChange={e => setHolidayForm({ ...holidayForm, holidayDate: e.target.value })} />
-            <label className="flex items-center gap-2"><input type="checkbox" checked={holidayForm.isPaid} onChange={e => setHolidayForm({ ...holidayForm, isPaid: e.target.checked })} /> Hưởng lương</label>
-            <button className="rounded bg-accent text-white px-3 py-2">Thêm ngày lễ</button>
-          </form>
-          {holidays.map(h => (
-            <div key={h.id || h.holidayDate} className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
-              <span>{h.name}</span><span className="text-xs text-ink-muted">{h.holidayDate} · {h.isPaid ? 'hưởng lương' : 'không lương'}</span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs text-ink-muted">
+              <span className="font-semibold text-ink">Ngày lễ đã cấu hình</span> · {holidays.length} kỳ nghỉ
             </div>
-          ))}
+            <button onClick={() => openHolidayModal()} className="text-xs px-3 py-1.5 rounded bg-accent text-white font-semibold">+ Thêm ngày lễ</button>
+          </div>
+          {!holidays.length && (
+            <div className="text-sm text-ink-muted border border-dashed border-line rounded-lg p-4 text-center">
+              Chưa có ngày nghỉ lễ nào. Bấm “+ Thêm ngày lễ” để tạo.
+            </div>
+          )}
+          {holidays.map(h => {
+            const until = h.endDate && h.endDate !== h.holidayDate ? ` → ${h.endDate}` : '';
+            return (
+              <div key={h.id || h.holidayDate} className="flex items-center justify-between gap-3 border-b border-line py-2 text-sm last:border-0">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{h.name}</div>
+                  <div className="text-xs text-ink-muted">
+                    {h.holidayDate}{until} · {h.isPaid ? 'hưởng lương' : 'không lương'} · thêm bởi {h.createdByName || 'hệ thống'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => openHolidayModal(h)} className="text-xs px-2 py-1 rounded border border-line">Sửa</button>
+                  <button onClick={() => deleteHoliday(h)} className="text-xs px-2 py-1 rounded border border-rose-200 text-rose-700">Xóa</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isHolidayOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setIsHolidayOpen(false)}>
+          <form className="bg-surface rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()} onSubmit={saveHoliday}>
+            <h3 className="text-base font-bold">{editingHolidayId ? 'Sửa ngày nghỉ lễ' : 'Thêm ngày nghỉ lễ'}</h3>
+            <label className="block text-xs font-semibold">Tên ngày lễ *
+              <input className="mt-1 w-full border border-line rounded-lg p-2" placeholder="Ví dụ: Tết Nguyên Đán, Giáng Sinh…" value={holidayForm.name} onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })} />
+            </label>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <label className="font-semibold">Từ ngày *
+                <input type="date" className="mt-1 w-full border border-line rounded-lg p-2" value={holidayForm.startDate} onChange={e => setHolidayForm({ ...holidayForm, startDate: e.target.value, endDate: holidayForm.endDate || e.target.value })} />
+              </label>
+              <label className="font-semibold">Đến ngày
+                <input type="date" className="mt-1 w-full border border-line rounded-lg p-2" min={holidayForm.startDate || undefined} value={holidayForm.endDate} onChange={e => setHolidayForm({ ...holidayForm, endDate: e.target.value })} />
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={holidayForm.isPaid} onChange={e => setHolidayForm({ ...holidayForm, isPaid: e.target.checked })} /> Hưởng lương</label>
+            <div className="text-[11px] text-ink-muted">Để trống “Đến ngày” nếu lễ chỉ diễn ra 1 ngày.</div>
+            {error && <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">{error}</div>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setIsHolidayOpen(false)}>Huỷ</button>
+              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu ngày lễ</button>
+            </div>
+          </form>
         </div>
       )}
 

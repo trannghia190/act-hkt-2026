@@ -142,7 +142,7 @@ public class TimesheetController {
     public ApiResponse<Map<String, Object>> month(@RequestParam(required = false) String month) {
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
         Set<LocalDate> holidays = new HashSet<>();
-        for (Holiday h : holidayRepository.findAll()) holidays.add(h.getHolidayDate());
+        for (Holiday h : holidayRepository.findAll()) holidays.addAll(h.dates());
 
         List<Map<String, Object>> rows = new ArrayList<>();
         for (User u : userRepository.findAll()) {

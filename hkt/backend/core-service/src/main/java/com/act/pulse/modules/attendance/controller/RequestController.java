@@ -752,7 +752,7 @@ public class RequestController {
 
     private boolean isWorkday(LocalDate day) {
         if (day.getDayOfWeek().getValue() >= 6) return false;
-        for (Holiday h : holidayRepository.findAll()) if (day.equals(h.getHolidayDate())) return false;
+        for (Holiday h : holidayRepository.findAll()) if (h.covers(day)) return false;
         return true;
     }
 
@@ -785,7 +785,7 @@ public class RequestController {
         LocalDate end = r.getEndDate() == null ? start : r.getEndDate();
         if (start == null) return 0;
         java.util.Set<LocalDate> holidays = new java.util.HashSet<>();
-        for (Holiday h : holidayRepository.findAll()) holidays.add(h.getHolidayDate());
+        for (Holiday h : holidayRepository.findAll()) holidays.addAll(h.dates());
         double days = 0;
         for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
             if (cur.getDayOfWeek().getValue() < 6 && !holidays.contains(cur)) days += 1;

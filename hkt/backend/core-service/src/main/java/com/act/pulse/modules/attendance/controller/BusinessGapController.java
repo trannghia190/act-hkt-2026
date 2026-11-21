@@ -151,8 +151,8 @@ public class BusinessGapController {
 
         Set<java.time.LocalDate> holidays = new HashSet<>();
         for (Holiday h : holidayRepository.findAll()) {
-            if (h.getHolidayDate() != null && !h.getHolidayDate().isBefore(start) && !h.getHolidayDate().isAfter(end)) {
-                holidays.add(h.getHolidayDate());
+            for (java.time.LocalDate d : h.dates()) {
+                if (!d.isBefore(start) && !d.isAfter(end)) holidays.add(d);
             }
         }
 
@@ -755,7 +755,7 @@ public class BusinessGapController {
     /** Trừ quỹ phép giống luồng duyệt đơn nghỉ (1 ngày; bỏ qua cuối tuần/ngày lễ). */
     private void deductLeaveForDispute(UUID userId, java.time.LocalDate day, String leaveType) {
         boolean workday = day.getDayOfWeek().getValue() < 6
-                && holidayRepository.findAll().stream().noneMatch(h -> day.equals(h.getHolidayDate()));
+                && holidayRepository.findAll().stream().noneMatch(h -> h.covers(day));
         if (!workday) return;
         java.math.BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(LeaveLedgerEntry::getAmount).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
