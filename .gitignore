@@ -41,3 +41,8 @@ tests/robot/reports/
 # Local run artifacts (run-local.sh)
 .run-local/
 hkt/backend/ai-face-service/data/
+
+# Robot Framework output
+log.html
+output.xml
+report.html

@@ -1663,7 +1663,7 @@ public class OrgStructureController {
                     "/attendance/checkin"));
             results.add(Map.of("title", "Bảng công tổng hợp", "subtitle", "Bảng công 53 cột", "kind", "page", "url",
                     "/attendance/timesheet"));
-            results.add(Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "subtitle", "OKR", "kind", "page", "url",
+            results.add(Map.of("title", "Đánh giá OKR cuối năm", "subtitle", "OKR", "kind", "page", "url",
                     "/okr/assessment"));
             results.add(Map.of("title", "Quy định Đi muộn, về sớm", "subtitle", "Chính sách · 2 lần/tháng", "kind",
                     "rule", "url", "/admin/policy-doc"));
@@ -1761,7 +1761,7 @@ public class OrgStructureController {
                         "url", "/attendance/approvals", "sub", "Quản lý duyệt đơn"),
                 Map.of("title", "Dashboard OKR cá nhân", "keywords", "okr dashboard muc tieu kr s20", "url",
                         "/okr/dashboard", "sub", "Phân hệ OKR"),
-                Map.of("title", "Đánh giá OKR cuối năm Form 4 Box", "keywords",
+                Map.of("title", "Đánh giá OKR cuối năm", "keywords",
                         "okr assessment danh gia form 4 box business people s23", "url", "/okr/assessment", "sub",
                         "Đánh giá hiệu suất"),
                 Map.of("title", "Sơ đồ tổ chức phòng ban (Org Tree)", "keywords",

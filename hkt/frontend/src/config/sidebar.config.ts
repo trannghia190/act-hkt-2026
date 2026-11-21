@@ -61,9 +61,9 @@ export const COMMON_GROUPS: NavGroup[] = [
     groupName: 'OKR',
     items: [
       { id: 'myokr', label: 'OKR của tôi', path: '/okr/dashboard', icon: 'Target', screenId: 'S20' },
-      { id: 'newokr', label: 'Tạo OKR', path: '/okr/my-okr', icon: 'Edit3', screenId: 'S21' },
-      { id: 'checkin', label: 'Check-in', path: '/okr/assessment', icon: 'Award', badgeKey: 'checkin', screenId: 'S22' },
-      { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
+      // Tạo OKR + Check-in tiến độ cùng nằm ở màn My OKR (S21/S22)
+      { id: 'newokr', label: 'Tạo OKR & Check-in', path: '/okr/my-okr', icon: 'Edit3', badgeKey: 'checkin', screenId: 'S21' },
+      { id: 'assess', label: 'Đánh giá cuối năm', path: '/okr/assessment', icon: 'Award', screenId: 'S23' },
     ],
   },
   {
@@ -83,6 +83,8 @@ export const MANAGER_GROUPS: NavGroup[] = [
     groupName: 'Quản lý',
     items: [
       { id: 'approve', label: 'Duyệt đơn', path: '/attendance/approvals', icon: 'CheckCircle', badgeKey: 'approve', badgeColor: 'danger', screenId: 'S12' },
+      { id: 'okrapprove', label: 'Duyệt OKR', path: '/okr/team-approvals', icon: 'ClipboardCheck', screenId: 'S42' },
+      { id: 'midyear', label: 'Review giữa năm', path: '/okr/mid-year-review', icon: 'MessageCircle', screenId: 'S43' },
       { id: 'review', label: 'Review OKR nhóm', path: '/okr/team-review', icon: 'MessageSquare', screenId: 'S24' },
     ],
   },
@@ -101,6 +103,7 @@ export const HR_GROUPS: NavGroup[] = [
       { id: 'rules', label: 'Cấu hình quy định', path: '/admin/rules', icon: 'Sliders', screenId: 'S16' },
       { id: 'shift', label: 'Ca & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26' },
       { id: 'okrcycle', label: 'Chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44' },
+      { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
       { id: 'audit', label: 'Nhật ký thay đổi', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
       { id: 'hrdev', label: 'Quản lý thiết bị', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28' },
       { id: 'people', label: 'Quản lý nhân viên', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40' },
