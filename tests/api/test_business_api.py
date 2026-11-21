@@ -165,7 +165,7 @@ status, data = call("GET", "/timesheets")
 sheet = data.get("data") or {}
 check("GET /timesheets", status == 200 and isinstance(sheet.get("rows"), list))
 check("bảng công có ngày trong tháng", sheet.get("daysInMonth") in (28, 29, 30, 31))
-check("ngày công bố mặc định 11", sheet.get("publishDay") == 11)
+check("ngày chốt bảng công mặc định mùng 1", sheet.get("closeDay") == 1)
 if sheet.get("rows"):
     r0 = sheet["rows"][0]
     check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)

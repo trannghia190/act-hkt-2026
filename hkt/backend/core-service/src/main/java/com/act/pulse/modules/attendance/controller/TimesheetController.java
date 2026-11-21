@@ -195,7 +195,7 @@ public class TimesheetController {
         out.put("daysInMonth", ym.lengthOfMonth());
         out.put("rows", rows);
         out.put("status", statusOf(ym));
-        out.put("publishDay", ruleService.getInt("payroll_period", "publish_day", 11));
+        out.put("closeDay", ruleService.getInt("payroll_period", "close_day", 1));
         out.put("disputeWindowDays", ruleService.getInt("payroll_period", "dispute_window_days", 2));
         out.put("lockDelayDays", ruleService.getInt("payroll_period", "lock_delay_days", 3));
         out.put("allowAdjustAfterLock", ruleService.getBoolean("payroll_period", "allow_adjust_after_lock", false));
@@ -298,28 +298,39 @@ public class TimesheetController {
      * Tự động công bố khi tới `payroll_period.publish_day` (chạy hằng ngày).
      * Bỏ qua tháng đã published/locked.
      */
-    /** @Scheduled bắt buộc method không tham số — wrapper gọi lại endpoint cho tháng hiện tại. */
+    /**
+     * Tự CHỐT bảng công của kỳ trước khi tới `close_day` (vd mùng 1).
+     * Kỳ đang chạy vẫn MỞ và nhân viên khiếu nại được; chỉ khi chốt mới mở cửa sổ sau chốt.
+     */
     @Scheduled(cron = "0 10 1 * * *")
-    public void scheduledAutoPublish() {
-        try { autoPublish(null); } catch (Exception ignored) { }
+    public void scheduledAutoClose() {
+        try { autoClose(null); } catch (Exception ignored) { }
     }
 
-    @PostMapping("/auto-publish")
-    @Operation(summary = "Tự công bố kỳ tới ngày publish_day (dùng cấu hình Kỳ công & khiếu nại)")
-    public ApiResponse<Map<String, Object>> autoPublish(@RequestParam(required = false) String month) {
-        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+    @PostMapping("/auto-close")
+    @Operation(summary = "Tự chốt bảng công kỳ trước theo close_day (mặc định kỳ trước; truyền month để chốt tay kỳ cụ thể)")
+    public ApiResponse<Map<String, Object>> autoClose(@RequestParam(required = false) String month) {
+        int closeDay = ruleService.getInt("payroll_period", "close_day", 1);
+        boolean explicit = month != null && !month.isBlank();
+        YearMonth ym = explicit ? YearMonth.parse(month) : YearMonth.now().minusMonths(1);
         String st = statusOf(ym);
-        if ("published".equals(st) || "locked".equals(st)) {
-            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "published", false), "Kỳ đã công bố/khoá — bỏ qua");
+        if (!explicit && LocalDate.now().getDayOfMonth() < closeDay) {
+            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "closed", false, "closeDay", closeDay),
+                    "Chưa tới ngày chốt (" + closeDay + ")");
         }
-        int publishDay = ruleService.getInt("payroll_period", "publish_day", 11);
-        if (LocalDate.now().getDayOfMonth() < publishDay && ym.equals(YearMonth.now())) {
-            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "published", false, "publishDay", publishDay),
-                    "Chưa tới ngày công bố (" + publishDay + ")");
+        if ("published".equals(st) || "locked".equals(st)) {
+            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "closed", false), "Kỳ đã chốt/khoá — bỏ qua");
         }
         Map<String, Object> out = new HashMap<>(doPublish(ym));
-        out.put("published", true);
-        return ApiResponse.ok(out, "Đã tự công bố kỳ " + ym);
+        out.put("closed", true);
+        return ApiResponse.ok(out, "Đã chốt bảng công kỳ " + ym + " — khiếu nại đến " + out.get("disputeDeadline"));
+    }
+
+    /** @deprecated giữ tương thích: chốt kỳ (mặc định kỳ trước, giống /auto-close). */
+    @Deprecated
+    @PostMapping("/auto-publish")
+    public ApiResponse<Map<String, Object>> autoPublishLegacy(@RequestParam(required = false) String month) {
+        return autoClose(month);
     }
 
     private Map<String, Object> doLock(YearMonth ym, boolean force) {
@@ -344,12 +355,16 @@ public class TimesheetController {
     @PostMapping("/auto-lock")
     @Operation(summary = "Tự khoá kỳ sau lock_delay_days (dùng cấu hình Kỳ công & khiếu nại)")
     public ApiResponse<List<Map<String, Object>>> autoLock() {
-        int delay = ruleService.getInt("payroll_period", "lock_delay_days", 3);
-        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusDays(delay);
+        int delay = ruleService.getInt("payroll_period", "lock_delay_days", 0);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
         List<Map<String, Object>> done = new ArrayList<>();
         for (Timesheet s : timesheetRepository.findAll()) {
             if (!"published".equalsIgnoreCase(s.getStatus()) || s.getPublishedAt() == null) continue;
-            if (s.getPublishedAt().isAfter(threshold)) continue;
+            // Hạn khoá = hạn khiếu nại + ân hạn cấu hình (lock_delay_days, 0 = khoá ngay khi hết hạn).
+            java.time.LocalDateTime deadline = s.getDisputeDeadline() != null
+                    ? s.getDisputeDeadline().plusDays(delay)
+                    : s.getPublishedAt().plusDays(ruleService.getInt("payroll_period", "dispute_window_days", 2)).plusDays(delay);
+            if (now.isBefore(deadline)) continue;
             YearMonth ym = YearMonth.of(s.getPeriodYear(), s.getPeriodMonth());
             try {
                 doLock(ym, false);
@@ -358,7 +373,7 @@ public class TimesheetController {
                 done.add(Map.of("month", ym.toString(), "locked", false, "reason", String.valueOf(e.getMessage())));
             }
         }
-        return ApiResponse.ok(done, "Tự khoá kỳ công sau " + delay + " ngày: " + done.size() + " kỳ xử lý");
+        return ApiResponse.ok(done, "Tự khoá kỳ công hết hạn khiếu nại (+" + delay + " ngày ân hạn): " + done.size() + " kỳ xử lý");
     }
 
     private boolean allowAdjustAfterLock() {

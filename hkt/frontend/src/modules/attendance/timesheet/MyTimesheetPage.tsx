@@ -30,9 +30,10 @@ interface TimesheetData {
   month: string;
   daysInMonth: number;
   status: string; // 'draft' | 'published' | 'locked'
-  periodStatus: 'UNPUBLISHED' | 'DISPUTABLE' | 'EXPIRED' | 'LOCKED' | 'DRAFT';
+  periodStatus: 'OPEN' | 'UNPUBLISHED' | 'DISPUTABLE' | 'EXPIRED' | 'LOCKED' | 'DRAFT';
   canDispute: boolean;
-  publishDay: number;
+  publishDay?: number;
+  closeDay?: number;
   disputeDeadline: string;
   standardDays: number;
   actualDays: number;
@@ -67,8 +68,9 @@ type PeriodStatus = TimesheetData['periodStatus'];
  * thay vì rơi vào nhánh else và hiển thị sai (lỗi đã từng xảy ra: draft hiện "đã khoá").
  */
 const PERIOD_BANNER: Record<PeriodStatus, { icon: string; title: string; cls: string; badge: 'accent' | 'warn' | 'gray' }> = {
+  OPEN: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-sky-50 border-sky-300 text-sky-900', badge: 'accent' },
   UNPUBLISHED: { icon: '⏳', title: 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)', cls: 'bg-amber-50 border-amber-300 text-amber-900', badge: 'warn' },
-  DRAFT: { icon: '📝', title: 'BẢNG CÔNG ĐANG TẠM TÍNH — CHƯA CÔNG BỐ', cls: 'bg-amber-50 border-amber-300 text-amber-900', badge: 'warn' },
+  DRAFT: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-sky-50 border-sky-300 text-sky-900', badge: 'accent' },
   DISPUTABLE: { icon: '🟢', title: 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI', cls: 'bg-emerald-50 border-emerald-300 text-emerald-900', badge: 'accent' },
   EXPIRED: { icon: '⏰', title: 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)', cls: 'bg-zinc-50 border-zinc-300 text-zinc-800', badge: 'gray' },
   LOCKED: { icon: '🔒', title: 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)', cls: 'bg-rose-50 border-rose-300 text-rose-900', badge: 'gray' },
@@ -77,13 +79,14 @@ const PERIOD_BANNER: Record<PeriodStatus, { icon: string; title: string; cls: st
 /** Mô tả phụ — switch có kiểm tra `never` để không bao giờ bỏ sót trạng thái. */
 const periodDescription = (s: PeriodStatus, d: TimesheetData): string => {
   switch (s) {
+    case 'OPEN': return `Bảng công tháng đang mở: bạn có thể gửi khiếu nại ngay. Kỳ sẽ được HR chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau, sau đó còn ${''}vài ngày để khiếu nại bổ sung.`;
     case 'DISPUTABLE': {
       const [y, m, dd] = String(d.disputeDeadline || '').slice(0, 10).split('-');
       const shown = dd ? `${dd}/${m}/${y}` : String(d.disputeDeadline || '—');
       return `Hạn khiếu nại công: đến hết ngày ${shown}. Hãy kiểm tra kỹ từng ngày công.`;
     }
-    case 'UNPUBLISHED': return `Số liệu đang tạm tính. HR sẽ công bố chính thức vào ngày ${d.publishDay} hàng tháng, lúc đó nút khiếu nại mới mở.`;
-    case 'DRAFT': return `Số liệu đang tạm tính, HR chưa công bố chính thức. Nút khiếu nại sẽ mở khi HR công bố (ngày ${d.publishDay} hàng tháng).`;
+    case 'UNPUBLISHED': return `Bảng công đang mở. Kỳ trước sẽ được chốt vào ngày ${d.closeDay ?? 1} hàng tháng.`;
+    case 'DRAFT': return `Bảng công đang mở: bạn có thể gửi khiếu nại ngay. Kỳ sẽ được chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau.`;
     case 'EXPIRED': return 'Đã qua thời hạn 2 ngày kể từ khi công bố. Nút khiếu nại đã bị khóa tự động theo quy chế.';
     case 'LOCKED': return 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.';
     default: { const unreachable: never = s; return unreachable; }
@@ -132,7 +135,8 @@ export const MyTimesheetPage: React.FC = () => {
             status: 'draft',
             periodStatus: 'DRAFT',
             canDispute: false,
-            publishDay: 11,
+            publishDay: 1,
+            closeDay: 1,
             disputeDeadline: '',
             standardDays: 22,
             actualDays: j.data.length,
@@ -227,13 +231,14 @@ export const MyTimesheetPage: React.FC = () => {
   const getDisputeTooltip = (periodStatus?: string) => {
     switch (periodStatus) {
       case 'UNPUBLISHED':
-        return 'Chỉ khiếu nại được sau khi HR công bố (ngày 11 hàng tháng)';
+        return 'Bảng công đang mở — bạn có thể gửi khiếu nại ngay';
       case 'EXPIRED':
         return 'Đã quá thời hạn khiếu nại (2 ngày kể từ ngày công bố)';
       case 'LOCKED':
         return 'Kỳ công đã chốt & khóa — chỉ đọc, không thể khiếu nại';
+      case 'OPEN':
       case 'DRAFT':
-        return 'Bảng công đang tạm tính — chưa mở đợt khiếu nại';
+        return 'Bảng công đang mở — bạn có thể gửi khiếu nại ngay';
       default:
         return '';
     }

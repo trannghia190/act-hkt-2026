@@ -159,7 +159,7 @@ public class BusinessGapController {
         }
 
         // Rules
-        int publishDay = ruleService.getInt("payroll_period", "publish_day", 11);
+        int closeDay = ruleService.getInt("payroll_period", "close_day", 1);
         int disputeWindow = ruleService.getInt("payroll_period", "dispute_window_days", 2);
 
         // Timesheet period status
@@ -173,17 +173,27 @@ public class BusinessGapController {
 
         // Ưu tiên hạn thật đã lưu khi HR bấm Công bố (published_at + cửa sổ); chỉ khi chưa có mới suy ra từ ngày công bố chuẩn.
         Timesheet periodSheet = sheets.isEmpty() ? null : sheets.get(0);
-        java.time.LocalDate deadline = (periodSheet != null && periodSheet.getDisputeDeadline() != null)
-                ? periodSheet.getDisputeDeadline().toLocalDate()
-                : java.time.LocalDate.of(ym.getYear(), ym.getMonthValue(), Math.min(daysInMonth, publishDay + disputeWindow));
+        java.time.LocalDate deadline;
+        if (periodSheet != null && periodSheet.getDisputeDeadline() != null) {
+            deadline = periodSheet.getDisputeDeadline().toLocalDate();
+        } else if (periodSheet != null && periodSheet.getPublishedAt() != null) {
+            // Kỳ đã chốt nhưng thiếu hạn (dữ liệu cũ): suy từ ngày chốt thật + cửa sổ.
+            deadline = periodSheet.getPublishedAt().toLocalDate().plusDays(disputeWindow);
+        } else {
+            // Kỳ đang mở: hạn dự kiến = ngày chốt (đầu tháng sau) + cửa sổ; chỉ mang tính tham khảo.
+            deadline = ym.plusMonths(1).atDay(Math.min(closeDay, ym.plusMonths(1).lengthOfMonth())).plusDays(disputeWindow);
+        }
         java.time.LocalDate today = java.time.LocalDate.now();
 
         String periodStatus;
         boolean canDispute;
+        boolean future = ym.isAfter(java.time.YearMonth.now());
         if ("locked".equalsIgnoreCase(status)) {
+            // Đã khoá hoàn toàn: nhân viên không khiếu nại được nữa (HR vẫn điều chỉnh nếu cấu hình cho phép).
             periodStatus = "LOCKED";
             canDispute = false;
         } else if ("published".equalsIgnoreCase(status)) {
+            // Đã chốt kỳ: chỉ còn cửa sổ khiếu nại sau ngày chốt.
             if (today.isAfter(deadline)) {
                 periodStatus = "EXPIRED";
                 canDispute = false;
@@ -191,14 +201,10 @@ public class BusinessGapController {
                 periodStatus = "DISPUTABLE";
                 canDispute = true;
             }
-        } else { // draft
-            if (today.getDayOfMonth() < publishDay && java.time.YearMonth.now().equals(ym)) {
-                periodStatus = "UNPUBLISHED";
-                canDispute = false;
-            } else {
-                periodStatus = "DRAFT";
-                canDispute = false;
-            }
+        } else {
+            // Kỳ đang MỞ (chưa chốt): nhân viên được khiếu nại ngay trong lúc bảng công còn mở.
+            periodStatus = "OPEN";
+            canDispute = !future;
         }
 
         // Calculate days and metrics
@@ -355,7 +361,8 @@ public class BusinessGapController {
         out.put("status", status);
         out.put("periodStatus", periodStatus);
         out.put("canDispute", canDispute);
-        out.put("publishDay", publishDay);
+        out.put("closeDay", closeDay);
+        out.put("publishDay", closeDay); // tương thích UI cũ
         out.put("disputeDeadline", deadline.toString());
 
         // 11 KPI / metrics fields
@@ -781,16 +788,23 @@ public class BusinessGapController {
         if (userId == null) throw new RuntimeException("Chưa đăng nhập");
         if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
         java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
-        // Chỉ khiếu nại được trong cửa sổ sau khi HR công bố bảng công của kỳ đó.
+        // Quy tắc kỳ MỞ: kỳ đang chạy (chưa chốt) → khiếu nại được ngay.
+        // Kỳ đã chốt → chỉ trong cửa sổ `dispute_window_days` sau ngày chốt; đã khoá → không khiếu nại nữa.
         java.time.YearMonth wm = java.time.YearMonth.from(workDate);
+        if (wm.isAfter(java.time.YearMonth.now())) {
+            throw new RuntimeException("Chưa thể khiếu nại kỳ " + wm + " (kỳ chưa bắt đầu)");
+        }
         Timesheet period = timesheetRepository
                 .findByUserIdAndPeriodMonthAndPeriodYear(userId, wm.getMonthValue(), wm.getYear())
                 .orElseGet(() -> timesheetRepository.findByPeriodMonthAndPeriodYear(wm.getMonthValue(), wm.getYear()).stream().findFirst().orElse(null));
-        if (period == null || !"published".equalsIgnoreCase(period.getStatus())) {
-            throw new RuntimeException("Bảng công kỳ " + wm + " chưa được công bố — chưa thể khiếu nại");
+        String pStatus = period == null ? "draft" : period.getStatus();
+        if ("locked".equalsIgnoreCase(pStatus)) {
+            throw new RuntimeException("Bảng công kỳ " + wm + " đã khoá hoàn toàn — không thể khiếu nại nữa");
         }
-        if (period.getDisputeDeadline() != null && period.getDisputeDeadline().isBefore(java.time.LocalDateTime.now())) {
-            throw new RuntimeException("Đã quá hạn khiếu nại kỳ " + wm + " (hạn " + period.getDisputeDeadline().toLocalDate() + ")");
+        if ("published".equalsIgnoreCase(pStatus)) {
+            if (period.getDisputeDeadline() != null && period.getDisputeDeadline().isBefore(java.time.LocalDateTime.now())) {
+                throw new RuntimeException("Đã quá hạn khiếu nại kỳ " + wm + " (hạn " + period.getDisputeDeadline().toLocalDate() + ")");
+            }
         }
         TimesheetDispute d = TimesheetDispute.builder()
                 .id("DC-" + UUID.randomUUID().toString().substring(0, 8))

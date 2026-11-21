@@ -24,7 +24,7 @@ const dynamicExample = (r: RuleApi): string | null => {
   if (r.ruleKey === 'payroll_period') {
     try {
       const v = JSON.parse(r.currentValue);
-      return `Ngày ${v.publish_day} công bố bảng công → khiếu nại trong ${v.dispute_window_days} ngày`
+      return `Bảng công đang mở khiếu nại ngay → ngày ${v.close_day} chốt kỳ tháng trước → còn ${v.dispute_window_days} ngày để khiếu nại`
         + ` → tự khoá sau ${v.lock_delay_days} ngày`
         + (v.allow_adjust_after_lock ? ' · vẫn cho phép điều chỉnh sau khi khoá' : ' · khoá xong không sửa được');
     } catch { return null; }
