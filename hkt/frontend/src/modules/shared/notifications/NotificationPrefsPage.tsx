@@ -62,7 +62,7 @@ export const NotificationPrefsPage: React.FC = () => {
 
       OKR_CHECKIN_DUE: { label: 'Check-in tiến độ OKR đến hạn', category: 'OKR', web: true, email: false, push: true },
       OKR_NOT_CREATED: { label: 'Chưa thiết lập mục tiêu OKR quý', category: 'OKR', web: true, email: true, push: true },
-      OKR_SELF_ASSESSMENT: { label: 'Tự chấm điểm OKR Form 4 Box đến hạn', category: 'OKR', web: true, email: false, push: true },
+      OKR_SELF_ASSESSMENT: { label: 'Tự đánh giá OKR cuối năm đến hạn', category: 'OKR', web: true, email: false, push: true },
       OKR_OBJECTIVE_RETURNED: { label: 'Mục tiêu OKR bị trả lại cần sửa', category: 'OKR', web: true, email: false, push: true },
 
       TIMESHEET_CLOSED: { label: 'Bảng công vừa chốt (khiếu nại 2 ngày)', category: 'TIMESHEET', web: true, email: true, push: false },

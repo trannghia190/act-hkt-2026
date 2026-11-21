@@ -579,58 +579,6 @@ public class BusinessGapController {
         return ApiResponse.ok(out, "Lịch nhóm");
     }
 
-    @GetMapping("/okr/dashboard")
-    @Operation(summary = "Dashboard OKR (S20)")
-    public ApiResponse<Map<String, Object>> okrDashboard() {
-        return ApiResponse.ok(Map.of(
-                "currentPhase", "CHECKIN", "phaseTitle", "Check-in tháng",
-                "businessProgress", 78, "peopleProgress", 64,
-                "selfProposalStatus", "DRAFT"
-        ), "Dashboard OKR");
-    }
-
-    @PostMapping("/okr/check-ins")
-    @Operation(summary = "Nộp check-in OKR (S22)")
-    public ApiResponse<Boolean> checkIn(@RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(true, "Đã lưu check-in (chỉ cập nhật giá trị)");
-    }
-
-    @PutMapping("/okr/reviews/{id}/self-assessment")
-    @Operation(summary = "Tự đánh giá cuối năm (S23)")
-    public ApiResponse<Boolean> selfAssessment(@PathVariable String id, @RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(true, "Đã lưu tự đánh giá");
-    }
-
-    @GetMapping("/okr/team-review")
-    @Operation(summary = "Review OKR cả nhóm (S24)")
-    public ApiResponse<List<Map<String, Object>>> teamReview() {
-        return ApiResponse.ok(List.of(
-                Map.of("employeeCode", "136ACT", "fullName", "Vũ Văn Luận", "businessScore", 4, "peopleScore", 4, "status", "PENDING"),
-                Map.of("employeeCode", "05ACT", "fullName", "Nguyễn Thanh Tùng", "businessScore", 5, "peopleScore", 4, "status", "PENDING")
-        ), "Review OKR nhóm");
-    }
-
-    @PostMapping("/okr/objectives/{id}/approve")
-    @Operation(summary = "Duyệt/trả lại bộ mục tiêu OKR (S42)")
-    public ApiResponse<Boolean> approveObjective(@PathVariable String id, @RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(true, "Đã xử lý duyệt mục tiêu");
-    }
-
-    @GetMapping("/okr/mid-year-reviews")
-    @Operation(summary = "Review giữa năm (S43)")
-    public ApiResponse<List<Map<String, Object>>> midYearReviews() {
-        return ApiResponse.ok(List.of(), "Danh sách review giữa năm");
-    }
-
-    @GetMapping("/okr/cycles")
-    @Operation(summary = "Quản lý chu kỳ OKR (S44)")
-    public ApiResponse<List<Map<String, Object>>> cycles() {
-        return ApiResponse.ok(List.of(Map.of(
-                "year", 2026, "status", "ACTIVE",
-                "phases", List.of("setup", "checkin", "midyear", "final", "summary")
-        )), "Chu kỳ OKR");
-    }
-
     @GetMapping("/devices")
     @Operation(summary = "Thiết bị của tôi (S27)")
     public ApiResponse<List<DeviceRegistration>> myDevices() {
@@ -1193,7 +1141,7 @@ public class BusinessGapController {
         // Group 3: OKR
         events.put("OKR_CHECKIN_DUE", Map.of("label", "Check-in tiến độ OKR đến hạn", "category", "OKR", "web", true, "email", false, "push", true));
         events.put("OKR_NOT_CREATED", Map.of("label", "Chưa thiết lập mục tiêu OKR quý", "category", "OKR", "web", true, "email", true, "push", true));
-        events.put("OKR_SELF_ASSESSMENT", Map.of("label", "Tự chấm điểm OKR Form 4 Box đến hạn", "category", "OKR", "web", true, "email", false, "push", true));
+        events.put("OKR_SELF_ASSESSMENT", Map.of("label", "Tự đánh giá OKR cuối năm đến hạn", "category", "OKR", "web", true, "email", false, "push", true));
         events.put("OKR_OBJECTIVE_RETURNED", Map.of("label", "Mục tiêu OKR bị trả lại cần sửa", "category", "OKR", "web", true, "email", false, "push", true));
         // Group 4: Bảng công & Quản trị
         events.put("TIMESHEET_CLOSED", Map.of("label", "Bảng công vừa chốt (khiếu nại 2 ngày)", "category", "TIMESHEET", "web", true, "email", true, "push", false));

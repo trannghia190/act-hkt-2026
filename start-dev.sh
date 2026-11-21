@@ -69,10 +69,10 @@ prepare_frontend() {
 
 start_docker_infra() {
   echo -e "\n${BLUE}▶ 3. Khởi chạy cụm hạ tầng Docker Containers...${NC}"
-  echo -e "${CYAN}→ Khởi động PostgreSQL 16 (pgvector), Redis 7, Keycloak 24 IAM...${NC}"
+  echo -e "${CYAN}→ Khởi động PostgreSQL 16 (pgvector), Redis 7...${NC}"
 
-  # Step 3.1: Start DB, Cache, IAM
-  docker compose -f "$COMPOSE_FILE" up -d postgres redis keycloak
+  # Step 3.1: Start DB, Cache (không dùng Keycloak — xác thực JWT tự phát hành)
+  docker compose -f "$COMPOSE_FILE" up -d postgres redis
 
   echo -e "\n${BLUE}▶ 4. Chờ cơ sở dữ liệu sẵn sàng (Healthcheck)...${NC}"
   for i in {1..30}; do
@@ -121,7 +121,6 @@ print_dashboard() {
   echo -e "  ☕ ${BOLD}Backend Core Service API (Spring Boot):${NC}  ${CYAN}http://localhost:8080/api/v1${NC}"
   echo -e "  📚 ${BOLD}Tài Liệu Swagger API Console:${NC}            ${CYAN}http://localhost:8080/swagger-ui.html${NC}"
   echo -e "  🤖 ${BOLD}AI Face Biometric Service (FastAPI):${NC}    ${CYAN}http://localhost:8000/docs${NC}"
-  echo -e "  🔐 ${BOLD}Keycloak Identity Server (IAM):${NC}         ${CYAN}http://localhost:8180${NC} (admin / admin)"
   echo -e "  🐘 ${BOLD}PostgreSQL Database (pgvector):${NC}         ${CYAN}localhost:5432${NC} (pulse_db / postgres123)"
   echo -e "  ⚡ ${BOLD}Redis Cache Server:${NC}                     ${CYAN}localhost:16379${NC}"
   echo -e "----------------------------------------------------------------------------------------"
