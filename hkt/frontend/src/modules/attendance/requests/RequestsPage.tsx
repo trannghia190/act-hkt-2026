@@ -23,7 +23,7 @@ export const RequestsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAttachmentCount, setEditingAttachmentCount] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
   const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [leaveUnit, setLeaveUnit] = useState<'DAY' | 'HALF_DAY'>('DAY');
@@ -149,7 +149,7 @@ export const RequestsPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [page, filterType, filterStatus, searchKeyword, dateFrom, dateTo]);
 
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
@@ -427,6 +427,9 @@ export const RequestsPage: React.FC = () => {
               : (asDraft ? 'Đã lưu nháp — không trừ quota, quản lý chưa thấy'
                   : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))),
           uploadFailed ? 'error' : 'success');
+        if (!uploadFailed && !asDraft) {
+          setTimeout(() => showToast('📨 Đã gửi thông báo tới quản lý trực tiếp', 'info'), 600);
+        }
         loadRequests();
         setIsCreateOpen(false);
         setEditingId(null);
@@ -545,8 +548,8 @@ export const RequestsPage: React.FC = () => {
       {/* Toast */}
       {toast && (
         <div className={`fixed top-16 right-6 z-[100] text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
-          toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-700'}`}>
-          <span>{toast.type === 'error' ? '⚠️' : '✓'}</span>
+          toast.type === 'error' ? 'bg-rose-600' : toast.type === 'info' ? 'bg-slate-700' : 'bg-emerald-700'}`}>
+          <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? 'ℹ️' : '✓'}</span>
           <span className="whitespace-pre-wrap">{toast.msg}</span>
           <button type="button" className="ml-2 opacity-80 hover:opacity-100" onClick={() => setToast(null)}>✕</button>
         </div>
@@ -787,9 +790,11 @@ export const RequestsPage: React.FC = () => {
                     <option key={lt.code} value={lt.code}>{lt.name}</option>
                   ))}
                 </select>
-                {leaveTypes.find((lt: any) => lt.code === newReq.leaveType)?.requiresAttachment && (
-                  <div className="text-[10px] text-amber-700 mt-1">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>
-                )}
+                {(() => {
+                  const lt: any = leaveTypes.find((x: any) => x.code === newReq.leaveType);
+                  if (!lt?.requiresAttachment) return null;
+                  return <div className="mt-1 text-[10px] text-amber-700">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>;
+                })()}
               </div>
             )}
             {newReq.type === 'LEAVE' && (
