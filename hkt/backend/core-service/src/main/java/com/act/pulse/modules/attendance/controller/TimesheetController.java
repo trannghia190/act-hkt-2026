@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -196,6 +197,8 @@ public class TimesheetController {
         out.put("status", statusOf(ym));
         out.put("publishDay", ruleService.getInt("payroll_period", "publish_day", 11));
         out.put("disputeWindowDays", ruleService.getInt("payroll_period", "dispute_window_days", 2));
+        out.put("lockDelayDays", ruleService.getInt("payroll_period", "lock_delay_days", 3));
+        out.put("allowAdjustAfterLock", ruleService.getBoolean("payroll_period", "allow_adjust_after_lock", false));
         return ApiResponse.ok(out, "Bảng công " + ym);
     }
 
@@ -210,9 +213,7 @@ public class TimesheetController {
             throw new RuntimeException("Thiếu ký hiệu công mới");
         }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        if ("locked".equals(statusOf(ym))) {
-            throw new RuntimeException("Kỳ công đã khoá — không sửa được ô");
-        }
+        assertPeriodEditable(ym);
         User target = userRepository.findByEmployeeCode(req.getEmployeeCode())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + req.getEmployeeCode()));
         Timesheet sheet = sheetOf(target.getId(), ym);
@@ -246,9 +247,7 @@ public class TimesheetController {
             throw new RuntimeException("Chưa chọn nhân sự nào");
         }
         YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
-        if ("locked".equals(statusOf(ym))) {
-            throw new RuntimeException("Kỳ công đã khoá — không sửa được");
-        }
+        assertPeriodEditable(ym);
         for (String code : req.getEmployeeCodes()) {
             userRepository.findByEmployeeCode(code).ifPresent(u -> {
                 Timesheet sheet = sheetOf(u.getId(), ym);
@@ -273,10 +272,7 @@ public class TimesheetController {
         return ApiResponse.ok(Map.of("updated", req.getEmployeeCodes().size(), "symbol", req.getSymbol()), "Đã sửa hàng loạt");
     }
 
-    @PostMapping("/publish")
-    @Operation(summary = "Công bố bảng công (mặc định ngày 11) — mở cửa sổ khiếu nại")
-    public ApiResponse<Map<String, Object>> publish(@RequestParam(required = false) String month) {
-        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+    private Map<String, Object> doPublish(YearMonth ym) {
         ensureAllSheets(ym);
         int window = ruleService.getInt("payroll_period", "dispute_window_days", 2);
         LocalDate deadline = LocalDate.now().plusDays(window);
@@ -287,26 +283,100 @@ public class TimesheetController {
             s.setDisputeDeadline(deadline.atTime(23, 59));
         }
         timesheetRepository.saveAll(rows);
-        return ApiResponse.ok(Map.of("month", ym.toString(), "status", "published", "disputeDeadline", deadline.toString()),
-                "Đã công bố bảng công — khiếu nại đến " + deadline);
+        return Map.of("month", ym.toString(), "status", "published", "disputeDeadline", deadline.toString());
     }
 
-    @PostMapping("/lock")
-    @Operation(summary = "Khoá kỳ công — chặn đơn/quyết định sau khoá")
-    public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month,
-                                                 @RequestParam(required = false, defaultValue = "false") boolean force) {
+    @PostMapping("/publish")
+    @Operation(summary = "Công bố bảng công (mặc định ngày 11) — mở cửa sổ khiếu nại")
+    public ApiResponse<Map<String, Object>> publish(@RequestParam(required = false) String month) {
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        Map<String, Object> out = doPublish(ym);
+        return ApiResponse.ok(out, "Đã công bố bảng công — khiếu nại đến " + out.get("disputeDeadline"));
+    }
+
+    /**
+     * Tự động công bố khi tới `payroll_period.publish_day` (chạy hằng ngày).
+     * Bỏ qua tháng đã published/locked.
+     */
+    /** @Scheduled bắt buộc method không tham số — wrapper gọi lại endpoint cho tháng hiện tại. */
+    @Scheduled(cron = "0 10 1 * * *")
+    public void scheduledAutoPublish() {
+        try { autoPublish(null); } catch (Exception ignored) { }
+    }
+
+    @PostMapping("/auto-publish")
+    @Operation(summary = "Tự công bố kỳ tới ngày publish_day (dùng cấu hình Kỳ công & khiếu nại)")
+    public ApiResponse<Map<String, Object>> autoPublish(@RequestParam(required = false) String month) {
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        String st = statusOf(ym);
+        if ("published".equals(st) || "locked".equals(st)) {
+            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "published", false), "Kỳ đã công bố/khoá — bỏ qua");
+        }
+        int publishDay = ruleService.getInt("payroll_period", "publish_day", 11);
+        if (LocalDate.now().getDayOfMonth() < publishDay && ym.equals(YearMonth.now())) {
+            return ApiResponse.ok(Map.of("month", ym.toString(), "status", st, "published", false, "publishDay", publishDay),
+                    "Chưa tới ngày công bố (" + publishDay + ")");
+        }
+        Map<String, Object> out = new HashMap<>(doPublish(ym));
+        out.put("published", true);
+        return ApiResponse.ok(out, "Đã tự công bố kỳ " + ym);
+    }
+
+    private Map<String, Object> doLock(YearMonth ym, boolean force) {
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         long pending = timesheetDisputeRepository.findByStatus("PENDING").stream()
                 .filter(d -> d.getDeadline() == null || d.getDeadline().isAfter(now)).count();
         if (!force && pending > 0) {
             throw new RuntimeException("Còn " + pending + " khiếu nại chưa xử lý — xử lý hết trước khi khoá kỳ công");
         }
-        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
         ensureAllSheets(ym);
         List<Timesheet> rows = timesheetRepository.findByPeriodMonthAndPeriodYear(ym.getMonthValue(), ym.getYear());
         for (Timesheet s : rows) { s.setStatus("locked"); s.setLockedAt(now); }
         timesheetRepository.saveAll(rows);
-        return ApiResponse.ok(Map.of("month", ym.toString(), "status", "locked",
-                "lockedBy", String.valueOf(CurrentUser.employeeCode())), "Đã khoá kỳ công");
+        return Map.of("month", ym.toString(), "status", "locked", "lockedBy", String.valueOf(CurrentUser.employeeCode()));
+    }
+
+    /**
+     * Tự động khoá khi đã quá `payroll_period.lock_delay_days` ngày kể từ lúc công bố
+     * và không còn khiếu nại đang mở. Chạy hằng ngày; cũng gọi tay được.
+     */
+    @Scheduled(cron = "0 20 1 * * *")
+    @PostMapping("/auto-lock")
+    @Operation(summary = "Tự khoá kỳ sau lock_delay_days (dùng cấu hình Kỳ công & khiếu nại)")
+    public ApiResponse<List<Map<String, Object>>> autoLock() {
+        int delay = ruleService.getInt("payroll_period", "lock_delay_days", 3);
+        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusDays(delay);
+        List<Map<String, Object>> done = new ArrayList<>();
+        for (Timesheet s : timesheetRepository.findAll()) {
+            if (!"published".equalsIgnoreCase(s.getStatus()) || s.getPublishedAt() == null) continue;
+            if (s.getPublishedAt().isAfter(threshold)) continue;
+            YearMonth ym = YearMonth.of(s.getPeriodYear(), s.getPeriodMonth());
+            try {
+                doLock(ym, false);
+                done.add(Map.of("month", ym.toString(), "locked", true));
+            } catch (RuntimeException e) {
+                done.add(Map.of("month", ym.toString(), "locked", false, "reason", String.valueOf(e.getMessage())));
+            }
+        }
+        return ApiResponse.ok(done, "Tự khoá kỳ công sau " + delay + " ngày: " + done.size() + " kỳ xử lý");
+    }
+
+    private boolean allowAdjustAfterLock() {
+        return ruleService.getBoolean("payroll_period", "allow_adjust_after_lock", false);
+    }
+
+    private void assertPeriodEditable(YearMonth ym) {
+        if ("locked".equals(statusOf(ym)) && !allowAdjustAfterLock()) {
+            throw new RuntimeException("Kỳ công đã khoá — không sửa được ô. "
+                    + "(Bật 'Cho phép điều chỉnh sau khi khoá' trong Cấu hình Kỳ công & khiếu nại nếu thật sự cần)");
+        }
+    }
+
+    @PostMapping("/lock")
+    @Operation(summary = "Khoá kỳ công — chặn đơn/quyết định sau khoá")
+    public ApiResponse<Map<String, Object>> lock(@RequestParam(required = false) String month,
+                                                 @RequestParam(required = false, defaultValue = "false") boolean force) {
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        return ApiResponse.ok(doLock(ym, force), "Đã khoá kỳ công");
     }
 }

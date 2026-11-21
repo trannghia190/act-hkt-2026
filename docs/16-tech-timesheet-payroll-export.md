@@ -156,3 +156,14 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 * **E6**: ca thường/linh hoạt/ngoại lệ, bộ gán theo nhóm+chức danh, ngày lễ CRUD, geofence + IP.
 * **E7**: loại nghỉ CRUD (gồm hiếu hỉ, tang gia, thai sản nam/nữ + biến thể), 3 tầng kế thừa, duyệt 1 cấp quản lý.
 * **E8**: mặc định 2 thiết bị (rule `attendance_security.max_devices`), yêu cầu máy thứ 3 cần lý do, HR duyệt/thu hồi + audit.
+
+### Cấu hình "Kỳ công & khiếu nại" — đã có hiệu lực (21/11/2026)
+Rule `payroll_period` **{publish_day, dispute_window_days, lock_delay_days, allow_adjust_after_lock}**:
+| Trường | Dùng ở đâu |
+|---|---|
+| `publish_day` | `POST /timesheets/auto-publish` (job hằng ngày 01:10) tự công bố khi tới ngày; nhãn "tạm tính — HR công bố ngày N" ở S11/S19 |
+| `dispute_window_days` | `POST /timesheets/publish` đặt `dispute_deadline = hôm nay + N`; `my-timesheet`/`POST /disputes` đọc hạn này để mở/chặn khiếu nại |
+| `lock_delay_days` | `POST /timesheets/auto-lock` (job hằng ngày 01:20) tự khoá kỳ đã công bố quá N ngày và không còn khiếu nại mở |
+| `allow_adjust_after_lock` | `POST /timesheets/cell` và `/bulk`: khi kỳ đã khoá, chỉ cho sửa nếu bật `true` (S15 hiện nhãn "Đã khoá (cho phép sửa theo cấu hình)") |
+
+`GET /timesheets` trả cả 4 giá trị để UI phản ánh cấu hình; S19 sinh **ví dụ quy định từ chính giá trị rule** (không hardcode). Kiểm chứng tự động: `tests/api/test_payroll_period_config.py`.

@@ -228,3 +228,4 @@ Gồm đầy đủ các manifest cho Deployment (có HPA và probes), Services, 
 * Giá trị hiển thị (hạn, quota, tổng, số dư) phải lấy từ **một nguồn chuẩn**; test phải so **giá trị UI/API == giá trị DB**, không so với công thức tính lại ở nơi khác.
 * Mỗi luồng trạng thái cần test chuyển tiếp thật: `draft → published → expired → locked → restore` (`tests/api/test_period_state_matrix.py`).
 * Không đưa bug đã sửa vào trạng thái "xong" nếu chưa có **test hồi quy**.
+* **`mvn compile` không đủ**: sau mỗi thay đổi backend phải khởi động lại service và kiểm `actuator/health` + log `Started`. Lưu ý `@Scheduled` **chỉ nhận method không tham số** (dùng wrapper gọi lại endpoint); lỗi này chỉ lộ lúc boot.
