@@ -129,6 +129,7 @@ Quy trình chốt công theo **công bố giữa kỳ** (business `payroll_perio
 * **Khiếu nại lưu DB:** `timesheet_disputes`; đếm ngược hạn, quá hạn tự EXPIRED; nút Chốt & khóa đếm pending từ DB.
 * **Ký hiệu nửa ngày:** nghỉ phép nửa ngày = `AL/0.50`; WFH nửa ngày = `R/0.50`; `leaveDays`/`wfhDays` cộng 0.5, không cộng sai vào tổng ngày công.
 * **Nghỉ/WFH nhiều ngày:** dùng `requests.work_date → end_date`, trải ký hiệu AL/R cho từng **ngày làm việc** trong kỳ; bỏ T7/CN/ngày lễ; hỗ trợ đơn vắt qua tháng (mỗi tháng hiển thị phần ngày của mình).
+* **Bảng công cá nhân (S11) — banner trạng thái kỳ:** `UNPUBLISHED` · `DRAFT` (tạm tính, HR chưa công bố — **không** phải đã khoá) · `DISPUTABLE` · `EXPIRED` · `LOCKED` (HR đã chốt). Chỉ `LOCKED` mới hiện "đã chốt và khoá".
 * **Bảng công cá nhân (S11):** cùng quy tắc range; ngày cuối tuần luôn WEEKEND, không bị ghi đè bởi đơn nghỉ/WFH; số ngày phép/WFH tính theo ngày làm việc.
 * **Đi muộn/về sớm & bổ sung công đã duyệt:** cập nhật `attendance_logs.check_in_at/check_out_at`, `status=VALID` khi đủ cặp giờ → bảng công tính theo giờ thật.
 * **Export 53 cột:** 5 thông tin + 31 ngày + 17 tổng hợp, tên cột theo mẫu Pine, ký hiệu gốc; CSV UTF-8.

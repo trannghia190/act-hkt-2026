@@ -376,6 +376,7 @@ print_dashboard() {
     echo "    05ACT  → Manager    (duyệt đơn cấp dưới, lịch nhóm)"
     echo "    136ACT → Nhân viên  (tự chấm công, tạo đơn, xem phép/bảng công)"
     echo "    137ACT → QA/Nhân viên (tài khoản độc lập: sổ phép mẫu + log thiếu giờ ra hôm qua)"
+    echo "    138ACT → Trưởng nhóm Optimus (thấy lịch nhóm mình, không phải toàn công ty)"
   fi
   echo "=================================================================="
   echo
