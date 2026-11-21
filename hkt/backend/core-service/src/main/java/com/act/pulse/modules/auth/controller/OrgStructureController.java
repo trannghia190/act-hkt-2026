@@ -1219,6 +1219,16 @@ public class OrgStructureController {
         return ApiResponse.ok(del, "Thiết lập ủy quyền phê duyệt thành công!");
     }
 
+    private void validateHoliday(Holiday holiday) {
+        if (holiday.getHolidayDate() == null) {
+            throw new RuntimeException("Chọn ngày bắt đầu nghỉ lễ");
+        }
+        // Ngày lễ có thể kéo dài nhiều ngày: holiday_date = bắt đầu, end_date = kết thúc (bao gồm).
+        if (holiday.getEndDate() != null && holiday.getEndDate().isBefore(holiday.getHolidayDate())) {
+            throw new RuntimeException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        }
+    }
+
     @PostMapping("/admin/holidays")
     @Operation(summary = "Thêm ngày nghỉ lễ — không cần sửa code")
     public ApiResponse<Holiday> addHoliday(@RequestBody(required = false) Holiday holiday) {
@@ -1230,10 +1240,48 @@ public class OrgStructureController {
         if (holiday.getName() == null) {
             holiday.setName("Ngày nghỉ lễ Giáng Sinh 2026");
         }
+        validateHoliday(holiday);
         if (holidayRepository.existsByHolidayDate(holiday.getHolidayDate())) {
             return ApiResponse.ok(holiday, "Ngày lễ đã tồn tại");
         }
+        holiday.setId(null);
+        java.util.UUID creatorId = CurrentUser.userId();
+        holiday.setCreatedBy(creatorId);
+        if (creatorId != null) {
+            User creator = userRepository.findById(creatorId).orElse(null);
+            if (creator != null) holiday.setCreatedByName(creator.getFullName());
+        }
         return ApiResponse.ok(holidayRepository.save(holiday), "Thêm ngày lễ thành công");
+    }
+
+    @PutMapping("/admin/holidays/{id}")
+    @Operation(summary = "Sửa ngày nghỉ lễ — nhỡ nhập nhầm")
+    public ApiResponse<Holiday> updateHoliday(@PathVariable java.util.UUID id, @RequestBody Holiday req) {
+        Holiday h = holidayRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ngày lễ"));
+        if (req.getName() != null) {
+            if (req.getName().isBlank()) throw new RuntimeException("Nhập tên ngày nghỉ lễ");
+            h.setName(req.getName().trim());
+        }
+        if (req.getHolidayDate() != null) h.setHolidayDate(req.getHolidayDate());
+        h.setEndDate(req.getEndDate());
+        if (req.getIsPaid() != null) h.setIsPaid(req.getIsPaid());
+        validateHoliday(h);
+        holidayRepository.findByHolidayDate(h.getHolidayDate())
+                .filter(other -> !other.getId().equals(h.getId()))
+                .ifPresent(other -> {
+                    throw new RuntimeException("Đã có ngày lễ khác bắt đầu ngày " + h.getHolidayDate());
+                });
+        return ApiResponse.ok(holidayRepository.save(h), "Cập nhật ngày lễ thành công");
+    }
+
+    @DeleteMapping("/admin/holidays/{id}")
+    @Operation(summary = "Xóa ngày nghỉ lễ — thêm nhầm")
+    public ApiResponse<String> deleteHoliday(@PathVariable java.util.UUID id) {
+        Holiday h = holidayRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ngày lễ"));
+        holidayRepository.delete(h);
+        return ApiResponse.ok("Đã xóa ngày lễ " + h.getName(), "Xóa ngày lễ thành công");
     }
 
     @GetMapping("/admin/users/import-template")
