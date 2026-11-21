@@ -12,15 +12,18 @@
 #   ./share-local.sh stop   # tắt tunnel nếu chạy nền
 #
 # Provider (mặc định tự chọn):
+#   PROVIDER=cloudflare  cloudflared quick tunnel (miễn phí, không cần account;
+#                        cài: brew install cloudflared) — KHUYẾN NGHỊ khi ngrok hết limit
 #   PROVIDER=ngrok       ngrok http 3000   (cần đã đăng nhập ngrok)
-#   PROVIDER=cloudflare  cloudflared quick tunnel (cần: brew install cloudflared)
 #   PROVIDER=tailscale   tailscale funnel (cần bật Funnel trong admin console)
 #   PROVIDER=localtunnel npx localtunnel (phương án cuối, kém ổn định)
+#   PROVIDER=localhostrun ssh -R qua localhost.run (KHÔNG cần cài gì; URL random)
 #
 # Tuỳ chọn:
 #   PORT=3000
 #   SHARE_USER=actdemo SHARE_PASS=...   (ngrok basic auth; pass tự sinh nếu trống)
 #   SHARE_BASIC_AUTH=0                  (tắt basic auth của ngrok — KHÔNG khuyến khích)
+#   CLOUDFLARED_PROTOCOL=http2          (nếu mạng chặn QUIC/UDP; mặc định http2)
 #
 # App gửi JWT qua header X-Auth-Token (không dùng Authorization) nên chạy
 # song song được với ngrok --basic-auth. Nếu bật basic auth, trình duyệt hỏi
@@ -101,11 +104,26 @@ stop_tunnel() {
     fi
     rm -f "$RUN_DIR/tunnel.pid"
   fi
-  # Dọn mọi ngrok còn sót cho đúng cổng này (tránh 2 tunnel cùng lúc)
+  # Dọn mọi tunnel còn sót cho đúng cổng/loại (tránh 2 tunnel cùng lúc)
   pids="$(pgrep -f "ngrok http ${PORT}( |$)" 2>/dev/null || true)"
   if [ -n "$pids" ]; then
     kill $pids 2>/dev/null || true
     echo "Đã dừng ngrok còn sót: $pids"
+  fi
+  pids="$(pgrep -f "cloudflared tunnel --url http://127.0.0.1:${PORT}" 2>/dev/null || true)"
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    echo "Đã dừng cloudflared còn sót: $pids"
+  fi
+  pids="$(pgrep -f "localhost.run" 2>/dev/null || true)"
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    echo "Đã dừng SSH tunnel (localhost.run) còn sót: $pids"
+  fi
+  pids="$(pgrep -f "localtunnel --port ${PORT}" 2>/dev/null || true)"
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    echo "Đã dừng localtunnel còn sót: $pids"
   fi
   rm -f "$RUN_DIR/share-credentials.txt"
   echo "Đã dọn tunnel."
@@ -115,11 +133,12 @@ stop_tunnel() {
 
 detect_provider() {
   if [ "$PROVIDER" != "auto" ]; then echo "$PROVIDER"; return; fi
-  if command -v ngrok >/dev/null 2>&1 && ngrok config check >/dev/null 2>&1; then
-    echo "ngrok"; return
-  fi
+  # Ưu tiên Cloudflare vì miễn phí, không giới hạn như ngrok free.
   if command -v cloudflared >/dev/null 2>&1; then
     echo "cloudflare"; return
+  fi
+  if command -v ngrok >/dev/null 2>&1 && ngrok config check >/dev/null 2>&1; then
+    echo "ngrok"; return
   fi
   if command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1; then
     echo "tailscale"; return
@@ -127,11 +146,19 @@ detect_provider() {
   if command -v npx >/dev/null 2>&1; then
     echo "localtunnel"; return
   fi
+  if command -v ssh >/dev/null 2>&1; then
+    echo "localhostrun"; return
+  fi
   echo ""
 }
 
 print_result() {
   local url="$1"
+  # Lưu URL cho mọi provider (ngrok đã ghi kèm user/pass trước đó)
+  if [ ! -f "$RUN_DIR/share-credentials.txt" ]; then
+    printf "URL=%s\n" "$url" >"$RUN_DIR/share-credentials.txt"
+    chmod 600 "$RUN_DIR/share-credentials.txt"
+  fi
   echo
   echo "=================================================================="
   echo "${C_GREEN}${C_BOLD}  Đã mở app ra public internet${C_NC}"
@@ -147,7 +174,13 @@ print_result() {
   if [ "$PROVIDER_USED" != "ngrok" ] || [ "$SHARE_BASIC_AUTH" != "1" ]; then
     warn "Không có basic auth ở tầng tunnel — chỉ dựa vào đăng nhập của app."
   fi
-  warn "Trình duyệt hỏi lại dù đã nhập? Mở Incognito hoặc xoá mật khẩu đã lưu cho *.ngrok-free.app."
+  if [ "$PROVIDER_USED" = "cloudflare" ]; then
+    echo "  (Cloudflare Quick Tunnel: URL đổi mỗi lần chạy; không có basic auth)"
+  fi
+  if [ "$PROVIDER_USED" = "localhostrun" ]; then
+    echo "  (localhost.run: URL đổi mỗi lần chạy; có thể cần bấm xác nhận trên trang đầu)"
+  fi
+  warn "Trình duyệt hỏi lại dù đã nhập? Mở Incognito hoặc xoá mật khẩu đã lưu cho *.ngrok-free.app / *.trycloudflare.com."
   warn "Nếu bị hỏi lặp sau khi vào /todo: chạy frontend với VITE_DISABLE_HMR=1 (HMR WebSocket bị Basic Auth challenge)."
   echo "  Thông tin đăng nhập đã lưu tại: $RUN_DIR/share-credentials.txt"
   warn "Hãy Ctrl+C (hoặc ./share-local.sh stop) khi demo xong."
@@ -156,7 +189,7 @@ print_result() {
 }
 
 usage() {
-  sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
   exit 0
 }
 
@@ -248,22 +281,24 @@ for t in d.get("tunnels", []):
 start_cloudflare() {
   PROVIDER_USED="cloudflare"
   command -v cloudflared >/dev/null 2>&1 || die "Chưa cài cloudflared. Chạy: brew install cloudflared"
+  local cf_log="$LOG_DIR/cloudflared-$$.log"
   info "Đang mở Cloudflare Quick Tunnel (port ${PORT})…"
-  cloudflared tunnel --url "http://127.0.0.1:${PORT}" --no-autoupdate >"$LOG_DIR/cloudflared.log" 2>&1 &
+  cloudflared tunnel --url "http://127.0.0.1:${PORT}" --no-autoupdate \
+    --protocol "${CLOUDFLARED_PROTOCOL:-http2}" >"$cf_log" 2>&1 &
   PID=$!
   echo "$PID" >"$RUN_DIR/tunnel.pid"
 
   local url="" i
-  for i in $(seq 1 45); do
+  for i in $(seq 1 60); do
     if ! kill -0 "$PID" 2>/dev/null; then
-      tail -20 "$LOG_DIR/cloudflared.log" >&2
+      tail -20 "$cf_log" >&2
       die "cloudflared thoát."
     fi
-    url="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG_DIR/cloudflared.log" 2>/dev/null | head -1 || true)"
+    url="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$cf_log" 2>/dev/null | head -1 || true)"
     [ -n "$url" ] && break
     sleep 1
   done
-  [ -n "$url" ] || { tail -20 "$LOG_DIR/cloudflared.log" >&2; die "Không lấy được URL cloudflared."; }
+  [ -n "$url" ] || { tail -20 "$cf_log" >&2; die "Không lấy được URL cloudflared."; }
   print_result "$url"
 }
 
@@ -313,12 +348,39 @@ start_localtunnel() {
   print_result "$url"
 }
 
+# ------------------------------ localhost.run (SSH) --------------------------
+start_localhostrun() {
+  PROVIDER_USED="localhostrun"
+  command -v ssh >/dev/null 2>&1 || die "Thiếu ssh."
+  local log="$LOG_DIR/localhostrun-$$.log"
+  info "Đang mở SSH reverse tunnel qua localhost.run (port ${PORT})…"
+  ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 \
+      -o ExitOnForwardFailure=yes -R "80:localhost:${PORT}" nokey@localhost.run \
+      >"$log" 2>&1 &
+  PID=$!
+  echo "$PID" >"$RUN_DIR/tunnel.pid"
+
+  local url="" i
+  for i in $(seq 1 45); do
+    if ! kill -0 "$PID" 2>/dev/null; then
+      tail -20 "$log" >&2
+      die "SSH tunnel thoát. Kiểm tra kết nối tới localhost.run."
+    fi
+    url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.(lhr\.life|localhost\.run)' "$log" 2>/dev/null | head -1 || true)"
+    [ -n "$url" ] && break
+    sleep 1
+  done
+  [ -n "$url" ] || { tail -20 "$log" >&2; die "Không lấy được URL localhost.run."; }
+  print_result "$url"
+}
+
 case "$PROVIDER" in
-  ngrok)       start_ngrok ;;
-  cloudflare)  start_cloudflare ;;
-  tailscale)   start_tailscale ;;
-  localtunnel) start_localtunnel ;;
-  *) die "Provider không hợp lệ: $PROVIDER (ngrok|cloudflare|tailscale|localtunnel)" ;;
+  ngrok)        start_ngrok ;;
+  cloudflare)   start_cloudflare ;;
+  tailscale)    start_tailscale ;;
+  localtunnel)  start_localtunnel ;;
+  localhostrun) start_localhostrun ;;
+  *) die "Provider không hợp lệ: $PROVIDER (cloudflare|ngrok|tailscale|localtunnel|localhostrun)" ;;
 esac
 
 # Giữ process tunnel chạy tới khi Ctrl+C
