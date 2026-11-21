@@ -14,10 +14,22 @@ const EXAMPLES: Record<string, string> = {
   late_early: 'Đi muộn 10 phút → nộp đơn trong 3 ngày, tối đa 2 lần/tháng.',
   wfh: 'Đăng ký WFH thứ Sáu → tối đa 2 ngày/tuần; ngày thứ 3 bị chặn.',
   attendance_security: 'Camera khớp 98% + trong Wi-Fi công ty + trong 150m → chấm công hợp lệ.',
-  payroll_period: 'Ngày 11 công bố bảng công → khiếu nại trong 2 ngày → khóa ngày 3 tháng sau.',
   leave_carryover: 'Còn 7 ngày phép tồn sau 01/04 → chỉ giữ 5 ngày, 2 ngày hết hiệu lực.',
   okr_evaluation: 'Business 4 + People 5 → điểm TB 4.5, không xếp loại A/B/C/D.',
   notification: 'Quá 3 push/ngày → dồn vào email digest 08:00 hôm sau.',
+};
+
+/** Ví dụ sinh từ chính giá trị đang cấu hình — không hardcode, tránh lệch khi HR đổi luật (E5). */
+const dynamicExample = (r: RuleApi): string | null => {
+  if (r.ruleKey === 'payroll_period') {
+    try {
+      const v = JSON.parse(r.currentValue);
+      return `Ngày ${v.publish_day} công bố bảng công → khiếu nại trong ${v.dispute_window_days} ngày`
+        + ` → tự khoá sau ${v.lock_delay_days} ngày`
+        + (v.allow_adjust_after_lock ? ' · vẫn cho phép điều chỉnh sau khi khoá' : ' · khoá xong không sửa được');
+    } catch { return null; }
+  }
+  return EXAMPLES[r.ruleKey] || null;
 };
 
 const authHeaders = (): Record<string, string> => {
@@ -80,7 +92,7 @@ export const PolicyDocPage: React.FC = () => {
               <span className="text-[11px] font-normal text-ink-muted">v{r.versionCount} · hiệu lực {r.effectiveFrom || '—'}</span>
             </summary>
             <div className="mt-2 text-xs text-ink-secondary">{r.description}</div>
-            {EXAMPLES[r.ruleKey] && <div className="mt-1 text-xs text-emerald-700">Ví dụ: {EXAMPLES[r.ruleKey]}</div>}
+            {dynamicExample(r) && <div className="mt-1 text-xs text-emerald-700">Ví dụ: {dynamicExample(r)}</div>}
             <pre className="mt-2 bg-canvas rounded-lg p-2 text-[11px] overflow-x-auto">{r.currentValue}</pre>
           </details>
         ))}

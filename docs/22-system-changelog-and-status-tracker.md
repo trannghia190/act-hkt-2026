@@ -67,6 +67,7 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 * Sửa lỗi WFH chọn khoảng ngày bị lệch 1 ngày do timezone (26/11–1/12 từng sinh ngày25/11 và báo vượt quota); nay ngày gửi đúng theo lịch địa phương.
 * Quota đơn chỉ tính đơn chờ/đã duyệt; không tính nháp, bị từ chối, đã hủy/tự hủy trùng ngày; UI lấy `/requests/my-quota` server-side.
 * Thêm tài khoản QA độc lập `137ACT/123456` (cùng nhóm/quản lý/ca với 136ACT, có sổ phép 11 kỳ + log thiếu check-out hôm qua).
+* Cấu hình Kỳ công & khiếu nại có hiệu lực đầy đủ: `publish_day` (auto-publish), `dispute_window_days` (đặt hạn khi công bố), `lock_delay_days` (auto-lock), `allow_adjust_after_lock` (cho sửa ô sau khoá); S19 sinh ví dụ từ rule.
 * S11/khiếu nại: hạn khiếu nại lấy từ `timesheets.dispute_deadline` (published_at+2 ngày) thay vì ngày 11+2 → vừa công bố không còn báo "hết hạn"; chặn tạo khiếu nại khi kỳ chưa công bố/quá hạn.
 * S11: sửa banner trạng thái kỳ — kỳ `draft` (chưa công bố) trước đây hiện nhầm "đã chốt và khoá"; nay hiện "đang tạm tính — chưa công bố" kèm ngày công bố.
 * D5: modal điều chỉnh phép báo lỗi tại chỗ khi thiếu lý do/số ngày; nút Xuất Excel Sổ Cái hoạt động (CSV theo bộ lọc) + mở sổ phép đúng nhân viên qua `?user=`; E10 click người mở đúng sổ phép.

@@ -42,6 +42,7 @@ export const TimesheetPage: React.FC = () => {
   const [editingCell, setEditingCell] = useState<{ row: TimesheetRow; field: string; val: any } | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
   const [isLocked, setIsLocked] = useState(false);
+  const [allowAfterLock, setAllowAfterLock] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
@@ -81,6 +82,7 @@ export const TimesheetPage: React.FC = () => {
         const d = j?.data; if (!d) return;
         setSheetStatus(d.status || 'draft');
         setIsLocked(d.status === 'locked');
+        setAllowAfterLock(d.allowAdjustAfterLock === true);
         const mapped: TimesheetRow[] = (d.rows || []).map((r: any, i: number) => ({
           id: String(i + 1), code: r.employeeCode, fullName: r.fullName, department: r.teamName || '—',
           team: r.teamName || '—', positionName: r.positionName || '—', managerCode: r.managerCode || '',
@@ -114,7 +116,7 @@ export const TimesheetPage: React.FC = () => {
   const monthOf = () => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; };
 
   const editDayCell = async (row: TimesheetRow, day: number) => {
-    if (isLocked) { showToast('Kỳ công đã khoá — không sửa được ô'); return; }
+    if (isLocked && !allowAfterLock) { showToast('Kỳ công đã khoá — không sửa được ô (bật “Cho phép điều chỉnh sau khi khoá” trong Cấu hình Kỳ công & khiếu nại nếu cần)'); return; }
     const current = daySymbol(row, day) || '(trống)';
     const next = window.prompt(`Sửa ô ngày ${day} — ${row.fullName}\nKý hiệu hiện tại: ${current}\nNhập ký hiệu công mới:`, daySymbol(row, day));
     if (next === null) return;
@@ -317,7 +319,7 @@ export const TimesheetPage: React.FC = () => {
             onClick={handleLockPayroll}
             disabled={isLocked}
           >
-            {isLocked ? '🔒 Đã Khóa Kỳ Công Tháng' : '🔒 Khóa Bảng Công Tháng'}
+            {isLocked ? (allowAfterLock ? '🔒 Đã khoá (cho phép sửa theo cấu hình)' : '🔒 Đã Khóa Kỳ Công Tháng') : '🔒 Khóa Bảng Công Tháng'}
           </Button>
         </div>
       </div>
