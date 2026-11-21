@@ -97,9 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   });
 
-  const [expandedSubmenus, setExpandedSubmenus] = useState<Record<string, boolean>>({
-    reqs: true, // Expand "Đơn của tôi" sub-items by default
-  });
+  const [expandedSubmenus, setExpandedSubmenus] = useState<Record<string, boolean>>({});
 
   const toggleSubmenu = (itemId: string, e: React.MouseEvent) => {
     e.preventDefault();

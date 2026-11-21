@@ -46,10 +46,6 @@ export const COMMON_GROUPS: NavGroup[] = [
         icon: 'FilePlus',
         badgeKey: 'reqs',
         screenId: 'S08',
-        children: [
-          { label: '☘ Xin nghỉ phép · WFH', path: '/attendance/requests?type=LEAVE_WFH' },
-          { label: '＋ Bổ sung chấm công', path: '/attendance/requests?type=SUPPLEMENT' },
-        ],
       },
       { id: 'cal', label: 'Lịch công', path: '/attendance/calendar', icon: 'Calendar', screenId: 'S06' },
       { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
