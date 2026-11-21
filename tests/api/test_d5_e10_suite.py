@@ -72,7 +72,7 @@ for ver in vers:
             target=ver['id']; break
     except Exception: pass
 assert target is not None, 'Không tìm thấy phiên bản max_count=2: '+str(vers[:3])
-c,j=call('POST','/rules/late_early/rollback',H,{'versionId':target,'reason':'Test E3 rollback'})
+c,j=call('POST',f'/rules/late_early/rollback/{target}',H,{'reason':'Test E3 rollback'})
 chk('E3.7 Rollback về phiên bản cũ có lý do', c==200 and json.loads(j['data']['currentValue']).get('max_count')==2, (c,str(j.get('data'))[:150]))
 call('PUT','/rules/late_early',H,{'currentValue':orig,'changeReason':'Restore sau test'})
 

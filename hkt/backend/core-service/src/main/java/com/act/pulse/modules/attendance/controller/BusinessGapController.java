@@ -171,7 +171,11 @@ public class BusinessGapController {
         List<Timesheet> sheets = !userSheets.isEmpty() ? userSheets : timesheetRepository.findByPeriodMonthAndPeriodYear(targetMonth, targetYear);
         String status = sheets.isEmpty() ? "draft" : sheets.get(0).getStatus();
 
-        java.time.LocalDate deadline = java.time.LocalDate.of(ym.getYear(), ym.getMonthValue(), Math.min(daysInMonth, publishDay + disputeWindow));
+        // Ưu tiên hạn thật đã lưu khi HR bấm Công bố (published_at + cửa sổ); chỉ khi chưa có mới suy ra từ ngày công bố chuẩn.
+        Timesheet periodSheet = sheets.isEmpty() ? null : sheets.get(0);
+        java.time.LocalDate deadline = (periodSheet != null && periodSheet.getDisputeDeadline() != null)
+                ? periodSheet.getDisputeDeadline().toLocalDate()
+                : java.time.LocalDate.of(ym.getYear(), ym.getMonthValue(), Math.min(daysInMonth, publishDay + disputeWindow));
         java.time.LocalDate today = java.time.LocalDate.now();
 
         String periodStatus;
@@ -777,6 +781,17 @@ public class BusinessGapController {
         if (userId == null) throw new RuntimeException("Chưa đăng nhập");
         if (body.get("reason") == null || body.get("reason").isBlank()) throw new RuntimeException("Khiếu nại phải có lý do");
         java.time.LocalDate workDate = body.get("workDate") == null ? java.time.LocalDate.now() : java.time.LocalDate.parse(body.get("workDate"));
+        // Chỉ khiếu nại được trong cửa sổ sau khi HR công bố bảng công của kỳ đó.
+        java.time.YearMonth wm = java.time.YearMonth.from(workDate);
+        Timesheet period = timesheetRepository
+                .findByUserIdAndPeriodMonthAndPeriodYear(userId, wm.getMonthValue(), wm.getYear())
+                .orElseGet(() -> timesheetRepository.findByPeriodMonthAndPeriodYear(wm.getMonthValue(), wm.getYear()).stream().findFirst().orElse(null));
+        if (period == null || !"published".equalsIgnoreCase(period.getStatus())) {
+            throw new RuntimeException("Bảng công kỳ " + wm + " chưa được công bố — chưa thể khiếu nại");
+        }
+        if (period.getDisputeDeadline() != null && period.getDisputeDeadline().isBefore(java.time.LocalDateTime.now())) {
+            throw new RuntimeException("Đã quá hạn khiếu nại kỳ " + wm + " (hạn " + period.getDisputeDeadline().toLocalDate() + ")");
+        }
         TimesheetDispute d = TimesheetDispute.builder()
                 .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
                 .userId(userId).workDate(workDate).reason(body.get("reason")).status("PENDING")

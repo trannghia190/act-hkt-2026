@@ -62,16 +62,19 @@ chk('12. Bulk bỏ qua đơn đã đóng, xử lý đơn còn mở', ok, (c,j))
 # 13. Bulk bởi nhân viên
 d4=mk(); c,j=call('POST','/disputes/bulk-resolve',E,{'ids':[d4],'action':'REJECT','reason':'x'})
 chk('13. Bulk bởi nhân viên bị từ chối từng đơn', c==200 and j['data']['resolved']==0 and len(j['data']['skipped'])==1, (c,j))
-# 14. FIX khi kỳ đã khoá (đóng hết pending trước — khoá kỳ chặn khi còn khiếu nại)
-c,j=call('GET','/disputes?status=PENDING',H)
-call('POST','/disputes/bulk-resolve',H,{'ids':[x['id'] for x in j['data']],'action':'REJECT','reason':'dọn trước khi khoá'})
-c,j=call('POST','/timesheets/lock?month=2049-02',H)
-chk('14a. Khoá kỳ test 2049-02 thành công', c==200, (c,j.get('message')))
+# 14. FIX khi kỳ đã khoá: công bố kỳ test (để được tạo khiếu nại) → khoá force
+c,j=call('POST','/timesheets/publish?month=2049-02',H)
+chk('14a. Công bố kỳ test 2049-02', c==200, (c,j.get('message')))
 d5=mk('2049-02-10','Kỳ khoá')
+c,j=call('POST','/timesheets/lock?month=2049-02&force=true',H)
+chk('14b. Khoá kỳ test 2049-02', c==200, (c,j.get('message')))
 c,j=call('POST',f'/disputes/{d5}/resolve',H,{'action':'FIX','reason':'x','symbol':'1.00'})
 chk('14. FIX bị chặn khi kỳ công đã khoá', c==400 and 'khoá' in (j.get('message') or ''), (c,j.get('message')))
 c,j=call('POST',f'/disputes/{d5}/resolve',H,{'action':'REJECT','reason':'đóng đơn test kỳ khoá'})
-# 15. Khiếu nại quá hạn không chặn khoá kỳ
+# 15. Khiếu nại quá hạn không chặn khoá kỳ (dọn các đơn còn mở trước)
+c,j=call('GET','/disputes?status=PENDING',H)
+if j['data']:
+    call('POST','/disputes/bulk-resolve',H,{'ids':[x['id'] for x in j['data']],'action':'REJECT','reason':'dọn trước test 15'})
 d6=mk()
 subprocess.run(['psql','-h','127.0.0.1','-p','5432','-U',subprocess.check_output(['whoami']).decode().strip(),'-d','pulse_db','-c',
  f"update timesheet_disputes set deadline=now()-interval '1 day' where id='{d6}'"],capture_output=True)
