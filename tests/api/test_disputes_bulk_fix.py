@@ -1,11 +1,12 @@
 """Duyệt & sửa ô HÀNG LOẠT (S45) — POST /disputes/bulk-resolve action=FIX.
 
 Kịch bản: nhân viên tạo 3 khiếu nại (2 sửa giờ — 1 có giờ đề xuất, 1 không; 1 WFH),
-HR chọn tất cả và bấm "Duyệt & sửa ô hàng loạt" (ids + reason + symbol),
-kiểm tra: dispute RESOLVED, giờ ghi vào attendance_logs, ô công ghi ký hiệu,
-đơn WFH được tạo, nhân viên nhận thông báo, và đơn đã xử lý bị bỏ qua khi chạy lại.
+HR chọn tất cả và bấm "Duyệt & sửa ô hàng loạt" (ids + reason),
+kiểm tra: chỉ đơn có ĐỦ cặp giờ mới được duyệt (đơn thiếu giờ bị bỏ qua để HR mở nhập),
+giờ ghi vào attendance_logs, ô công tính theo ca, đơn WFH được tạo,
+nhân viên nhận thông báo, và đơn đã xử lý bị bỏ qua khi chạy lại.
 """
-import json, urllib.request, urllib.error, sys, subprocess
+import atexit, json, urllib.request, urllib.error, sys, subprocess
 from datetime import date, timedelta
 
 B = 'http://localhost:8080/api/v1'
@@ -57,14 +58,32 @@ days = []
 d = today - timedelta(days=1)
 while len(days) < 3:
     if d.weekday() < 5 and d.month == today.month:
-        # Ngày đã có đơn WFH được duyệt sẽ chặn bước tạo WFH ở cuối kịch bản.
+        # Ngày đã có đơn WFH được duyệt sẽ chặn bước tạo WFH ở cuối kịch bản;
+        # ngày đã có log chấm công thì không kiểm tra được "không ghi log".
         has_wfh = psql(f"select count(*) from requests where user_id='{uid}' "
                        f"and work_date='{d.isoformat()}' and request_type='WFH' "
                        f"and status='APPROVED'") != '0'
-        if not has_wfh:
+        has_log = psql(f"select count(*) from attendance_logs where user_id='{uid}' "
+                       f"and work_date='{d.isoformat()}'") != '0'
+        has_cell = psql(f"select count(*) from timesheet_cells tc join timesheets t on t.id=tc.timesheet_id "
+                        f"where t.user_id='{uid}' and tc.work_date='{d.isoformat()}' and tc.is_manual") != '0'
+        if not has_wfh and not has_log and not has_cell:
             days.append(d)
     d -= timedelta(days=1)
 day_a, day_b, day_c = (x.isoformat() for x in days)
+
+
+def cleanup():
+    """Dọn log/ô công/đơn WFH do kịch bản tạo — chạy cả khi test fail giữa chừng."""
+    for day in (day_a, day_b):
+        psql(f"delete from timesheet_cells where is_manual and work_date='{day}' "
+             f"and timesheet_id in (select t.id from timesheets t join users u on u.id=t.user_id "
+             f"where u.employee_code='137ACT')")
+        psql(f"delete from attendance_logs where work_date='{day}' and user_id='{uid}'")
+    psql(f"delete from requests where user_id='{uid}' and work_date='{day_c}' and request_type='WFH'")
+
+
+atexit.register(cleanup)
 
 for day in days:
     psql(f"delete from timesheet_disputes where user_id='{uid}' and work_date='{day.isoformat()}'")
@@ -87,35 +106,43 @@ c, j = call('POST', '/disputes/bulk-resolve', H, {'ids': ids, 'action': 'FIX'}, 
 check('2. Thiếu lý do → resolved=0, cả 3 bị bỏ qua',
       j['data']['resolved'] == 0 and len(j['data']['skipped']) == 3, str(j['data'])[:200])
 
-# 3. Duyệt & sửa ô hàng loạt: 2 đơn sửa giờ + 1 đơn WFH, ký hiệu chung cho đơn không có giờ
+# 3. Duyệt hàng loạt: chỉ đơn có ĐỦ cặp giờ đề xuất mới sửa được; đơn sửa giờ
+#    không kèm giờ bị bỏ qua (không có cơ sở tính công) — WFH vẫn duyệt được.
 c, j = call('POST', '/disputes/bulk-resolve', H, {
     'ids': ids, 'action': 'FIX',
     'reason': 'Đã đối chiếu log chấm công và sửa ô (test hàng loạt)',
-    'symbol': '0.50',
 }, expect=200)
-check('3. Duyệt hàng loạt → resolved=3, không bỏ qua',
-      j['data']['resolved'] == 3 and j['data']['skipped'] == [], str(j['data'])[:200])
+skip_ids = [x['id'] for x in j['data']['skipped']]
+check('3. Duyệt hàng loạt → resolved=2, bỏ qua đơn sửa giờ thiếu giờ',
+      j['data']['resolved'] == 2 and skip_ids == [d_nosymbol['id']], str(j['data'])[:200])
+check('3b. Đơn bị bỏ qua nêu rõ cần đủ giờ vào/ra',
+      'giờ' in (j['data']['skipped'][0]['message'] or ''), j['data']['skipped'][0]['message'])
 
-# 4. Cả 3 khiếu nại chuyển RESOLVED
+# 4. Hai đơn hợp lệ RESOLVED; đơn thiếu giờ vẫn PENDING để HR mở nhập giờ
 c, j = call('GET', '/disputes?status=ALL', H, expect=200)
 by_id = {x['id']: x for x in j['data']}
-check('4. Cả 3 khiếu nại đều RESOLVED',
-      all(by_id.get(i, {}).get('status') == 'RESOLVED' for i in ids))
+check('4. Đơn có giờ + WFH RESOLVED, đơn thiếu giờ còn PENDING',
+      by_id[d_time['id']]['status'] == 'RESOLVED'
+      and by_id[d_wfh['id']]['status'] == 'RESOLVED'
+      and by_id[d_nosymbol['id']]['status'] == 'PENDING')
 
-# 5. Đơn có giờ đề xuất → giờ ghi vào attendance_logs (theo giờ NV đề xuất), đơn không giờ → không tạo log mới
+# 5. Đơn có giờ đề xuất → giờ ghi vào attendance_logs; ngày thiếu giờ không tạo log
 log_in = psql(f"select to_char(check_in_at,'HH24:MI')||'|'||to_char(check_out_at,'HH24:MI') "
               f"from attendance_logs where user_id='{uid}' and work_date='{day_a}'")
 check('5. attendance_logs nhận giờ NV đề xuất 08:30→17:45', log_in == '08:30|17:45', f'got {log_in!r}')
+log_b = psql(f"select count(*) from attendance_logs where user_id='{uid}' and work_date='{day_b}'")
+check('5b. Ngày thiếu giờ không bị ghi log', log_b == '0', log_b)
 
-# 6. Ô công của cả 2 ngày sửa giờ ghi ký hiệu (0.50 vì HR chọn chung) + đánh dấu sửa tay
+# 6. Ô công ngày có giờ được tính theo ca từ cặp giờ đã duyệt (is_manual), không nhập tay ký hiệu
 cell_a = psql(f"select tc.symbol||'|'||tc.is_manual from timesheet_cells tc "
               f"join timesheets t on t.id=tc.timesheet_id join users u on u.id=t.user_id "
               f"where u.employee_code='137ACT' and tc.work_date='{day_a}'")
-cell_b = psql(f"select tc.symbol||'|'||tc.is_manual from timesheet_cells tc "
+check('6. Ô công ngày có giờ được tính theo ca và đánh dấu sửa tay',
+      cell_a.endswith('|true') and cell_a.split('|')[0] != '', f'got {cell_a!r}')
+cell_b = psql(f"select count(*) from timesheet_cells tc "
               f"join timesheets t on t.id=tc.timesheet_id join users u on u.id=t.user_id "
-              f"where u.employee_code='137ACT' and tc.work_date='{day_b}'")
-check('6. Ô công ngày có giờ + ngày chỉ ký hiệu đều = 0.50 và is_manual',
-      cell_a == '0.50|true' and cell_b == '0.50|true', f'got {cell_a!r} / {cell_b!r}')
+              f"where u.employee_code='137ACT' and tc.work_date='{day_b}' and tc.is_manual")
+check('6b. Ngày thiếu giờ không có ô công ghi tay', cell_b == '0', cell_b)
 
 # 7. Đơn WFH → tạo đơn WFH đã duyệt cho đúng ngày
 wfh_row = psql(f"select request_type||'|'||status from requests "
@@ -125,16 +152,17 @@ check('7. Đơn WFH đã duyệt được tạo từ khiếu nại', wfh_row == 
 # 8. Nhân viên nhận thông báo xử lý cho từng khiếu nại
 c, j = call('GET', '/notifications', E, expect=200)
 n = sum(1 for x in j['data'] if 'đã được xử lý' in (x.get('title') or ''))
-check('8. Có thông báo "đã được xử lý" cho nhân viên', n >= 3, f'got {n}')
+check('8. Có thông báo "đã được xử lý" cho nhân viên', n >= 2, f'got {n}')
 
 # 9. Chạy lại hàng loạt trên đơn đã xử lý → bỏ qua hết, không ghi đè
 c, j = call('POST', '/disputes/bulk-resolve', H, {
-    'ids': ids, 'action': 'FIX', 'reason': 'Chạy lại (phải bị bỏ qua)', 'symbol': '1.00'}, expect=200)
+    'ids': ids, 'action': 'FIX', 'reason': 'Chạy lại (phải bị bỏ qua)'}, expect=200)
 check('9. Đơn đã xử lý bị bỏ qua khi chạy lại (resolved=0, skipped=3)',
       j['data']['resolved'] == 0 and len(j['data']['skipped']) == 3, str(j['data'])[:200])
 cell_a2 = psql(f"select tc.symbol from timesheet_cells tc "
                f"join timesheets t on t.id=tc.timesheet_id join users u on u.id=t.user_id "
                f"where u.employee_code='137ACT' and tc.work_date='{day_a}'")
-check('9b. Ô công không bị ghi đè bởi lần chạy lại', cell_a2 == '0.50', f'got {cell_a2!r}')
+check('9b. Ô công không bị ghi đè bởi lần chạy lại', cell_a2 == cell_a.split('|')[0],
+      f'got {cell_a2!r}')
 
 print('\nALL BULK-FIX TESTS PASSED')

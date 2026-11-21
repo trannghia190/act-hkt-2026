@@ -72,7 +72,7 @@ check('7. Không xử lý lại khiếu nại đã đóng', 'đã' in (j.get('me
 fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Sửa giúp ô công'},expect=200)
 d2=j['data']
-c,j=call('POST',f"/disputes/{d2['id']}/resolve",M,{'action':'FIX','reason':'Đối chiếu log thấy có mặt','symbol':'1.00'},expect=200)
+c,j=call('POST',f"/disputes/{d2['id']}/resolve",M,{'action':'FIX','reason':'Đối chiếu log thấy có mặt','requestedCheckIn':'08:30','requestedCheckOut':'17:30'},expect=200)
 check('8. FIX → RESOLVED', j['data']['status']=='RESOLVED')
 c,j=call('GET',f"/disputes/{d2['id']}",H,expect=200)
 check('8b. Ô bảng công đã cập nhật 1.00', j['data'].get('currentCell')=='1.00', str(j['data'].get('currentCell')))
@@ -132,6 +132,10 @@ c,j=call('GET','/admin/audit-logs',H,expect=200)
 logs=j['data'] if isinstance(j['data'],list) else j['data'].get('content',[])
 check('13. Audit log có RESOLVE_DISPUTE', any((l.get('action')=='RESOLVE_DISPUTE') for l in logs))
 
-# cleanup: resolve d5 (kỳ hiện tại) — không đụng kỳ demo
+# cleanup: resolve d5 (kỳ hiện tại) — không đụng kỳ demo; xoá log/ô công do bước 8 tạo ra
 call('POST',f"/disputes/{d5['id']}/resolve",M,{'action':'REJECT','reason':'Dọn dữ liệu test'})
+psql(f"delete from timesheet_cells where is_manual and work_date='{today}' and timesheet_id in "
+     f"(select t.id from timesheets t join users u on u.id=t.user_id where u.employee_code='137ACT')")
+psql(f"delete from attendance_logs where work_date='{today}' "
+     f"and user_id=(select id from users where employee_code='137ACT')")
 print('\nALL DISPUTE TESTS PASSED')

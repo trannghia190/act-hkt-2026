@@ -7,10 +7,10 @@ export const DisputeDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<Record<string, string>>({});
+  const [leaveNeedsDoc, setLeaveNeedsDoc] = useState<Record<string, boolean>>({});
   // Form duyệt sửa giờ — prefill từ giờ nhân viên đề xuất (hoặc log gốc nếu NV không đề xuất).
   const [fixIn, setFixIn] = useState('');
   const [fixOut, setFixOut] = useState('');
-  const [fixSymbol, setFixSymbol] = useState('');
   // Chế độ HR chốt cho ngày đó — mặc định theo đúng nhân viên đã xin, HR đổi được trước khi duyệt.
   const [fixKind, setFixKind] = useState<'TIME_FIX' | 'WFH' | 'LEAVE'>('TIME_FIX');
   const [fixLeaveType, setFixLeaveType] = useState('');
@@ -34,7 +34,12 @@ export const DisputeDetailPage: React.FC = () => {
   }, [data]);
   useEffect(() => {
     fetch('/api/v1/leave-types', { headers: headers() }).then(r => r.json())
-      .then(j => { if (Array.isArray(j?.data)) setLeaveTypes(Object.fromEntries(j.data.map((x: any) => [x.code, x.name]))); })
+      .then(j => {
+        if (Array.isArray(j?.data)) {
+          setLeaveTypes(Object.fromEntries(j.data.map((x: any) => [x.code, x.name])));
+          setLeaveNeedsDoc(Object.fromEntries(j.data.map((x: any) => [x.code, x.requiresAttachment === true])));
+        }
+      })
       .catch(() => undefined);
   }, []);
 
@@ -54,20 +59,24 @@ export const DisputeDetailPage: React.FC = () => {
   const applyFix = async () => {
     if (!fixReason.trim()) { setError('Phải nhập lý do xử lý'); return; }
     if (fixKind === 'LEAVE' && !fixLeaveType) { setError('Chọn loại nghỉ cụ thể'); return; }
-    if (fixKind === 'TIME_FIX' && !fixIn && !fixOut && !fixSymbol.trim()) {
-      setError('Nhập giờ vào/ra cần duyệt, hoặc chọn ký hiệu công');
+    // Sửa giờ: bắt buộc đủ cả giờ vào và giờ ra — đây là căn cứ duy nhất để tính công ngày đó.
+    if (fixKind === 'TIME_FIX' && (!fixIn || !fixOut)) {
+      setError('Nhập đủ cả giờ vào và giờ ra — công ngày đó tính theo cặp giờ này');
       return;
     }
     // "HH:mm" so sánh chuỗi là đủ; backend vẫn kiểm tra lại.
     if (fixKind === 'TIME_FIX' && fixIn && fixOut && fixOut <= fixIn) { setError('Giờ ra phải sau giờ vào'); return; }
+    // Loại nghỉ yêu cầu giấy tờ: khiếu nại chưa có giấy tờ thì không duyệt thành nghỉ được.
+    if (fixKind === 'LEAVE' && leaveNeedsDoc[fixLeaveType] && !(data?.attachments || []).length) {
+      setError(`Loại nghỉ ${leaveTypes[fixLeaveType] || fixLeaveType} bắt buộc có giấy tờ đính kèm — khiếu nại này chưa có giấy tờ nên chưa duyệt được`);
+      return;
+    }
     await post({
       action: 'FIX',
       reason: fixReason.trim(),
       requestedKind: fixKind,
       ...(fixKind === 'LEAVE' ? { requestedLeaveType: fixLeaveType } : {}),
-      ...(fixKind === 'TIME_FIX' && fixSymbol.trim() ? { symbol: fixSymbol.trim() } : {}),
-      ...(fixKind === 'TIME_FIX' && fixIn ? { requestedCheckIn: fixIn } : {}),
-      ...(fixKind === 'TIME_FIX' && fixOut ? { requestedCheckOut: fixOut } : {}),
+      ...(fixKind === 'TIME_FIX' ? { requestedCheckIn: fixIn, requestedCheckOut: fixOut } : {}),
     }, fixKind === 'TIME_FIX'
       ? 'Đã duyệt — giờ được ghi vào bảng công, ngày hôm đó đã tính lại công'
       : fixKind === 'WFH'
@@ -136,6 +145,34 @@ export const DisputeDetailPage: React.FC = () => {
                 {r.reason ? `: ${r.reason}` : ''}
               </div>
             ))}
+            {(data?.attachments || []).length > 0 ? (
+              <div className="mt-2 space-y-1">
+                <div className="text-[11px] font-semibold text-ink-muted">Giấy tờ nhân viên gửi kèm</div>
+                {data.attachments.map((a: any) => (
+                  <a
+                    key={a.id}
+                    href={a.downloadUrl}
+                    onClick={async (e) => {
+                      // Tải kèm token qua fetch rồi mở blob — thẻ <a> thuần không gửi header Authorization.
+                      e.preventDefault();
+                      const res = await fetch(a.downloadUrl, { headers: headers() });
+                      if (!res.ok) { setError('Không tải được giấy tờ đính kèm'); return; }
+                      const blob = await res.blob();
+                      window.open(URL.createObjectURL(blob), '_blank');
+                    }}
+                    className="block text-[11px] text-accent underline"
+                  >
+                    📎 {a.fileName} — {Math.max(1, Math.round((a.sizeBytes || 0) / 1024))} KB
+                  </a>
+                ))}
+              </div>
+            ) : (
+              data?.requestedKind === 'LEAVE' && leaveNeedsDoc[data?.requestedLeaveType] && (
+                <div className="mt-2 text-[11px] text-rose-600">
+                  ⚠ Loại nghỉ {data?.requestedLeaveTypeName || data?.requestedLeaveType} bắt buộc có giấy tờ — khiếu nại này chưa có, chưa duyệt thành nghỉ được.
+                </div>
+              )
+            )}
           </div>
         </div>
         <div className="bg-surface border border-line rounded-xl p-4">
@@ -185,22 +222,32 @@ export const DisputeDetailPage: React.FC = () => {
             <>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Giờ vào</span>
-              <input type="time" value={fixIn} onChange={(e) => setFixIn(e.target.value)}
+              <span className="block text-ink-muted mb-1">Giờ vào <span className="text-rose-500">*</span></span>
+              <input type="time" required value={fixIn} onChange={(e) => setFixIn(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink" />
             </label>
             <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Giờ ra</span>
-              <input type="time" value={fixOut} onChange={(e) => setFixOut(e.target.value)}
+              <span className="block text-ink-muted mb-1">Giờ ra <span className="text-rose-500">*</span></span>
+              <input type="time" required value={fixOut} onChange={(e) => setFixOut(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink" />
             </label>
           </div>
+          <p className="text-[11px] text-ink-muted">
+            Bắt buộc đủ cả hai. Số công ngày đó tự tính theo số giờ ca yêu cầu (đủ ca = 1.00, đủ nửa ca = 0.50),
+            không nhập tay ký hiệu — muốn thành nghỉ/WFH thì chọn đúng chế độ ở trên.
+          </p>
             </>
           ) : (
             <p className="text-[11px] text-ink-muted">
               {fixKind === 'WFH'
                 ? 'Duyệt sẽ tạo đơn WFH đã duyệt cho ngày này — không cần giờ vào/ra.'
                 : `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" đã duyệt và trừ 1 ngày quỹ phép.`}
+              {fixKind === 'LEAVE' && leaveNeedsDoc[fixLeaveType] && (
+                <span className="block text-rose-600 mt-1">
+                  ⚠ Loại nghỉ này bắt buộc có giấy tờ đính kèm
+                  {(data?.attachments || []).length ? ' — đã có giấy tờ nhân viên gửi kèm.' : ' — khiếu nại này chưa có giấy tờ, chưa duyệt được.'}
+                </span>
+              )}
             </p>
           )}
           <div className="grid sm:grid-cols-2 gap-3">
@@ -208,12 +255,6 @@ export const DisputeDetailPage: React.FC = () => {
               <span className="block text-ink-muted mb-1">Lý do xử lý <span className="text-rose-500">*</span></span>
               <input value={fixReason} onChange={(e) => setFixReason(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 text-xs text-ink" />
-            </label>
-            <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Ký hiệu công (bỏ trống = tự tính theo giờ)</span>
-              <input value={fixSymbol} onChange={(e) => setFixSymbol(e.target.value)} placeholder="1.00 / 0.50 / R / AL"
-                disabled={fixKind !== 'TIME_FIX'}
-                className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink" />
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
