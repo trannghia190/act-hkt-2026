@@ -262,7 +262,9 @@ export const MyTimesheetPage: React.FC = () => {
               ? 'bg-amber-50 border-amber-300 text-amber-900'
               : data.periodStatus === 'EXPIRED'
               ? 'bg-zinc-50 border-zinc-300 text-zinc-800'
-              : 'bg-rose-50 border-rose-300 text-rose-900'
+              : data.periodStatus === 'LOCKED'
+              ? 'bg-rose-50 border-rose-300 text-rose-900'
+              : 'bg-amber-50 border-amber-300 text-amber-900'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -273,7 +275,9 @@ export const MyTimesheetPage: React.FC = () => {
                 ? '⏳'
                 : data.periodStatus === 'EXPIRED'
                 ? '⏰'
-                : '🔒'}
+                : data.periodStatus === 'LOCKED'
+                ? '🔒'
+                : '📝'}
             </span>
             <div>
               <span className="font-bold">
@@ -283,7 +287,9 @@ export const MyTimesheetPage: React.FC = () => {
                   ? 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)'
                   : data.periodStatus === 'EXPIRED'
                   ? 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)'
-                  : 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)'}
+                  : data.periodStatus === 'LOCKED'
+                  ? 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)'
+                  : 'BẢNG CÔNG ĐANG TẠM TÍNH — CHƯA CÔNG BỐ'}
               </span>
               <p className="text-[11px] opacity-90 mt-0.5">
                 {data.periodStatus === 'DISPUTABLE'
@@ -292,7 +298,9 @@ export const MyTimesheetPage: React.FC = () => {
                   ? `Số liệu đang tạm tính. HR sẽ công bố chính thức vào ngày ${data.publishDay} hàng tháng, lúc đó nút khiếu nại mới mở.`
                   : data.periodStatus === 'EXPIRED'
                   ? 'Đã qua thời hạn 2 ngày kể từ khi công bố. Nút khiếu nại đã bị khóa tự động theo quy chế.'
-                  : 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.'}
+                  : data.periodStatus === 'LOCKED'
+                  ? 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.'
+                  : `Số liệu đang tạm tính, HR chưa công bố chính thức. Nút khiếu nại sẽ mở khi HR công bố (ngày ${data.publishDay} hàng tháng).`}
               </p>
             </div>
           </div>
