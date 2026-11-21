@@ -321,7 +321,7 @@ erDiagram
 * `GET /timesheets?month=YYYY-MM` — 53 cột, đọc DB (log + đơn duyệt + ngày lễ + ô sửa DB), trả `status` từ `timesheets`.
 * `POST /timesheets/cell`, `/timesheets/bulk` — ghi `timesheet_cells` + `timesheet_audit_logs`; bắt buộc lý do; chặn khi khoá.
 * `POST /timesheets/publish`, `/timesheets/lock` — lưu `timesheets`; lock đếm pending từ `timesheet_disputes`.
-* `POST /disputes` — nhân viên tạo khiếu nại `{workDate, reason}` → `PENDING`, `deadline = now + 2 ngày`.
+* `POST /disputes` — nhân viên tạo khiếu nại `{workDate, reason}` → `PENDING`, `deadline = now + 2 ngày`. **Chỉ khi kỳ của `workDate` đã công bố (`status=published`) và còn trong `dispute_deadline`**; chưa công bố/quá hạn → 400.
 * `GET /disputes?status=` — HR xem tất cả, quản lý xem cấp dưới, nhân viên chỉ xem của mình; **sắp theo hạn tăng dần**; tự chuyển `EXPIRED` khi quá hạn.
 * `GET /disputes/{id}` — chi tiết 3 nguồn **dữ liệu thật**: `log` (attendance_logs: check-in/out, status) · `relatedRequests` (đơn từ phủ ngày khiếu nại) · `currentCell` (ô timesheet_cells HR đang sửa) + `ruleHint` tính theo log.
 * `POST /disputes/bulk-resolve` `{ids[], action, reason, symbol?}` — xử lý hàng loạt cùng action; trả `{resolved, skipped[{id,message}]}`, bỏ qua đơn đã đóng/quá hạn/không quyền.
