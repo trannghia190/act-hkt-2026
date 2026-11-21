@@ -1,390 +1,544 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 
-export interface HRSummaryRecord {
-  code: string;
+interface HRRecord {
+  stt: number;
   fullName: string;
-  department: string;
+  employeeCode: string;
   jobTitle: string;
-  avgOkrProgress: number; // percentage
-  assessmentScore: number; // 1-5
-  bonusFactor: number; // e.g. 1.5x, 1.2x, 1.0x, 0.8x, 0.0x
-  hrStatus: 'COMPLETED' | 'IN_REVIEW';
+  seniority: string;
+  newJoiner?: boolean;
+  monthsWorked?: number | null;
+  seniorityNote?: string | null;
+  department: string;
+  directManagerName: string;
+  selfBusinessScore?: number | null;
+  selfPeopleScore?: number | null;
+  businessScore?: number | null;
+  peopleScore?: number | null;
+  averageScore?: number | null;
+  scoreSource?: 'MANAGER' | 'SELF' | null;
+  status: string;
+  note?: string | null;
+  reviewId?: string | null;
+  joinedDate?: string | null;
+  managerComment?: string | null;
 }
 
-const INITIAL_RECORDS: HRSummaryRecord[] = [
-  {
-    code: 'ACT0001',
-    fullName: 'Trịnh Văn Quản Trị',
-    department: 'Ban Giám Đốc',
-    jobTitle: 'Tổng Giám Đốc',
-    avgOkrProgress: 95.5,
-    assessmentScore: 4.8,
-    bonusFactor: 2.0,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0012',
-    fullName: 'Lê Thị Thu Hà',
-    department: 'Phòng Nhân Sự',
-    jobTitle: 'Trưởng Phòng Nhân Sự',
-    avgOkrProgress: 92.0,
-    assessmentScore: 4.5,
-    bonusFactor: 1.5,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0045',
-    fullName: 'Phạm Minh Tuấn',
-    department: 'Trung tâm Công nghệ',
-    jobTitle: 'Engineering Manager (Sirius)',
-    avgOkrProgress: 91.2,
-    assessmentScore: 4.5,
-    bonusFactor: 1.5,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0142',
-    fullName: 'Nguyễn Văn Minh',
-    department: 'Trung tâm Công nghệ',
-    jobTitle: 'Senior Backend Engineer',
-    avgOkrProgress: 88.5,
-    assessmentScore: 4.2,
-    bonusFactor: 1.4,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0055',
-    fullName: 'Hoàng Anh Dũng',
-    department: 'Trung tâm Công nghệ',
-    jobTitle: 'AI Lead (Optimus)',
-    avgOkrProgress: 84.0,
-    assessmentScore: 3.8,
-    bonusFactor: 1.0,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0089',
-    fullName: 'Trần Thị Thu Thảo',
-    department: 'Khối Kinh Doanh & Tiếp Thị',
-    jobTitle: 'Product Specialist',
-    avgOkrProgress: 79.5,
-    assessmentScore: 3.6,
-    bonusFactor: 1.0,
-    hrStatus: 'COMPLETED'
-  },
-  {
-    code: 'ACT0199',
-    fullName: 'Hoàng Quốc Việt',
-    department: 'Trung tâm Công nghệ',
-    jobTitle: 'Junior Developer',
-    avgOkrProgress: 65.0,
-    assessmentScore: 2.9,
-    bonusFactor: 0.7,
-    hrStatus: 'IN_REVIEW'
-  }
-];
+interface RiskRow {
+  reviewId: string;
+  employeeCode: string;
+  fullName: string;
+  warnings: { code: string; level: string; message: string }[];
+}
+
+interface DepartmentStat {
+  total: number;
+  submitted: number;
+  averageScore?: number | null;
+}
+
+interface SummaryData {
+  year: number;
+  cycleId?: string | null;
+  cycleStatus?: string | null;
+  seniorityCutoff?: string;
+  directorReviewedAt?: string | null;
+  directorReviewComment?: string | null;
+  directorReviewPending?: boolean;
+  canDirectorReview?: boolean;
+  pendingNoOkr?: number;
+  pendingManagerAssessments?: number;
+  records: HRRecord[];
+  summaryText: string;
+  summaryParts?: { widget: string; text: string }[];
+  risks: RiskRow[];
+  widgets: {
+    totalEmployees: number;
+    noOkr?: number;
+    submitted: number;
+    managerAssessed: number;
+    notSubmitted: { employeeCode: string; fullName: string; department: string }[];
+    byDepartment: Record<string, DepartmentStat>;
+    distribution: Record<string, number>;
+    companyAverage: number | null;
+  };
+}
+
+const statusLabel = (status: string) => {
+  if (status === 'DA_HOAN_TAT') return 'Đã chấm xong';
+  if (status === 'CHO_QL_CHAM') return 'Chờ QL chấm';
+  if (status === 'CHUA_CO_OKR') return 'Chưa có OKR được duyệt';
+  return 'Chưa tự đánh giá';
+};
+
+const WIDGET_ANCHOR: Record<string, string> = {
+  progress: '#widget-progress',
+  notSubmitted: '#widget-not-submitted',
+  distribution: '#widget-distribution',
+  byDepartment: '#widget-avg-by-team',
+  risks: '#risk-list',
+};
+
+const statusVariant = (status: string) => status === 'DA_HOAN_TAT' ? 'ok' : status === 'CHO_QL_CHAM' ? 'warn' : 'gray';
 
 export const OKRReportsPage: React.FC = () => {
-  const [records, setRecords] = useState<HRSummaryRecord[]>(INITIAL_RECORDS);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [data, setData] = useState<SummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [locking, setLocking] = useState(false);
+  const [directorOpen, setDirectorOpen] = useState(false);
+  const [directorComment, setDirectorComment] = useState('');
+  const [savingDirector, setSavingDirector] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
+  const [lockReason, setLockReason] = useState('');
 
-  // Add / Edit Modal
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newRec, setNewRec] = useState<HRSummaryRecord>({
-    code: '',
-    fullName: '',
-    department: 'Trung tâm Công nghệ',
-    jobTitle: 'Software Engineer',
-    avgOkrProgress: 85.0,
-    assessmentScore: 4.0,
-    bonusFactor: 1.0,
-    hrStatus: 'IN_REVIEW'
-  });
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const showToast = (msg: string) => {
-    setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 3000);
+  // Mốc tính thời gian công tác (doc: "tới 31/12/2026 hoặc 2027 tùy chỉnh"); rỗng = theo cấu hình chu kỳ
+  const [cutoff, setCutoff] = useState('');
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const query = (extra = '') => {
+    const params = new URLSearchParams();
+    if (data?.year) params.set('year', String(data.year));
+    if (cutoff) params.set('cutoff', cutoff);
+    const q = params.toString();
+    return q ? `?${q}${extra}` : extra ? `?${extra.slice(1)}` : '';
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Mã NV', 'Họ và Tên', 'Nhóm', 'Vị Trí', 'OKR TB Năm (%)', 'Điểm Đánh Giá', 'Hệ Số Thưởng', 'Trạng Thái HR'];
-    const rows = records.map(r => [
-      r.code,
-      `"${r.fullName}"`,
-      `"${r.department}"`,
-      `"${r.jobTitle}"`,
-      r.avgOkrProgress,
-      r.assessmentScore,
-      `${r.bonusFactor}x`,
-      r.hrStatus
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const link = document.createElement('a');
-    link.href = encodeURI(csvContent);
-    link.download = `OKR_HR_Report_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    showToast('Đã xuất thành công file báo cáo OKR & điểm đánh giá (CSV)');
-  };
-
-  const handleSendToAccounting = () => {
-    if (confirm('Chuyển toàn bộ danh sách hệ số thưởng và kết quả điểm sang bộ phận Kế toán / C&B để tính thưởng Tết?')) {
-      showToast('Đã gửi dữ liệu điểm OKR sang cổng thông tin Kế toán & C&B thành công');
+  const saveNote = async (r: HRRecord) => {
+    if (!r.reviewId) return;
+    const note = noteDraft[r.employeeCode] ?? r.note ?? '';
+    if (note === (r.note ?? '')) return;
+    try {
+      const res = await fetch(`/api/v1/okr/admin/reviews/${r.reviewId}/note`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không lưu được Note');
+      setData((prev) => prev && { ...prev, records: prev.records.map((x) => (x.employeeCode === r.employeeCode ? { ...x, note } : x)) });
+      showToast(`Đã lưu Note cho ${r.fullName}`);
+    } catch (err: any) {
+      showToast(err.message || 'Không lưu được Note');
     }
   };
 
-  const handleAddRecord = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRec.code.trim() || !newRec.fullName.trim()) return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/okr/admin/hr-summary${cutoff ? `?cutoff=${cutoff}` : ''}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không tải được báo cáo');
+      setData(json.data);
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được báo cáo OKR');
+    } finally {
+      setLoading(false);
+    }
+  }, [cutoff]);
 
-    setRecords([...records, { ...newRec, code: newRec.code.trim().toUpperCase() }]);
-    setIsAddOpen(false);
-    showToast(`Đã thêm nhân sự ${newRec.fullName} vào bảng báo cáo`);
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleDeleteRecord = (code: string, name: string) => {
-    if (confirm(`Xóa bản ghi của "${name}" khỏi báo cáo?`)) {
-      setRecords(records.filter(r => r.code !== code));
-      showToast(`Đã xóa bản ghi ${code}`);
+  const exportExcel = async () => {
+    try {
+      const res = await fetch(`/api/v1/okr/admin/export-excel-file${query()}`);
+      if (!res.ok) throw new Error('Không xuất được file Excel');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bao_Cao_Tong_Hop_OKR_${data?.year ?? ''}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Đã xuất file Excel báo cáo OKR');
+    } catch (err: any) {
+      showToast(err.message || 'Không xuất được file Excel');
     }
   };
 
-  const filteredRecords = records.filter(r => {
-    if (statusFilter !== 'ALL' && r.hrStatus !== statusFilter) return false;
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      const match =
-        r.fullName.toLowerCase().includes(q) ||
-        r.code.toLowerCase().includes(q) ||
-        r.department.toLowerCase().includes(q) ||
-        r.jobTitle.toLowerCase().includes(q);
-      if (!match) return false;
+  const lockBlockers = (() => {
+    const list: string[] = [];
+    if (data?.pendingManagerAssessments) list.push(`${data.pendingManagerAssessments} hồ sơ chưa được Quản lý chấm xong`);
+    if (data?.pendingNoOkr) list.push(`${data.pendingNoOkr} nhân sự active chưa có OKR`);
+    if (data?.directorReviewPending) list.push('chưa có đánh giá chung của Giám đốc');
+    return list;
+  })();
+
+  const openLock = () => {
+    if (!data?.cycleId) { showToast('Không tìm thấy chu kỳ của báo cáo'); return; }
+    setLockReason('');
+    setLockOpen(true);
+  };
+
+  const submitLock = async () => {
+    if (!data?.cycleId) return;
+    if (lockBlockers.length > 0 && !lockReason.trim()) {
+      showToast('Còn điều kiện chưa đạt — bắt buộc nhập lý do chốt sớm');
+      return;
+    }
+    setLocking(true);
+    try {
+      const res = await fetch(`/api/v1/okr/cycles/${data.cycleId}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: lockBlockers.length > 0, reason: lockReason.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không khoá được chu kỳ');
+      showToast(`Đã chốt & khoá chu kỳ OKR ${data.year}`);
+      setLockOpen(false);
+      load();
+    } catch (err: any) {
+      showToast(err.message || 'Không khoá được chu kỳ');
+    } finally {
+      setLocking(false);
+    }
+  };
+
+  const submitDirectorReview = async () => {
+    if (!data?.cycleId) return;
+    if (!directorComment.trim()) { showToast('Nhận xét đánh giá chung là bắt buộc'); return; }
+    setSavingDirector(true);
+    try {
+      const res = await fetch(`/api/v1/okr/cycles/${data.cycleId}/director-review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: directorComment.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không lưu được đánh giá của Giám đốc');
+      showToast('Đã ghi nhận đánh giá chung của Giám đốc');
+      setDirectorOpen(false);
+      setDirectorComment('');
+      load();
+    } catch (err: any) {
+      showToast(err.message || 'Không lưu được đánh giá của Giám đốc');
+    } finally {
+      setSavingDirector(false);
+    }
+  };
+
+  const records = data?.records || [];
+  const filtered = records.filter((r) => {
+    if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!`${r.fullName} ${r.employeeCode} ${r.department} ${r.jobTitle}`.toLowerCase().includes(q)) return false;
     }
     return true;
   });
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
-      {successToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <span>✓</span>
-          <span>{successToast}</span>
-        </div>
-      )}
+    <div className="space-y-5 pb-12">
+      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR & Điểm Đánh Giá (9 Trường Dữ Liệu)</h1>
-          </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Bảng dữ liệu chuẩn phục vụ Hội Đồng Lương Thưởng: 9 trường thông tin cốt lõi, hệ số thưởng hiệu suất và xuất file Excel
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR — 9 Trường (S25)</h1>
+          <p className="text-xs text-ink-muted mt-1">Bảng tổng hợp HR · thời gian công tác tự tính · 4 widget · tóm tắt C15 · rủi ro · export Excel.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => setIsAddOpen(true)}>
-            + Thêm Bản Ghi
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            📥 Xuất File Báo Cáo Excel (CSV)
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleSendToAccounting}>
-            Gửi Báo Cáo Sang Kế Toán / C&amp;B
-          </Button>
+          <label className="text-[11px] text-ink-muted flex items-center gap-1.5" title="Thời gian công tác tính từ ngày vào làm tới mốc này. Để trống = theo cấu hình chu kỳ (mặc định 31/12).">
+            Tính công tác tới
+            <input
+              type="date"
+              value={cutoff || data?.seniorityCutoff || ''}
+              onChange={(e) => setCutoff(e.target.value)}
+              className="border border-line rounded-lg p-1.5 text-xs bg-surface text-ink"
+            />
+          </label>
+          {data?.canDirectorReview && data?.directorReviewPending && data?.cycleStatus !== 'closed' && (
+            <Button size="sm" variant="outline" onClick={() => setDirectorOpen(true)}>🧑‍⚖️ Giám đốc duyệt</Button>
+          )}
+          <Button size="sm" variant="outline" onClick={exportExcel}>📥 Xuất Excel</Button>
+          {data?.cycleStatus !== 'closed' && <Button size="sm" variant="outline" onClick={openLock} disabled={locking}>{locking ? 'Đang khoá...' : '🔒 Chốt & khoá chu kỳ'}</Button>}
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface p-3 rounded-xl border border-line shadow-2xs">
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-          <input
-            type="text"
-            placeholder="Tìm theo tên, mã NV, phòng ban, chức vụ..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-accent w-full sm:w-64"
-          />
+      {loading ? (
+        <Card><div className="p-8 text-center text-xs text-ink-muted">Đang tải báo cáo...</div></Card>
+      ) : !data ? (
+        <Card><div className="p-8 text-center text-xs text-ink-muted">Không có dữ liệu báo cáo.</div></Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card className="p-4"><div className="text-[11px] text-ink-muted">Tổng nhân sự{data.widgets.noOkr ? ` (${data.widgets.noOkr} chưa có OKR)` : ''}</div><div className="text-2xl font-black text-ink">{data.widgets.totalEmployees}</div></Card>
+            <Card className="p-4"><div className="text-[11px] text-ink-muted">Đã nộp / tự đánh giá</div><div className="text-2xl font-black text-accent">{data.widgets.submitted}/{data.widgets.totalEmployees}</div></Card>
+            <Card className="p-4"><div className="text-[11px] text-ink-muted">Quản lý đã chấm</div><div className="text-2xl font-black text-ink">{data.widgets.managerAssessed}</div></Card>
+            <Card className="p-4"><div className="text-[11px] text-ink-muted">Điểm TB toàn công ty</div><div className="text-2xl font-black text-accent">{data.widgets.companyAverage ?? '—'}</div></Card>
+          </div>
 
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
-          >
-            <option value="ALL">Tất cả trạng thái HR</option>
-            <option value="COMPLETED">Đã Khóa Sổ</option>
-            <option value="IN_REVIEW">Đang Rà Soát</option>
-          </select>
-        </div>
-
-        <div className="text-xs text-ink-muted">
-          Tổng cộng: <strong className="text-ink">{filteredRecords.length}</strong> nhân sự
-        </div>
-      </div>
-
-      {/* 9-Field Table */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-            <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-3 px-4">1. Mã NV</th>
-                <th className="py-3 px-4">2. Họ và Tên</th>
-                <th className="py-3 px-4">3. Phòng Ban / Khối</th>
-                <th className="py-3 px-4">4. Vị Trí Chức Danh</th>
-                <th className="py-3 px-4 text-center">5. OKR TB Năm</th>
-                <th className="py-3 px-4 text-center">6. Điểm Cuối Năm</th>
-                <th className="py-3 px-4 text-center font-bold text-accent">8. Hệ Số Thưởng</th>
-                <th className="py-3 px-4 text-center">9. Trạng Thái HR</th>
-                <th className="py-3 px-4 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-8 text-center text-ink-muted">
-                    Không có bản ghi nào phù hợp.
-                  </td>
-                </tr>
-              ) : (
-                filteredRecords.map(rec => (
-                  <tr key={rec.code} className="hover:bg-canvas/40 transition-colors">
-                    <td className="py-3 px-4 font-mono font-medium text-ink">{rec.code}</td>
-                    <td className="py-3 px-4 font-semibold text-ink">{rec.fullName}</td>
-                    <td className="py-3 px-4 text-ink-secondary">{rec.department}</td>
-                    <td className="py-3 px-4 text-ink-secondary">{rec.jobTitle}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-ink">
-                      {rec.avgOkrProgress.toFixed(1)}%
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-ink">
-                      {rec.assessmentScore.toFixed(1)} / 5.0
-                    </td>
-                    <td className="py-3 px-4 text-center font-extrabold text-accent text-sm">
-                      {rec.bonusFactor.toFixed(1)}x
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {rec.hrStatus === 'COMPLETED' ? (
-                        <Badge variant="ok">Đã Khóa Sổ</Badge>
-                      ) : (
-                        <Badge variant="warn">Đang Rà Soát</Badge>
+          <Card className="space-y-2 border-accent/40">
+            <div className="text-xs font-bold text-accent-dark">📊 Tóm tắt báo cáo (C15)</div>
+            <div className="text-xs text-ink-secondary leading-relaxed space-y-0.5">
+              {(data.summaryParts && data.summaryParts.length > 0)
+                ? data.summaryParts.map((p, i) => (
+                    <div key={i}>
+                      {p.text}{' '}
+                      {WIDGET_ANCHOR[p.widget] && (
+                        <a href={WIDGET_ANCHOR[p.widget]} className="text-accent hover:underline text-[11px]">(xem nguồn)</a>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleDeleteRecord(rec.code, rec.fullName)}
-                        className="p-1 text-xs text-ink-muted hover:text-status-danger rounded"
-                        title="Xóa bản ghi"
-                      >
-                        🗑️
-                      </button>
-                    </td>
+                    </div>
+                  ))
+                : data.summaryText}
+            </div>
+            <div className="flex flex-wrap gap-3 text-[11px] font-semibold">
+              <a href="#widget-progress" className="text-accent hover:underline">→ Tiến độ nộp theo nhóm</a>
+              <a href="#widget-distribution" className="text-accent hover:underline">→ Phân bố điểm</a>
+              <a href="#widget-avg-by-team" className="text-accent hover:underline">→ Điểm TB theo nhóm</a>
+              <a href="#widget-not-submitted" className="text-accent hover:underline">→ Danh sách chưa nộp</a>
+              <a href="#report-table" className="text-accent hover:underline">→ Bảng 9 trường</a>
+              <a href="#risk-list" className="text-accent hover:underline">→ Danh sách rủi ro ({data.risks.length})</a>
+            </div>
+          </Card>
+
+          <Card className="space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-bold text-ink">Bước 4 — Giám đốc đánh giá chung</div>
+                <div className="text-[11px] text-ink-muted">HR chỉ nên chốt &amp; khoá sau khi bước này hoàn tất.</div>
+              </div>
+              <Badge variant={data.directorReviewPending ? 'warn' : 'ok'}>
+                {data.directorReviewPending ? 'Chờ Giám đốc duyệt' : 'Đã duyệt'}
+              </Badge>
+            </div>
+            {data.directorReviewedAt ? (
+              <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink-secondary space-y-1">
+                <div>Thời điểm: <b>{new Date(data.directorReviewedAt).toLocaleString('vi-VN')}</b></div>
+                {data.directorReviewComment && <div>Nhận xét: {data.directorReviewComment}</div>}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800">
+                Chưa có đánh giá chung của Giám đốc.
+                {data.canDirectorReview ? ' Bấm “Giám đốc duyệt” ở góc trên để hoàn tất.' : ' Tài khoản Giám đốc (ADMIN) cần thực hiện bước này.'}
+              </div>
+            )}
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="space-y-2">
+              <div id="widget-progress" className="text-sm font-bold text-ink border-b border-line pb-2">Tiến độ nộp theo nhóm</div>
+              {Object.entries(data.widgets.byDepartment).length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có dữ liệu.</div> : Object.entries(data.widgets.byDepartment).map(([dept, stat]) => (
+                <div key={dept} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-ink-secondary">{dept}</span>
+                    <span className="text-ink-muted">{stat.submitted}/{stat.total} đã nộp</span>
+                  </div>
+                  <div className="h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${stat.total ? (stat.submitted * 100 / stat.total) : 0}%` }} /></div>
+                </div>
+              ))}
+            </Card>
+
+            <Card className="space-y-2">
+              <div id="widget-distribution" className="text-sm font-bold text-ink border-b border-line pb-2">Phân bố điểm TB (bản đã chốt)</div>
+              {[1, 2, 3, 4, 5].map((score) => {
+                const count = data.widgets.distribution[String(score)] || 0;
+                const max = Math.max(1, ...Object.values(data.widgets.distribution));
+                return (
+                  <div key={score} className="flex items-center gap-2">
+                    <span className="w-5 text-xs font-bold text-ink">{score}</span>
+                    <div className="flex-1 h-2 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${(count * 100) / max}%` }} /></div>
+                    <span className="w-6 text-right text-[11px] text-ink-muted">{count}</span>
+                  </div>
+                );
+              })}
+            </Card>
+          </div>
+
+          {/* Widget 4 — Điểm TB theo nhóm (chỉ tính bản đã chốt) */}
+          <Card className="space-y-2">
+            <div id="widget-avg-by-team" className="text-sm font-bold text-ink border-b border-line pb-2">Điểm TB theo nhóm (bản đã chốt)</div>
+            {Object.entries(data.widgets.byDepartment).length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có dữ liệu.</div> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {Object.entries(data.widgets.byDepartment)
+                  .sort(([, a], [, b]) => (b.averageScore ?? -1) - (a.averageScore ?? -1))
+                  .map(([dept, stat]) => (
+                    <div key={dept} className="rounded-lg border border-line bg-canvas p-2.5 flex items-center justify-between">
+                      <span className="text-xs text-ink-secondary">{dept}</span>
+                      <span className={`text-lg font-black ${stat.averageScore == null ? 'text-ink-muted' : 'text-accent'}`}>
+                        {stat.averageScore ?? '—'}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {data.widgets.companyAverage != null && (
+              <div className="text-[11px] text-ink-muted">TB toàn công ty: <b className="text-ink">{data.widgets.companyAverage}</b></div>
+            )}
+          </Card>
+
+          {data.widgets.notSubmitted.length > 0 && (
+            <Card className="space-y-2">
+              <div id="widget-not-submitted" className="text-sm font-bold text-ink border-b border-line pb-2">Chưa tự đánh giá ({data.widgets.notSubmitted.length})</div>
+              <div className="flex flex-wrap gap-1.5">
+                {data.widgets.notSubmitted.map((e) => (
+                  <span key={e.employeeCode} className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">{e.fullName} ({e.employeeCode})</span>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên, mã NV, phòng ban..." className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent w-full sm:w-64" />
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink">
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="CHUA_CO_OKR">Chưa có OKR được duyệt</option>
+                <option value="CHUA_TU_DANH_GIA">Chưa tự đánh giá</option>
+                <option value="CHO_QL_CHAM">Chờ QL chấm</option>
+                <option value="DA_HOAN_TAT">Đã chấm xong</option>
+              </select>
+            </div>
+            <div className="text-xs text-ink-muted">{filtered.length} nhân sự</div>
+          </div>
+
+          <div id="report-table" className="bg-surface rounded-xl border border-line overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="bg-canvas border-b border-line text-ink-secondary">
+                    <th className="py-3 px-3">STT</th>
+                    <th className="py-3 px-3">Họ và tên</th>
+                    <th className="py-3 px-3">Mã NV</th>
+                    <th className="py-3 px-3">Vị trí</th>
+                    <th className="py-3 px-3">Thời gian công tác</th>
+                    <th className="py-3 px-3">Phòng ban</th>
+                    <th className="py-3 px-3">Quản lý</th>
+                    <th className="py-3 px-3 text-center" title="Điểm chính thức do Quản lý chấm">Điểm công việc</th>
+                    <th className="py-3 px-3 text-center" title="Điểm chính thức do Quản lý chấm">Điểm con người</th>
+                    <th className="py-3 px-3 text-center">Điểm TB</th>
+                    <th className="py-3 px-3 min-w-[180px]">Note</th>
+                    <th className="py-3 px-3 text-center">Trạng thái</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add Record Modal */}
-      {isAddOpen && (
-        <Modal
-          isOpen={true}
-          onClose={() => setIsAddOpen(false)}
-          title="Thêm Bản Ghi Điểm &amp; Thưởng OKR"
-          maxWidth="md"
-        >
-          <form onSubmit={handleAddRecord} className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-medium text-ink mb-1">Mã Nhân Viên *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: ACT0220"
-                  value={newRec.code}
-                  onChange={e => setNewRec({ ...newRec, code: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono uppercase"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-ink mb-1">Họ Và Tên *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Nguyễn Thành Đạt"
-                  value={newRec.fullName}
-                  onChange={e => setNewRec({ ...newRec, fullName: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-                />
-              </div>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={12} className="py-8 text-center text-ink-muted">Không có dữ liệu phù hợp.</td></tr>
+                  ) : filtered.map((r) => (
+                    <tr key={r.employeeCode} className="hover:bg-canvas/40">
+                      <td className="py-2.5 px-3 text-ink-muted">{r.stt}</td>
+                      <td className="py-2.5 px-3 font-semibold text-ink">{r.fullName}</td>
+                      <td className="py-2.5 px-3 font-mono text-ink-secondary">{r.employeeCode}</td>
+                      <td className="py-2.5 px-3 text-ink-secondary">{r.jobTitle || '—'}</td>
+                      <td className="py-2.5 px-3 text-ink-secondary" title={r.seniorityNote || (r.joinedDate ? `Vào làm ${r.joinedDate}` : undefined)}>
+                        <div className="flex items-center gap-1.5">
+                          <span>{r.seniority}</span>
+                          {r.newJoiner && <Badge variant="warn">Mới</Badge>}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-ink-secondary">{r.department || '—'}</td>
+                      <td className="py-2.5 px-3 text-ink-secondary">{r.directManagerName || '—'}</td>
+                      {([['businessScore', 'selfBusinessScore'], ['peopleScore', 'selfPeopleScore']] as const).map(([k, selfK]) => (
+                        <td key={k} className="py-2.5 px-3 text-center">
+                          <div className="font-bold">{r[k] ?? '—'}</div>
+                          {r[selfK] != null && <div className="text-[10px] text-ink-muted">tự chấm {r[selfK]}</div>}
+                        </td>
+                      ))}
+                      <td className="py-2.5 px-3 text-center font-black text-accent">{r.averageScore != null ? r.averageScore.toFixed(1) : '—'}</td>
+                      <td className="py-2.5 px-3">
+                        {r.reviewId && data?.cycleStatus !== 'closed' ? (
+                          <input
+                            value={noteDraft[r.employeeCode] ?? r.note ?? ''}
+                            onChange={(e) => setNoteDraft({ ...noteDraft, [r.employeeCode]: e.target.value })}
+                            onBlur={() => saveNote(r)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            placeholder="Ghi chú HR / Giám đốc…"
+                            title={r.managerComment ? `Nhận xét QL: ${r.managerComment}` : undefined}
+                            className="w-full border border-line rounded-md px-2 py-1 text-xs bg-canvas focus:outline-none focus:border-accent"
+                          />
+                        ) : (
+                          <span className="text-ink-secondary">{r.note || '—'}</span>
+                        )}
+                        {r.managerComment && <div className="text-[10px] text-ink-muted mt-0.5 truncate max-w-[220px]">QL: {r.managerComment}</div>}
+                      </td>
+                      <td className="py-2.5 px-3 text-center"><Badge variant={statusVariant(r.status) as any}>{statusLabel(r.status)}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-medium text-ink mb-1">Phòng Ban / Khối</label>
-                <input
-                  type="text"
-                  required
-                  value={newRec.department}
-                  onChange={e => setNewRec({ ...newRec, department: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-                />
+          <Card className="space-y-2" >
+            <div id="risk-list" className="text-sm font-bold text-ink border-b border-line pb-2">Danh sách OKR rủi ro theo rule ({data.risks.length})</div>
+            {data.risks.length === 0 ? <div className="text-xs text-ink-muted py-2">Không có cảnh báo.</div> : data.risks.map((r) => (
+              <div key={r.reviewId} className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800 space-y-0.5">
+                <div className="font-semibold">{r.fullName} ({r.employeeCode})</div>
+                {r.warnings.map((w, idx) => <div key={idx}>⚠️ {w.message}</div>)}
               </div>
-              <div>
-                <label className="block font-medium text-ink mb-1">Vị Trí Chức Danh</label>
-                <input
-                  type="text"
-                  required
-                  value={newRec.jobTitle}
-                  onChange={e => setNewRec({ ...newRec, jobTitle: e.target.value })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block font-medium text-ink mb-1">OKR TB Năm (%)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  required
-                  value={newRec.avgOkrProgress}
-                  onChange={e => setNewRec({ ...newRec, avgOkrProgress: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-ink mb-1">Hệ Số Thưởng</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  value={newRec.bonusFactor}
-                  onChange={e => setNewRec({ ...newRec, bonusFactor: parseFloat(e.target.value) || 1.0 })}
-                  className="w-full p-2 border border-line rounded-lg bg-surface text-ink font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsAddOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" size="sm" type="submit">
-                Lưu Bản Ghi
-              </Button>
-            </div>
-          </form>
-        </Modal>
+            ))}
+          </Card>
+        </>
       )}
+
+      <Modal isOpen={directorOpen} onClose={() => setDirectorOpen(false)} title="Giám đốc đánh giá chung chu kỳ OKR" maxWidth="md">
+        <div className="space-y-3">
+          <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
+            Bước 4/5 — đánh giá chung toàn công ty. Sau bước này HR mới nên chốt &amp; khoá chu kỳ.
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Nhận xét đánh giá chung <span className="text-danger">*</span></label>
+            <textarea
+              rows={4}
+              value={directorComment}
+              onChange={(e) => setDirectorComment(e.target.value)}
+              placeholder="Ví dụ: Chất lượng mục tiêu đồng đều, cần cải thiện nhóm X..."
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setDirectorOpen(false)}>Huỷ</Button>
+            <Button size="sm" variant="primary" onClick={submitDirectorReview} disabled={savingDirector || !directorComment.trim()}>
+              {savingDirector ? 'Đang lưu...' : 'Xác nhận đánh giá'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={lockOpen} onClose={() => setLockOpen(false)} title="Chốt & khoá chu kỳ OKR" maxWidth="md">
+        <div className="space-y-3">
+          {lockBlockers.length === 0 ? (
+            <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-[11px] text-emerald-800">
+              Đã đủ điều kiện: Quản lý chấm xong, không còn nhân sự chưa có OKR, Giám đốc đã đánh giá chung.
+            </div>
+          ) : (
+            <>
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800 space-y-0.5">
+                <div className="font-semibold">Còn điều kiện chưa đạt:</div>
+                {lockBlockers.map((b, i) => <div key={i}>• {b}</div>)}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">Lý do chốt sớm <span className="text-danger">*</span></label>
+                <textarea
+                  rows={3}
+                  value={lockReason}
+                  onChange={(e) => setLockReason(e.target.value)}
+                  placeholder="Ví dụ: Chốt theo chỉ đạo Ban Giám đốc, các hồ sơ còn lại đã xử lý ngoài hệ thống..."
+                  className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
+                />
+              </div>
+            </>
+          )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => setLockOpen(false)}>Huỷ</Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={submitLock}
+              disabled={locking || (lockBlockers.length > 0 && !lockReason.trim())}
+            >
+              {locking ? 'Đang khoá...' : 'Xác nhận chốt & khoá'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -1,201 +1,1180 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Card } from '../../../components/common/Card';
+import { Badge } from '../../../components/common/Badge';
+import { Button } from '../../../components/common/Button';
+import { Modal } from '../../../components/common/Modal';
 
 type GroupKey = 'BUSINESS' | 'PEOPLE';
 
-interface OkrItem {
+interface OKRItem {
   id: string;
-  group: GroupKey;
+  groupType: GroupKey;
   title: string;
-  targetValue: number;
-  currentValue: number;
-  unit: string;
-  deleted?: boolean;
-  deleteReason?: string;
+  detail?: string;
+  progress: number;
+  weight?: number;
+  deletedAt?: string | null;
+  deleteReason?: string | null;
 }
 
-const STORAGE_KEY = 'pulse_okr_items_v2';
+interface ManagerObjective {
+  id: string;
+  managerCode: string;
+  managerName: string;
+  groupType: GroupKey;
+  title: string;
+  detail: string;
+}
 
-const INITIAL_ITEMS: OkrItem[] = [
-  { id: 'B1', group: 'BUSINESS', title: 'Giảm P99 API latency chấm công xuống dưới 80ms', targetValue: 80, currentValue: 75, unit: 'ms' },
-  { id: 'B2', group: 'BUSINESS', title: 'Hoàn thiện bảng công 53 cột khớp file HR', targetValue: 100, currentValue: 90, unit: '%' },
-  { id: 'P1', group: 'PEOPLE', title: 'Tổ chức 3 buổi tech sharing về AI Face Recognition', targetValue: 3, currentValue: 2, unit: 'buổi' },
-  { id: 'P2', group: 'PEOPLE', title: 'Hoàn thành chứng chỉ AWS Solutions Architect', targetValue: 1, currentValue: 0.5, unit: 'chứng chỉ' },
-];
+interface CheckInRow {
+  itemId: string;
+  title: string;
+  groupType: GroupKey;
+  previousValue: number;
+  newValue: number;
+  progress: number;
+  unit?: string;
+  lastPeriod?: string | null;
+  lastCheckInAt?: string | null;
+  lastNote?: string | null;
+  checkedInThisPeriod?: boolean;
+}
 
-const GROUP_LABEL: Record<GroupKey, string> = {
-  BUSINESS: 'Business — mục tiêu kinh doanh / dự án',
-  PEOPLE: 'People — phát triển con người & đội ngũ',
-};
+interface CheckInData {
+  year: number;
+  period: string;
+  reviewStatus?: string | null;
+  isLocked?: boolean;
+  deadline?: string | null;
+  daysLeft?: number;
+  canCheckIn: boolean;
+  blockReason?: string | null;
+  pendingCount?: number;
+  reminder: boolean;
+  reminderText: string;
+  businessItems: CheckInRow[];
+  peopleItems: CheckInRow[];
+  totalItems: number;
+}
+
+interface CheckInAttachment {
+  id: string;
+  fileName: string;
+  contentType?: string;
+  sizeBytes?: number;
+}
+
+interface CheckInHistoryRow {
+  id: string;
+  batchId: string;
+  period: string;
+  previousValue?: number | null;
+  newValue: number;
+  progressSnapshot: number;
+  note?: string | null;
+  createdAt?: string | null;
+  attachments: CheckInAttachment[];
+}
+
+interface MyOKRData {
+  reviewId: string | null;
+  cycleYear: number;
+  status: 'draft' | 'submitted' | 'locked' | 'reopened' | 'returned';
+  isLocked: boolean;
+  lockReason?: string | null;
+  box4SubmittedAt?: string | null;
+  proposalLocked?: boolean;
+  proposalLockReason?: string | null;
+  scoreSource?: 'MANAGER' | 'SELF' | null;
+  submittedAt?: string | null;
+  managerFeedback?: string | null;
+  box4ProposalNextYear: string;
+  box4ImprovementArea?: string;
+  businessScore?: number | null;
+  peopleScore?: number | null;
+  averageScore?: number | null;
+  items: OKRItem[];
+  deletedItems: OKRItem[];
+}
 
 export const MyOKRPage: React.FC = () => {
-  const { user } = useAuth();
-  const [items, setItems] = useState<OkrItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
-    return INITIAL_ITEMS;
-  });
+  const [data, setData] = useState<MyOKRData | null>(null);
+  const [managerObjectives, setManagerObjectives] = useState<ManagerObjective[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [checkInItem, setCheckInItem] = useState<OkrItem | null>(null);
-  const [checkInValue, setCheckInValue] = useState(0);
-  const [checkInNote, setCheckInNote] = useState('');
-  const [form, setForm] = useState({ group: 'BUSINESS' as GroupKey, title: '', targetValue: 100, unit: '%' });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  // Modal thêm đầu việc
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<{ groupType: GroupKey; title: string; detail: string }>({
+    groupType: 'BUSINESS',
+    title: '',
+    detail: '',
+  });
+
+  // Modal xoá (bắt buộc lý do)
+  const [deleteModalItem, setDeleteModalItem] = useState<OKRItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+
+  // Modal sửa đầu việc
+  const [editModalItem, setEditModalItem] = useState<OKRItem | null>(null);
+  const [editForm, setEditForm] = useState<{ title: string; detail: string }>({ title: '', detail: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Box 4 Proposal state
+  const [proposalText, setProposalText] = useState('');
+  const [improvementText, setImprovementText] = useState('');
+  const [proposalSaving, setProposalSaving] = useState(false);
+
+  // Check-in tiến độ (S22)
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkInData, setCheckInData] = useState<CheckInData | null>(null);
+  const [checkInValues, setCheckInValues] = useState<Record<string, string>>({});
+  const [checkInNote, setCheckInNote] = useState('');
+  const [checkInFiles, setCheckInFiles] = useState<File[]>([]);
+  const [checkInSubmitting, setCheckInSubmitting] = useState(false);
+  const [historyRow, setHistoryRow] = useState<CheckInRow | null>(null);
+  const [historyRows, setHistoryRows] = useState<CheckInHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Hiển thị gợi ý của manager
+  const [showManagerSuggestions] = useState(true);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const activeItems = items.filter((i) => !i.deleted);
+  const loadData = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    Promise.all([
+      fetch('/api/v1/okr/my-okr').then((r) => r.json()),
+      fetch('/api/v1/okr/manager-objectives').then((r) => r.json()),
+    ])
+      .then(([okrRes, mgrRes]) => {
+        if (okrRes?.data) {
+          setData(okrRes.data);
+          setProposalText(okrRes.data.box4ProposalNextYear || '');
+          setImprovementText(okrRes.data.box4ImprovementArea || '');
+        }
+        if (mgrRes?.data) {
+          setManagerObjectives(mgrRes.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Lỗi khi tải dữ liệu OKR:', err);
+        showToast('Không thể tải dữ liệu OKR từ máy chủ');
+      })
+      .finally(() => { if (!silent) setLoading(false); });
+  }, []);
 
-  const addItem = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Từ Dashboard bấm "Check-in ngay" (/okr/my-okr?checkin=1) → mở luôn form check-in
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('checkin') === '1' && data) {
+      openCheckIn();
+      searchParams.delete('checkin');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  const isLocked = Boolean(data?.isLocked);
+  const proposalLocked = Boolean(data?.proposalLocked);
+  const proposalSubmitted = Boolean(data?.box4SubmittedAt);
+
+  // Thêm mục mới
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
-    const item: OkrItem = {
-      id: `${form.group[0]}-${Date.now()}`,
-      group: form.group,
-      title: form.title.trim(),
-      targetValue: form.targetValue,
-      currentValue: 0,
-      unit: form.unit.trim() || '%',
-    };
-    setItems((prev) => [...prev, item]);
-    setIsAddOpen(false);
-    setForm({ group: 'BUSINESS', title: '', targetValue: 100, unit: '%' });
-    showToast('Đã thêm đầu việc OKR');
+    if (!addForm.title.trim()) {
+      showToast('Vui lòng nhập tên đầu việc');
+      return;
+    }
+    try {
+      const res = await fetch('/api/v1/okr/objectives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: data?.cycleYear,
+          groupType: addForm.groupType,
+          title: addForm.title.trim(),
+          detail: addForm.detail.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Lỗi khi tạo mục tiêu');
+      }
+      showToast('Đã thêm đầu việc OKR thành công!');
+      setIsAddOpen(false);
+      setAddForm({ groupType: 'BUSINESS', title: '', detail: '' });
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi thêm mục tiêu');
+    }
   };
 
-  const removeItem = (item: OkrItem) => {
-    const reason = window.prompt(`Lý do xoá "${item.title}"? (bắt buộc)`, '');
-    if (!reason || !reason.trim()) return;
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, deleted: true, deleteReason: reason.trim() } : i)));
-    showToast('Đã xoá mềm — mục vẫn còn trong lịch sử');
+  // 1-Chạm chép từ Quản lý (C14)
+  const handleCloneFromManager = async (mgrObj: ManagerObjective) => {
+    if (isLocked) {
+      showToast('OKR đã khoá, không thể thêm mục mới');
+      return;
+    }
+    try {
+      const res = await fetch('/api/v1/okr/objectives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: data?.cycleYear,
+          groupType: mgrObj.groupType,
+          title: mgrObj.title,
+          detail: mgrObj.detail,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Lỗi sao chép mục tiêu');
+      }
+      showToast(`Đã kế thừa mục tiêu từ Quản lý: ${mgrObj.title}`);
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi kế thừa mục tiêu');
+    }
   };
 
-  const openCheckIn = (item: OkrItem) => {
-    setCheckInItem(item);
-    setCheckInValue(item.currentValue);
+  // Xoá mục tiêu (Bắt buộc nhập lý do)
+  const handleConfirmDelete = async () => {
+    if (!deleteModalItem) return;
+    if (!deleteReason.trim()) {
+      showToast('Lý do xoá là bắt buộc theo quy định HR');
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/v1/okr/items/${deleteModalItem.id}?reason=${encodeURIComponent(deleteReason.trim())}`,
+        { method: 'DELETE' }
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Lỗi khi xoá mục tiêu');
+      }
+      showToast('Đã xoá mục tiêu — lưu vết lịch sử thành công');
+      setDeleteModalItem(null);
+      setDeleteReason('');
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi xoá mục tiêu');
+    }
+  };
+
+  // Lưu Box 4 Proposal
+  const handleSaveProposal = async (submit = false) => {
+    if (submit && !proposalText.trim()) {
+      showToast('Nội dung đề xuất năm sau là bắt buộc khi nộp');
+      return;
+    }
+    if (submit && !window.confirm('Nộp Self proposal năm sau? Sau khi nộp sẽ không sửa được nữa.')) return;
+    setProposalSaving(true);
+    try {
+      const res = await fetch('/api/v1/okr/self-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: data?.cycleYear, proposal: proposalText, improvementArea: improvementText, submit }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Lỗi khi lưu đề xuất');
+      }
+      showToast(submit ? 'Đã nộp Self proposal năm sau!' : 'Đã lưu nháp Self proposal năm sau');
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi lưu đề xuất');
+    } finally {
+      setProposalSaving(false);
+    }
+  };
+
+  // Rút lại bộ OKR đang chờ duyệt (Quản lý chưa xử lý)
+  const [withdrawing, setWithdrawing] = useState(false);
+  const handleWithdraw = async () => {
+    if (!window.confirm('Rút lại bộ mục tiêu đang chờ Quản lý duyệt? Bạn sẽ sửa được và cần bấm "Gửi Quản lý duyệt" lại.')) return;
+    setWithdrawing(true);
+    try {
+      const res = await fetch('/api/v1/okr/withdraw-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: data?.cycleYear }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không rút lại được');
+      showToast(json?.message || 'Đã rút lại bộ OKR');
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Không rút lại được');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  // Gửi Quản lý duyệt đầu năm (Submit Setup)
+  const handleSubmitSetup = async () => {
+    const hasBusiness = (data?.items || []).some((i) => i.groupType === 'BUSINESS');
+    const hasPeople = (data?.items || []).some((i) => i.groupType === 'PEOPLE');
+    if (!hasBusiness || !hasPeople) {
+      const missing = !hasBusiness && !hasPeople
+        ? 'cả 2 nhóm Business và People'
+        : (!hasBusiness ? 'nhóm Business' : 'nhóm People');
+      showToast(`Chưa thể gửi: ${missing} phải có ít nhất 1 đầu việc`);
+      return;
+    }
+    if (!window.confirm('Bạn có chắc chắn muốn nộp bộ mục tiêu OKR cho Quản lý phê duyệt? Sau khi gửi, form sẽ được khoá sửa cho tới khi Quản lý mở lại.')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/v1/okr/submit-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: data?.cycleYear }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Lỗi khi gửi duyệt');
+      }
+      showToast('Đã nộp OKR thành công — Form đã được khoá sửa!');
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi nộp duyệt');
+    }
+  };
+
+  // Lưu chỉnh sửa đầu việc
+  const handleUpdateItem = async () => {
+    if (!editModalItem) return;
+    if (!editForm.title.trim()) { showToast('Tiêu đề không được để trống'); return; }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/v1/okr/items/${editModalItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editForm.title.trim(), detail: editForm.detail.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Lỗi khi lưu chỉnh sửa');
+      showToast('Đã cập nhật đầu việc thành công!');
+      setEditModalItem(null);
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi lưu chỉnh sửa');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  // ===== Check-in tiến độ (S22) =====
+  const openCheckIn = async () => {
+    setCheckInOpen(true);
+    setCheckInLoading(true);
     setCheckInNote('');
+    setCheckInFiles([]);
+    try {
+      const res = await fetch(`/api/v1/okr/check-ins/current${data?.cycleYear ? `?year=${data.cycleYear}` : ''}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không tải được dữ liệu check-in');
+      const d: CheckInData = json.data;
+      setCheckInData(d);
+      const values: Record<string, string> = {};
+      [...(d.businessItems || []), ...(d.peopleItems || [])].forEach((row) => {
+        values[row.itemId] = String(row.previousValue ?? 0);
+      });
+      setCheckInValues(values);
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được dữ liệu check-in');
+    } finally {
+      setCheckInLoading(false);
+    }
   };
 
-  const saveCheckIn = () => {
-    if (!checkInItem) return;
-    setItems((prev) => prev.map((i) => (i.id === checkInItem.id ? { ...i, currentValue: checkInValue } : i)));
-    setCheckInItem(null);
-    showToast('Đã lưu check-in — chỉ cập nhật giá trị');
+  const handleSubmitCheckIn = async () => {
+    if (!checkInData) return;
+    const rows = [...(checkInData.businessItems || []), ...(checkInData.peopleItems || [])];
+    // Mỗi kỳ chỉ check-in 1 lần / đầu việc — bỏ qua đầu việc đã check-in kỳ này
+    const items = rows
+      .filter((row) => !row.checkedInThisPeriod)
+      .map((row) => ({ itemId: row.itemId, newValue: checkInValues[row.itemId] }))
+      .filter((it) => it.newValue !== undefined && String(it.newValue).trim() !== '');
+    if (items.length === 0) {
+      showToast('Vui lòng nhập giá trị mới cho ít nhất 1 đầu việc');
+      return;
+    }
+
+    setCheckInSubmitting(true);
+    try {
+      const res = await fetch('/api/v1/okr/check-ins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: checkInData.year,
+          period: checkInData.period,
+          note: checkInNote.trim(),
+          items,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Lỗi khi gửi check-in');
+
+      const batchId = json.data?.batchId;
+      let uploaded = 0;
+      if (batchId && checkInFiles.length > 0) {
+        for (const file of checkInFiles) {
+          const fd = new FormData();
+          fd.append('file', file);
+          const up = await fetch(`/api/v1/okr/check-ins/${batchId}/attachments`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (up.ok) uploaded++;
+        }
+      }
+
+      showToast(
+        checkInFiles.length > 0 && uploaded < checkInFiles.length
+          ? `Đã gửi check-in, nhưng chỉ ${uploaded}/${checkInFiles.length} file tải lên thành công`
+          : 'Đã gửi check-in tiến độ thành công!'
+      );
+      setCheckInOpen(false);
+      setCheckInData(null);
+      loadData(true);
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi gửi check-in');
+    } finally {
+      setCheckInSubmitting(false);
+    }
   };
 
-  const progress = (item: OkrItem) => {
-    if (!item.targetValue) return 0;
-    return Math.min(100, Math.round((item.currentValue / item.targetValue) * 100));
+  const openCheckInHistory = async (row: CheckInRow) => {
+    setHistoryRow(row);
+    setHistoryRows([]);
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/v1/okr/check-ins/history?itemId=${row.itemId}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không tải được lịch sử check-in');
+      setHistoryRows(json.data || []);
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được lịch sử check-in');
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
-  const renderGroup = (group: GroupKey) => {
-    const groupItems = activeItems.filter((i) => i.group === group);
+  const downloadCheckInAttachment = async (att: CheckInAttachment) => {
+    try {
+      const res = await fetch(`/api/v1/okr/check-ins/attachments/${att.id}`);
+      if (!res.ok) throw new Error('Không tải được file');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = att.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      showToast(err.message || 'Không tải được file');
+    }
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    try {
+      return new Date(value).toLocaleString('vi-VN');
+    } catch {
+      return value;
+    }
+  };
+
+  const businessItems = data?.items.filter((i) => i.groupType === 'BUSINESS') || [];
+  const peopleItems = data?.items.filter((i) => i.groupType === 'PEOPLE') || [];
+  const deletedItems = data?.deletedItems || [];
+
+  const getStatusBadge = () => {
+    switch (data?.status) {
+      case 'submitted':
+        return <Badge variant="accent">Chờ Quản lý duyệt — có thể rút lại</Badge>;
+      case 'locked':
+        return <Badge variant="ok">Đã duyệt & Khoá sửa</Badge>;
+      case 'reopened':
+        return <Badge variant="info">Quản lý đã mở lại quyền sửa</Badge>;
+      case 'returned':
+        return <Badge variant="danger">Đã trả lại — Cần sửa theo góp ý</Badge>;
+      default:
+        return <Badge variant="warn">Đang soạn thảo (Nháp) — Mở sửa</Badge>;
+    }
+  };
+
+  const renderGroup = (group: GroupKey, title: string, subtitle: string, itemsList: OKRItem[]) => {
+    const mgrSuggestions = managerObjectives.filter((m) => m.groupType === group);
+
     return (
-      <div className="bg-surface border border-line rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between border-b border-line pb-3">
           <div>
-            <h2 className="text-sm font-bold text-ink">{GROUP_LABEL[group]}</h2>
-            <div className="text-xs text-ink-muted mt-0.5">{groupItems.length} đầu việc · tự do, không giới hạn</div>
+            <h2 className="text-base font-bold text-ink flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} />
+              {title}
+            </h2>
+            <p className="text-xs text-ink-muted mt-0.5">{subtitle} · {itemsList.length} đầu việc tự do (không giới hạn số chữ)</p>
           </div>
-          <button
-            type="button"
-            className="text-xs px-3 py-1.5 rounded border border-line"
-            onClick={() => {
-              setForm((f) => ({ ...f, group }));
-              setIsAddOpen(true);
-            }}
-          >
-            + Thêm đầu việc
-          </button>
+          {!isLocked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setAddForm({ groupType: group, title: '', detail: '' });
+                setIsAddOpen(true);
+              }}
+            >
+              + Thêm đầu việc
+            </Button>
+          )}
         </div>
-        {groupItems.length === 0 && <div className="text-xs text-ink-muted py-4 text-center">Chưa có đầu việc — thêm để bắt đầu.</div>}
-        {groupItems.map((item) => (
-          <div key={item.id} className="border border-line rounded-lg p-3 mb-2">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-ink">{item.title}</div>
-                <div className="text-xs text-ink-muted mt-1 font-mono">
-                  {item.currentValue} / {item.targetValue} {item.unit} ({progress(item)}%)
+
+        {/* Gợi ý kế thừa từ Quản lý trực tiếp (C14) */}
+        {!isLocked && showManagerSuggestions && (
+          <div className="bg-accent-soft/40 border border-accent-line/60 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold text-accent flex items-center gap-1.5">
+                <span>💡 Gợi ý kế thừa từ OKR Quản lý trực tiếp (C14):</span>
+                <span className="text-[11px] font-normal text-ink-muted">Bấm 1 chạm để chép mục tiêu đã duyệt</span>
+              </div>
+            </div>
+            {mgrSuggestions.length > 0 ? (
+              <div className="space-y-1.5">
+                {mgrSuggestions.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between bg-surface rounded-lg p-2.5 border border-line text-xs">
+                    <div className="pr-3">
+                      <span className="font-semibold text-ink">{m.title}</span>
+                      {m.detail && <p className="text-[11px] text-ink-muted mt-0.5">{m.detail}</p>}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 text-xs py-1 px-2.5 h-auto text-accent border-accent/40 hover:bg-accent-soft"
+                      onClick={() => handleCloneFromManager(m)}
+                    >
+                      + Chép 1-chạm
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[11px] text-ink-muted bg-surface border border-dashed border-line rounded-lg p-2.5">
+                Quản lý chưa có OKR đã duyệt trong chu kỳ này — bạn tự nhập mục tiêu bên dưới.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Danh sách mục tiêu của nhóm */}
+        {itemsList.length === 0 ? (
+          <div className="text-xs text-ink-muted py-6 text-center bg-canvas rounded-lg border border-dashed border-line">
+            {isLocked ? (
+              <>Chưa có đầu việc nào. 🔒 {data?.lockReason}</>
+            ) : (
+              <>
+                Chưa có đầu việc nào trong nhóm này. Hãy bấm <b>+ Thêm đầu việc</b> để tự nhập
+                {managerObjectives.some((m) => m.groupType === group) ? <> hoặc <b>Chép 1-chạm</b> từ Quản lý</> : null}.
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {itemsList.map((item) => (
+              <div key={item.id} className="border border-line rounded-lg p-3.5 hover:border-line-hover transition-colors bg-surface">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-ink leading-snug">{item.title}</h3>
+                    {item.detail && <p className="text-xs text-ink-muted mt-1 leading-relaxed">{item.detail}</p>}
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-muted">
+                      <span>Tiến độ thực hiện: <b className="text-ink font-semibold">{item.progress}%</b></span>
+                    </div>
+                  </div>
+                  {!isLocked && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-auto py-1 px-2.5"
+                        onClick={() => {
+                          setEditForm({ title: item.title, detail: item.detail || '' });
+                          setEditModalItem(item);
+                        }}
+                      >
+                        ✏️ Sửa
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-danger hover:bg-danger-soft h-auto py-1 px-2"
+                        onClick={() => {
+                          setDeleteModalItem(item);
+                          setDeleteReason('');
+                        }}
+                      >
+                        Xoá
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2.5 h-1.5 bg-line rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`}
+                    style={{ width: `${Math.min(100, item.progress)}%` }}
+                  />
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button className="text-xs px-2 py-1 rounded bg-accent text-white" onClick={() => openCheckIn(item)}>Check-in</button>
-                <button className="text-xs px-2 py-1 rounded border border-line" onClick={() => removeItem(item)}>Xoá</button>
-              </div>
-            </div>
-            <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden">
-              <div className="h-full bg-accent" style={{ width: `${progress(item)}%` }} />
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </Card>
     );
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
-      <div className="bg-canvas border border-line rounded-xl p-6">
-        <h1 className="text-xl font-bold text-ink mt-1">Thiết lập & Check-in OKR</h1>
-        <p className="text-xs text-ink-muted mt-1">
-          {user?.fullName || 'Nhân viên'} · 2 nhóm Business / People · đầu việc tự do · <b>chỉ nhập giá trị</b>, không có trọng số hay confidence.
-        </p>
-        <div className="mt-3 inline-flex items-center gap-2 text-[11px] px-2.5 py-1 rounded bg-accent-soft text-accent border border-accent-line">
-          Điểm nhóm (1–5) do quản lý chấm ở bước đánh giá — không xếp loại A/B/C/D
-        </div>
+  const renderCheckInGroup = (group: GroupKey, title: string, rows: CheckInRow[]) => (
+    <Card className="space-y-3">
+      <div className="flex items-center justify-between border-b border-line pb-2.5">
+        <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} />
+          {title}
+        </h3>
+        <span className="text-[11px] text-ink-muted">{rows.length} đầu việc</span>
       </div>
-
-      {renderGroup('BUSINESS')}
-      {renderGroup('PEOPLE')}
-
-      {isAddOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setIsAddOpen(false)}>
-          <form className="bg-surface rounded-xl p-5 w-full max-w-md space-y-3" onClick={(e) => e.stopPropagation()} onSubmit={addItem}>
-            <h3 className="text-base font-bold">Thêm đầu việc</h3>
-            <select className="w-full border border-line rounded-lg p-2 text-sm" value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value as GroupKey })}>
-              <option value="BUSINESS">Business</option>
-              <option value="PEOPLE">People</option>
-            </select>
-            <input className="w-full border border-line rounded-lg p-2 text-sm" placeholder="Tên đầu việc" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <div className="grid grid-cols-2 gap-2">
-              <input type="number" className="w-full border border-line rounded-lg p-2 text-sm" value={form.targetValue} onChange={(e) => setForm({ ...form, targetValue: parseFloat(e.target.value) || 0 })} />
-              <input className="w-full border border-line rounded-lg p-2 text-sm" placeholder="Đơn vị" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+      {rows.length === 0 ? (
+        <div className="text-xs text-ink-muted py-4 text-center bg-canvas rounded-lg border border-dashed border-line">
+          Chưa có đầu việc trong nhóm này.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.itemId} className="rounded-lg border border-line p-2.5 bg-surface">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-ink">{row.title}</div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    Kỳ trước: <b className="text-ink">{row.previousValue}%</b>
+                    {row.lastPeriod ? ` (${row.lastPeriod})` : ' · chưa check-in'}
+                    {row.checkedInThisPeriod && (
+                      <span className="ml-1 text-emerald-700 font-semibold">· Đã check-in kỳ này</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      disabled={!checkInData?.canCheckIn || row.checkedInThisPeriod}
+                      value={checkInValues[row.itemId] ?? ''}
+                      onChange={(e) => setCheckInValues({ ...checkInValues, [row.itemId]: e.target.value })}
+                      className="w-24 border border-line rounded-lg p-1.5 pr-7 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">%</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openCheckInHistory(row)}
+                    className="text-[11px] font-semibold text-accent hover:underline"
+                  >
+                    Lịch sử
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setIsAddOpen(false)}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Thêm</button>
-            </div>
-          </form>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+
+  if (loading) {
+    return <div className="p-8 text-center text-sm text-ink-muted">Đang tải biểu mẫu OKR...</div>;
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-5 pb-12">
+      {toast && (
+        <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
+          {toast}
         </div>
       )}
 
-      {/* S22 · Check-in tiến độ — mở form là có sẵn giá trị kỳ trước, chỉ nhập giá trị mới */}
-      {checkInItem && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setCheckInItem(null)}>
-          <div className="bg-surface rounded-xl p-5 w-full max-w-md space-y-3" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold">Check-in: {checkInItem.title}</h3>
-            <div className="text-xs text-ink-muted">Kỳ trước: {checkInItem.currentValue} {checkInItem.unit} · mục tiêu {checkInItem.targetValue} {checkInItem.unit}</div>
-            <label className="block text-xs font-semibold">Giá trị hiện tại</label>
-            <input type="number" className="w-full border border-line rounded-lg p-2 text-sm" value={checkInValue} onChange={(e) => setCheckInValue(parseFloat(e.target.value) || 0)} />
-            <textarea className="w-full border border-line rounded-lg p-2 text-sm" rows={3} placeholder="Ghi chú (không bắt buộc)" value={checkInNote} onChange={(e) => setCheckInNote(e.target.value)} />
-            <div className="flex justify-end gap-2">
-              <button className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setCheckInItem(null)}>Huỷ</button>
-              <button className="text-xs px-3 py-1.5 rounded bg-accent text-white" onClick={saveCheckIn}>Lưu check-in</button>
+      {/* Header & Status Banner */}
+      <Card className="space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-ink">Thiết lập OKR & Đánh giá cá nhân {data?.cycleYear ?? ''}</h1>
+              {getStatusBadge()}
             </div>
+            <p className="text-xs text-ink-muted mt-1">
+              2 nhóm cố định Business & People · Điểm chấm 1–5 nguyên (không có điểm lẻ) · Không xếp loại A/B/C/D.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={openCheckIn}>
+              ✦ Check-in tiến độ
+            </Button>
+            {!isLocked && (
+              <Button size="sm" variant="primary" onClick={handleSubmitSetup}>
+                📤 Gửi Quản lý duyệt
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Thông báo trạng thái khoá sửa */}
+        {isLocked && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-700 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔒</span>
+              <span>
+                <b>Bộ mục tiêu đang khoá sửa (Read-Only).</b> {data?.lockReason}
+              </span>
+            </div>
+            {data?.status === 'submitted' && (
+              <Button size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing} className="shrink-0">
+                {withdrawing ? 'Đang rút...' : '↩ Rút lại để sửa'}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Banner khi Quản lý mở lại quyền sửa trong đợt review */}
+        {data?.status === 'reopened' && (
+          <div className="bg-blue-50 border border-blue-300 rounded-xl p-3.5 text-xs text-blue-700 space-y-1">
+            <div className="font-bold flex items-center gap-2">
+              <span>🔓</span>
+              <span>Quản lý đã mở lại quyền chỉnh sửa OKR</span>
+            </div>
+            {data.managerFeedback && (
+              <div className="text-blue-800">
+                <b>Ghi chú của Quản lý:</b> {data.managerFeedback}
+              </div>
+            )}
+            <div className="text-blue-600">
+              Bạn có thể sửa/bổ sung mục tiêu, sau đó bấm <b>“Gửi Quản lý duyệt”</b> để nộp lại.
+            </div>
+          </div>
+        )}
+
+        {/* Banner góp ý khi Quản lý trả lại — nhân viên cần sửa */}
+        {data?.status === 'returned' && (
+          <div className="bg-red-50 border border-red-300 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
+              <span>⚠️</span>
+              <span>Quản lý đã trả lại — Cần chỉnh sửa theo góp ý dưới đây rồi gửi lại</span>
+            </div>
+            {data.managerFeedback ? (
+              <div className="bg-white rounded-lg p-3 text-xs text-gray-800 border border-red-200">
+                <span className="font-semibold text-red-700">Góp ý của Quản lý: </span>
+                {data.managerFeedback}
+              </div>
+            ) : (
+              <div className="text-xs text-red-600">Quản lý chưa để lại góp ý cụ thể.</div>
+            )}
+            <div className="text-xs text-red-500">
+              Hãy sửa bộ mục tiêu rồi bấm <b>"Gửi Quản lý duyệt"</b> khi hoàn thành.
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Nhóm Business */}
+      {renderGroup(
+        'BUSINESS',
+        'Business (Mục tiêu công việc & Dự án)',
+        'Mục tiêu chuyên môn, tiến độ dự án, chỉ số kỹ thuật và đóng góp năng suất',
+        businessItems
       )}
+
+      {/* Nhóm People */}
+      {renderGroup(
+        'PEOPLE',
+        'People (Phát triển con người & Đội ngũ)',
+        'Đào tạo nội bộ, phát triển năng lực cá nhân, văn hóa chia sẻ và kèm cặp đồng nghiệp',
+        peopleItems
+      )}
+
+      {/* Self proposal next year */}
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between border-b border-line pb-2.5">
+          <div>
+            <h2 className="text-base font-bold text-ink flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-purple-500" />
+              Self proposal năm sau (Đề xuất & định hướng phát triển)
+            </h2>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Nhân viên tự đề xuất OKR năm tới và điểm cần cải thiện (tuỳ chọn)
+            </p>
+          </div>
+          <Badge variant={proposalSubmitted ? 'ok' : proposalText.trim() || improvementText.trim() ? 'warn' : 'gray'}>
+            {proposalSubmitted ? 'Đã nộp' : proposalText.trim() || improvementText.trim() ? 'Đang viết' : 'Chưa viết'}
+          </Badge>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-ink">Đề xuất OKR / định hướng năm sau</label>
+          <textarea
+            disabled={proposalLocked}
+            rows={4}
+            value={proposalText}
+            onChange={(e) => setProposalText(e.target.value)}
+            placeholder="Ví dụ: Định hướng nâng cao năng lực System Architecture, dẫn dắt 1 dự án trọng điểm, và kèm cặp 1 Junior Developer năm 2027..."
+            className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-ink">
+            Điểm cần cải thiện <span className="text-ink-muted font-normal">(tuỳ chọn)</span>
+          </label>
+          <textarea
+            disabled={proposalLocked}
+            rows={3}
+            value={improvementText}
+            onChange={(e) => setImprovementText(e.target.value)}
+            placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình, quản lý thời gian và chia sẻ kiến thức cho team..."
+            className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+          />
+        </div>
+        {proposalLocked ? (
+          <div className="text-[11px] text-ink-muted">🔒 {data?.proposalLockReason}</div>
+        ) : (
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleSaveProposal(false)} disabled={proposalSaving}>
+              {proposalSaving ? 'Đang lưu...' : 'Lưu nháp'}
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => handleSaveProposal(true)} disabled={proposalSaving}>
+              Nộp đề xuất
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* Lịch sử các mục đã xoá (Lưu vết không mất vết — Tiêu chí 6) */}
+      {deletedItems.length > 0 && (
+        <Card className="space-y-3 bg-canvas/60 border border-line">
+          <div className="flex items-center justify-between border-b border-line pb-2">
+            <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
+              <span>📋 Lịch sử các mục đã xoá ({deletedItems.length} mục — Lưu vết theo quy định HR)</span>
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {deletedItems.map((item) => (
+              <div key={item.id} className="p-2.5 rounded border border-line bg-surface text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-ink-muted line-through">{item.title}</span>
+                  <Badge variant="gray">{item.groupType}</Badge>
+                </div>
+                <div className="text-[11px] text-danger">
+                  <b>Lý do xoá bắt buộc:</b> {item.deleteReason}
+                </div>
+                {item.deletedAt && (
+                  <div className="text-[10px] text-ink-muted">
+                    Thời gian xoá: {new Date(item.deletedAt).toLocaleString('vi-VN')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Modal Thêm đầu việc (KHÔNG có ô đính kèm ở bước tạo — Tiêu chí 3) */}
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Thêm đầu việc OKR mới">
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Nhóm mục tiêu (Cố định theo Form HR)</label>
+            <select
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
+              value={addForm.groupType}
+              onChange={(e) => setAddForm({ ...addForm, groupType: e.target.value as GroupKey })}
+            >
+              <option value="BUSINESS">Business — Mục tiêu kinh doanh & dự án</option>
+              <option value="PEOPLE">People — Mục tiêu con người & đội ngũ</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">
+              Tên đầu việc <span className="text-danger">*</span> (Tự do, không giới hạn số chữ)
+            </label>
+            <textarea
+              rows={3}
+              required
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
+              placeholder="Nhập tên đầu việc hoặc mục tiêu cụ thể..."
+              value={addForm.title}
+              onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Mô tả chi tiết / Tiêu chí hoàn thành (Tuỳ chọn)</label>
+            <textarea
+              rows={3}
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
+              placeholder="Mô tả hành động, chỉ số hoặc kết quả dự kiến..."
+              value={addForm.detail}
+              onChange={(e) => setAddForm({ ...addForm, detail: e.target.value })}
+            />
+          </div>
+          <div className="bg-canvas p-2.5 rounded border border-line text-[11px] text-ink-muted">
+            ℹ️ <b>Lưu ý theo quy định HR:</b> Không đính kèm tệp ở bước tạo. Tệp minh chứng (evidence) chỉ được bổ sung ở các kỳ Check-in định kỳ hoặc Đánh giá cuối năm.
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddOpen(false)}>
+              Huỷ
+            </Button>
+            <Button type="submit" variant="primary" size="sm">
+              Thêm đầu việc
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Xoá mục tiêu (Bắt buộc nhập lý do — Tiêu chí 6) */}
+      <Modal isOpen={Boolean(deleteModalItem)} onClose={() => setDeleteModalItem(null)} title="Xác nhận xoá mục tiêu">
+        <div className="space-y-4">
+          <p className="text-xs text-ink">
+            Bạn đang yêu cầu xoá mục tiêu: <br />
+            <b className="text-danger font-semibold">{deleteModalItem?.title}</b>
+          </p>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">
+              Lý do xoá <span className="text-danger">*</span> (Bắt buộc theo quy định kiểm toán HR):
+            </label>
+            <textarea
+              rows={3}
+              required
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-danger"
+              placeholder="Ví dụ: Thay đổi chiến lược quý 2, gộp sang dự án khác, chuyển đổi phạm vi công việc..."
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+            />
+          </div>
+          <div className="text-[11px] text-ink-muted">
+            Mục tiêu bị xoá sẽ <b>vẫn còn lưu vết trong lịch sử</b> để quản lý và kiểm toán tra cứu, không bao giờ bị mất hẳn.
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setDeleteModalItem(null)}>
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={!deleteReason.trim()}
+              onClick={handleConfirmDelete}
+            >
+              Xác nhận xoá
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Sửa đầu việc */}
+      <Modal isOpen={Boolean(editModalItem)} onClose={() => setEditModalItem(null)} title="Chỉnh sửa đầu việc OKR">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">
+              Tên đầu việc <span className="text-danger">*</span>
+            </label>
+            <textarea
+              rows={3}
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
+              value={editForm.title}
+              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1">Chi tiết / Mô tả</label>
+            <textarea
+              rows={3}
+              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
+              placeholder="Mô tả thêm về đầu việc, chỉ số đo lường, deadline..."
+              value={editForm.detail}
+              onChange={(e) => setEditForm({ ...editForm, detail: e.target.value })}
+            />
+          </div>
+          <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
+            ℹ️ Tiến độ được cập nhật qua <b>Check-in tiến độ</b> — hệ thống tự tính, không sửa trực tiếp tại đây.
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setEditModalItem(null)}>
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={editSaving || !editForm.title.trim()}
+              onClick={handleUpdateItem}
+            >
+              {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Check-in tiến độ định kỳ (S22) */}
+      <Modal
+        isOpen={checkInOpen}
+        onClose={() => { if (!checkInSubmitting) setCheckInOpen(false); }}
+        title={`Check-in tiến độ — ${checkInData?.period || 'kỳ hiện tại'}`}
+        maxWidth="4xl"
+      >
+        {checkInLoading ? (
+          <div className="p-8 text-center text-xs text-ink-muted">Đang tải dữ liệu check-in...</div>
+        ) : !checkInData ? (
+          <div className="p-8 text-center text-xs text-ink-muted">Không có dữ liệu check-in.</div>
+        ) : (
+          <div className="space-y-4">
+            <div className={`rounded-xl border p-3 text-xs space-y-1 ${
+              checkInData.reminder
+                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                : 'bg-blue-50 border-blue-200 text-blue-800'
+            }`}>
+              <div className="font-bold">
+                Kỳ {checkInData.period} · Hạn check-in: {checkInData.deadline || '—'}
+                {typeof checkInData.daysLeft === 'number' ? ` · còn ${checkInData.daysLeft} ngày` : ''}
+              </div>
+              <div>
+                Giá trị kỳ trước <b>đã được điền sẵn</b>. Chỉ sửa con số thay đổi — tiến độ do hệ thống tự tính.
+              </div>
+              {checkInData.reminder && (
+                <div className="font-semibold">⏰ {checkInData.reminderText}</div>
+              )}
+            </div>
+
+            {!checkInData.canCheckIn && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800">
+                {checkInData.blockReason || 'Hiện không nằm trong đợt check-in nên chưa thể gửi cập nhật.'}
+              </div>
+            )}
+
+            {renderCheckInGroup('BUSINESS', 'Business', checkInData.businessItems || [])}
+            {renderCheckInGroup('PEOPLE', 'People', checkInData.peopleItems || [])}
+
+            <div className="rounded-xl border border-line p-3 space-y-2">
+              <div className="text-xs font-bold text-ink">📎 Đính kèm evidence (tuỳ chọn)</div>
+              <div className="text-[11px] text-ink-muted">
+                Ảnh chụp kết quả, báo cáo, tài liệu liên quan — làm bằng chứng cho tiến độ.
+              </div>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.txt"
+                onChange={(e) => {
+                  const chosen = Array.from(e.target.files || []);
+                  if (chosen.length) setCheckInFiles((prev) => [...prev, ...chosen]);
+                  e.target.value = '';
+                }}
+                className="block w-full text-[11px] text-ink-secondary file:mr-3 file:rounded-lg file:border file:border-line file:bg-canvas file:px-3 file:py-1.5 file:text-[11px] file:font-semibold"
+              />
+              {checkInFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {checkInFiles.map((file, idx) => (
+                    <span key={`${file.name}-${idx}`} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-2.5 py-1 text-[11px] text-ink-secondary">
+                      📎 {file.name}
+                      <button
+                        type="button"
+                        className="text-danger font-bold"
+                        onClick={() => setCheckInFiles(checkInFiles.filter((_, i) => i !== idx))}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1">Ghi chú kỳ check-in (tuỳ chọn)</label>
+              <textarea
+                rows={3}
+                value={checkInNote}
+                disabled={!checkInData.canCheckIn}
+                onChange={(e) => setCheckInNote(e.target.value)}
+                placeholder="Kết quả đạt được, khó khăn và hướng xử lý..."
+                className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-line">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setCheckInOpen(false)} disabled={checkInSubmitting}>
+                Huỷ
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={checkInSubmitting || !checkInData.canCheckIn || checkInData.totalItems === 0}
+                onClick={handleSubmitCheckIn}
+              >
+                {checkInSubmitting ? 'Đang gửi...' : 'Gửi check-in'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal lịch sử check-in của 1 đầu việc */}
+      <Modal
+        isOpen={Boolean(historyRow)}
+        onClose={() => setHistoryRow(null)}
+        title={`Lịch sử check-in — ${historyRow?.title || ''}`}
+        maxWidth="2xl"
+      >
+        {historyLoading ? (
+          <div className="p-6 text-center text-xs text-ink-muted">Đang tải lịch sử...</div>
+        ) : historyRows.length === 0 ? (
+          <div className="p-6 text-center text-xs text-ink-muted">Chưa có lần check-in nào.</div>
+        ) : (
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {historyRows.map((row) => (
+              <div key={row.id} className="rounded-lg border border-line bg-surface p-3 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink">Kỳ {row.period}</span>
+                  <span className="text-[11px] text-ink-muted">{formatDateTime(row.createdAt)}</span>
+                </div>
+                <div className="text-ink-secondary">
+                  Giá trị: <b>{row.previousValue ?? '—'}%</b> → <b className="text-accent">{row.newValue}%</b>
+                  <span className="text-ink-muted"> · Tiến độ snapshot: {row.progressSnapshot}%</span>
+                </div>
+                {row.note && <div className="text-[11px] text-ink-muted">Ghi chú: {row.note}</div>}
+                {row.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {row.attachments.map((att) => (
+                      <button
+                        key={att.id}
+                        type="button"
+                        onClick={() => downloadCheckInAttachment(att)}
+                        className="inline-flex items-center gap-1 rounded-full border border-line bg-canvas px-2 py-0.5 text-[10px] text-accent hover:border-accent"
+                      >
+                        📎 {att.fileName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
