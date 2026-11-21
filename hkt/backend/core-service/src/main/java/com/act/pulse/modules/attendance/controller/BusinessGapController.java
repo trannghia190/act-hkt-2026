@@ -30,6 +30,7 @@ import com.act.pulse.modules.attendance.repository.TimesheetCellRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetCellAuditRepository;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
+import com.act.pulse.modules.attendance.service.TimesheetSymbols;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -215,6 +216,15 @@ public class BusinessGapController {
             canDispute = !future;
         }
 
+        // Ô đã ghi trong bảng công kỳ (HR sửa tay / duyệt khiếu nại) là nguồn sự thật giống S15.
+        // Bảng cá nhân phải hiển thị đúng ô đó thay vì suy lại từ log — trước đây chỉ S15 đọc
+        // timesheet_cells nên cùng một ngày, HR thấy 1.00 còn nhân viên thấy "V" (vắng).
+        Map<java.time.LocalDate, String> cellByDate = new HashMap<>();
+        timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, targetMonth, targetYear)
+                .ifPresent(sheet -> timesheetCellRepository.findByTimesheetId(sheet.getId()).forEach(cell -> {
+                    if (cell.getWorkDate() != null) cellByDate.put(cell.getWorkDate(), cell.getSymbol());
+                }));
+
         // Calculate days and metrics
         double standardDays = 0;
         double actualDays = 0;
@@ -263,6 +273,10 @@ public class BusinessGapController {
             String dayStatus;
             String statusText;
             String symbol;
+            // Cộng dồn của riêng ngày này — chỉ nhập vào tổng sau khi đã áp ô đã ghi trong
+            // bảng công kỳ, để tổng và từng dòng luôn khớp nhau.
+            double dayActual = 0, dayLeave = 0, dayWfh = 0;
+            int dayLate = 0, daySick = 0, dayComp = 0, dayUnpaid = 0;
 
             if (isHoliday) {
                 dayStatus = "HOLIDAY";
@@ -276,27 +290,27 @@ public class BusinessGapController {
                 dayStatus = "LEAVE";
                 String lt = leaveReq.getLeaveType() != null ? leaveReq.getLeaveType() : "AL";
                 boolean halfDay = leaveReq.getPayload() != null && leaveReq.getPayload().contains("half_day_period");
-                leaveDays += halfDay ? 0.5 : 1.0;
-                if ("S".equalsIgnoreCase(lt)) sickDays++;
-                else if ("RO".equalsIgnoreCase(lt)) compDays++;
-                else if ("UP".equalsIgnoreCase(lt)) unpaidDays++;
+                dayLeave += halfDay ? 0.5 : 1.0;
+                if ("S".equalsIgnoreCase(lt)) daySick++;
+                else if ("RO".equalsIgnoreCase(lt)) dayComp++;
+                else if ("UP".equalsIgnoreCase(lt)) dayUnpaid++;
                 symbol = halfDay ? lt + "/0.50" : lt;
                 statusText = "Nghỉ phép (" + symbol + ")";
             } else if (wfhReq != null) {
                 dayStatus = "WFH";
                 boolean halfDay = wfhReq.getPayload() != null && wfhReq.getPayload().contains("half_day_period");
-                wfhDays += halfDay ? 0.5 : 1.0;
-                actualDays += halfDay ? 0.5 : 1.0;
+                dayWfh += halfDay ? 0.5 : 1.0;
+                dayActual += halfDay ? 0.5 : 1.0;
                 symbol = halfDay ? "R/0.50" : "R";
                 statusText = "Làm việc từ xa (WFH)";
             } else if (log != null) {
                 if (log.getCheckInAt() != null && log.getCheckOutAt() != null) {
                     if (dayUnits > 0) {
-                        actualDays += dayUnits;
+                        dayActual += dayUnits;
                         symbol = daySymbol;
                         if (lateMinutes > 0 && lateReq == null) {
                             dayStatus = "LATE";
-                            lateCount++;
+                            dayLate++;
                             statusText = "Đi muộn " + lateMinutes + " phút";
                         } else {
                             dayStatus = "ON_TIME";
@@ -330,6 +344,55 @@ public class BusinessGapController {
                 statusText = "Vắng mặt / Không có log";
                 symbol = "V";
             }
+
+            // Ô đã ghi trong bảng công kỳ thắng dữ liệu suy ra từ log/đơn: hiển thị và cộng công
+            // theo đúng ô HR đang thấy ở S15 (kể cả ô do duyệt khiếu nại sinh ra).
+            if (cellByDate.containsKey(date)) {
+                String cellSymbol = cellByDate.get(date) == null ? "" : cellByDate.get(date).trim();
+                String leaveCode = TimesheetSymbols.leaveCode(cellSymbol);
+                double units = TimesheetSymbols.workUnits(cellSymbol);
+                double wfhUnits = TimesheetSymbols.wfhUnits(cellSymbol);
+                dayActual = 0; dayLeave = 0; dayWfh = 0;
+                dayLate = 0; daySick = 0; dayComp = 0; dayUnpaid = 0;
+                boolean workday = !isWeekend && !isHoliday;
+                symbol = cellSymbol;
+                if (leaveCode != null && !"NL".equals(leaveCode)) {
+                    if (workday) {
+                        dayLeave = TimesheetSymbols.leaveUnits(cellSymbol);
+                        if ("S".equals(leaveCode)) daySick = 1;
+                        else if ("RO".equals(leaveCode)) dayComp = 1;
+                        else if ("UP".equals(leaveCode)) dayUnpaid = 1;
+                    }
+                    dayStatus = "LEAVE";
+                    statusText = "Bảng công kỳ ghi " + cellSymbol;
+                } else if (wfhUnits > 0) {
+                    // Ô cuối tuần/lễ vẫn hiển thị đúng như lưới HR nhưng không cộng vào tổng công.
+                    dayActual = workday ? wfhUnits : 0;
+                    dayWfh = workday ? wfhUnits : 0;
+                    dayStatus = "WFH";
+                    statusText = "Bảng công kỳ ghi " + cellSymbol + " — làm việc từ xa";
+                } else if (units > 0) {
+                    dayActual = workday ? units : 0;
+                    dayStatus = "ON_TIME";
+                    statusText = "Bảng công kỳ ghi " + cellSymbol;
+                } else if ("NL".equals(leaveCode) || isHoliday) {
+                    dayStatus = "HOLIDAY";
+                    statusText = "Ngày lễ";
+                } else {
+                    dayStatus = "ADJUSTED";
+                    statusText = cellSymbol.isEmpty()
+                            ? "Bảng công kỳ không ghi công ngày này"
+                            : "Bảng công kỳ ghi " + cellSymbol;
+                }
+            }
+
+            actualDays += dayActual;
+            leaveDays += dayLeave;
+            wfhDays += dayWfh;
+            lateCount += dayLate;
+            sickDays += daySick;
+            compDays += dayComp;
+            unpaidDays += dayUnpaid;
 
             TimesheetDispute dispute = disputesByDate.get(date);
             Map<String, Object> disputeInfo = null;
