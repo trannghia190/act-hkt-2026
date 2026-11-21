@@ -9,6 +9,7 @@ import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
 import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.Holiday;
+import com.act.pulse.modules.attendance.entity.LeaveType;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
@@ -66,6 +67,24 @@ public class RequestController {
     private String leaveTypeName(String code) {
         if (code == null) return null;
         return leaveTypeRepository.findByCode(code).map(lt -> lt.getName()).orElse(code);
+    }
+
+    /** Loại nghỉ phải tồn tại trong danh mục và đang bật — cấu hình S32 có hiệu lực thật. */
+    private LeaveType requireActiveLeaveType(String code) {
+        LeaveType lt = leaveTypeRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Loại nghỉ " + code + " không tồn tại trong danh mục"));
+        if (!Boolean.TRUE.equals(lt.getIsActive())) {
+            throw new RuntimeException("Loại nghỉ " + lt.getName() + " (" + code + ") đã tắt — chọn loại khác");
+        }
+        return lt;
+    }
+
+    /** Đơn nửa ngày chỉ hợp lệ với loại nghỉ cấu hình đơn vị HALF_DAY. */
+    private void assertUnitAllowsHalfDay(LeaveType lt, String payload) {
+        boolean halfDay = payload != null && payload.contains("half_day_period");
+        if (halfDay && !"HALF_DAY".equalsIgnoreCase(lt.getUnit())) {
+            throw new RuntimeException("Loại nghỉ " + lt.getName() + " (" + lt.getCode() + ") chỉ tính theo ngày — không nhận đơn nửa ngày");
+        }
     }
 
     @PostMapping("/check-conflicts")
@@ -136,12 +155,12 @@ public class RequestController {
             }
         }
 
-        // ── NGHỈ PHÉP: hạn gửi theo cấu hình loại nghỉ (mặc định 3 ngày) ──
+        // ── NGHỈ PHÉP: loại nghỉ phải đang bật + hạn gửi + đơn vị theo cấu hình S32 ──
         if ("LEAVE".equals(body.getType())) {
+            LeaveType lt = requireActiveLeaveType(body.getLeaveType() == null ? "AL" : body.getLeaveType());
+            assertUnitAllowsHalfDay(lt, body.getPayload());
             LocalDate workDate = body.getWorkDate() == null ? LocalDate.now() : body.getWorkDate();
-            int submitWithin = leaveTypeRepository.findByCode(body.getLeaveType() == null ? "AL" : body.getLeaveType())
-                    .map(lt -> lt.getSubmitWithinDays() == null ? 3 : lt.getSubmitWithinDays())
-                    .orElse(ruleService.getInt("leave_request", "submit_within_days", 3));
+            int submitWithin = lt.getSubmitWithinDays() == null ? 3 : lt.getSubmitWithinDays();
             if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(submitWithin))) {
                 throw new RuntimeException("Loại nghỉ này chỉ được gửi trong vòng " + submitWithin + " ngày kể từ ngày nghỉ");
             }
@@ -613,11 +632,16 @@ public class RequestController {
         if (body.getPayload() != null) r.setPayload(body.getPayload());
         if (r.getReason() == null || r.getReason().isBlank()) throw new RuntimeException("Đơn phải có lý do");
 
-        if ("LEAVE".equals(r.getRequestType())
-                && leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType())
-                    .map(lt -> Boolean.TRUE.equals(lt.getRequiresAttachment())).orElse(false)
-                && requestAttachmentRepository.countByRequestId(id) == 0) {
-            throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm");
+        if ("LEAVE".equals(r.getRequestType())) {
+            // Đơn đã tạo trước đó vẫn duyệt được kể cả khi loại nghỉ đã bị tắt;
+            // chỉ áp cấu hình đơn vị/giấy tờ còn hiệu lực tại thời điểm duyệt.
+            LeaveType lt = leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType()).orElse(null);
+            if (lt != null) {
+                assertUnitAllowsHalfDay(lt, r.getPayload());
+                if (Boolean.TRUE.equals(lt.getRequiresAttachment()) && requestAttachmentRepository.countByRequestId(id) == 0) {
+                    throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm");
+                }
+            }
         }
         if ("LATE_EARLY".equals(r.getRequestType())) {
             int maxMinutes = ruleService.getInt("late_early", "max_minutes", 60);
@@ -657,12 +681,45 @@ public class RequestController {
         return ApiResponse.ok(requestRepository.save(r), "Đã cập nhật đơn và gửi lại quản lý");
     }
 
+    /**
+     * Nháp được phép lưu cho sự kiện cũ, nhưng lúc GỬI DUYỆT phải kiểm tra lại hạn gửi
+     * để không lách cửa sổ submit_within_days bằng cách lưu nháp trước rồi gửi sau.
+     */
+    private void assertSubmitWindow(RequestEntity r) {
+        if (r.getWorkDate() == null) return;
+        int days;
+        String message;
+        switch (r.getRequestType()) {
+            case "LEAVE" -> {
+                LeaveType lt = leaveTypeRepository
+                        .findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType()).orElse(null);
+                days = lt == null || lt.getSubmitWithinDays() == null ? 3 : lt.getSubmitWithinDays();
+                message = "Loại nghỉ này chỉ được gửi trong vòng " + days + " ngày kể từ ngày nghỉ";
+            }
+            case "WFH" -> {
+                days = ruleService.getInt("wfh", "submit_within_days", 3);
+                message = "WFH chỉ đăng ký được trong vòng " + days + " ngày trước (kể cả hôm nay)";
+            }
+            case "LATE_EARLY" -> {
+                days = ruleService.getInt("late_early", "submit_within_days", 3);
+                message = "Chỉ được tạo đơn đi muộn/về sớm trong vòng " + days + " ngày kể từ ngày xảy ra";
+            }
+            default -> {
+                return;
+            }
+        }
+        if (r.getWorkDate().isBefore(LocalDate.now().minusDays(days))) {
+            throw new RuntimeException(message);
+        }
+    }
+
     @PostMapping("/{id}/submit")
     @Operation(summary = "Gửi duyệt đơn đang lưu nháp")
     public ApiResponse<RequestEntity> submitDraft(@PathVariable UUID id) {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được gửi đơn của mình");
         if (!"DRAFT".equals(r.getStatus())) throw new RuntimeException("Chỉ gửi duyệt được đơn nháp");
+        assertSubmitWindow(r);
         r.setStatus("PENDING_APPROVAL");
         r.setUpdatedAt(LocalDateTime.now());
         return ApiResponse.ok(requestRepository.save(r), "Đã gửi đơn tới quản lý");

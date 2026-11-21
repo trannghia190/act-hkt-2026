@@ -7,6 +7,7 @@ interface LeaveType {
   defaultDays: number | null;
   requiresAttachment: boolean;
   isActive: boolean;
+  isSystem?: boolean;
   isPaid: boolean;
   deductsAnnualLeave: boolean;
   unit: 'DAY' | 'HALF_DAY';
@@ -65,6 +66,19 @@ export const LeaveTypesPage: React.FC = () => {
     load();
   };
 
+  const remove = async (t: LeaveType) => {
+    if (!window.confirm(`Xóa loại nghỉ "${t.name}" (${t.code})? Chỉ loại HR tự thêm mới xóa được.`)) return;
+    const res = await fetch(`/api/v1/admin/leave-types/${encodeURIComponent(t.code)}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setError(json?.message || 'Xóa loại nghỉ thất bại'); return; }
+    setError(null);
+    showToast('Đã xóa loại nghỉ');
+    load();
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {toast && <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
@@ -89,6 +103,11 @@ export const LeaveTypesPage: React.FC = () => {
             <div className="flex items-center gap-2 text-xs text-ink-muted">
               <span>{t.defaultDays != null ? `${t.defaultDays} ngày/năm` : 'Theo BHXH'} · {t.unit === 'HALF_DAY' ? 'nửa ngày' : 'ngày'} · {t.isPaid ? 'hưởng lương' : 'không lương'} · {t.requiresAttachment ? 'cần giấy tờ' : 'không cần giấy tờ'}</span>
               <button className="px-2 py-1 rounded border border-line text-ink" onClick={() => openEdit(t)}>Sửa</button>
+              {t.isSystem ? (
+                <span className="px-2 py-1 rounded bg-slate-100 text-slate-500" title="Danh mục khởi tạo sẵn — chỉ được tắt, không xóa">hệ thống</span>
+              ) : (
+                <button className="px-2 py-1 rounded border border-rose-200 text-rose-700" onClick={() => remove(t)}>Xóa</button>
+              )}
             </div>
           </div>
         ))}

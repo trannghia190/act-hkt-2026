@@ -779,7 +779,10 @@ export const RequestsPage: React.FC = () => {
                   value={newReq.leaveType}
                   onChange={e => {
                     const code = e.target.value;
-                    const days = Number(leaveTypes.find((lt: any) => lt.code === code)?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
+                    const lt: any = leaveTypes.find((x: any) => x.code === code);
+                    // Đơn vị theo cấu hình loại nghỉ (S32): loại chỉ tính theo ngày thì khoá nửa ngày.
+                    if (lt?.unit === 'DAY') setLeaveUnit('DAY');
+                    const days = Number(lt?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
                     const min = isoDaysFromToday(-days);
                     setNewReq(prev => ({ ...prev, leaveType: code, startDate: prev.startDate < min ? min : prev.startDate }));
                   }}
@@ -807,7 +810,7 @@ export const RequestsPage: React.FC = () => {
                       if (unit === 'HALF_DAY') setNewReq(prev => ({ ...prev, endDate: prev.startDate }));
                     }}>
                     <option value="DAY">Cả ngày</option>
-                    <option value="HALF_DAY">Nửa ngày (0.5)</option>
+                    {selectedLeaveCfg?.unit !== 'DAY' && <option value="HALF_DAY">Nửa ngày (0.5)</option>}
                   </select>
                 </label>
                 <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">

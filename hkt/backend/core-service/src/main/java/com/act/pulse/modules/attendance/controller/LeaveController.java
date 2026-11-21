@@ -7,6 +7,7 @@ import com.act.pulse.modules.attendance.entity.LeaveType;
 import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
+import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.act.pulse.modules.attendance.service.RuleService;
@@ -31,6 +32,7 @@ public class LeaveController {
 
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
+    private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final RuleService ruleService;
@@ -56,12 +58,27 @@ public class LeaveController {
         }
         payload.setIsActive(payload.getIsActive() == null || payload.getIsActive());
         payload.setRequiresAttachment(Boolean.TRUE.equals(payload.getRequiresAttachment()));
+        payload.setIsSystem(false); // loại HR tự thêm → được xóa
         return ApiResponse.ok(leaveTypeRepository.save(payload), "Đã thêm loại nghỉ");
+    }
+
+    /** DTO sửa từng phần: field null = giữ nguyên (LeaveType có default khởi tạo nên không dùng trực tiếp được). */
+    @lombok.Data
+    public static class UpdatePayload {
+        private String name;
+        private BigDecimal defaultDays;
+        private Boolean requiresAttachment;
+        private Boolean isActive;
+        private String config;
+        private Boolean isPaid;
+        private Boolean deductsAnnualLeave;
+        private String unit;
+        private Integer submitWithinDays;
     }
 
     @PutMapping("/admin/leave-types/{code}")
     @Operation(summary = "Sửa loại nghỉ")
-    public ApiResponse<LeaveType> update(@PathVariable String code, @RequestBody LeaveType payload) {
+    public ApiResponse<LeaveType> update(@PathVariable String code, @RequestBody UpdatePayload payload) {
         LeaveType type = leaveTypeRepository.findByCode(code)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại nghỉ: " + code));
         type.setName(payload.getName() != null ? payload.getName() : type.getName());
@@ -74,6 +91,24 @@ public class LeaveController {
         type.setUnit(payload.getUnit() != null ? payload.getUnit() : type.getUnit());
         type.setSubmitWithinDays(payload.getSubmitWithinDays() != null ? payload.getSubmitWithinDays() : type.getSubmitWithinDays());
         return ApiResponse.ok(leaveTypeRepository.save(type), "Đã cập nhật loại nghỉ");
+    }
+
+    @DeleteMapping("/admin/leave-types/{code}")
+    @Operation(summary = "Xóa loại nghỉ HR tự thêm (master data chỉ được tắt)")
+    public ApiResponse<Void> delete(@PathVariable String code) {
+        LeaveType type = leaveTypeRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy loại nghỉ: " + code));
+        if (Boolean.TRUE.equals(type.getIsSystem())) {
+            throw new RuntimeException("Loại nghỉ " + type.getName() + " (" + code + ") là danh mục khởi tạo sẵn — chỉ được tắt, không được xóa");
+        }
+        if (requestRepository.existsByLeaveTypeIgnoreCase(code)) {
+            throw new RuntimeException("Loại nghỉ " + code + " đã phát sinh đơn từ — không thể xóa, hãy tắt (Đang áp dụng) để giữ lịch sử");
+        }
+        if (leaveLedgerRepository.existsByLeaveTypeIgnoreCase(code)) {
+            throw new RuntimeException("Loại nghỉ " + code + " đã phát sinh sổ phép — không thể xóa, hãy tắt (Đang áp dụng) để giữ lịch sử");
+        }
+        leaveTypeRepository.delete(type);
+        return ApiResponse.ok(null, "Đã xóa loại nghỉ");
     }
 
     @GetMapping("/leaves/my-balance")
@@ -154,10 +189,11 @@ public class LeaveController {
         }
         BigDecimal annualGrant = BigDecimal.ZERO, carryGrant = BigDecimal.ZERO, seniorityGrant = BigDecimal.ZERO;
         BigDecimal used = BigDecimal.ZERO, adjust = BigDecimal.ZERO, sickUsed = BigDecimal.ZERO;
+        // Cấu hình "trừ phép năm" của từng loại là nguồn sự thật duy nhất.
+        // (AL được seed deduct = TRUE — xem V42; không hard-code để HR sửa được.)
         java.util.Set<String> deductTypes = leaveTypeRepository.findAll().stream()
                 .filter(lt -> Boolean.TRUE.equals(lt.getDeductsAnnualLeave()))
                 .map(lt -> lt.getCode().toUpperCase()).collect(java.util.stream.Collectors.toSet());
-        deductTypes.add("AL");
         for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
             String reasonLower = e.getReason() == null ? "" : e.getReason().toLowerCase();
             boolean carry = reasonLower.contains("bảo lưu") || reasonLower.contains("tồn");
