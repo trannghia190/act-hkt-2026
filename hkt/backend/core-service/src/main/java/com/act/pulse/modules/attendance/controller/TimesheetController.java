@@ -13,6 +13,7 @@ import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
 import com.act.pulse.modules.attendance.repository.*;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
+import com.act.pulse.modules.attendance.service.TimesheetSymbols;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -84,57 +85,6 @@ public class TimesheetController {
 
     private void ensureAllSheets(YearMonth ym) {
         for (User u : userRepository.findAll()) sheetOf(u.getId(), ym);
-    }
-
-    /**
-     * Số ngày công của một ký hiệu ô: 1.00 → 1, 0.50 → 0.5, R (WFH cả ngày) → 1,
-     * R/0.50 → 0.5. Ký hiệu nghỉ (AL, S, NL…) hoặc rỗng → 0.
-     */
-    private static double workUnits(String raw) {
-        if (raw == null) return 0;
-        String base = raw.trim().replace("*", "").replace("?", "").trim();
-        if (base.isEmpty()) return 0;
-        if ("R".equalsIgnoreCase(base)) return 1.0;
-        int slash = base.indexOf('/');
-        boolean isCounted = base.matches("\\d+(\\.\\d+)?")
-                || (slash == 1 && base.regionMatches(true, 0, "R/", 0, 2));
-        if (!isCounted) return 0;
-        String numeric = slash >= 0 ? base.substring(slash + 1) : base;
-        try {
-            return Double.parseDouble(numeric);
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
-    }
-
-    /**
-     * Số ngày phép năm (AL) của một ô: AL → 1, AL/0.50 hoặc 0.50/AL → 0.5.
-     * Nghỉ ốm/chế độ/không lương (S, RO, UP, ML…) trả 0 — không trừ vào phép năm.
-     */
-    private static double annualLeaveUnits(String raw) {
-        if (raw == null) return 0;
-        String base = raw.trim().replace("*", "").replace("?", "").trim().toUpperCase();
-        if (base.isEmpty()) return 0;
-        if ("AL".equals(base)) return 1.0;
-        int slash = base.indexOf('/');
-        if (slash < 0) return 0;
-        String left = base.substring(0, slash), right = base.substring(slash + 1);
-        if ("AL".equals(left) && right.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(right);
-        if ("AL".equals(right) && left.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(left);
-        return 0;
-    }
-
-    /** Số ngày WFH của một ô: R → 1, R/0.50 hoặc 0.50/R → 0.5, ký hiệu khác → 0. */
-    private static double wfhUnits(String raw) {
-        if (raw == null) return 0;
-        String base = raw.trim().replace("*", "").replace("?", "").trim().toUpperCase();
-        if ("R".equals(base)) return 1.0;
-        int slash = base.indexOf('/');
-        if (slash < 0) return 0;
-        String left = base.substring(0, slash), right = base.substring(slash + 1);
-        if ("R".equals(left) && right.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(right);
-        if ("R".equals(right) && left.matches("\\d+(\\.\\d+)?")) return Double.parseDouble(left);
-        return 0;
     }
 
     @GetMapping
@@ -226,7 +176,7 @@ public class TimesheetController {
                         && !holidays.contains(ym.atDay(e.getKey()));
                 String base = s.trim().replace("*", "").replace("?", "").trim();
                 // Ký hiệu công: 1.00/0.50, R (WFH cả ngày), R/0.50; AL/0.50 là nghỉ nửa ngày, không phải công.
-                double units = workUnits(base);
+                double units = TimesheetSymbols.workUnits(base);
                 if (units > 0 && isWorkDay) {
                     workDays += units;
                 } else if (units == 0 && isWorkDay) {
@@ -236,8 +186,8 @@ public class TimesheetController {
                 }
                 // Nghỉ chỉ trừ quỹ khi rơi vào ngày làm việc — ô nghỉ trên cuối tuần/lễ không tính.
                 if (isWorkDay) {
-                    annualLeave += annualLeaveUnits(base);
-                    wfhDays += wfhUnits(base);
+                    annualLeave += TimesheetSymbols.annualLeaveUnits(base);
+                    wfhDays += TimesheetSymbols.wfhUnits(base);
                 }
             }
             double totalDays = workDays;
