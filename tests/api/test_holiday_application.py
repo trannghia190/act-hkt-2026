@@ -134,6 +134,9 @@ c, j = call('GET', f'/timesheets?month={MONTH}', H, expect=200)
 row = next((r for r in j['data']['rows'] if r.get('employeeCode') == '137ACT'), None)
 check('S15 có dòng nhân viên', row is not None)
 check('S15: standardDays trừ 3 ngày lễ (18)', row.get('standardDays') == 18, row.get('standardDays'))
+check('S15: holidayDates trả đủ 3 ngày lễ để UI tô màu cột',
+      sorted(j['data'].get('holidayDates') or []) == ['2027-01-05', '2027-01-06', '2027-01-07'],
+      j['data'].get('holidayDates'))
 grid = row.get('days') or row.get('daySymbols') or {}
 cells = grid if isinstance(grid, dict) else {str(x.get('day')): x.get('symbol') for x in grid}
 check('S15: ngày 05–07/01 ký hiệu NL',

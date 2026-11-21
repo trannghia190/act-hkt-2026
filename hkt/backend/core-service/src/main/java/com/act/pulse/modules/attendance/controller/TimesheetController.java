@@ -275,6 +275,12 @@ public class TimesheetController {
         Map<String, Object> out = new HashMap<>();
         out.put("month", ym.toString());
         out.put("daysInMonth", ym.lengthOfMonth());
+        // Ngày lễ của kỳ — UI tô màu cột ngày để HR nhận biết cuối tuần / ngày lễ.
+        out.put("holidayDates", holidays.stream()
+                .filter(d -> YearMonth.from(d).equals(ym))
+                .sorted()
+                .map(LocalDate::toString)
+                .toList());
         out.put("rows", rows);
         out.put("status", statusOf(ym));
         out.put("closeDay", ruleService.getInt("payroll_period", "close_day", 1));
