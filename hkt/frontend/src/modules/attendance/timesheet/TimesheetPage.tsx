@@ -51,6 +51,7 @@ export const TimesheetPage: React.FC = () => {
   const [bulkAdjustment, setBulkAdjustment] = useState({ field: 'paidLeaveDays', amount: '1.0', reason: 'Duyệt bù phép cuối năm theo chính sách HR' });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [dayOverrides, setDayOverrides] = useState<Record<string, string>>({});
+  const [holidayDates, setHolidayDates] = useState<string[]>([]);
   const [sheetStatus, setSheetStatus] = useState<string>('draft');
   const [savedViews, setSavedViews] = useState<{ name: string; f: any }[]>(() => {
     try { return JSON.parse(localStorage.getItem('pulse_timesheet_views') || '[]'); } catch { return []; }
@@ -93,6 +94,7 @@ export const TimesheetPage: React.FC = () => {
       .then(j => {
         const d = j?.data; if (!d) return;
         setSheetStatus(d.status || 'draft');
+        setHolidayDates(Array.isArray(d.holidayDates) ? d.holidayDates : []);
         setIsLocked(d.status === 'locked');
         setAllowAfterLock(d.allowAdjustAfterLock === true);
         setDisputeWindowDays(Number(d.disputeWindowDays ?? 2));
@@ -129,6 +131,31 @@ export const TimesheetPage: React.FC = () => {
 
   const monthOf = () => { const [m, y] = selectedMonth.split('/'); return `${y}-${m.padStart(2, '0')}`; };
   const selectedYm = monthOf();
+  const [calendarYear, calendarMonth] = selectedYm.split('-').map(Number);
+  const daysInSelectedMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+  const holidayDaySet = new Set(
+    holidayDates.filter(d => d.startsWith(selectedYm)).map(d => Number(d.slice(8, 10)))
+  );
+  const isWeekendDay = (day: number) => {
+    const dow = new Date(calendarYear, calendarMonth - 1, day).getDay();
+    return dow === 0 || dow === 6;
+  };
+  // Tô màu cả cột ngày (header + ô dữ liệu): cuối tuần xám nhạt, ngày lễ hổ phách.
+  const dayTint = (day: number, part: 'head' | 'body') => {
+    if (day > daysInSelectedMonth) return '';
+    if (holidayDaySet.has(day)) {
+      return part === 'head' ? 'bg-amber-100 text-amber-800' : 'bg-amber-50/80';
+    }
+    if (isWeekendDay(day)) {
+      return part === 'head' ? 'bg-slate-200/80 text-slate-600' : 'bg-slate-100/80';
+    }
+    return '';
+  };
+  const dayHint = (day: number) => {
+    if (day > daysInSelectedMonth) return '';
+    if (holidayDaySet.has(day)) return ' — ngày lễ';
+    return isWeekendDay(day) ? ' — cuối tuần' : '';
+  };
   const _now = new Date();
   const currentYm = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
   // Kỳ đang chạy/tương lai phải giữ MỞ — chỉ chốt được kỳ đã kết thúc.
@@ -524,6 +551,18 @@ export const TimesheetPage: React.FC = () => {
 
       {/* Bảng công 53 cột: 5 thông tin + 31 cột ngày + 17 cột tổng hợp */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 border-b border-line text-[11px] text-ink-muted">
+          <span className="font-semibold text-ink-secondary">Màu cột ngày:</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm border border-slate-300/70 bg-slate-200/80" />
+            Cuối tuần
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm border border-amber-200 bg-amber-100" />
+            Ngày lễ
+          </span>
+          <span className="ml-auto hidden sm:inline">Nhấp đúp ô để sửa ký hiệu</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             <thead>
@@ -542,7 +581,13 @@ export const TimesheetPage: React.FC = () => {
                 <th className="py-3 px-2">Chức vụ</th>
                 <th className="py-3 px-2 border-r border-line">Nhóm</th>
                 {monthDays.map((d) => (
-                  <th key={d} className="py-3 px-1.5 text-center border-r border-line bg-gray-50/60">{d}</th>
+                  <th
+                    key={d}
+                    title={`Ngày ${d}/${calendarMonth}${dayHint(d)}`}
+                    className={`py-3 px-1.5 text-center border-r border-line ${dayTint(d, 'head') || 'bg-gray-50/60'}`}
+                  >
+                    {d}
+                  </th>
                 ))}
                 <th className="py-3 px-2 text-center bg-gray-50 border-x border-line">Công chuẩn</th>
                 <th className="py-3 px-2 text-center">Công thực tế</th>
@@ -589,9 +634,9 @@ export const TimesheetPage: React.FC = () => {
                     return (
                       <td
                         key={d}
-                        title={`Ngày ${d}/11 — nhấp đúp để sửa`}
+                        title={`Ngày ${d}/${calendarMonth}${dayHint(d)} — nhấp đúp để sửa`}
                         onDoubleClick={() => editDayCell(r, d)}
-                        className={`py-2 px-1.5 text-center font-mono border-r border-line cursor-pointer hover:bg-accent-soft/60 ${
+                        className={`py-2 px-1.5 text-center font-mono border-r border-line cursor-pointer hover:bg-accent-soft/60 ${dayTint(d, 'body')} ${
                           edited ? 'text-rose-700 font-bold' : ''
                         }`}
                       >
