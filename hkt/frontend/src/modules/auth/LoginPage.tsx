@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
 import { ActHktLogo } from '../../components/common/ActHktLogo';
+import { isWebAuthnSupported, loginWithPasskey as requestPasskeyLogin } from '../../utils/webauthn';
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('136ACT');
@@ -21,7 +22,9 @@ export const LoginPage: React.FC = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
-  const { login } = useAuth();
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+
+  const { login, loginWithPasskey } = useAuth();
   const navigate = useNavigate();
   const sessionExpired = new URLSearchParams(window.location.search).get('expired') === '1';
 
@@ -41,6 +44,21 @@ export const LoginPage: React.FC = () => {
       setError(err?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** Đăng nhập bằng passkey: Windows Hello / Touch ID / Face ID, không cần gõ mật khẩu. */
+  const handlePasskeyLogin = async () => {
+    setError(null);
+    setPasskeyLoading(true);
+    try {
+      const session = await requestPasskeyLogin();
+      loginWithPasskey(session);
+      navigate('/todo');
+    } catch (err: any) {
+      setError(err?.message || 'Đăng nhập bằng passkey thất bại.');
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -205,6 +223,25 @@ export const LoginPage: React.FC = () => {
             >
               {loading ? 'Đang xác thực...' : 'Đăng Nhập Vào Hệ Thống'}
             </Button>
+
+            {isWebAuthnSupported() && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="h-px flex-1 bg-line" />
+                  <span className="text-[10px] uppercase tracking-wide text-ink-muted">hoặc</span>
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePasskeyLogin}
+                  disabled={passkeyLoading}
+                  className="w-full py-2.5 rounded-lg border border-line bg-white text-xs font-bold text-ink hover:border-accent hover:text-accent transition disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <span aria-hidden>🔐</span>
+                  {passkeyLoading ? 'Đang xác thực vân tay/Face ID...' : 'Đăng nhập bằng Passkey (Vân tay / Face ID)'}
+                </button>
+              </>
+            )}
           </form>
         </div>
 

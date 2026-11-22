@@ -11,6 +11,8 @@ import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.service.AttendanceService;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
+import com.act.pulse.modules.attendance.service.WebAuthnException;
+import com.act.pulse.modules.attendance.service.WebAuthnService;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.FaceProfileRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -55,6 +57,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final UserRepository userRepository;
     private final ShiftResolver shiftResolver;
     private final RequestRepository requestRepository;
+    private final WebAuthnService webAuthnService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -111,6 +114,25 @@ public class AttendanceServiceImpl implements AttendanceService {
         int maxDevices = ruleService.getInt("attendance_security", "max_devices", 2);
         boolean deviceApproved = false;
         String deviceDetail = "Thiết bị này chưa được HR duyệt — không chấm công được";
+
+        // WebAuthn/Passkey: nhân viên đã đăng ký passkey phải ký challenge mỗi lần chấm công.
+        // Xác minh xong mới biết đúng thiết bị, nên fingerprint lấy từ public key đã lưu.
+        boolean passkeyVerified = false;
+        String passkeyBlockDetail = null;
+        if (request.getWebauthnChallengeId() != null && !request.getWebauthnChallengeId().isBlank()) {
+            if (request.getWebauthnCredential() == null || request.getWebauthnCredential().isBlank()) {
+                passkeyBlockDetail = "Thiếu chữ ký passkey — hãy xác thực bằng vân tay/Face ID rồi chấm công lại.";
+            } else {
+                try {
+                    DeviceRegistration passkeyDevice = webAuthnService.finishAssertion(
+                            requester, request.getWebauthnChallengeId(), request.getWebauthnCredential());
+                    passkeyVerified = true;
+                    deviceFingerprint = passkeyDevice.getDeviceFingerprint();
+                } catch (WebAuthnException e) {
+                    passkeyBlockDetail = e.getMessage();
+                }
+            }
+        }
         if (deviceFingerprint != null && !deviceFingerprint.isBlank()) {
             Optional<DeviceRegistration> existingOpt = deviceRegistrationRepository
                     .findByDeviceFingerprint(deviceFingerprint);
@@ -164,6 +186,21 @@ public class AttendanceServiceImpl implements AttendanceService {
                             maxDevices, maxDevices + 1);
                 }
             }
+        }
+        if (!passkeyVerified) {
+            boolean webauthnRequired = ruleService.getBoolean("attendance_security", "webauthn_required", true);
+            boolean hasApprovedPasskey = deviceRegistrationRepository.findByUserIdAndIsApprovedTrue(userId).stream()
+                    .anyMatch(d -> d.isHasPasskey() && d.getRevokedAt() == null);
+            if (webauthnRequired && hasApprovedPasskey && passkeyBlockDetail == null) {
+                passkeyBlockDetail = "Bạn đã khóa thiết bị bằng passkey — hãy xác thực bằng vân tay/Face ID trước khi chấm công.";
+            }
+        }
+        if (passkeyBlockDetail != null) {
+            deviceApproved = false;
+            deviceDetail = passkeyBlockDetail;
+        } else if (passkeyVerified) {
+            deviceApproved = true;
+            deviceDetail = null;
         }
         layers.add(layer("DEVICE", "Thiết bị đã đăng ký", deviceApproved, deviceDetail));
 

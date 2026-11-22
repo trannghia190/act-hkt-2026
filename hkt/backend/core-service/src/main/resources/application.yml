@@ -68,6 +68,15 @@ app:
     refresh-expiration-ms: 604800000 # 7 ngày — business docs/01 §3.2
   services:
     ai-face-service-url: ${AI_FACE_SERVICE_URL:http://localhost:8000}
+  webauthn:
+    # RP ID phải là host của origin (không gồm scheme/port). Khi demo qua tunnel HTTPS,
+    # đặt WEBAUTHN_RP_ID=<tunnel-host> và WEBAUTHN_ALLOWED_ORIGINS=https://<tunnel-host>.
+    rp-id: ${WEBAUTHN_RP_ID:localhost}
+    rp-name: ${WEBAUTHN_RP_NAME:ACT Pulse}
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    # Origin động cho tunnel demo — RP ID tự suy ra từ host của Origin.
+    # Production: đặt WEBAUTHN_ALLOWED_ORIGIN_PATTERNS='' để tắt.
+    allowed-origin-patterns: ${WEBAUTHN_ALLOWED_ORIGIN_PATTERNS:https://*.trycloudflare.com,https://*.ngrok-free.app}
 
 springdoc:
   api-docs:

@@ -63,6 +63,8 @@ public class RequestController {
     private final AuditLogRepository auditLogRepository;
     private final ShiftResolver shiftResolver;
     private final ObjectMapper objectMapper;
+    private final com.act.pulse.modules.attendance.repository.TimesheetRepository timesheetRepository;
+    private final com.act.pulse.modules.attendance.repository.TimesheetCellRepository timesheetCellRepository;
 
     private String leaveTypeName(String code) {
         if (code == null) return null;
@@ -899,30 +901,30 @@ public class RequestController {
             }
         }
 
-        // Đơn đi muộn/về sớm được duyệt → cập nhật giờ vào/ra tương ứng trong bảng công.
-        if (approve && ("LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType()))
-                && r.getWorkDate() != null && r.getPayload() != null) {
+        // Đơn được duyệt phải thay đổi bảng công:
+        // - đi muộn/về sớm: cập nhật giờ vào/ra tương ứng;
+        // - đơn chuyển từ khiếu nại bảng công: áp đúng điều khiếu nại mô tả (cặp giờ nhân viên
+        //   đề xuất hoặc WFH/nghỉ) — trước đây đơn ADJUST rỗng được duyệt xong không đổi gì.
+        if (approve && r.getWorkDate() != null && r.getPayload() != null) {
             try {
                 Map<?, ?> payload = objectMapper.readValue(r.getPayload(), Map.class);
-                String kind = "ADJUST".equals(r.getRequestType())
-                        ? String.valueOf(payload.get("adjust_kind"))
-                        : String.valueOf(payload.get("late_early"));
-                String time = payload.get("time") == null ? null : String.valueOf(payload.get("time"));
-                if (time != null && time.matches("^\\d{2}:\\d{2}$")) {
-                    LocalTime t = LocalTime.parse(time);
-                    AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(owner.getId(), r.getWorkDate())
-                            .orElseGet(() -> AttendanceLog.builder()
-                                    .userId(owner.getId()).workDate(r.getWorkDate()).status("INCOMPLETE").build());
-                    boolean out = "EARLY".equals(kind) || "OUT".equals(kind);
-                    if (out) log.setCheckOutAt(r.getWorkDate().atTime(t));
-                    else log.setCheckInAt(r.getWorkDate().atTime(t));
-                    log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
-                    // Log tạo/sửa qua đơn duyệt cũng phải mang ca hiệu lực để bảng công tính đúng.
-                    if (log.getShiftId() == null) {
-                        Shift shift = shiftResolver.resolveFor(owner);
-                        if (shift != null) log.setShiftId(shift.getId());
+                if (payload.get("dispute_id") != null) {
+                    // Bỏ ô công đánh tay cũ để ngày này hiển thị theo đơn đã duyệt, không bị ô cũ đè.
+                    clearStaleCellForApproval(owner.getId(), r.getWorkDate());
+                }
+                if ("LATE_EARLY".equals(r.getRequestType()) || "ADJUST".equals(r.getRequestType())) {
+                    String kind = "ADJUST".equals(r.getRequestType())
+                            ? String.valueOf(payload.get("adjust_kind"))
+                            : String.valueOf(payload.get("late_early"));
+                    LocalTime reqIn = hhmmOrNull(payload.get("requested_check_in"));
+                    LocalTime reqOut = hhmmOrNull(payload.get("requested_check_out"));
+                    LocalTime time = hhmmOrNull(payload.get("time"));
+                    if (reqIn != null || reqOut != null) {
+                        applyLogTimes(owner, r.getWorkDate(), reqIn, reqOut);
+                    } else if (time != null) {
+                        boolean out = "EARLY".equals(kind) || "OUT".equals(kind);
+                        applyLogTimes(owner, r.getWorkDate(), out ? null : time, out ? time : null);
                     }
-                    attendanceLogRepository.save(log);
                 }
             } catch (Exception ignored) { /* payload cũ/không hợp lệ: chỉ duyệt đơn, không sửa log */ }
         }
@@ -940,6 +942,41 @@ public class RequestController {
                 .build());
 
         return ApiResponse.ok(saved, approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
+    }
+
+    /** Đọc "HH:mm" từ payload; giá trị rỗng/sai định dạng trả null thay vì ném lỗi. */
+    private static LocalTime hhmmOrNull(Object value) {
+        if (value == null) return null;
+        String s = String.valueOf(value).trim();
+        if (!s.matches("^\\d{2}:\\d{2}$")) return null;
+        try { return LocalTime.parse(s); } catch (Exception e) { return null; }
+    }
+
+    /**
+     * Ghi giờ vào/ra đã duyệt vào attendance_logs. Phía không truyền (null) giữ nguyên giờ đã có
+     * để đơn chỉ sửa một đầu không xoá đầu còn lại.
+     */
+    private void applyLogTimes(User owner, LocalDate workDate, LocalTime in, LocalTime out) {
+        AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(owner.getId(), workDate)
+                .orElseGet(() -> AttendanceLog.builder()
+                        .userId(owner.getId()).workDate(workDate).status("INCOMPLETE").build());
+        if (in != null) log.setCheckInAt(workDate.atTime(in));
+        if (out != null) log.setCheckOutAt(workDate.atTime(out));
+        log.setStatus(log.getCheckInAt() != null && log.getCheckOutAt() != null ? "VALID" : "INCOMPLETE");
+        // Log tạo/sửa qua đơn duyệt cũng phải mang ca hiệu lực để bảng công tính đúng.
+        if (log.getShiftId() == null) {
+            Shift shift = shiftResolver.resolveFor(owner);
+            if (shift != null) log.setShiftId(shift.getId());
+        }
+        attendanceLogRepository.save(log);
+    }
+
+    /** Xoá ô công cũ của một ngày để đơn vừa duyệt là nguồn sự thật của ngày đó. */
+    private void clearStaleCellForApproval(UUID userId, LocalDate day) {
+        java.time.YearMonth ym = java.time.YearMonth.from(day);
+        timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, ym.getMonthValue(), ym.getYear())
+                .ifPresent(sheet -> timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), day)
+                        .ifPresent(timesheetCellRepository::delete));
     }
 
     /** Thứ bậc vai trò — dùng cho cấu hình "cấp manager trở lên" được tự duyệt đơn của mình. */

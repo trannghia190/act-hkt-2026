@@ -48,8 +48,11 @@ export default defineConfig({
         changeOrigin: true,
         // Bỏ Origin/Referer khi proxy để backend không áp CORS theo domain tunnel
         // (ngrok/cloudflare). Auth vẫn do JWT trong X-Auth-Token đảm bảo.
+        // Ngoại lệ WebAuthn: RP xác thực Origin của ceremony nên phải giữ Origin thật
+        // (khớp app.webauthn.allowed-origins).
         configure: (proxy: any) => {
           proxy.on('proxyReq', (proxyReq: any) => {
+            if (String(proxyReq.path || '').startsWith('/api/v1/webauthn')) return;
             proxyReq.removeHeader('origin');
             proxyReq.removeHeader('referer');
           });

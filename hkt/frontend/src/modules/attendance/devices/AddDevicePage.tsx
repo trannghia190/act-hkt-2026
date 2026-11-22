@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/common/Button';
+import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 
 export const AddDevicePage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,23 +15,9 @@ export const AddDevicePage: React.FC = () => {
     return 'Web Device';
   });
   const [sent, setSent] = useState(false);
+  const [activeNow, setActiveNow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getDeviceFingerprint = (): string => {
-    const raw = [
-      navigator.userAgent,
-      screen.width,
-      screen.height,
-      screen.colorDepth,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-    ].join('|');
-    let hash = 0;
-    for (let i = 0; i < raw.length; i += 1) {
-      hash = (hash * 31 + raw.charCodeAt(i)) | 0;
-    }
-    return `web-${Math.abs(hash).toString(16)}`;
-  };
 
   const [fingerprint] = useState(getDeviceFingerprint());
 
@@ -81,6 +68,7 @@ export const AddDevicePage: React.FC = () => {
       }
 
       setSent(true);
+      setActiveNow(!!json?.data?.isApproved);
       setLoading(false);
     } catch (err: any) {
       setError(err?.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
@@ -106,10 +94,16 @@ export const AddDevicePage: React.FC = () => {
       {sent ? (
         <div className="bg-surface border border-emerald-200 rounded-xl p-6 text-center space-y-3">
           <div className="text-3xl text-emerald-600">✓</div>
-          <h2 className="text-sm font-bold text-emerald-800">Yêu cầu đã được gửi thành công</h2>
+          <h2 className="text-sm font-bold text-emerald-800">
+            {activeNow ? 'Thiết bị đầu tiên đã được kích hoạt' : 'Yêu cầu đã được gửi thành công'}
+          </h2>
           <p className="text-xs text-ink-muted">
-            Thiết bị <code className="font-mono bg-canvas px-1 rounded">{fingerprint}</code> đang ở hàng chờ HR duyệt.
-            Sau khi HR phê duyệt, bạn có thể dùng thiết bị này để chấm công.
+            {activeNow ? (
+              <>Thiết bị <code className="font-mono bg-canvas px-1 rounded">{fingerprint}</code> đã dùng để chấm công được ngay.</>
+            ) : (
+              <>Thiết bị <code className="font-mono bg-canvas px-1 rounded">{fingerprint}</code> đang ở hàng chờ HR duyệt.
+                Sau khi HR phê duyệt, bạn có thể dùng thiết bị này để chấm công.</>
+            )}
           </p>
           <div className="pt-2">
             <Button variant="primary" size="sm" onClick={() => navigate('/attendance/devices')}>

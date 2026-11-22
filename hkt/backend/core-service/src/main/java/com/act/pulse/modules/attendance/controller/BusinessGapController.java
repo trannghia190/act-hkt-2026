@@ -655,6 +655,54 @@ public class BusinessGapController {
         return ApiResponse.ok(userId == null ? List.of() : deviceRegistrationRepository.findByUserIdOrderByCreatedAtDesc(userId), "Thiết bị của tôi");
     }
 
+    /**
+     * Nhân viên tự xóa thiết bị của mình khỏi danh sách (S27): máy đang chờ duyệt,
+     * đã duyệt hoặc đã bị HR thu hồi. Xóa hàng thiết bị nhưng luôn ghi audit trước
+     * để HR còn dấu vết. Xóa máy đã duyệt = tự thu hồi — máy đó không chấm công
+     * được nữa cho tới khi đăng ký lại; xóa máy chờ duyệt = hủy yêu cầu.
+     */
+    @DeleteMapping("/devices/{id}")
+    @Operation(summary = "Nhân viên tự xóa thiết bị của mình (S27)")
+    public ApiResponse<Map<String, Object>> deleteDevice(@PathVariable UUID id) {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
+        }
+        DeviceRegistration d = deviceRegistrationRepository.findById(id)
+                .filter(x -> userId.equals(x.getUserId()))
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy thiết bị"));
+        String previousStatus = Boolean.TRUE.equals(d.getIsApproved()) ? "ACTIVE"
+                : d.getRevokedAt() != null ? "REVOKED" : "PENDING";
+        boolean pending = "PENDING".equals(previousStatus);
+
+        AuditLog audit = AuditLog.builder()
+                .action(pending ? "CANCEL_DEVICE_REQUEST" : "DELETE_DEVICE")
+                .entityName("DEVICE")
+                .entityId(String.valueOf(d.getId()))
+                .userId(userId)
+                .userCode(CurrentUser.employeeCode())
+                .oldValue(previousStatus)
+                .newValue("DELETED")
+                .reason(pending
+                        ? "Nhân viên tự hủy yêu cầu đăng ký thiết bị đang chờ duyệt (" + d.getDeviceFingerprint() + ")"
+                        : "Nhân viên tự xóa thiết bị (" + d.getDeviceFingerprint() + ") — trạng thái trước khi xóa: " + previousStatus)
+                .build();
+        audit.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(audit);
+
+        deviceRegistrationRepository.delete(d);
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", id.toString());
+        result.put("deleted", true);
+        result.put("cancelled", pending);
+        result.put("previousStatus", previousStatus);
+        return ApiResponse.ok(result, pending
+                ? "Đã hủy yêu cầu đăng ký thiết bị"
+                : "Đã xóa thiết bị khỏi danh sách của bạn");
+    }
+
     @PostMapping("/devices/request")
     @Operation(summary = "Yêu cầu thêm thiết bị (S29)")
     public ApiResponse<DeviceRegistration> requestDevice(
@@ -689,16 +737,25 @@ public class BusinessGapController {
                 ? request.getFingerprint()
                 : "web-" + UUID.randomUUID().toString().substring(0, 8);
 
-        DeviceRegistration device = deviceRegistrationRepository.findByDeviceFingerprint(fp)
-                .orElseGet(() -> DeviceRegistration.builder()
-                        .userId(userId)
-                        .deviceFingerprint(fp)
-                        .build());
+        DeviceRegistration existing = deviceRegistrationRepository.findByDeviceFingerprint(fp).orElse(null);
+        if (existing != null && !existing.getUserId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi");
+        }
+        DeviceRegistration device = existing != null ? existing : DeviceRegistration.builder()
+                .userId(userId)
+                .deviceFingerprint(fp)
+                .build();
+
+        // Máy đầu tiên của mỗi người được tự duyệt giống luồng chấm công lần đầu
+        // (AttendanceServiceImpl): cùng một hành động phải ra cùng kết quả.
+        boolean firstDevice = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId) == 0;
 
         device.setUserId(userId);
         device.setDeviceModel(request.getDeviceName() != null ? request.getDeviceName() : "Web Device");
         device.setOsVersion("Web");
-        device.setIsApproved(false);
+        if (!Boolean.TRUE.equals(device.getIsApproved())) device.setIsApproved(firstDevice);
         device.setExpiresAt(LocalDateTime.now().plusDays(30));
         device.setUpdatedAt(LocalDateTime.now());
         if (device.getCreatedAt() == null) device.setCreatedAt(LocalDateTime.now());
@@ -711,13 +768,15 @@ public class BusinessGapController {
                 .entityId(String.valueOf(saved.getId()))
                 .userId(userId)
                 .userCode(CurrentUser.employeeCode())
-                .newValue("PENDING")
+                .newValue(Boolean.TRUE.equals(saved.getIsApproved()) ? "ACTIVE" : "PENDING")
                 .reason(request.getReason())
                 .build();
         audit.setCreatedAt(LocalDateTime.now());
         auditLogRepository.save(audit);
 
-        return ApiResponse.ok(saved, "Đã gửi yêu cầu — chờ HR duyệt");
+        return ApiResponse.ok(saved, Boolean.TRUE.equals(saved.getIsApproved())
+                ? "Thiết bị đầu tiên đã được kích hoạt — dùng để chấm công ngay"
+                : "Đã gửi yêu cầu — chờ HR duyệt");
     }
 
     private boolean isLocalOrOfficeIp(String ip) {
@@ -758,8 +817,23 @@ public class BusinessGapController {
                         && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()));
     }
 
+    /** Ngày đã có đơn cùng loại đang chờ duyệt hoặc đã duyệt — dùng để chặn chuyển duyệt trùng. */
+    private boolean hasOpenRequestOn(UUID userId, java.time.LocalDate day, String type) {
+        return requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .anyMatch(r -> type.equals(r.getRequestType())
+                        && ("APPROVED".equals(r.getStatus()) || "PENDING_APPROVAL".equals(r.getStatus()))
+                        && r.getWorkDate() != null
+                        && !day.isBefore(r.getWorkDate())
+                        && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()));
+    }
+
     /** Tạo đơn đã duyệt (LEAVE/WFH) từ khiếu nại để mọi bảng công tính đúng như đơn thường. */
     private RequestEntity createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type, String leaveType, String reason) {
+        // Ô đánh tay cũ (HR từng sửa) không được đè lên kết quả khiếu nại vừa duyệt.
+        java.time.YearMonth ym = java.time.YearMonth.from(workDate);
+        timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, ym.getMonthValue(), ym.getYear())
+                .flatMap(sheet -> timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), workDate))
+                .ifPresent(timesheetCellRepository::delete);
         return requestRepository.save(RequestEntity.builder()
                 .userId(userId).requestType(type).leaveType(leaveType)
                 .payload("{}").workDate(workDate).endDate(workDate)
@@ -1284,13 +1358,57 @@ public class BusinessGapController {
                         .changedBy(CurrentUser.userId()).build());
             }
         } else if ("MAKEUP".equals(action)) {
+            // "Bổ sung công" = chuyển ĐÚNG điều nhân viên xin trong khiếu nại cho quản lý duyệt.
+            // Trước đây luôn tạo đơn ADJUST payload rỗng nên quản lý duyệt xong ngày công không đổi
+            // (không có loại WFH/nghỉ, cũng không có giờ vào/ra) và giao diện không có thời lượng.
+            String kind = (d.getRequestedKind() == null || d.getRequestedKind().isBlank())
+                    ? "TIME_FIX" : d.getRequestedKind().trim().toUpperCase();
+            if (!Set.of("TIME_FIX", "WFH", "LEAVE").contains(kind)) {
+                throw new RuntimeException("Chế độ nhân viên xin trong khiếu nại không hợp lệ (" + kind + ")");
+            }
+            String requestType = "TIME_FIX".equals(kind) ? "ADJUST" : kind;
+            if (hasOpenRequestOn(d.getUserId(), d.getWorkDate(), requestType)) {
+                throw new RuntimeException("Ngày " + d.getWorkDate() + " đã có đơn " + requestType
+                        + " đang chờ/đã duyệt — không chuyển duyệt trùng");
+            }
+            String leaveType = null;
+            String payload = "{\"source\":\"DISPUTE\",\"dispute_id\":\"" + id + "\"}";
+            if ("LEAVE".equals(kind)) {
+                leaveType = d.getRequestedLeaveType();
+                if (leaveType == null || leaveType.isBlank()) {
+                    throw new RuntimeException("Khiếu nại xin chuyển thành nghỉ nhưng chưa chọn loại nghỉ — không chuyển quản lý duyệt được");
+                }
+                requireActiveLeaveType(leaveType);
+                LeaveType leaveCfg = leaveTypeRepository.findByCode(leaveType).orElse(null);
+                // Luồng duyệt đơn nghỉ chặn khi loại nghỉ bắt buộc giấy tờ mà đơn không có file —
+                // chuyển duyệt lúc này thì quản lý không thể duyệt, nên chặn ngay từ bước chuyển.
+                if (leaveCfg != null && Boolean.TRUE.equals(leaveCfg.getRequiresAttachment())
+                        && disputeAttachmentRepository.countByDisputeId(id) == 0) {
+                    throw new RuntimeException("Loại nghỉ " + leaveCfg.getName() + " (" + leaveType
+                            + ") bắt buộc có giấy tờ — nhân viên cần bổ sung giấy tờ vào khiếu nại trước khi chuyển duyệt");
+                }
+            } else if ("TIME_FIX".equals(kind)) {
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("source", "DISPUTE");
+                p.put("dispute_id", id);
+                if (d.getRequestedCheckIn() != null) p.put("requested_check_in", hhmm(d.getRequestedCheckIn()));
+                if (d.getRequestedCheckOut() != null) p.put("requested_check_out", hhmm(d.getRequestedCheckOut()));
+                try {
+                    payload = objectMapper.writeValueAsString(p);
+                } catch (Exception ignored) { /* giữ payload mặc định */ }
+            }
             RequestEntity makeup = RequestEntity.builder()
-                    .userId(d.getUserId()).requestType("ADJUST").workDate(d.getWorkDate())
+                    .userId(d.getUserId()).requestType(requestType).leaveType(leaveType)
+                    .workDate(d.getWorkDate()).endDate(d.getWorkDate())
                     .reason("Bổ sung công theo khiếu nại " + id + ": " + reason)
-                    .payload("{}").status("PENDING_APPROVAL").build();
+                    .payload(payload).status("PENDING_APPROVAL").build();
             makeup.setCreatedAt(LocalDateTime.now());
             makeup.setUpdatedAt(LocalDateTime.now());
-            requestRepository.save(makeup);
+            RequestEntity makeupSaved = requestRepository.save(makeup);
+            // Giấy tờ nhân viên gửi kèm khiếu nại được chuyển sang đơn để quản lý xem khi duyệt.
+            if ("LEAVE".equals(kind)) copyDisputeAttachmentsToRequest(id, makeupSaved.getId());
+            timesNote = " [chuyển quản lý duyệt " + ("WFH".equals(kind) ? "WFH"
+                    : "LEAVE".equals(kind) ? "nghỉ " + leaveType : "bổ sung giờ") + "]";
         }
 
         d.setStatus("REJECT".equals(action) ? "REJECTED" : "RESOLVED");
