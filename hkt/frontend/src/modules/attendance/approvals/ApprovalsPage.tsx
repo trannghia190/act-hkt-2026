@@ -40,6 +40,12 @@ export const ApprovalsPage: React.FC = () => {
       startDate: r.workDate || '', endDate: r.endDate || r.workDate || '', durationText: (() => {
         try {
           const p = JSON.parse(r.payload || '{}');
+          // Đơn chuyển từ khiếu nại: hiện đúng thứ nhân viên đề nghị (giờ vào/ra) để quản lý biết đang duyệt gì.
+          if (p.requested_check_in || p.requested_check_out) {
+            const from = p.requested_check_in || '—';
+            const to = p.requested_check_out || '—';
+            return `${from} → ${to}${r.requestType === 'ADJUST' ? ' (giờ đề xuất)' : ''}`;
+          }
           if (p.half_day_period) {
             return `0.5 ngày — nghỉ ${p.half_day_period === 'MORNING' ? 'sáng' : 'chiều'}`
               + (p.work_window_start && p.work_window_end ? ` (làm ${p.work_window_start}–${p.work_window_end})` : '');

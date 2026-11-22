@@ -48,6 +48,14 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 
 ## 3. NHẬT KÝ THAY ĐỔI VỀ MẶT NGHIỆP VỤ (BUSINESS CHANGELOG)
 
+### [2026-11-22] — Bản Cập Nhật v2.5.1 (Chuyển khiếu nại sang quản lý duyệt đúng nội dung)
+
+**Nghiệp vụ & UI**
+* `S45` — **Bổ sung công** (MAKEUP) khi xử lý khiếu nại giờ chuyển đúng điều nhân viên xin: khiếu nại WFH tạo đơn **WFH**; khiếu nại nghỉ tạo đơn **LEAVE** đúng loại nghỉ; khiếu nại sửa giờ tạo đơn **ADJUST** mang cặp giờ vào/ra nhân viên đề xuất (trước đây luôn tạo ADJUST rỗng `{}` nên quản lý duyệt xong bảng công vẫn trống).
+* Đơn chuyển duyệt ghi lý do kèm dấu vết khiếu nại nguồn trong `payload`; nhân viên thấy đơn trong "Đơn của tôi", quản lý duyệt ở S12 như đơn thường.
+* **Chặn chuyển duyệt trùng**: một ngày đã có đơn WFH/LEAVE/ADJUST đang chờ hoặc đã duyệt thì không chuyển duyệt thêm — tránh 2 nguồn sự thật cho cùng một ngày công.
+* Duyệt đơn sinh từ khiếu nại sẽ **xoá ô đánh tay cũ** của ngày đó, để đơn đã duyệt/ log chấm công là nguồn sự thật (hết cảnh ô HR sửa tay 0.00 đè lên WFH vừa duyệt).
+
 ### [2026-11-22] — Bản Cập Nhật v2.5.0 (Ca làm việc theo luật + thứ tự ưu tiên)
 
 **Nghiệp vụ & UI**
@@ -156,6 +164,12 @@ Tài liệu này là **bản ghi sống (Living Document)** duy nhất của d�
 ---
 
 ## 4. NHẬT KÝ THAY ĐỔI VỀ MẶT KỸ THUẬT & KIẾN TRÚC (TECHNICAL CHANGELOG)
+
+### [2026-11-22] — Technical Updates v2.5.1 (MAKEUP chuyển đúng loại đơn + xoá ô tay khi duyệt)
+
+1. **Backend `BusinessGapController`** — nhánh MAKEUP trong `applyResolve()`: `requestedKind` WFH/LEAVE/TIME_FIX → tạo request đúng loại (`WFH`/`LEAVE`/`ADJUST`), kèm giờ đề xuất và loại nghỉ, payload có `source: "DISPUTE"` + `dispute_id`; chặn trùng bằng `hasOpenRequestOn()` (đơn WFH/LEAVE/ADJUST cùng ngày đang PENDING_APPROVAL/APPROVED).
+2. **Backend `RequestController`** — đơn mang `dispute_id` khi được duyệt sẽ xoá `timesheet_cells.is_manual` cũ của ngày đó (`clearStaleCellForApproval`), tránh ô HR sửa tay đè lên WFH/log vừa duyệt.
+3. **Test** — `tests/api/test_disputes_makeup_forward.py` E2E: khiếu nại WFH → chuyển duyệt → quản lý duyệt → lưới HR và bảng cá nhân cùng hiện R, WFH +1, ô tay bị xoá; khiếu nại có giờ → đơn ADJUST giữ giờ → duyệt → log 08:30→17:30 và ô 1.00. Chạy lặp 2 lần không xói dữ liệu (test flow dọn đơn PENDING cũ, test ô công tự tạo fixture).
 
 ### [2026-11-22] — Technical Updates v2.5.0 (Shift resolver theo priority)
 

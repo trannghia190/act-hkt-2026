@@ -8,6 +8,7 @@ interface Device {
   isApproved: boolean;
   userId: string;
   lastActiveAt?: string;
+  revokedAt?: string;
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -41,8 +42,9 @@ export const AdminDevicesPage: React.FC = () => {
     showToast(approve ? 'Đã duyệt thiết bị' : 'Đã thu hồi thiết bị'); load();
   };
 
-  const pending = devices.filter(d => !d.isApproved);
+  const pending = devices.filter(d => !d.isApproved && !d.revokedAt);
   const active = devices.filter(d => d.isApproved);
+  const revoked = devices.filter(d => !d.isApproved && d.revokedAt);
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -75,6 +77,18 @@ export const AdminDevicesPage: React.FC = () => {
             <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
               <div className="text-xs text-ink-muted">{d.deviceFingerprint} · {d.osVersion || 'Web'}</div></div>
             <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => act(d, false)}>Thu hồi</button>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-surface border border-line rounded-xl p-4">
+        <h2 className="text-sm font-bold mb-2">Đã thu hồi ({revoked.length})</h2>
+        {revoked.length === 0 && <div className="text-xs text-ink-muted mb-2">Chưa có thiết bị nào bị thu hồi.</div>}
+        {revoked.map(d => (
+          <div key={d.id} className="flex items-center justify-between border border-line bg-canvas rounded-lg px-3 py-2 mb-2 text-sm">
+            <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
+              <div className="text-xs text-ink-muted">{d.deviceFingerprint} · thu hồi lúc {d.revokedAt ? new Date(d.revokedAt).toLocaleString('vi-VN') : '—'}</div></div>
+            <span className="text-[11px] text-ink-muted">Không thể chấm công</span>
           </div>
         ))}
       </div>

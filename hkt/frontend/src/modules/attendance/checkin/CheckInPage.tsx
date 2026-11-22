@@ -4,6 +4,8 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../../context/AuthContext';
+import { getWebAuthnStatus, signAttendanceAssertion } from '../../../utils/webauthn';
+import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 
 interface AttendancePunchRecord {
   id: string;
@@ -46,6 +48,9 @@ export const CheckInPage: React.FC = () => {
 
   // Ca hiệu lực của tôi (ca ngoại lệ theo ưu tiên có thể đè ca chuẩn)
   const [myShift, setMyShift] = useState<any>(null);
+
+  // Passkey/WebAuthn — khi đã đăng ký, mỗi lần chấm công phải ký challenge.
+  const [hasPasskey, setHasPasskey] = useState(false);
 
   // Status for today and yesterday (Criterion B2 #2)
   const [yesterdayMissingCheckout, setYesterdayMissingCheckout] = useState(false);
@@ -152,6 +157,8 @@ export const CheckInPage: React.FC = () => {
       .then((r) => r.json())
       .then((j) => setMyShift(j?.data ?? null))
       .catch((err) => console.warn('Could not fetch my shift:', err));
+
+    getWebAuthnStatus().then((s) => setHasPasskey(s.hasPasskey));
   }, [user]);
 
   // Handle Real Camera stream cleanup
@@ -268,21 +275,6 @@ export const CheckInPage: React.FC = () => {
     });
   };
 
-  const getDeviceFingerprint = (): string => {
-    const raw = [
-      navigator.userAgent,
-      screen.width,
-      screen.height,
-      screen.colorDepth,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-    ].join('|');
-    let hash = 0;
-    for (let i = 0; i < raw.length; i += 1) {
-      hash = (hash * 31 + raw.charCodeAt(i)) | 0;
-    }
-    return `web-${Math.abs(hash).toString(16)}`;
-  };
-
   const captureFrames = async (count = 3): Promise<string[]> => {
     const frames: string[] = [];
     for (let i = 0; i < count; i += 1) {
@@ -389,6 +381,21 @@ export const CheckInPage: React.FC = () => {
       })();
       if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
 
+      // Passkey: ký challenge ngay trước khi gửi — server verify trong cùng giao dịch chấm công.
+      let passkeyAssertion = null;
+      if (hasPasskey) {
+        try {
+          passkeyAssertion = await signAttendanceAssertion();
+        } catch (e: any) {
+          setCheckInStep('error');
+          setErrorType('DEVICE');
+          setErrorMessage(e?.message || 'Không xác thực được passkey.');
+          vibrate([50, 60, 50]);
+          setIsScanning(false);
+          return;
+        }
+      }
+
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
         headers: reqHeaders,
@@ -402,6 +409,10 @@ export const CheckInPage: React.FC = () => {
           longitude: geo.longitude,
           accuracyMeters: geo.accuracy,
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
+          ...(passkeyAssertion ? {
+            webauthnChallengeId: passkeyAssertion.challengeId,
+            webauthnCredential: JSON.stringify(passkeyAssertion.credential),
+          } : {}),
         }),
       });
 

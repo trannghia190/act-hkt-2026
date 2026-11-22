@@ -105,12 +105,18 @@ sheet_id = psql(
     f"select id from timesheets where user_id='{uid}' and period_month=11 and period_year=2026")
 check('có bảng công tháng 11/2026 cho 137ACT', bool(sheet_id), sheet_id)
 
+# Fixture tự tạo để test lặp lại được trên DB mới (ô HR từng sửa tay 1.00 cho ngày này).
+cell_day5 = psql(
+    f"select symbol from timesheet_cells where timesheet_id='{sheet_id}' and work_date='{MUTATE_DAY}'")
+if not cell_day5:
+    psql(f"insert into timesheet_cells (id,timesheet_id,work_date,symbol,is_manual) "
+         f"values (gen_random_uuid(),'{sheet_id}','{MUTATE_DAY}','1.00',true)")
+    cell_day5 = '1.00'
+check('05/11 có ô trong timesheet_cells (dữ liệu cho kịch bản)', bool(cell_day5), cell_day5)
+
 # --- 1. Trạng thái hiện tại: ô 05/11 nằm trong timesheet_cells nên hai màn phải cùng hiện 1.00
 grid = grid_row(hr)
 mine = my_sheet(emp)
-cell_day5 = psql(
-    f"select symbol from timesheet_cells where timesheet_id='{sheet_id}' and work_date='{MUTATE_DAY}'")
-check('05/11 có ô trong timesheet_cells (dữ liệu cho kịch bản)', bool(cell_day5), cell_day5)
 compare(grid, mine, 'hiện trạng')
 check('05/11 hiển thị đúng ô của timesheet_cells (1.00) ở cả hai màn',
       int_syms(grid).get(5) == '1.00'

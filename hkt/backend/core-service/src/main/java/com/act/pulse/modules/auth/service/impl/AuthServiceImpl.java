@@ -106,7 +106,21 @@ public class AuthServiceImpl implements AuthService {
         // 2) Đăng nhập thành công → xoá bộ đếm lần sai
         loginAttemptService.reset(identifier);
 
-        // 3) Phát hành token thật (JWT) + lưu phiên để thu hồi được
+        return issueSession(user);
+    }
+
+    /**
+     * Đăng nhập bằng passkey: chữ ký đã được WebAuthnService verify trước khi gọi,
+     * ở đây chỉ phát hành phiên giống đăng nhập mật khẩu.
+     */
+    @Override
+    @Transactional
+    public AuthResponse loginWithPasskey(User user) {
+        return issueSession(user);
+    }
+
+    /** Phát hành JWT + phiên refresh dùng chung cho đăng nhập mật khẩu và passkey. */
+    private AuthResponse issueSession(User user) {
         boolean forceChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
         String accessToken = jwtService.issueAccessToken(
                 user.getId(), user.getEmployeeCode(), user.getRole(), forceChangePassword);

@@ -46,6 +46,8 @@ public class SecurityConfig {
             "/auth/forgot-password",
             "/auth/reset-password",
             "/auth/reset-password-request",
+            "/webauthn/login/options",
+            "/webauthn/login/verify",
             "/rules/public-faq",
             "/swagger-ui/**",
             "/swagger-ui.html",

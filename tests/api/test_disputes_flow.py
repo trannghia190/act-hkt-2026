@@ -78,6 +78,10 @@ c,j=call('GET',f"/disputes/{d2['id']}",H,expect=200)
 check('8b. Ô bảng công đã cập nhật 1.00', j['data'].get('currentCell')=='1.00', str(j['data'].get('currentCell')))
 
 # 9. MAKEUP → tạo đơn bổ sung công
+# Dọn đơn bổ sung còn PENDING của lần chạy trước — hệ thống chặn chuyển duyệt trùng,
+# nên test phải bắt đầu từ ngày sạch (test cũ không dọn phần này).
+psql(f"delete from requests where user_id='{uid}' and work_date='{today}' "
+     f"and status='PENDING_APPROVAL' and request_type='ADJUST'")
 fresh(today)
 c,j=call('POST','/disputes',E,{'workDate':today,'reason':'Quên check-out'},expect=200)
 d3=j['data']
@@ -112,6 +116,8 @@ check('11b. Nhân viên thường không được xử lý khiếu nại', True)
 
 # 12. Khoá kỳ chỉ bị chặn bởi khiếu nại MỞ ĐÚNG KỲ — đơn của tháng khác không chặn.
 # d5 đang PENDING nhưng thuộc tháng hiện tại; khoá kỳ 2024-09 phải thành công.
+# Trả kỳ 2024-09 về draft để chạy lại được sau lần chạy trước đã khoá.
+psql("update timesheets set status='draft' where period_month=9 and period_year=2024")
 call('POST','/timesheets/publish?month=2024-09',H,expect=200)
 c,j=call('POST','/timesheets/lock?month=2024-09',H,expect=200)
 check('12. Khiếu nại kỳ khác không chặn khoá kỳ này', (j.get('data') or {}).get('status')=='locked')

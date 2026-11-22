@@ -38,6 +38,7 @@ public class DeviceController {
         DeviceRegistration d = deviceRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy thiết bị"));
         d.setIsApproved(true);
         d.setApprovedBy(CurrentUser.userId());
+        d.setRevokedAt(null);
         d.setUpdatedAt(LocalDateTime.now());
         audit("APPROVE_DEVICE", d, "Duyệt thiết bị " + d.getDeviceFingerprint());
         return ApiResponse.ok(deviceRepository.save(d), "Đã duyệt thiết bị");
@@ -48,6 +49,7 @@ public class DeviceController {
     public ApiResponse<DeviceRegistration> revoke(@PathVariable UUID id, @RequestBody(required = false) Map<String, String> body) {
         DeviceRegistration d = deviceRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy thiết bị"));
         d.setIsApproved(false);
+        d.setRevokedAt(LocalDateTime.now());
         d.setUpdatedAt(LocalDateTime.now());
         audit("REVOKE_DEVICE", d, body != null ? body.getOrDefault("reason", "Thu hồi thiết bị") : "Thu hồi thiết bị");
         return ApiResponse.ok(deviceRepository.save(d), "Đã thu hồi thiết bị");

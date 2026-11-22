@@ -2,12 +2,16 @@ package com.act.pulse.modules.auth.service;
 
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
+import com.act.pulse.modules.auth.entity.User;
 
 import java.util.Map;
 import java.util.UUID;
 
 public interface AuthService {
     AuthResponse login(LoginRequest request);
+
+    /** Đăng nhập bằng passkey — chữ ký WebAuthn đã verify xong, chỉ phát hành phiên. */
+    AuthResponse loginWithPasskey(User user);
 
     /** Làm mới access token từ refresh token còn hiệu lực (bắt buộc — không có đường tắt bằng mã nhân viên). */
     AuthResponse refresh(String refreshToken);

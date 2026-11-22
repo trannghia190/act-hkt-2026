@@ -3,10 +3,24 @@ import { UserRole, AuthUser } from '../types/auth.types';
 
 export type { UserRole, AuthUser };
 
+/** Phiên do server trả về khi đăng nhập bằng passkey (cùng shape /auth/login). */
+export interface PasskeySession {
+  accessToken: string;
+  refreshToken?: string;
+  employeeCode: string;
+  fullName?: string;
+  email?: string;
+  role: string;
+  faceEnrolled?: boolean;
+  mustChangePassword?: boolean;
+  status?: string;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  loginWithPasskey: (session: PasskeySession) => void;
   logout: () => void;
   updateUser: (partial: Partial<AuthUser>) => void;
 }
@@ -57,20 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const json = await response.json();
         if (json.success && json.data?.accessToken && json.data?.employeeCode) {
-          const authData = json.data;
-          const matchedUser: AuthUser = {
-            employeeCode: authData.employeeCode,
-            fullName: authData.fullName,
-            email: username.includes('@') ? username : `${username.toLowerCase()}@act-corp.internal`,
-            role: authData.role as UserRole,
-            accessToken: authData.accessToken,
-            refreshToken: authData.refreshToken,
-            faceEnrolled: authData.faceEnrolled ?? true,
-            mustChangePassword: authData.mustChangePassword ?? false,
-            status: authData.status || 'ACTIVE',
-          };
-          setUser(matchedUser);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(matchedUser));
+          applySession(json.data, username);
           return true;
         }
       }
@@ -79,6 +80,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return false;
+  };
+
+  /** Chuyển phiên server trả về (mật khẩu hoặc passkey) thành AuthUser và lưu localStorage. */
+  const applySession = (authData: PasskeySession, fallbackEmail = '') => {
+    const matchedUser: AuthUser = {
+      employeeCode: authData.employeeCode,
+      fullName: authData.fullName,
+      email: authData.email || (fallbackEmail.includes('@')
+        ? fallbackEmail
+        : `${authData.employeeCode.toLowerCase()}@act-corp.internal`),
+      role: authData.role as UserRole,
+      accessToken: authData.accessToken,
+      refreshToken: authData.refreshToken,
+      faceEnrolled: authData.faceEnrolled ?? true,
+      mustChangePassword: authData.mustChangePassword ?? false,
+      status: authData.status || 'ACTIVE',
+    };
+    setUser(matchedUser);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(matchedUser));
+  };
+
+  /** Đăng nhập bằng passkey: chữ ký đã được server verify ở bước gọi API. */
+  const loginWithPasskey = (session: PasskeySession) => {
+    applySession(session);
   };
 
   const logout = () => {
@@ -92,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         login,
+        loginWithPasskey,
         logout,
         updateUser,
       }}

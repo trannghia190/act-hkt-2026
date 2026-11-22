@@ -16,6 +16,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.act.pulse.modules.attendance.service.WebAuthnException.class)
+    public ResponseEntity<ApiResponse<Object>> handleWebAuthn(
+            com.act.pulse.modules.attendance.service.WebAuthnException ex) {
+        log.warn("WebAuthn rejected: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(com.act.pulse.modules.okr.service.OKRRuleException.class)
     public ResponseEntity<ApiResponse<Object>> handleOkrRule(com.act.pulse.modules.okr.service.OKRRuleException ex) {
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage()));
