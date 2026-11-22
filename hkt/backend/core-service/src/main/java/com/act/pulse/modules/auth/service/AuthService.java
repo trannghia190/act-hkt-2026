@@ -1,7 +1,9 @@
 package com.act.pulse.modules.auth.service;
 
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
+import com.act.pulse.modules.auth.dto.request.UpdateProfileRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
+import com.act.pulse.modules.auth.dto.response.ProfileResponse;
 import com.act.pulse.modules.auth.entity.User;
 
 import java.util.Map;
@@ -19,6 +21,12 @@ public interface AuthService {
     void changePassword(String currentPassword, String newPassword);
 
     boolean changePasswordForUser(String employeeCode, String oldPassword, String newPassword);
+
+    /** Hồ sơ cá nhân của tài khoản đang đăng nhập. */
+    ProfileResponse getMyProfile();
+
+    /** Nhân viên tự cập nhật tên hiển thị / số điện thoại / avatar. */
+    ProfileResponse updateMyProfile(UpdateProfileRequest request);
 
     boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore);
 

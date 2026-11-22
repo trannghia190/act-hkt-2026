@@ -88,13 +88,28 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* User Profile Avatar & Logout */}
         <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-line">
-          <div className="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-            {user?.fullName?.charAt(0) || 'A'}
-          </div>
-          <div className="text-left text-xs hidden xl:block leading-tight">
-            <div className="font-semibold text-ink truncate max-w-[120px]">{user?.fullName}</div>
-            <div className="text-[10px] text-ink-muted font-mono">{user?.employeeCode}</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/account/profile')}
+            title="Hồ sơ cá nhân"
+            className="flex items-center gap-2 rounded-lg px-1 py-0.5 hover:bg-canvas transition-colors cursor-pointer"
+          >
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user?.fullName || 'Avatar'}
+                className="w-7 h-7 rounded-full object-cover border border-line"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                {user?.fullName?.charAt(0) || 'A'}
+              </div>
+            )}
+            <div className="text-left text-xs hidden xl:block leading-tight">
+              <div className="font-semibold text-ink truncate max-w-[120px]">{user?.fullName}</div>
+              <div className="text-[10px] text-ink-muted font-mono">{user?.employeeCode}</div>
+            </div>
+          </button>
           <button
             onClick={onLogout}
             className="p-1.5 text-ink-muted hover:text-status-danger hover:bg-canvas rounded-lg transition-colors cursor-pointer"

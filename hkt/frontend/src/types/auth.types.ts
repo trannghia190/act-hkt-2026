@@ -11,6 +11,7 @@ export interface AuthUser {
   accessToken?: string;
   refreshToken?: string;
   faceEnrolled?: boolean;
+  hasPasskey?: boolean;
   mustChangePassword?: boolean;
   status?: string;
 }

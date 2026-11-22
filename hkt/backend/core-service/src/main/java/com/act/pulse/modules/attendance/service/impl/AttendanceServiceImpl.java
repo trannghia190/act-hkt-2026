@@ -25,8 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.net.InetAddress;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -71,7 +73,16 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional
     public CheckInResponse checkIn(UUID userId, CheckInRequest request) {
-        return processAttendancePunch(userId, request, "CHECK_IN");
+        // Client hiện đại gửi loại chấm tường minh (VÀO/RA). Chỉ rơi về AUTO cho client cũ
+        // chưa gửi type — tránh biến một lần chấm RA muộn thành giờ VÀO.
+        String requested = request.getType() == null ? "" : request.getType().trim().toUpperCase();
+        if ("CHECK_OUT".equals(requested)) {
+            return processAttendancePunch(userId, request, "CHECK_OUT");
+        }
+        if ("CHECK_IN".equals(requested)) {
+            return processAttendancePunch(userId, request, "CHECK_IN");
+        }
+        return processAttendancePunch(userId, request, "AUTO");
     }
 
     @Override
@@ -94,15 +105,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         final UUID userId = requester.getId();
         final String requesterCode = requester.getEmployeeCode();
 
-        // ── Kiểm tra quá hạn offline (mặc định 24h, Criterion B1 #11) ───────
+        // ── Chấm công ngoại tuyến đã bị bỏ ─────────────────────────────────
+        // Dữ liệu thời gian/GPS/thiết bị do client gửi lên không kiểm chứng được,
+        // ảnh hưởng trực tiếp tới bảng công. Từ chối tường minh thay vì tin client.
         if (Boolean.TRUE.equals(request.getIsOffline()) || request.getOfflinePunchedAt() != null) {
-            int maxOfflineHours = ruleService.getInt("attendance_security", "offline_max_hours", 24);
-            LocalDateTime punchTime = request.getOfflinePunchedAt() != null ? request.getOfflinePunchedAt() : LocalDateTime.now();
-            if (punchTime.isBefore(LocalDateTime.now().minusHours(maxOfflineHours))) {
-                return reject("OFFLINE_EXPIRED",
-                        String.format("Bản ghi chấm công offline đã quá hạn %d giờ. Vui lòng tạo đơn bổ sung công.", maxOfflineHours),
-                        layers, FaceOutcome.skipped());
-            }
+            return reject("OFFLINE_NOT_SUPPORTED",
+                    "Chấm công ngoại tuyến không còn được hỗ trợ. Vui lòng chấm công khi có kết nối mạng, hoặc tạo đơn bổ sung công nếu đã quên chấm.",
+                    layers, FaceOutcome.skipped());
         }
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
@@ -161,8 +170,15 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .anyMatch(r -> "WFH".equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
                         && LocalDate.now().equals(r.getWorkDate()));
         boolean networkPassed = !requireNetwork || inOfficeNetwork || wfhToday;
+        String networkIp = request.getIpAddress();
+        if (!networkPassed) {
+            log.info("Chấm công bị chặn lớp NETWORK: userId={} ip={} requireNetwork={} wfhToday={}",
+                    userId, networkIp, requireNetwork, wfhToday);
+        }
         layers.add(layer("NETWORK", "Trong mạng nội bộ công ty", networkPassed,
-                networkPassed ? null : "Bạn đang ngoài mạng công ty — hãy nối Wi-Fi văn phòng"));
+                networkPassed ? null : "Bạn đang ngoài mạng công ty (IP server thấy: "
+                        + (networkIp == null || networkIp.isBlank() ? "không xác định" : networkIp)
+                        + ") — hãy nối Wi-Fi văn phòng"));
 
         // ── Lớp 3 · VỊ TRÍ (GPS + độ chính xác) ───────────────────────────
         boolean requireGeofence = ruleService.getBoolean("attendance_security", "require_geofence", true);
@@ -203,13 +219,27 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (shift != null) {
             java.time.LocalTime nowTime = java.time.LocalTime.now();
             boolean inWindow = !nowTime.isBefore(shift.getCheckInStart()) && !nowTime.isAfter(shift.getCheckOutEnd());
+            LocalTime flexibleOutFrom = shift.getFlexibleCheckoutFrom() != null
+                    ? shift.getFlexibleCheckoutFrom() : shift.getCheckOutStart();
             if (Boolean.TRUE.equals(shift.getIsFlexible())) {
                 inWindow = !nowTime.isBefore(shift.getFlexibleCheckinFrom() != null ? shift.getFlexibleCheckinFrom() : shift.getCheckInStart())
                         && !nowTime.isAfter(shift.getFlexibleCheckoutTo() != null ? shift.getFlexibleCheckoutTo() : shift.getCheckOutEnd());
             }
+            // Quên chấm vào: cho phép ghi nhận giờ RA sau khi hết khung ra (ngày công để
+            // INCOMPLETE + cần đơn bổ sung), nhưng không mở trước khung ra.
+            boolean missingCheckIn = "CHECK_OUT".equals(punchType)
+                    && attendanceLogRepository.findByUserIdAndWorkDate(userId, LocalDate.now())
+                            .map(log -> log.getCheckInAt() == null)
+                            .orElse(true);
+            if (!inWindow && missingCheckIn && flexibleOutFrom != null
+                    && !nowTime.isBefore(flexibleOutFrom)) {
+                inWindow = true;
+            }
             if (!inWindow) {
                 shiftPassed = false;
                 shiftDetail = String.format("Ngoài khung giờ ca %s (%s–%s)", shift.getName(), shift.getCheckInStart(), shift.getCheckOutEnd());
+            } else if (missingCheckIn && nowTime.isAfter(shift.getCheckOutEnd())) {
+                shiftDetail = "Ghi nhận giờ RA bù sau ca — thiếu giờ vào, cần đơn bổ sung công";
             }
         }
         layers.add(layer("SHIFT", "Đúng ca làm việc", shiftPassed, shiftDetail));
@@ -255,7 +285,42 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         AttendanceLog entity;
         LocalDateTime punchAt;
-        if ("CHECK_IN".equals(punchType)) {
+        boolean missingCheckIn = false;
+        if ("AUTO".equals(punchType)) {
+            // Tự nhận biết như máy chấm công vân tay: lần chấm đầu tiên trong ngày
+            // là VÀO; các lần sau là RA, lấy lần cuối cùng làm giờ ra.
+            if (existingOpt.isEmpty() || existingOpt.get().getCheckInAt() == null) {
+                if (existingOpt.isPresent() && existingOpt.get().getCheckOutAt() != null) {
+                    // Đã có giờ RA nhưng thiếu giờ vào: lần chấm tiếp theo vẫn là RA (cập nhật giờ ra),
+                    // không được gán giờ vào sau giờ ra.
+                    entity = existingOpt.get();
+                    entity.setCheckOutAt(now);
+                    missingCheckIn = true;
+                    punchType = "CHECK_OUT";
+                } else {
+                    entity = existingOpt.orElseGet(() -> AttendanceLog.builder()
+                            .userId(userId)
+                            .workDate(workDate)
+                            .build());
+                    entity.setCheckInAt(now);
+                    punchType = "CHECK_IN";
+                }
+            } else {
+                entity = existingOpt.get();
+                entity.setCheckOutAt(now);
+                punchType = "CHECK_OUT";
+            }
+            punchAt = now;
+        } else if ("CHECK_IN".equals(punchType)) {
+            if (existingOpt.isPresent() && existingOpt.get().getCheckInAt() == null
+                    && existingOpt.get().getCheckOutAt() != null) {
+                // Hôm nay đã ghi RA nhưng thiếu vào: không ghép giờ vào sau giờ ra — phải bổ sung công.
+                return reject("CHECKIN_AFTER_CHECKOUT",
+                        "Hôm nay đã ghi nhận giờ RA lúc "
+                                + existingOpt.get().getCheckOutAt().format(hhmm)
+                                + " nhưng chưa có giờ vào — hãy tạo đơn bổ sung công thay vì chấm vào lúc này",
+                        layers, face);
+            }
             if (existingOpt.isPresent() && existingOpt.get().getCheckInAt() != null) {
                 return reject("DUPLICATE_CHECKIN",
                         "Hôm nay bạn đã chấm công vào lúc "
@@ -271,33 +336,34 @@ public class AttendanceServiceImpl implements AttendanceService {
             punchAt = now;
         } else {
             if (existingOpt.isEmpty() || existingOpt.get().getCheckInAt() == null) {
-                return reject("NO_CHECKIN",
-                        "Chưa chấm công vào — hãy chấm công vào trước, hoặc tạo đơn bổ sung công",
-                        layers, face);
+                // Quên chấm vào: trong/qua khung RA thì vẫn ghi nhận giờ RA thật, nhưng ngày công
+                // để INCOMPLETE và yêu cầu đơn bổ sung — KHÔNG tự bịa giờ vào.
+                LocalTime outFrom = shift == null ? null
+                        : (Boolean.TRUE.equals(shift.getIsFlexible()) && shift.getFlexibleCheckoutFrom() != null
+                                ? shift.getFlexibleCheckoutFrom() : shift.getCheckOutStart());
+                if (outFrom == null || now.toLocalTime().isBefore(outFrom)) {
+                    return reject("NO_CHECKIN",
+                            "Chưa chấm công vào và chưa tới khung chấm ra"
+                                    + (outFrom == null ? "" : " (từ " + outFrom.format(hhmm) + ")")
+                                    + " — hãy chấm công vào trước, hoặc tạo đơn bổ sung công",
+                            layers, face);
+                }
+                entity = existingOpt.orElseGet(() -> AttendanceLog.builder()
+                        .userId(userId)
+                        .workDate(workDate)
+                        .build());
+                entity.setCheckOutAt(now);
+                missingCheckIn = true;
+                punchAt = now;
+            } else {
+                entity = existingOpt.get();
+                // Chấm ra nhiều lần trong ngày: giữ lần cuối cùng.
+                entity.setCheckOutAt(now);
+                punchAt = now;
             }
-            entity = existingOpt.get();
-            if (entity.getCheckOutAt() != null) {
-                return reject("DUPLICATE_CHECKOUT",
-                        "Hôm nay bạn đã chấm công ra lúc " + entity.getCheckOutAt().format(hhmm)
-                                + " — mỗi ngày chỉ được chấm công ra 1 lần",
-                        layers, face);
-            }
-            entity.setCheckOutAt(now);
-            punchAt = now;
         }
 
-        // ── Kiểm tra quá hạn offline (mặc định 24h) ────────────────────────
-        if (Boolean.TRUE.equals(request.getIsOffline())) {
-            int maxOfflineHours = ruleService.getInt("attendance_security", "offline_max_hours", 24);
-            LocalDateTime punchTime = request.getOfflinePunchedAt() != null ? request.getOfflinePunchedAt() : now;
-            if (punchTime.isBefore(now.minusHours(maxOfflineHours))) {
-                return reject("OFFLINE_EXPIRED",
-                        String.format("Bản ghi chấm công offline đã quá hạn %d giờ. Vui lòng tạo đơn bổ sung công.", maxOfflineHours),
-                        layers, face);
-            }
-        }
-
-        entity.setStatus("VALID");
+        entity.setStatus(missingCheckIn ? "INCOMPLETE" : "VALID");
         // Ghi lại ca hiệu lực tại thời điểm chấm để bảng công tính đúng giờ/đi muộn theo ca
         // kể cả khi HR đổi thứ tự ưu tiên hoặc tắt ca về sau.
         entity.setShiftId(shift == null ? null : shift.getId());
@@ -306,7 +372,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         entity.setLongitude(request.getLongitude());
         entity.setDistanceMeters(distance == null ? null
                 : BigDecimal.valueOf(distance).setScale(2, java.math.RoundingMode.HALF_UP));
-        entity.setIsOfflineSync(Boolean.TRUE.equals(request.getIsOffline()));
         entity.setFaceCheckStatus(face.status);
         entity.setFaceMatchScore(face.similarity == null ? null
                 : BigDecimal.valueOf(face.similarity * 100).setScale(2, java.math.RoundingMode.HALF_UP));
@@ -320,10 +385,15 @@ public class AttendanceServiceImpl implements AttendanceService {
         attendanceLogRepository.save(entity);
 
         return CheckInResponse.builder()
-                .status("VALID")
+                .status(missingCheckIn ? "INCOMPLETE" : "VALID")
+                .punchType("CHECK_IN".equals(punchType) ? "IN" : "OUT")
                 .serverTimestamp(punchAt)
-                .message(String.format("Chấm công %s thành công lúc %s (thời gian máy chủ)",
-                        "CHECK_IN".equals(punchType) ? "vào" : "ra", punchAt.format(hhmm)))
+                .message(missingCheckIn
+                        ? String.format("Đã ghi nhận giờ RA lúc %s, nhưng bạn chưa chấm công vào. "
+                                + "Ngày công đang thiếu giờ vào — hãy tạo đơn bổ sung công để được tính công.",
+                                punchAt.format(hhmm))
+                        : String.format("Chấm công %s thành công lúc %s (thời gian máy chủ)",
+                                "CHECK_IN".equals(punchType) ? "vào" : "ra", punchAt.format(hhmm)))
                 .matchedEmployeeCode(face.matchedCode != null ? face.matchedCode : requesterCode)
                 .matchedFullName(face.matchedName)
                 .similarityScore(face.similarity)
@@ -489,19 +559,72 @@ public class AttendanceServiceImpl implements AttendanceService {
                 }
             }
         }
+        return matchedIpPrefix(ipAddress) != null;
+    }
+
+    /** Tiền tố IP công ty khớp với IP này (null nếu không khớp).
+     *  Hỗ trợ: tiền tố chuỗi ("10.0."), CIDR IPv4/IPv6 ("172.20.0.0/16", "::/0") và "*" = mọi IP. */
+    private String matchedIpPrefix(String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank()) return null;
         String ipPrefixes = ruleService.getString("attendance_security", "office_ip_prefixes", "10.0.,192.168.,172.16.,127.0.,0:0:0:0:0:0:0:1,::1");
-        String checkIp = (ipAddress != null && !ipAddress.isBlank()) ? ipAddress : wifiBssid;
-        if (checkIp != null && !checkIp.isBlank()) {
-            if ("::1".equals(checkIp) || "127.0.0.1".equals(checkIp)) {
-                return true;
-            }
-            for (String prefix : ipPrefixes.split(",")) {
-                if (!prefix.isBlank() && checkIp.startsWith(prefix.trim())) {
-                    return true;
-                }
-            }
+        for (String prefix : ipPrefixes.split(",")) {
+            String p = prefix.trim();
+            if (!p.isEmpty() && ipMatchesPattern(ipAddress, p)) return p;
         }
-        return false;
+        return null;
+    }
+
+    private boolean ipMatchesPattern(String ip, String pattern) {
+        if ("*".equals(pattern)) return true;
+        int slash = pattern.indexOf('/');
+        if (slash <= 0) return ip.startsWith(pattern);
+        String networkPart = pattern.substring(0, slash);
+        // Bỏ zone id của IPv6 link-local (fe80::1%en0) trước khi so CIDR.
+        String probeIp = ip.contains("%") ? ip.substring(0, ip.indexOf('%')) : ip;
+        // Chỉ nhận IP literal — tránh InetAddress phân giải DNS từ input không tin cậy.
+        if (!networkPart.matches("[0-9a-fA-F:.]+") || !probeIp.matches("[0-9a-fA-F:.]+")) return false;
+        try {
+            InetAddress probe = InetAddress.getByName(probeIp);
+            InetAddress network = InetAddress.getByName(networkPart);
+            int bits = Integer.parseInt(pattern.substring(slash + 1).trim());
+            byte[] a = probe.getAddress();
+            byte[] b = network.getAddress();
+            if (a.length != b.length) return false;
+            if (bits < 0 || bits > a.length * 8) return false;
+            int full = bits / 8;
+            for (int i = 0; i < full; i++) {
+                if (a[i] != b[i]) return false;
+            }
+            int rem = bits % 8;
+            if (rem > 0) {
+                int mask = (0xFF << (8 - rem)) & 0xFF;
+                return (a[full] & mask) == (b[full] & mask);
+            }
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    @Override
+    public Map<String, Object> diagnoseNetwork(UUID userId, String ipAddress) {
+        boolean requireNetwork = ruleService.getBoolean("attendance_security", "require_internal_network", true);
+        String ipPrefixes = ruleService.getString("attendance_security", "office_ip_prefixes", "10.0.,192.168.,172.16.,127.0.,0:0:0:0:0:0:0:1,::1");
+        String wifiKeywords = ruleService.getString("attendance_security", "office_wifi_keywords", "act_office,act-office,act_office_5g");
+        String matchedPrefix = matchedIpPrefix(ipAddress);
+        boolean wfhToday = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .anyMatch(r -> "WFH".equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
+                        && LocalDate.now().equals(r.getWorkDate()));
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("requireInternalNetwork", requireNetwork);
+        out.put("serverSeenIp", ipAddress);
+        out.put("officeIpPrefixes", ipPrefixes);
+        out.put("matchedPrefix", matchedPrefix);
+        out.put("inOfficeNetworkByIp", matchedPrefix != null);
+        out.put("officeWifiKeywords", wifiKeywords);
+        out.put("wfhApprovedToday", wfhToday);
+        out.put("networkLayerWouldPass", !requireNetwork || matchedPrefix != null || wfhToday);
+        return out;
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
@@ -537,6 +660,9 @@ public class AttendanceServiceImpl implements AttendanceService {
         todayMap.put("hasCheckedOut", hasCheckedOut);
         todayMap.put("checkInAt", todayLog.map(AttendanceLog::getCheckInAt).orElse(null));
         todayMap.put("checkOutAt", todayLog.map(AttendanceLog::getCheckOutAt).orElse(null));
+        // INCOMPLETE = đã ghi nhận một đầu (thường là RA khi quên chấm vào) — cần đơn bổ sung công.
+        todayMap.put("status", todayLog.map(AttendanceLog::getStatus).orElse(null));
+        todayMap.put("missingCheckIn", hasCheckedOut && !hasCheckedIn);
 
         Map<String, Object> yesterdayMap = new HashMap<>();
         yesterdayMap.put("workDate", yesterday.toString());

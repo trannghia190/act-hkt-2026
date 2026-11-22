@@ -27,7 +27,6 @@ interface ParallelStep {
 }
 
 const STORAGE_LOGS_KEY = 'pulse_attendance_logs';
-const STORAGE_OFFLINE_KEY = 'pulse_offline_punches';
 
 export const CheckInPage: React.FC = () => {
   const { user } = useAuth();
@@ -37,9 +36,19 @@ export const CheckInPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [checkInStep, setCheckInStep] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
   const [checkType, setCheckType] = useState<'IN' | 'OUT'>('IN');
+  /** Đã có giờ ra hôm nay — lần chấm tiếp theo sẽ cập nhật lại giờ ra (lấy lần cuối). */
+  const [alreadyCheckedOut, setAlreadyCheckedOut] = useState(false);
+  /** Giờ vào/ra hôm nay hiển thị trên thẻ trạng thái. */
+  const [todayTimes, setTodayTimes] = useState<{ checkInAt?: string; checkOutAt?: string }>({});
+  /** Ngày công đang thiếu đầu chấm (thường là quên chấm vào) — cần đơn bổ sung công. */
+  const [todayMissingCheckIn, setTodayMissingCheckIn] = useState(false);
+  /** Cảnh báo máy chủ trả về khi lần chấm này chỉ ghi được một đầu. */
+  const [punchNotice, setPunchNotice] = useState<string | null>(null);
   const [checkResult, setCheckResult] = useState<AttendancePunchRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<'GPS_GEOFENCE' | 'GPS_ACCURACY' | 'FACE_MISMATCH' | 'NETWORK' | 'DEVICE' | 'FACE_NOT_ENROLLED' | 'GENERAL'>('GENERAL');
+  /** Chi tiết lớp NETWORK khi bị chặn — cho biết IP server thấy để debug cấu hình dải IP. */
+  const [networkDetail, setNetworkDetail] = useState<string | null>(null);
 
   // Anti-fraud & Security parameters
   const [faceAttemptsRemaining, setFaceAttemptsRemaining] = useState(3);
@@ -47,6 +56,8 @@ export const CheckInPage: React.FC = () => {
 
   // Ca hiệu lực của tôi (ca ngoại lệ theo ưu tiên có thể đè ca chuẩn)
   const [myShift, setMyShift] = useState<any>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
+  const [shiftReload, setShiftReload] = useState(0);
 
   // Status for today and yesterday (Criterion B2 #2)
   const [yesterdayMissingCheckout, setYesterdayMissingCheckout] = useState(false);
@@ -62,15 +73,14 @@ export const CheckInPage: React.FC = () => {
     { name: 'face', status: 'pending', label: '5. Nhận diện khuôn mặt AI & Liveness' },
   ]);
 
-  // Offline punches queue (Criterion B1 #11)
-  const [offlineCount, setOfflineCount] = useState<number>(() => {
+  // Chấm công ngoại tuyến đã bị bỏ: dọn queue cũ còn sót trong trình duyệt.
+  useEffect(() => {
     try {
-      const q = JSON.parse(localStorage.getItem(STORAGE_OFFLINE_KEY) || '[]');
-      return Array.isArray(q) ? q.length : 0;
+      localStorage.removeItem('pulse_offline_punches');
     } catch {
-      return 0;
+      // localStorage có thể bị chặn — không ảnh hưởng luồng chấm công.
     }
-  });
+  }, []);
 
   // Real Camera support
   const [useRealCamera, setUseRealCamera] = useState(false);
@@ -135,9 +145,9 @@ export const CheckInPage: React.FC = () => {
             setFaceEnrolled(d.faceEnrolled);
           }
           if (d.today) {
-            if (d.today.hasCheckedIn && !d.today.hasCheckedOut) {
-              setCheckType('OUT');
-            }
+            setAlreadyCheckedOut(!!d.today.hasCheckedOut);
+            setTodayMissingCheckIn(!!d.today.missingCheckIn);
+            setTodayTimes({ checkInAt: d.today.checkInAt, checkOutAt: d.today.checkOutAt });
           }
           if (d.yesterday && d.yesterday.missingCheckout) {
             setYesterdayMissingCheckout(true);
@@ -147,13 +157,19 @@ export const CheckInPage: React.FC = () => {
       })
       .catch((err) => console.warn('Could not fetch today status:', err));
 
+    // Ca hiệu lực do backend phân giải (ca chuẩn hoặc ca ghi đè ưu tiên cao hơn) — không tự đoán.
+    setShiftLoading(true);
     fetch('/api/v1/attendance/my-shift', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => r.json())
       .then((j) => setMyShift(j?.data ?? null))
-      .catch((err) => console.warn('Could not fetch my shift:', err));
-  }, [user]);
+      .catch((err) => {
+        console.warn('Could not fetch my shift:', err);
+        setMyShift(null);
+      })
+      .finally(() => setShiftLoading(false));
+  }, [user, shiftReload]);
 
   // Handle Real Camera stream cleanup
   useEffect(() => {
@@ -279,60 +295,22 @@ export const CheckInPage: React.FC = () => {
     return frames;
   };
 
-  // Perform offline punching (Criterion B1 #11)
-  const handleOfflinePunch = () => {
-    vibrate(30);
-    const now = new Date();
-    const offlineRecord = {
-      id: `OFFLINE-${Date.now()}`,
-      employeeCode: user?.employeeCode || '136ACT',
-      type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
-      timestamp: now.toISOString(),
-      deviceFingerprint: getDeviceFingerprint(),
-      wifiBssid: 'OFFLINE_LOCAL',
-      latitude: 21.0285,
-      longitude: 105.8542,
-      isOffline: true,
-      synced: false,
-    };
-
-    try {
-      const q = JSON.parse(localStorage.getItem(STORAGE_OFFLINE_KEY) || '[]');
-      q.push(offlineRecord);
-      localStorage.setItem(STORAGE_OFFLINE_KEY, JSON.stringify(q));
-      setOfflineCount(q.length);
-
-      const record: AttendancePunchRecord = {
-        id: offlineRecord.id,
-        employeeCode: offlineRecord.employeeCode,
-        fullName: user?.fullName || 'Nhân viên',
-        timestamp: now.toLocaleTimeString('vi-VN', { hour12: false }),
-        date: now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        type: checkType,
-        similarity: 1.0,
-        livenessScore: 1.0,
-        status: 'ĐÃ LƯU OFFLINE (Chờ đồng bộ)',
-        bssid: 'Mất mạng (Lưu thiết bị)',
-        coordinates: 'Đã lưu cục bộ',
-      };
-      setCheckResult(record);
-      setHistory((prev) => [record, ...prev]);
-      setCheckInStep('success');
-      vibrate([15, 40, 15]);
-    } catch (e) {
-      console.error(e);
-      setErrorMessage('Không thể lưu bản ghi offline vào thiết bị');
-    }
-  };
-
   const handleStartCheckIn = async () => {
     if (isScanning || isLockedByAttempts) return; // Debounce + lockout
+
+    // Chấm RA khi chưa có giờ vào: chỉ ghi nhận giờ RA thật và đánh dấu thiếu giờ vào,
+    // cần xác nhận để tránh một cú bấm nhầm biến thành ngày công không hợp lệ.
+    if (checkType === 'OUT' && !todayTimes.checkInAt
+      && !window.confirm('Bạn chưa chấm công vào hôm nay. Lần chấm này chỉ ghi nhận giờ RA và ngày công sẽ ở trạng thái Thiếu giờ vào (cần đơn bổ sung công). Tiếp tục?')) {
+      return;
+    }
 
     // Vibrate on tap (Criterion B1 #3)
     vibrate(30);
 
     setIsScanning(true);
     setErrorMessage(null);
+    setNetworkDetail(null);
     setCheckInStep('checking');
     setErrorType('GENERAL');
 
@@ -387,6 +365,7 @@ export const CheckInPage: React.FC = () => {
           latitude: geo.latitude,
           longitude: geo.longitude,
           accuracyMeters: geo.accuracy,
+          // Gửi loại chấm tường minh — server không tự đoán lần đầu = VÀO nữa.
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
         }),
       });
@@ -394,7 +373,8 @@ export const CheckInPage: React.FC = () => {
       const coreJson = await coreResponse.json().catch(() => ({}));
       const serverResult = coreJson?.data;
 
-      if (!coreResponse.ok || !serverResult || serverResult.status !== 'VALID') {
+      if (!coreResponse.ok || !serverResult
+        || (serverResult.status !== 'VALID' && serverResult.status !== 'INCOMPLETE')) {
         setCheckInStep('error');
         if (serverResult?.layers && Array.isArray(serverResult.layers)) {
           setParallelSteps(
@@ -404,6 +384,8 @@ export const CheckInPage: React.FC = () => {
               label: l.label || l.layer,
             }))
           );
+          const networkLayer = serverResult.layers.find((l: any) => l.layer === 'NETWORK');
+          setNetworkDetail(!networkLayer?.passed ? networkLayer?.detail || null : null);
         }
         if (serverResult?.rejectReason === 'OUTSIDE_GEOFENCE') {
           setErrorType('GPS_GEOFENCE');
@@ -435,29 +417,42 @@ export const CheckInPage: React.FC = () => {
 
       const now = new Date();
       const scoreNum = serverResult.similarityScore ?? 0.98;
+      // Server tự quyết định VÀO/RA — UI hiển thị đúng hành động vừa thực hiện.
+      const punchType: 'IN' | 'OUT' = serverResult.punchType === 'OUT' ? 'OUT' : 'IN';
       const record: AttendancePunchRecord = {
         id: `PUNCH-${Date.now()}`,
         employeeCode: serverResult.matchedEmployeeCode || loggedInCode || '—',
         fullName: serverResult.matchedFullName || user?.fullName || 'Nhân viên',
         timestamp: new Date(serverResult.serverTimestamp || now).toLocaleTimeString('vi-VN', { hour12: false }),
         date: now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        type: checkType,
+        type: punchType,
         similarity: scoreNum,
         livenessScore: 1.0,
-        status: checkType === 'IN' ? 'HỢP LỆ (VÀO CA)' : 'HỢP LỆ (RA CA)',
+        status: serverResult.status === 'INCOMPLETE'
+          ? 'GHI NHẬN RA — THIẾU GIỜ VÀO'
+          : punchType === 'IN' ? 'HỢP LỆ (VÀO CA)' : 'HỢP LỆ (RA CA)',
         bssid: 'Mạng văn phòng (IP hợp lệ)',
         coordinates: geo.latitude && geo.longitude ? `${geo.latitude.toFixed(4)}° N, ${geo.longitude.toFixed(4)}° E` : 'Đã xác thực vị trí',
       };
 
       setCheckResult(record);
       setHistory((prev) => [record, ...prev]);
+      // Lần chấm kế tiếp trong ngày là RA; nếu đã ra rồi thì lần sau ghi đè giờ ra.
+      setCheckType('OUT');
+      setAlreadyCheckedOut(punchType === 'OUT');
+      setTodayMissingCheckIn(serverResult.status === 'INCOMPLETE');
+      setPunchNotice(serverResult.status === 'INCOMPLETE' ? (serverResult.message || null) : null);
+      const stamp = serverResult.serverTimestamp || now.toISOString();
+      setTodayTimes((prev) =>
+        punchType === 'IN' ? { ...prev, checkInAt: stamp } : { ...prev, checkOutAt: stamp },
+      );
       setCheckInStep('success');
       vibrate([15, 40, 15]); // Success vibration (Criterion B1 #3)
       setIsScanning(false);
     } catch (err: any) {
       console.error('Check-in error', err);
       setCheckInStep('error');
-      setErrorMessage(err?.message || 'Không thể kết nối máy chủ. Bạn có thể chọn Chấm công ngoại tuyến (Offline).');
+      setErrorMessage(err?.message || 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại — nếu đã quên chấm công, hãy tạo đơn bổ sung công khi có mạng.');
       vibrate([50, 60, 50]);
       setIsScanning(false);
     }
@@ -467,13 +462,87 @@ export const CheckInPage: React.FC = () => {
     setIsScanning(false);
     setCheckInStep('idle');
     setCheckResult(null);
+    setPunchNotice(null);
     setErrorMessage(null);
+    setNetworkDetail(null);
     setErrorType('GENERAL');
     setParallelSteps((prev) => prev.map((s) => ({ ...s, status: 'pending' })));
   };
 
+  const hhmm = (value?: string) =>
+    value
+      ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+      : null;
+  const todayIn = hhmm(todayTimes.checkInAt);
+  const todayOut = hhmm(todayTimes.checkOutAt);
+  const todayStatusText = todayOut
+    ? todayIn
+      ? `Đã vào ${todayIn} · Ra ${todayOut}`
+      : `Đã ghi nhận RA ${todayOut} · Thiếu giờ vào`
+    : todayIn
+    ? `Đã vào ca lúc ${todayIn}`
+    : 'Chưa chấm công hôm nay';
+
+  // Ca hiệu lực lấy nguyên từ API (đã phân giải ca chuẩn / ca ghi đè) — chỉ cắt HH:mm để hiển thị.
+  const shiftClock = (value?: string) => (value && value !== 'null' ? value.slice(0, 5) : '—');
+  const shiftRange = (from?: string, to?: string) => {
+    const a = from && from !== 'null' ? from.slice(0, 5) : null;
+    const b = to && to !== 'null' ? to.slice(0, 5) : null;
+    return a && b ? `${a}–${b}` : a || b || '—';
+  };
+  // Ca thường: khung vào/ra hợp lệ (checkInStart–checkInEnd, checkOutStart–checkOutEnd).
+  // Ca linh hoạt: khung linh hoạt riêng, thiếu thì rơi về khung ca thường.
+  const flexIn = shiftRange(myShift?.flexibleCheckinFrom, myShift?.flexibleCheckinTo);
+  const flexOut = shiftRange(myShift?.flexibleCheckoutFrom, myShift?.flexibleCheckoutTo);
+  const shiftCheckInText = myShift?.isFlexible && flexIn !== '—'
+    ? flexIn
+    : shiftRange(myShift?.checkInStart, myShift?.checkInEnd);
+  const shiftCheckOutText = myShift?.isFlexible && flexOut !== '—'
+    ? flexOut
+    : shiftRange(myShift?.checkOutStart, myShift?.checkOutEnd);
+  const shiftLunchText = myShift
+    ? `${shiftClock(myShift.lunchBreakStart)}–${shiftClock(myShift.lunchBreakEnd)}`
+    : '—';
+
+  // ── Gợi ý VÀO/RA theo trạng thái + khung giờ ca (hybrid, người dùng vẫn đổi được) ──
+  const timeMinutes = (value?: string) => {
+    const s = shiftClock(value);
+    const m = /^(\d{2}):(\d{2})$/.exec(s);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const hasCheckInToday = !!todayTimes.checkInAt;
+  const hasCheckOutToday = !!todayTimes.checkOutAt;
+  const checkInEndMinutes = timeMinutes(myShift?.checkInEnd);
+  const checkOutStartMinutes = timeMinutes(
+    myShift?.isFlexible && myShift?.flexibleCheckoutFrom ? myShift.flexibleCheckoutFrom : myShift?.checkOutStart
+  );
+
+  // Chỉ tự chọn khi chưa có dữ liệu hôm nay; sau khi tải ca xong mới gợi ý để không mặc định sai
+  // thành VÀO lúc 17h khi người dùng thực chất muốn chấm RA.
+  useEffect(() => {
+    if (shiftLoading) return;
+    if (hasCheckInToday || hasCheckOutToday) {
+      setCheckType('OUT');
+      return;
+    }
+    if (checkOutStartMinutes != null && nowMinutes >= checkOutStartMinutes) {
+      setCheckType('OUT');
+      return;
+    }
+    setCheckType('IN');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shiftLoading, checkOutStartMinutes, hasCheckInToday, hasCheckOutToday]);
+
+  const ambiguousNoPunch = !hasCheckInToday && !hasCheckOutToday
+    && checkInEndMinutes != null && checkOutStartMinutes != null
+    && nowMinutes > checkInEndMinutes && nowMinutes < checkOutStartMinutes;
+  const lateCheckIn = !hasCheckInToday && checkType === 'IN'
+    && checkInEndMinutes != null && nowMinutes > checkInEndMinutes;
+  const missingCheckInPunch = !hasCheckInToday && checkType === 'OUT';
+
   return (
-    <div className="max-w-xl mx-auto space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="max-w-xl lg:max-w-5xl mx-auto space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Yesterday Missing Checkout Banner (Criterion B2 #2) */}
@@ -500,73 +569,36 @@ export const CheckInPage: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="text-center space-y-1">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line">
-          <span>🛡️</span> 5 Lớp Xác Thực Chấm Công Chống Gian Lận
+      {/* Face Enrollment Status (Criterion B0 & B1 #7) */}
+      {!faceEnrolled && (
+        <div className="text-center">
+          <button
+            onClick={() => navigate('/auth/enroll-face')}
+            className="inline-flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs cursor-pointer animate-pulse"
+          >
+            <span>📸</span>
+            <span>⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để đăng ký (B0)</span>
+          </button>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Chấm Công Nhận Diện Khuôn Mặt</h1>
-        <p className="text-xs text-ink-muted">
-          1 chạm siêu tốc &lt; 4 giây · Camera trước tự động · Phản hồi rung · Chống chấm công hộ
-        </p>
-
-        {/* Face Enrollment Status (Criterion B0 & B1 #7) */}
-        {!faceEnrolled && (
-          <div className="pt-2">
-            <button
-              onClick={() => navigate('/auth/enroll-face')}
-              className="inline-flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs cursor-pointer animate-pulse"
-            >
-              <span>📸</span>
-              <span>⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để đăng ký (B0)</span>
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Main Punch Card (Mobile-First, Criterion B1 #13) */}
-      <Card className="text-center p-5 sm:p-6 space-y-4 shadow-sm">
-        {/* Real-time Clock */}
-        <div>
-          <div className="text-4xl sm:text-5xl font-extrabold font-mono tracking-tight text-ink">
-            {currentTime || '08:30:00'}
-          </div>
-          <div className="text-xs text-ink-secondary mt-1 capitalize font-medium">
-            {currentDate}
-          </div>
-          <div className="text-[11px] text-accent font-semibold mt-0.5">
-            {myShift
-              ? `${myShift.isBase ? 'Ca chuẩn' : 'Ca ngoại lệ'} · ${myShift.name}: ${(myShift.checkInStart || '').slice(0, 5)}–${(myShift.checkOutEnd || '').slice(0, 5)} · nghỉ trưa ${(myShift.lunchBreakStart || '').slice(0, 5)}–${(myShift.lunchBreakEnd || '').slice(0, 5)} · ${myShift.requiredWorkHours}h/ngày`
-              : 'Ca làm việc chuẩn: 08:00 – 17:30 (Nghỉ trưa 12:00–13:00)'}
-          </div>
-        </div>
-
-        {/* Check-In vs Check-Out Selector */}
-        <div className="flex justify-center gap-2">
-          <button
-            onClick={() => setCheckType('IN')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              checkType === 'IN'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
-            }`}
-          >
-            VÀO CA (Sáng)
-          </button>
-          <button
-            onClick={() => setCheckType('OUT')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              checkType === 'OUT'
-                ? 'bg-accent text-white shadow-xs'
-                : 'bg-canvas text-ink-secondary hover:text-ink border border-line'
-            }`}
-          >
-            RA VỀ (Chiều)
-          </button>
-        </div>
+      <Card className="text-center p-4 sm:p-6 lg:p-8 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-8 lg:items-center">
+          {/* Cột trái: đồng hồ + camera */}
+          <div className="space-y-4 lg:rounded-2xl lg:border lg:border-line lg:bg-canvas/60 lg:p-5">
+            {/* Real-time Clock */}
+            <div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold font-mono tracking-tight text-ink tabular-nums">
+                {currentTime || '08:30:00'}
+              </div>
+              <div className="text-xs sm:text-sm text-ink-secondary mt-1.5 capitalize font-medium">
+                {currentDate}
+              </div>
+            </div>
 
         {/* Camera Viewport with Oval Guideline Overlay (Criterion B1 #2) */}
-        <div className="relative w-56 h-56 sm:w-60 sm:h-60 mx-auto rounded-full border-4 border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
+        <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 mx-auto rounded-full border-4 border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
           <video
             ref={videoRef}
             autoPlay
@@ -577,7 +609,7 @@ export const CheckInPage: React.FC = () => {
 
           {/* Oval guideline overlay */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-40 h-52 sm:w-44 sm:h-54 rounded-[50%] border-2 border-dashed border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex flex-col items-center justify-between py-3">
+            <div className="w-36 h-44 sm:w-40 sm:h-52 lg:w-44 lg:h-56 rounded-[50%] border-2 border-dashed border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex flex-col items-center justify-between py-2.5 sm:py-3">
               <div className="text-[10px] text-emerald-300 font-semibold bg-zinc-900/60 px-2 py-0.5 rounded-full backdrop-blur-2xs">
                 Khung oval hướng dẫn
               </div>
@@ -609,15 +641,21 @@ export const CheckInPage: React.FC = () => {
 
           {/* Success Overlay with Match Percentage (Criterion B1 #5) */}
           {checkInStep === 'success' && checkResult && (
-            <div className="absolute inset-0 bg-emerald-950/90 flex flex-col items-center justify-center text-white p-4 z-20 animate-in fade-in">
-              <div className="text-4xl text-emerald-400 mb-1">✓</div>
-              <div className="text-sm font-extrabold text-emerald-300">
-                ✓ Khớp {(checkResult.similarity * 100).toFixed(0)}%
+            <div className={`absolute inset-0 flex flex-col items-center justify-center text-white p-4 z-20 animate-in fade-in ${
+              checkResult.status.startsWith('GHI NHẬN') ? 'bg-amber-950/90' : 'bg-emerald-950/90'
+            }`}>
+              <div className={`text-4xl mb-1 ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {checkResult.status.startsWith('GHI NHẬN') ? '!' : '✓'}
+              </div>
+              <div className={`text-sm font-extrabold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-300' : 'text-emerald-300'}`}>
+                {checkResult.status.startsWith('GHI NHẬN')
+                  ? 'Đã ghi nhận RA — thiếu giờ vào'
+                  : `✓ Khớp ${(checkResult.similarity * 100).toFixed(0)}%`}
               </div>
               <div className="text-xs font-semibold text-emerald-100 mt-0.5">
                 {checkResult.fullName} ({checkResult.employeeCode})
               </div>
-              <div className="text-[10px] text-emerald-300 mt-1">
+              <div className={`text-[10px] mt-1 ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-200' : 'text-emerald-300'}`}>
                 Liveness: 100% · Vị trí: Hợp lệ
               </div>
             </div>
@@ -647,6 +685,77 @@ export const CheckInPage: React.FC = () => {
             <span>{useRealCamera && cameraStream ? 'Webcam Đang Hoạt Động' : 'Bật Webcam Thực'}</span>
           </button>
         </div>
+          </div>
+
+          {/* Cột phải: ca làm việc + trạng thái + nút chấm công */}
+          <div className="flex flex-col gap-4 text-left">
+            <div className="rounded-xl border border-line bg-canvas p-4 space-y-2.5 order-3 lg:order-none">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Ca làm việc hôm nay</div>
+                  {shiftLoading ? (
+                    <div className="text-sm font-bold text-ink-muted mt-0.5">Đang tải cấu hình ca…</div>
+                  ) : !myShift ? (
+                    <div className="text-sm font-bold text-ink mt-0.5">Chưa xác định được ca làm việc</div>
+                  ) : (
+                    <div className="text-sm font-bold text-ink mt-0.5 truncate">{myShift.name}</div>
+                  )}
+                </div>
+                {!shiftLoading && myShift && (
+                  <Badge variant={myShift.isBase ? 'info' : 'warn'}>
+                    {myShift.isBase ? 'Ca chuẩn' : 'Ca ghi đè'}
+                  </Badge>
+                )}
+              </div>
+
+              {shiftLoading ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-12 rounded-lg bg-line/50 animate-pulse" />
+                  ))}
+                </div>
+              ) : !myShift ? (
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Chưa tải được cấu hình ca áp dụng cho bạn. Kiểm tra kết nối hoặc liên hệ HR.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShiftReload((v) => v + 1)}
+                    className="shrink-0 text-[11px] font-semibold text-amber-900 underline"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                      <div className="text-[10px] text-ink-muted">Khung vào</div>
+                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckInText}</div>
+                    </div>
+                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                      <div className="text-[10px] text-ink-muted">Nghỉ trưa</div>
+                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftLunchText}</div>
+                    </div>
+                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                      <div className="text-[10px] text-ink-muted">Khung ra</div>
+                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckOutText}</div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-ink-muted">
+                    Áp dụng theo cấu hình ca hiệu lực <span className="font-semibold text-ink">{myShift.code}</span>
+                    {myShift.requiredWorkHours ? ` · ${myShift.requiredWorkHours}h/ngày` : ''}
+                    {' · khung vào/ra là khoảng hợp lệ'}
+                    {myShift.isFlexible ? ', ca linh hoạt' : ''}.
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-ink-muted">
+                    Lần chấm đầu tiên trong ngày là <strong>vào ca</strong>, các lần sau là{' '}
+                    <strong>ra ca</strong> (giữ lần cuối). Không cần chọn vào/ra.
+                  </p>
+                </>
+              )}
+            </div>
 
         {/* 5-Parallel Checks Display (Criterion B1 #4) */}
         {isScanning && (
@@ -704,6 +813,11 @@ export const CheckInPage: React.FC = () => {
             {/* Outside Network Remedies */}
             {errorType === 'NETWORK' && (
               <div className="pt-2 border-t border-rose-200 flex flex-wrap gap-2 items-center">
+                {networkDetail && (
+                  <div className="basis-full text-[11px] text-rose-700 font-mono bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                    {networkDetail}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => navigate('/attendance/rules')}
@@ -750,14 +864,89 @@ export const CheckInPage: React.FC = () => {
           </div>
         )}
 
+        {/* Trạng thái chấm công hôm nay */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-line px-3.5 py-2.5">
+          <div>
+            <div className="text-xs font-bold text-ink">Chấm công hôm nay</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{todayStatusText}</div>
+          </div>
+          <Badge variant={todayOut && !todayIn ? 'warn' : todayOut ? 'ok' : todayIn ? 'info' : 'gray'}>
+            {todayOut && !todayIn ? 'Thiếu giờ vào' : todayOut ? 'Đã ra ca' : todayIn ? 'Đã vào ca' : 'Chưa vào ca'}
+          </Badge>
+        </div>
+
+        {/* Thiếu đầu chấm — chỉ ghi nhận phần có thật, phần còn lại phải bổ sung công có duyệt */}
+        {(todayMissingCheckIn || (checkInStep !== 'success' && missingCheckInPunch)) && (
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <strong className="font-semibold">
+                {todayMissingCheckIn ? 'Hôm nay thiếu giờ vào' : 'Bạn chưa chấm công vào hôm nay'}
+              </strong>
+              <p className="mt-0.5 text-amber-800">
+                {todayMissingCheckIn
+                  ? 'Giờ RA đã được ghi nhận. Ngày công chỉ được tính sau khi đơn bổ sung giờ vào được duyệt.'
+                  : 'Lần chấm này chỉ ghi nhận giờ RA — ngày công sẽ Thiếu giờ vào. Hãy chọn “Vào ca” nếu bạn đi muộn.'}
+              </p>
+            </div>
+            {todayMissingCheckIn && (
+              <button
+                type="button"
+                onClick={() => navigate('/attendance/requests')}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 whitespace-nowrap"
+              >
+                Bổ sung công
+              </button>
+            )}
+          </div>
+        )}
+
+        {ambiguousNoPunch && checkInStep !== 'success' && (
+          <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
+            Hiện không nằm trong khung vào hay khung ra của ca — hãy chọn đúng <strong>Vào ca</strong> hoặc <strong>Ra ca</strong> bên dưới.
+          </div>
+        )}
+
+        {/* Chọn loại chấm rõ ràng — hệ thống gợi ý nhưng nhân viên luôn đổi được */}
+        {checkInStep !== 'success' && (
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+              <button
+                type="button"
+                onClick={() => setCheckType('IN')}
+                disabled={isScanning || hasCheckInToday || todayMissingCheckIn}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'IN'
+                  ? 'bg-emerald-700 text-white border-emerald-700'
+                  : 'bg-canvas text-ink border-line hover:border-emerald-400'} disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckType('OUT')}
+                disabled={isScanning}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'OUT'
+                  ? 'bg-zinc-800 text-white border-zinc-800'
+                  : 'bg-canvas text-ink border-line hover:border-zinc-500'} disabled:opacity-40`}
+              >
+                {alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca'}
+              </button>
+            </div>
+            {lateCheckIn && checkType === 'IN' && (
+              <p className="text-[10px] text-amber-700">
+                Đã qua khung vào {shiftCheckInText} — lần chấm VÀO này có thể bị tính đi muộn.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* 1 Big Punch Button — Debounced and Disabled when scanning (Criterion B1 #3, #12, #13) */}
         {checkInStep !== 'success' && (
-          <div className="pt-2">
+          <div className="pt-1 flex flex-col items-center gap-2">
             <button
               type="button"
               disabled={isScanning || isLockedByAttempts || !faceEnrolled}
               onClick={handleStartCheckIn}
-              className={`w-32 h-32 sm:w-36 sm:h-36 rounded-full font-black text-xl tracking-wider text-white shadow-lg mx-auto flex flex-col items-center justify-center transition-all cursor-pointer ${
+              className={`w-36 h-36 sm:w-40 sm:h-40 rounded-full font-black text-2xl tracking-wider text-white shadow-lg flex flex-col items-center justify-center transition-all cursor-pointer ${
                 isLockedByAttempts
                   ? 'bg-rose-800 opacity-60 cursor-not-allowed'
                   : isScanning
@@ -769,37 +958,45 @@ export const CheckInPage: React.FC = () => {
             >
               <span>{isScanning ? '...' : checkType === 'IN' ? 'VÀO' : 'RA'}</span>
               <span className="text-[10px] font-normal tracking-normal opacity-80 mt-1">
-                {isScanning ? 'Đang ghi nhận' : 'Bấm 1 chạm'}
+                {isScanning
+                  ? 'Đang ghi nhận'
+                  : checkType === 'OUT' && alreadyCheckedOut
+                  ? 'Cập nhật giờ ra'
+                  : checkType === 'OUT' && !hasCheckInToday
+                  ? 'Chỉ ghi nhận RA'
+                  : 'Bấm 1 chạm'}
               </span>
             </button>
           </div>
         )}
 
-        {/* Offline Punch Option (Criterion B1 #11) */}
-        <div className="pt-1 flex justify-center items-center gap-3 text-xs">
-          <button
-            type="button"
-            onClick={handleOfflinePunch}
-            className="text-ink-secondary hover:text-ink underline text-[11px] cursor-pointer"
-            title="Dùng khi Wi-Fi hoặc mạng internet văn phòng bị mất hoàn toàn"
-          >
-            Chấm công ngoại tuyến (Offline)
-          </button>
-          {offlineCount > 0 && (
-            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-              {offlineCount} lượt offline chờ đồng bộ (hạn 24h)
-            </span>
-          )}
-        </div>
-
         {/* Success Card Details */}
         {checkInStep === 'success' && checkResult && (
-          <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-left text-xs space-y-2 animate-in fade-in">
-            <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-              <span className="font-bold text-emerald-900">Ghi Nhận Chấm Công Thành Công</span>
-              <Badge variant="accent">{checkResult.status}</Badge>
+          <div className={`p-4 rounded-xl text-left text-xs space-y-2 animate-in fade-in border ${
+            checkResult.status.startsWith('GHI NHẬN')
+              ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'
+          }`}>
+            <div className={`flex items-center justify-between pb-2 border-b ${
+              checkResult.status.startsWith('GHI NHẬN') ? 'border-amber-200' : 'border-emerald-200'
+            }`}>
+              <span className={`font-bold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-900' : 'text-emerald-900'}`}>
+                {checkResult.status.startsWith('GHI NHẬN') ? 'Đã Ghi Nhận Giờ Ra — Thiếu Giờ Vào' : 'Ghi Nhận Chấm Công Thành Công'}
+              </span>
+              <Badge variant={checkResult.status.startsWith('GHI NHẬN') ? 'warn' : 'accent'}>{checkResult.status}</Badge>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
+            {punchNotice && (
+              <div className="text-[11px] text-amber-900 bg-amber-100 border border-amber-200 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span>{punchNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/attendance/requests')}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 whitespace-nowrap"
+                >
+                  Bổ sung công
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
               <div>
                 <span className="text-emerald-800">Nhân viên:</span>{' '}
                 <strong className="text-emerald-950">{checkResult.fullName} ({checkResult.employeeCode})</strong>
@@ -824,6 +1021,8 @@ export const CheckInPage: React.FC = () => {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </Card>
     </div>
   );

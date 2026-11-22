@@ -15,6 +15,7 @@ public class AuthResponse {
     private String employeeCode;
     private String fullName;
     private String role;
+    private String avatarUrl;
     private Boolean mustChangePassword;
     private Boolean faceEnrolled;
 }

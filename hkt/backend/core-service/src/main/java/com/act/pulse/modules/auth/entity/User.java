@@ -29,6 +29,14 @@ public class User extends BaseEntity {
     @Column(name = "email", unique = true, nullable = false, length = 150)
     private String email;
 
+    /** Số điện thoại liên hệ (nhân viên tự cập nhật trong hồ sơ). */
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    /** Avatar dạng data URL (ảnh đã resize phía client) — hiển thị ở header và trang hồ sơ. */
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
+
     /** Chỉ lưu dạng băm (bcrypt cost 12) — không lưu bản thô. */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

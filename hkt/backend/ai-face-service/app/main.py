@@ -127,8 +127,12 @@ def init_database():
                 UNIQUE(tenant_id, user_id)
             );
         """)
-        # Purge any legacy synthetic persona vectors to adhere to zero-fake-vector policy
-        conn.execute("DELETE FROM face_identities WHERE tenant_id = 'default' AND user_id IN ('Admin', 'admin', '01HR', '05ACT', '136ACT') AND length(embedding) = 512")
+        # Purge legacy synthetic persona vectors for demo accounts. NOTE:
+        # `length(embedding)` is BYTES, and a real SFace vector is 128 floats
+        # = 512 bytes — so a genuine enrollment matches `length = 512` and was
+        # being deleted on every restart. Only impossible byte lengths are
+        # purged now.
+        conn.execute("DELETE FROM face_identities WHERE tenant_id = 'default' AND user_id IN ('Admin', 'admin', '01HR', '05ACT', '136ACT') AND length(embedding) NOT IN (512)")
         conn.commit()
 
 
@@ -185,12 +189,41 @@ async def init_db() -> None:
             )
         employee_db.clear()
         for row in rows:
+            vec = _parse_vector(row["embedding"])
+            # Postgres lưu vector(512) nên SFace 128D được đệm 0 ở cuối.
+            # Cắt đệm để khớp chiều với truy vấn 128D.
+            while vec and vec[-1] == 0.0:
+                vec.pop()
             employee_db[row["employee_code"]] = {
                 "employee_code": row["employee_code"],
                 "full_name": row["full_name"],
                 "department": row["department"],
-                "vector": _parse_vector(row["embedding"]),
+                "vector": vec,
             }
+        # PostgreSQL là nguồn chuẩn cho hồ sơ đang active — đồng bộ lại SQLite
+        # để hồ sơ không bị mất khi SQLite bị dọn/đổi máy.
+        with sqlite3.connect(SQLITE_DB_FILE) as conn:
+            for code, info in employee_db.items():
+                if not info["vector"]:
+                    continue
+                conn.execute(
+                    """
+                    INSERT INTO face_identities (tenant_id, user_id, full_name, department, embedding)
+                    VALUES ('default', ?, ?, ?, ?)
+                    ON CONFLICT(tenant_id, user_id) DO UPDATE SET
+                        full_name = excluded.full_name,
+                        department = excluded.department,
+                        embedding = excluded.embedding,
+                        created_at = CURRENT_TIMESTAMP
+                    """,
+                    (
+                        code,
+                        info["full_name"],
+                        info["department"],
+                        np.array(info["vector"], dtype=np.float32).tobytes(),
+                    ),
+                )
+            conn.commit()
         logger.info("Đã nạp %d hồ sơ khuôn mặt từ PostgreSQL", len(employee_db))
     except Exception as exc:
         logger.warning("Không kết nối được PostgreSQL (%s) — dùng SQLite và file JSON", exc)
@@ -222,6 +255,12 @@ async def persist_employee_to_db(employee_code: str, vec: List[float]) -> None:
             )
             if result.endswith("0"):
                 logger.warning("Không tìm thấy nhân viên %s trong bảng users khi lưu vector", employee_code)
+            else:
+                # Đồng bộ cờ hiển thị trên hồ sơ/ danh sách nhân sự.
+                await conn.execute(
+                    "UPDATE users SET face_enrolled = TRUE WHERE LOWER(employee_code) = LOWER($1)",
+                    employee_code,
+                )
     except Exception as e:
         logger.error("Lỗi khi lưu vector vào PostgreSQL: %s", e)
     save_db()
@@ -407,29 +446,35 @@ def check_image_quality(img: Optional[np.ndarray]) -> tuple[bool, Optional[str]]
 
 def extract_face_embedding(img: np.ndarray) -> tuple[Optional[np.ndarray], Optional[str]]:
     """
-    Extracts normalized 128D facial feature embedding vector using OpenCV YuNet + SFace.
-    Falls back to Haar Cascade detection if YuNet is unavailable.
+    Extracts normalized 512D SFace embedding using OpenCV YuNet + SFace.
+    The legacy 128D hand-crafted fallback is used ONLY when the ONNX models
+    failed to load — mixing 128D and 512D vectors makes matching impossible
+    (a padded 128D vector can never match a 512D SFace query), so a face that
+    YuNet cannot detect must be an explicit error instead of a silent fallback.
     """
     if detector is not None and recognizer is not None:
         try:
             h, w = img.shape[:2]
             detector.setInputSize((w, h))
             _, faces = detector.detect(img)
-
-            if faces is not None and len(faces) > 0:
-                best_face = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
-                aligned = recognizer.alignCrop(img, best_face)
-                feature = recognizer.feature(aligned)
-
-                feat_norm = feature[0]
-                norm = np.linalg.norm(feat_norm)
-                if norm > 0:
-                    feat_norm = feat_norm / norm
-                return feat_norm.astype(np.float32), None
         except Exception as e:
-            logger.warning("YuNet/SFace extraction error: %s. Using fallback...", e)
+            logger.warning("YuNet/SFace extraction error: %s", e)
+            return None, "Lỗi nhận diện khuôn mặt — vui lòng thử lại hoặc chụp lại ảnh rõ hơn."
 
-    # Fallback to Haar Cascade
+        if faces is None or len(faces) == 0:
+            return None, "Không phát hiện khuôn mặt trong ảnh. Hãy đưa mặt vào giữa khung, đủ sáng và rõ nét."
+
+        best_face = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+        aligned = recognizer.alignCrop(img, best_face)
+        feature = recognizer.feature(aligned)
+
+        feat_norm = feature[0]
+        norm = np.linalg.norm(feat_norm)
+        if norm > 0:
+            feat_norm = feat_norm / norm
+        return feat_norm.astype(np.float32), None
+
+    # Legacy fallback (models unavailable): Haar + 128D gradient descriptor.
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(36, 36))
     if len(faces) == 0:
@@ -579,6 +624,10 @@ async def delete_enrolled_employee(employee_code: str):
                     "UPDATE face_profiles SET status = 'reset' WHERE user_id IN (SELECT id FROM users WHERE LOWER(employee_code) = LOWER($1))",
                     code,
                 )
+                await conn.execute(
+                    "UPDATE users SET face_enrolled = FALSE WHERE LOWER(employee_code) = LOWER($1)",
+                    code,
+                )
                 deleted = True
         except Exception as e:
             logger.warning("Could not reset face_profile in postgres: %s", e)
@@ -639,6 +688,12 @@ def verify_face_json(payload: VerifyJsonRequest):
 
     for user_id, name, dept, emb_bytes in enrolled:
         candidate_vec = np.frombuffer(emb_bytes, dtype=np.float32)
+        if len(candidate_vec) != len(query_vec):
+            logger.warning(
+                "Bỏ qua hồ sơ %s: vector %dD không khớp chiều với ảnh truy vấn %dD",
+                user_id, len(candidate_vec), len(query_vec),
+            )
+            continue
         norm_cand = np.linalg.norm(candidate_vec)
         if norm_cand > 0:
             candidate_vec = candidate_vec / norm_cand
@@ -670,6 +725,17 @@ def verify_face_json(payload: VerifyJsonRequest):
                 targeted_score = score
                 targeted_candidate = (user_id, name, dept)
                 break
+        if targeted_candidate is None:
+            for code, info in employee_db.items():
+                if code.lower() != exp_code.lower():
+                    continue
+                info_vec = np.array(info.get("vector") or [], dtype=np.float32)
+                if len(info_vec) == len(query_vec):
+                    targeted_score = cosine_similarity(query_vec, info_vec)
+                    targeted_candidate = (
+                        info["employee_code"], info["full_name"], info["department"],
+                    )
+                break
 
     # Prioritize expected candidate if above dynamic threshold from rules
     effective_threshold = (
@@ -685,6 +751,15 @@ def verify_face_json(payload: VerifyJsonRequest):
 
     # Convert raw cosine similarity to normalized confidence score [0.0, 1.0]
     conf_score = round(float((chosen_score + 1.0) / 2.0 if chosen_score <= 1.0 else chosen_score), 4)
+    logger.info(
+        "verify: expected=%s best=%s cos=%.4f conf=%.4f threshold=%.2f targeted=%s",
+        payload.expected_employee_code,
+        best_candidate[0] if best_candidate else None,
+        best_score,
+        conf_score,
+        effective_threshold,
+        f"{targeted_candidate[0]}:{targeted_score:.4f}" if targeted_candidate else None,
+    )
 
     # Check if candidate meets the strict business threshold (0.85) without arbitrary fallbacks
     if chosen_candidate and conf_score >= effective_threshold:

@@ -20,6 +20,8 @@ import java.util.List;
 @AllArgsConstructor
 public class CheckInResponse {
     private String status; // VALID | REJECTED
+    /** Hành động server đã thực hiện khi chấm tự động: IN = vào ca, OUT = ra ca. */
+    private String punchType;
     private LocalDateTime serverTimestamp;
     private String message;
     private String matchedEmployeeCode;

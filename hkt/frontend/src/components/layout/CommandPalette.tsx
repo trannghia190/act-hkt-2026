@@ -40,6 +40,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const baseCatalog: SearchResultItem[] = [
     // 1. Thao tác nhanh & Chấm công
     { title: 'Cần làm (Todo Inbox)', subtitle: 'Màn hình mặc định sau đăng nhập', kind: 'page', url: '/todo', keywords: 'can lam todo inbox viec can lam' },
+    { title: 'Hồ sơ cá nhân', subtitle: 'Thông tin, avatar, mật khẩu, passkey', kind: 'page', url: '/account/profile', keywords: 'ho so ca nhan profile thong tin tai khoan avatar mat khau passkey' },
     { title: 'Chấm công khuôn mặt', subtitle: 'Camera nhận diện 3 góc', kind: 'action', url: '/attendance/checkin', keywords: 'cham cong checkin check in check out face mobile ca lam' },
     { title: 'Bảng công cá nhân của tôi', subtitle: 'Lịch sử công, giờ vào/ra', kind: 'page', url: '/attendance/my-timesheet', keywords: 'bang cong ca nhan cong cua toi timesheet' },
     { title: 'Bảng công tổng hợp 53 cột', subtitle: 'Bảng công tháng 11, chốt lương', kind: 'page', url: '/attendance/timesheet', keywords: 'bang cong tong hop 53 cot chot cong chot luong thang 11 thang 12' },
