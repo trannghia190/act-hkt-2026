@@ -2,14 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { Badge } from '../../../components/common/Badge';
-import {
-  clearLocalPasskeyMark,
-  getLocalPasskeyMark,
-  getWebAuthnStatus,
-  isWebAuthnSupported,
-  registerPasskey,
-} from '../../../utils/webauthn';
-import type { LocalPasskeyMark } from '../../../utils/webauthn';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 
 interface Device {
@@ -38,13 +30,6 @@ export const MyDevicesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [hasPasskey, setHasPasskey] = useState(false);
-  const [registeringPasskey, setRegisteringPasskey] = useState(false);
-  const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
-  const [passkeyOk, setPasskeyOk] = useState(false);
-  // Dấu passkey của CHÍNH trình duyệt này (khác với hasPasskey = tài khoản đã có passkey ở đâu đó).
-  const [passkeyMark, setPasskeyMark] = useState<LocalPasskeyMark | null>(() => getLocalPasskeyMark());
-  const webAuthnSupported = isWebAuthnSupported();
   const currentFingerprint = getDeviceFingerprint();
 
   const loadDevices = () => {
@@ -74,11 +59,10 @@ export const MyDevicesPage: React.FC = () => {
   };
 
   const removeDevice = async (d: Device) => {
-    const hasPasskeyHere = passkeyMark?.deviceId === d.id;
     const message = d.status === 'PENDING'
       ? `Hủy yêu cầu đăng ký thiết bị "${d.name}"? Bạn sẽ cần gửi lại yêu cầu nếu muốn dùng máy này.`
       : d.status === 'ACTIVE'
-        ? `Xóa thiết bị "${d.name}" khỏi tài khoản? Thiết bị này sẽ không chấm công được nữa cho tới khi đăng ký lại.${hasPasskeyHere ? ' Passkey trên máy này cũng bị gỡ.' : ''}`
+        ? `Xóa thiết bị "${d.name}" khỏi tài khoản? Thiết bị này sẽ không chấm công được nữa cho tới khi đăng ký lại.`
         : `Xóa thiết bị "${d.name}" khỏi danh sách?`;
     if (!window.confirm(message)) return;
     setError(null);
@@ -90,15 +74,7 @@ export const MyDevicesPage: React.FC = () => {
         setError(j?.message || 'Không xóa được thiết bị');
         return;
       }
-      // Xóa chính passkey của máy này → bỏ dấu + thông báo để nút đăng ký mở lại.
-      if (hasPasskeyHere) {
-        clearLocalPasskeyMark();
-        setPasskeyMark(null);
-        setPasskeyMessage(null);
-      }
       loadDevices();
-      // Xóa máy có passkey có thể làm tài khoản hết passkey → nhãn trạng thái phải cập nhật theo.
-      getWebAuthnStatus().then((s) => setHasPasskey(s.hasPasskey));
     } catch {
       setError('Không xóa được thiết bị — kiểm tra kết nối');
     } finally {
@@ -108,104 +84,26 @@ export const MyDevicesPage: React.FC = () => {
 
   useEffect(() => {
     loadDevices();
-    getWebAuthnStatus().then((s) => setHasPasskey(s.hasPasskey));
   }, [user]);
-
-  // Thiết bị bị HR thu hồi → dấu passkey của máy này hết hiệu lực.
-  // Chỉ đối chiếu khi tải danh sách thành công: lỗi mạng không được phép xóa dấu.
-  // KHÔNG xóa khi thiết bị vắng mặt: danh sách có thể còn là bản cũ ngay sau khi
-  // vừa đăng ký, xóa lúc đó sẽ nuốt mất thông báo "đã đăng ký passkey".
-  useEffect(() => {
-    if (loading || error || !passkeyMark) return;
-    const device = devices.find((d) => d.id === passkeyMark.deviceId);
-    if (device && device.status === 'REVOKED') {
-      clearLocalPasskeyMark();
-      setPasskeyMark(null);
-      // Dấu đã hết hiệu lực thì thông báo "đã đăng ký máy này" cũng không còn đúng.
-      setPasskeyMessage(null);
-    }
-  }, [devices, loading, error, passkeyMark]);
-
-  const handleRegisterPasskey = async () => {
-    setPasskeyMessage(null);
-    setRegisteringPasskey(true);
-    try {
-      const result = await registerPasskey();
-      setPasskeyOk(result.approved);
-      setPasskeyMessage(result.approved
-        ? 'Đã đăng ký passkey cho thiết bị này — có thể dùng vân tay/Face ID khi chấm công.'
-        : 'Đã ghi nhận passkey, thiết bị đang chờ HR duyệt.');
-      setHasPasskey(true);
-      setPasskeyMark(getLocalPasskeyMark());
-      loadDevices();
-    } catch (e: any) {
-      setPasskeyOk(false);
-      setPasskeyMessage(e?.message || 'Không đăng ký được passkey.');
-    } finally {
-      setRegisteringPasskey(false);
-    }
-  };
 
   const activeCount = devices.filter((d) => d.status === 'ACTIVE').length;
   const pendingCount = devices.filter((d) => d.status === 'PENDING').length;
-  const markDevice = passkeyMark ? devices.find((d) => d.id === passkeyMark.deviceId) : undefined;
-  // Dấu local là nguồn chính: danh sách /devices có thể chưa kịp chứa máy vừa đăng ký.
-  // Chỉ coi là "máy khác" khi chắc chắn máy trong dấu đã bị thu hồi (effect bên trên sẽ xoá dấu).
-  const passkeyOnThisDevice = !!passkeyMark && (!markDevice || markDevice.status !== 'REVOKED');
-  const isCurrentDevice = (d: Device): boolean =>
-    d.id === passkeyMark?.deviceId || d.fingerprint === currentFingerprint;
+  const isCurrentDevice = (d: Device): boolean => d.fingerprint === currentFingerprint;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Header Card */}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-2">
-          <span>🔒</span> Quản Lý Thiết Bị Cá Nhân (S27)
+          <span>🔒</span> Quản Lý Thiết Bị Cá Nhân
         </div>
         <h1 className="text-xl font-bold text-ink">Thiết bị đăng ký & Hồ sơ nhận diện</h1>
         <p className="text-xs text-ink-muted mt-1">
-          Hạn mức mặc định 2 thiết bị/tài khoản. Quota chấm công tính theo người (tối đa 1 check-in + 1 check-out/ngày), không phụ thuộc vào thiết bị.
-          {' '}Cách đăng ký: bấm <strong>Đăng ký passkey</strong> — máy còn hạn mức được dùng để chấm công ngay; vượt hạn mức thì chờ HR duyệt.
-          {' '}Passkey gắn với authenticator (Touch ID/Face ID/Windows Hello hoặc tài khoản đồng bộ iCloud/Google), và hệ thống đếm mỗi passkey là một thiết bị — passkey đồng bộ dùng trên nhiều máy vẫn chỉ là một thiết bị.
+          Hạn mức mặc định 2 thiết bị/tài khoản — máy trong hạn mức kích hoạt ngay, từ máy thứ 3 cần lý do và chờ HR duyệt.
+          {' '}Hệ thống nhận diện thiết bị bằng fingerprint trình duyệt và kết hợp khuôn mặt khi chấm công.
+          {' '}Đăng nhập nhanh bằng vân tay/Face ID nằm ở trang <Link to="/account/passkey" className="text-accent font-semibold">Passkey &amp; bảo mật</Link>.
         </p>
       </div>
-
-      {webAuthnSupported && (
-        <div className="bg-canvas border border-line rounded-xl p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-bold text-ink flex items-center gap-2">
-                <span>🔐</span> Khóa thiết bị bằng Passkey (WebAuthn)
-                {passkeyOnThisDevice && <Badge variant="accent">Đã đăng ký thiết bị này</Badge>}
-                {!passkeyOnThisDevice && hasPasskey && !passkeyMessage && (
-                  <Badge variant="info">Tài khoản đã có passkey ở thiết bị khác</Badge>
-                )}
-              </h2>
-              <p className="text-xs text-ink-muted mt-1">
-                Đây là cách đăng ký thiết bị để chấm công. Dùng vân tay / Face ID / Windows Hello để ký mỗi lần chấm công; private key không rời khỏi thiết bị.
-              </p>
-              {passkeyMessage && (
-                <p className={`text-xs mt-2 ${passkeyOk ? 'text-emerald-700' : 'text-rose-700'}`}>{passkeyMessage}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={handleRegisterPasskey}
-              disabled={registeringPasskey || passkeyOnThisDevice}
-              title={passkeyOnThisDevice ? 'Thiết bị này đã đăng ký passkey — không cần đăng ký lại.' : undefined}
-              className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold disabled:opacity-50"
-            >
-              {registeringPasskey
-                ? 'Đang đăng ký…'
-                : passkeyOnThisDevice
-                  ? '✓ Đã đăng ký thiết bị này'
-                  : hasPasskey
-                    ? 'Đăng ký passkey thiết bị này'
-                    : 'Đăng ký passkey'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {error && (
         <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
@@ -226,18 +124,19 @@ export const MyDevicesPage: React.FC = () => {
                 : 'Đang dùng các thiết bị đã được định danh hợp lệ'}
             </p>
           </div>
-          {webAuthnSupported ? (
-            <span className="text-[11px] text-ink-muted max-w-[230px] text-right">
-              {passkeyOnThisDevice
-                ? 'Máy này đã khóa bằng passkey — dùng vân tay/Face ID khi chấm công.'
-                : 'Máy này hỗ trợ passkey — đăng ký ở khung phía trên, không cần chờ HR duyệt.'}
+          {devices.some(isCurrentDevice) ? (
+            <span
+              className="text-xs px-3.5 py-1.5 rounded-lg bg-canvas text-ink-muted font-semibold border border-line cursor-not-allowed"
+              title="Trình duyệt này đã được đăng ký. Đổi máy khác thì mở trang này trên máy đó."
+            >
+              ✓ Thiết bị này đã đăng ký
             </span>
           ) : (
             <Link
               to="/attendance/devices/add"
               className="text-xs px-3.5 py-1.5 rounded-lg bg-accent text-white font-semibold hover:bg-accent-hover transition-colors shadow-xs"
             >
-              + Thêm thiết bị mới
+              + Đăng ký thiết bị này
             </Link>
           )}
         </div>
@@ -309,21 +208,28 @@ export const MyDevicesPage: React.FC = () => {
 
       {/* Face Biometric Card */}
       <div className="bg-surface border border-line rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <div className="text-sm font-bold text-ink">Hồ sơ khuôn mặt AI Biometrics (S05m)</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-ink">Hồ sơ khuôn mặt AI Biometrics</span>
+              <Badge variant={user?.faceEnrolled ? 'accent' : 'warn'}>
+                {user?.faceEnrolled ? 'Đã đăng ký' : 'Chưa đăng ký'}
+              </Badge>
+            </div>
             <div className="text-xs text-ink-muted">
               Tài khoản: <strong className="text-ink">{user?.employeeCode || '—'}</strong> ({user?.fullName || '—'})
             </div>
-            <div className="text-[11px] text-ink-secondary">
-              Bảo mật tiêu chuẩn: Chỉ lưu trữ vector đặc trưng 512 chiều trích xuất qua OpenCV, tuyệt đối không lưu ảnh thô.
-            </div>
+            {!user?.faceEnrolled && (
+              <div className="text-[11px] text-ink-secondary">
+                Chưa có mẫu khuôn mặt — đăng ký để xác thực khi chấm công.
+              </div>
+            )}
           </div>
           <Link
             to="/auth/enroll-face"
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink font-semibold hover:border-accent hover:text-accent transition-colors"
+            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink font-semibold hover:border-accent hover:text-accent transition-colors whitespace-nowrap"
           >
-            Chụp lại mẫu mặt
+            {user?.faceEnrolled ? 'Cập nhật mẫu mặt' : 'Đăng ký khuôn mặt'}
           </Link>
         </div>
       </div>

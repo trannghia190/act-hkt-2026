@@ -39,34 +39,34 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   // Danh mục màn hình, quy định và thao tác nhanh tích hợp sẵn
   const baseCatalog: SearchResultItem[] = [
     // 1. Thao tác nhanh & Chấm công
-    { title: 'Cần làm (Todo Inbox)', subtitle: 'S02 · Màn hình mặc định sau đăng nhập', kind: 'page', url: '/todo', keywords: 'can lam todo inbox viec can lam' },
-    { title: 'Chấm công khuôn mặt', subtitle: 'S05m · Camera nhận diện 3 góc', kind: 'action', url: '/attendance/checkin', keywords: 'cham cong checkin check in check out face mobile ca lam' },
-    { title: 'Bảng công cá nhân của tôi', subtitle: 'S11 · Lịch sử công, giờ vào/ra', kind: 'page', url: '/attendance/my-timesheet', keywords: 'bang cong ca nhan cong cua toi timesheet' },
-    { title: 'Bảng công tổng hợp 53 cột', subtitle: 'S15 · Bảng công tháng 11, chốt lương', kind: 'page', url: '/attendance/timesheet', keywords: 'bang cong tong hop 53 cot chot cong chot luong thang 11 thang 12' },
-    { title: 'Tạo đơn xin nghỉ phép / WFH / Đi muộn', subtitle: 'S08 · Đơn từ cá nhân tự động kiểm tra rule', kind: 'action', url: '/attendance/requests', keywords: 'tao don xin nghi don tu wfh nghi phep di muon bo sung cong' },
-    { title: 'Hộp thư duyệt đơn từ cấp dưới', subtitle: 'S12 · Phê duyệt đơn nhóm', kind: 'action', url: '/attendance/approvals', keywords: 'duyet don phe duyet approval approvals cap duoi' },
-    { title: 'Lịch trực quan nhóm (Team Schedule)', subtitle: 'S14 · Xem ca và lịch vắng mặt của nhóm', kind: 'page', url: '/attendance/team-schedule', keywords: 'lich truc quan nhom team schedule ca lam' },
-    { title: 'Số dư phép năm cá nhân', subtitle: 'S09 · Xem sổ phép, hạn dùng phép tồn', kind: 'page', url: '/attendance/leaves', keywords: 'so du phep nam phep ton so phep' },
-    { title: 'Sổ cái biến động phép toàn công ty', subtitle: 'S34 · Sổ phép append-only', kind: 'page', url: '/attendance/leave-ledger', keywords: 'so cai phep leave ledger' },
+    { title: 'Cần làm (Todo Inbox)', subtitle: 'Màn hình mặc định sau đăng nhập', kind: 'page', url: '/todo', keywords: 'can lam todo inbox viec can lam' },
+    { title: 'Chấm công khuôn mặt', subtitle: 'Camera nhận diện 3 góc', kind: 'action', url: '/attendance/checkin', keywords: 'cham cong checkin check in check out face mobile ca lam' },
+    { title: 'Bảng công cá nhân của tôi', subtitle: 'Lịch sử công, giờ vào/ra', kind: 'page', url: '/attendance/my-timesheet', keywords: 'bang cong ca nhan cong cua toi timesheet' },
+    { title: 'Bảng công tổng hợp 53 cột', subtitle: 'Bảng công tháng 11, chốt lương', kind: 'page', url: '/attendance/timesheet', keywords: 'bang cong tong hop 53 cot chot cong chot luong thang 11 thang 12' },
+    { title: 'Tạo đơn xin nghỉ phép / WFH / Đi muộn', subtitle: 'Đơn từ cá nhân tự động kiểm tra rule', kind: 'action', url: '/attendance/requests', keywords: 'tao don xin nghi don tu wfh nghi phep di muon bo sung cong' },
+    { title: 'Hộp thư duyệt đơn từ cấp dưới', subtitle: 'Phê duyệt đơn nhóm', kind: 'action', url: '/attendance/approvals', keywords: 'duyet don phe duyet approval approvals cap duoi' },
+    { title: 'Lịch trực quan nhóm (Team Schedule)', subtitle: 'Xem ca và lịch vắng mặt của nhóm', kind: 'page', url: '/attendance/team-schedule', keywords: 'lich truc quan nhom team schedule ca lam' },
+    { title: 'Số dư phép năm cá nhân', subtitle: 'Xem sổ phép, hạn dùng phép tồn', kind: 'page', url: '/attendance/leaves', keywords: 'so du phep nam phep ton so phep' },
+    { title: 'Sổ cái biến động phép toàn công ty', subtitle: 'Sổ phép append-only', kind: 'page', url: '/attendance/leave-ledger', keywords: 'so cai phep leave ledger' },
 
     // 2. Quy định & Chính sách tra cứu (Criteria G2-#5: phep -> "phép", dieu -> "đi muộn")
-    { title: 'Quy định Đi muộn, về sớm', subtitle: 'S19 · Quota 2 lần/tháng, tối đa 60 phút, nộp trong 3 ngày', kind: 'rule', url: '/admin/policy-doc', keywords: 'dieu di muon ve som 60 phut 2 lan quota' },
-    { title: 'Quy định Phép tồn & chuyển phép năm', subtitle: 'S19 · Hạn chót bảo lưu phép cũ đến 31/03', kind: 'rule', url: '/admin/policy-doc', keywords: 'phep phep ton nghi phep phep nam 31 03 chuyen phep' },
-    { title: 'Quy định Làm việc từ xa (WFH)', subtitle: 'S19 · Tối đa 2 ngày/tuần, báo cáo công việc cuối ngày', kind: 'rule', url: '/admin/policy-doc', keywords: 'wfh lam viec tu xa online bao cao cong viec' },
-    { title: 'Quy định Bổ sung chấm công quên quét', subtitle: 'S19 · Hạn nộp trong 3 ngày làm việc kể từ ngày quên', kind: 'rule', url: '/attendance/requests', keywords: 'bo sung quen cham cong checkin checkout' },
-    { title: 'Cấu hình 19 quy định (Rule Engine)', subtitle: 'S16/S17 · HR cấu hình quota, bán kính geofence, SLA', kind: 'rule', url: '/admin/rules', keywords: 'cau hinh quy dinh rule engine 19 quy dinh tham so' },
+    { title: 'Quy định Đi muộn, về sớm', subtitle: 'Quota 2 lần/tháng, tối đa 60 phút, nộp trong 3 ngày', kind: 'rule', url: '/admin/policy-doc', keywords: 'dieu di muon ve som 60 phut 2 lan quota' },
+    { title: 'Quy định Phép tồn & chuyển phép năm', subtitle: 'Hạn chót bảo lưu phép cũ đến 31/03', kind: 'rule', url: '/admin/policy-doc', keywords: 'phep phep ton nghi phep phep nam 31 03 chuyen phep' },
+    { title: 'Quy định Làm việc từ xa (WFH)', subtitle: 'Tối đa 2 ngày/tuần, báo cáo công việc cuối ngày', kind: 'rule', url: '/admin/policy-doc', keywords: 'wfh lam viec tu xa online bao cao cong viec' },
+    { title: 'Quy định Bổ sung chấm công quên quét', subtitle: 'Hạn nộp trong 3 ngày làm việc kể từ ngày quên', kind: 'rule', url: '/attendance/requests', keywords: 'bo sung quen cham cong checkin checkout' },
+    { title: 'Cấu hình 19 quy định (Rule Engine)', subtitle: 'HR cấu hình quota, bán kính geofence, SLA', kind: 'rule', url: '/admin/rules', keywords: 'cau hinh quy dinh rule engine 19 quy dinh tham so' },
 
     // 3. Phân hệ OKR
-    { title: 'Dashboard OKR cá nhân', subtitle: 'S20 · Tiến độ mục tiêu và kết quả then chốt', kind: 'page', url: '/okr/dashboard', keywords: 'okr dashboard muc tieu kr tien do' },
-    { title: 'Thiết lập & Check-in tiến độ OKR', subtitle: 'S21 · Cập nhật chỉ số thực tế Key Results', kind: 'action', url: '/okr/my-okr', keywords: 'check in okr thiet lap my okr cap nhat tien do' },
-    { title: 'Duyệt mục tiêu OKR nhóm', subtitle: 'S42 · Quản lý phê duyệt mục tiêu cấp dưới', kind: 'page', url: '/okr/team-approvals', keywords: 'duyet okr phe duyet muc tieu nhom' },
-    { title: 'Đánh giá OKR cuối năm', subtitle: 'S23 · Tự chấm điểm Business & People', kind: 'action', url: '/okr/assessment', keywords: 'danh gia okr form 4 box business people cuoi nam' },
+    { title: 'Dashboard OKR cá nhân', subtitle: 'Tiến độ mục tiêu và kết quả then chốt', kind: 'page', url: '/okr/dashboard', keywords: 'okr dashboard muc tieu kr tien do' },
+    { title: 'Thiết lập & Check-in tiến độ OKR', subtitle: 'Cập nhật chỉ số thực tế Key Results', kind: 'action', url: '/okr/my-okr', keywords: 'check in okr thiet lap my okr cap nhat tien do' },
+    { title: 'Duyệt mục tiêu OKR nhóm', subtitle: 'Quản lý phê duyệt mục tiêu cấp dưới', kind: 'page', url: '/okr/team-approvals', keywords: 'duyet okr phe duyet muc tieu nhom' },
+    { title: 'Đánh giá OKR cuối năm', subtitle: 'Tự chấm điểm Business & People', kind: 'action', url: '/okr/assessment', keywords: 'danh gia okr form 4 box business people cuoi nam' },
 
     // 4. Quản trị & Hệ thống
-    { title: 'Quản lý nhân viên & tài khoản', subtitle: 'S40 · Danh sách nhân sự, chuỗi cấp trên', kind: 'page', url: '/admin/employees', keywords: 'quan ly nhan vien employees danh ba tai khoan' },
-    { title: 'Sơ đồ tổ chức phòng ban (Org Tree)', subtitle: 'S41 · Cây nhóm lồng nhau không giới hạn tầng', kind: 'page', url: '/admin/org-tree', keywords: 'so do to chuc org tree phong ban cay nhom' },
-    { title: 'Nhật ký kiểm toán hệ thống (Audit Logs)', subtitle: 'S35 · Lịch sử sửa công, sửa điểm append-only', kind: 'page', url: '/admin/audit-logs', keywords: 'audit log nhat ky kiem toan lich su thay doi' },
-    { title: 'Tùy chỉnh thông báo & Giờ yên lặng', subtitle: 'S36 · 3 kênh, chống spam, quiet hours', kind: 'page', url: '/notifications/preferences', keywords: 'thong bao tuy chinh cai dat preferences quiet hours gio yen lang' },
+    { title: 'Quản lý nhân viên & tài khoản', subtitle: 'Danh sách nhân sự, chuỗi cấp trên', kind: 'page', url: '/admin/employees', keywords: 'quan ly nhan vien employees danh ba tai khoan' },
+    { title: 'Sơ đồ tổ chức phòng ban (Org Tree)', subtitle: 'Cây nhóm lồng nhau không giới hạn tầng', kind: 'page', url: '/admin/org-tree', keywords: 'so do to chuc org tree phong ban cay nhom' },
+    { title: 'Nhật ký kiểm toán hệ thống (Audit Logs)', subtitle: 'Lịch sử sửa công, sửa điểm append-only', kind: 'page', url: '/admin/audit-logs', keywords: 'audit log nhat ky kiem toan lich su thay doi' },
+    { title: 'Tùy chỉnh thông báo & Giờ yên lặng', subtitle: '3 kênh, chống spam, quiet hours', kind: 'page', url: '/notifications/preferences', keywords: 'thong bao tuy chinh cai dat preferences quiet hours gio yen lang' },
   ];
 
   // Shortcut Ctrl+K / Cmd+K và Escape
@@ -256,7 +256,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         {/* Footer shortcuts */}
         <div className="px-4 py-2.5 bg-canvas border-t border-line text-[11px] text-ink-muted flex items-center justify-between">
           <span>Dùng phím mũi tên <strong>↑ ↓</strong> để chọn · <strong>Enter</strong> để mở · <strong>Esc</strong> để đóng</span>
-          <span className="font-mono text-[10px] text-ink-muted">S03 · Command Palette</span>
+          <span className="font-mono text-[10px] text-ink-muted">Command Palette</span>
         </div>
       </div>
     </div>

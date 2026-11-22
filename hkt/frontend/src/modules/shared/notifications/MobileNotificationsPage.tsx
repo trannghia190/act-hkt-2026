@@ -134,14 +134,14 @@ export const MobileNotificationsPage: React.FC = () => {
       {/* Top Banner (Mockup S04m) */}
       <div className="bg-canvas border border-line rounded-2xl p-5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
-          <Badge variant="accent">S04m · Mobile Center</Badge>
+          <Badge variant="accent">Mobile Center</Badge>
           <button
             type="button"
             onClick={() => navigate('/notifications/preferences')}
             className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium"
           >
             <Settings className="w-3.5 h-3.5" />
-            Cài đặt (S36)
+            Cài đặt
           </button>
         </div>
         <h1 className="text-lg font-bold text-ink">Thông Báo &amp; Nhắc Việc</h1>

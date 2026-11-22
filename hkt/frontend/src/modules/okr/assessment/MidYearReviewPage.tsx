@@ -340,7 +340,7 @@ export const MidYearReviewPage: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm (S43)</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm</h1>
           <p className="text-xs text-ink-muted mt-1">Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.</p>
         </div>
         {detail && canWrite && (

@@ -22,7 +22,7 @@ const pass = (msg) => console.log('PASS ' + msg);
 
 const psql = (sql) => execFileSync('psql', ['-h', '127.0.0.1', '-d', 'pulse_db', '-tAc', sql], { encoding: 'utf8' }).trim();
 const cleanup = () => psql(
-  "delete from devices where device_fingerprint like 'passkey-%' and user_id=(select id from users where employee_code='" + EMPLOYEE + "')");
+  "delete from passkey_credentials where user_id=(select id from users where employee_code='" + EMPLOYEE + "')");
 cleanup();
 
 const browser = await chromium.launch({ headless: true, channel: 'chromium' });
@@ -68,12 +68,10 @@ await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId: emptyAu
 const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: opts });
 await loginWithPassword();
 pass('Đăng nhập mật khẩu ' + EMPLOYEE);
-await page.goto(`${BASE}/attendance/devices`);
-await page.waitForSelector('text=Khóa thiết bị bằng Passkey', { timeout: 10000 });
+await page.goto(`${BASE}/account/passkey`);
+await page.waitForSelector('text=Đăng nhập nhanh bằng Passkey', { timeout: 10000 });
 await page.click('button:has-text("Đăng ký passkey")');
-// Máy còn hạn mức → duyệt ngay; vượt hạn mức (max_devices) → chờ HR duyệt.
-// Đăng nhập passkey không đòi duyệt, nên cả hai trạng thái đều hợp lệ cho test này.
-await page.waitForSelector('text=/Đã đăng ký passkey cho thiết bị này|Đã ghi nhận passkey/', { timeout: 15000 });
+await page.waitForSelector('text=/Đã đăng ký passkey/', { timeout: 15000 });
 pass('Đăng ký passkey qua UI');
 
 // ── 2. Đăng xuất rồi đăng nhập chỉ bằng passkey ─────────────────

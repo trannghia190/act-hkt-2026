@@ -311,7 +311,7 @@ export const OKRCyclesPage: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Chu Kỳ OKR (S44)</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Chu Kỳ OKR</h1>
           <p className="text-xs text-ink-muted mt-1">5 phase theo mốc thật · hạn chót theo ngày · thang điểm 1–5 · tần suất check-in · bật/tắt phân tầng.</p>
         </div>
         <div className="flex items-center gap-2">

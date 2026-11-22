@@ -173,7 +173,7 @@ export const AuditLogPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs uppercase tracking-wider text-accent font-semibold px-2 py-0.5 rounded bg-accent-soft border border-accent-line">
-              Nền tảng dùng chung · HR · P0 — S35
+              Nền tảng dùng chung · HR · P0
             </span>
           </div>
           <h1 className="text-2xl font-bold text-ink flex items-center gap-2">

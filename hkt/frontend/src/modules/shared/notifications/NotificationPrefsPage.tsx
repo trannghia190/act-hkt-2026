@@ -247,7 +247,7 @@ export const NotificationPrefsPage: React.FC = () => {
       {/* Header Banner (Mockup S36) */}
       <div className="bg-canvas border border-line rounded-2xl p-6 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
-          <Badge variant="accent">S36 · Tất cả vai trò</Badge>
+          <Badge variant="accent">Tất cả vai trò</Badge>
           <span className="text-[11px] text-ink-muted">Tự động lưu ngay · Hiệu lực tức thì</span>
         </div>
         <h1 className="text-xl font-bold tracking-tight text-ink">Tuỳ Chỉnh Thông Báo Cá Nhân</h1>
@@ -365,7 +365,7 @@ export const NotificationPrefsPage: React.FC = () => {
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-ink uppercase tracking-wider flex items-center gap-2">
           <Bell className="w-4 h-4 text-emerald-400" />
-          Ma Trận 17 Sự Kiện × 3 Kênh Thông Báo (C2 / S36)
+          Ma Trận 17 Sự Kiện × 3 Kênh Thông Báo (C2)
         </h2>
 
         {/* Nhóm 1: Chấm công */}

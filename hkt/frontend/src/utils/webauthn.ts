@@ -1,11 +1,19 @@
 /**
- * WebAuthn/Passkey — lớp khóa thiết bị phần cứng khi chấm công.
+ * WebAuthn/Passkey — đăng nhập nhanh bằng vân tay / Face ID / Windows Hello.
+ * Passkey KHÔNG dùng cho chấm công; chấm công vẫn dùng thiết bị đã đăng ký + khuôn mặt.
  * Private key nằm trong Secure Enclave/KeyStore; server chỉ nhận public credential.
  */
 
-export interface SignedAssertion {
-  challengeId: string;
-  credential: unknown;
+export interface PasskeySummary {
+  id: string;
+  label?: string;
+  createdAt?: string;
+  lastUsedAt?: string;
+}
+
+export interface WebAuthnStatus {
+  hasPasskey: boolean;
+  credentials: PasskeySummary[];
 }
 
 const authToken = (): string => {
@@ -36,12 +44,16 @@ const fromBase64Url = (value: string): Uint8Array => {
 export const isWebAuthnSupported = (): boolean =>
   typeof window !== 'undefined' && !!window.PublicKeyCredential && !!navigator.credentials;
 
-const request = async (path: string, body?: unknown): Promise<any> => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+const request = async (path: string, body?: unknown, method?: string): Promise<any> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    // Server đọc X-App-Origin khi trình duyệt không gửi Origin (vd khi đứng sau proxy).
+    'X-App-Origin': window.location.origin,
+  };
   const token = authToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`/api/v1${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
+    method: method || (body === undefined ? 'GET' : 'POST'),
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -50,12 +62,15 @@ const request = async (path: string, body?: unknown): Promise<any> => {
   return json?.data;
 };
 
-export const getWebAuthnStatus = async (): Promise<{ hasPasskey: boolean; approvedDevices: number }> => {
+export const getWebAuthnStatus = async (): Promise<WebAuthnStatus> => {
   try {
     const data = await request('/webauthn/status');
-    return { hasPasskey: !!data?.hasPasskey, approvedDevices: data?.approvedDevices ?? 0 };
+    return {
+      hasPasskey: !!data?.hasPasskey,
+      credentials: Array.isArray(data?.credentials) ? data.credentials : [],
+    };
   } catch {
-    return { hasPasskey: false, approvedDevices: 0 };
+    return { hasPasskey: false, credentials: [] };
   }
 };
 
@@ -96,73 +111,33 @@ const serializeCredential = (cred: any): unknown => {
   const response = raw?.response ?? {
     clientDataJSON: toBase64Url(cred.response.clientDataJSON),
     attestationObject: cred.response.attestationObject
-      ? toBase64Url(cred.response.attestationObject) : undefined,
+      ? toBase64Url(cred.response.attestationObject)
+      : undefined,
     authenticatorData: cred.response.authenticatorData
-      ? toBase64Url(cred.response.authenticatorData) : undefined,
-    signature: cred.response.signature ? toBase64Url(cred.response.signature) : undefined,
-    userHandle: cred.response.userHandle ? toBase64Url(cred.response.userHandle) : undefined,
-    transports: cred.response.getTransports ? cred.response.getTransports() : undefined,
+      ? toBase64Url(cred.response.authenticatorData)
+      : undefined,
+    signature: cred.response.signature
+      ? toBase64Url(cred.response.signature)
+      : undefined,
+    userHandle: cred.response.userHandle
+      ? toBase64Url(cred.response.userHandle)
+      : undefined,
   };
+  const {
+    publicKey, publicKeyAlgorithm, ...rest
+  } = response as any;
   return {
-    id: raw?.id ?? cred.id,
-    rawId: raw?.rawId ?? toBase64Url(cred.rawId),
-    type: raw?.type ?? cred.type,
-    authenticatorAttachment: raw?.authenticatorAttachment ?? cred.authenticatorAttachment,
-    clientExtensionResults: raw?.clientExtensionResults ?? cred.getClientExtensionResults?.() ?? {},
-    response: {
-      clientDataJSON: response.clientDataJSON,
-      ...(response.attestationObject ? { attestationObject: response.attestationObject } : {}),
-      ...(response.authenticatorData ? { authenticatorData: response.authenticatorData } : {}),
-      ...(response.signature ? { signature: response.signature } : {}),
-      ...(response.userHandle ? { userHandle: response.userHandle } : {}),
-      ...(response.transports ? { transports: response.transports } : {}),
-    },
+    id: cred.id,
+    rawId: toBase64Url(cred.rawId),
+    type: cred.type || 'public-key',
+    authenticatorAttachment: cred.authenticatorAttachment ?? undefined,
+    clientExtensionResults: cred.getClientExtensionResults?.() ?? {},
+    response: rest,
   };
 };
 
-/** Dấu "thiết bị này đã đăng ký passkey" — lưu theo tài khoản vì cùng máy có thể nhiều người dùng. */
-export interface LocalPasskeyMark {
-  deviceId: string;
-  credentialId: string;
-  registeredAt: string;
-}
-
-const PASSKEY_MARK_PREFIX = 'pulse_passkey_device_';
-
-const currentEmployeeCode = (): string => {
-  try {
-    return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.employeeCode || '';
-  } catch {
-    return '';
-  }
-};
-
-const markKey = (employeeCode: string): string => `${PASSKEY_MARK_PREFIX}${employeeCode}`;
-
-/** Passkey đã đăng ký trên trình duyệt này (null nếu chưa / thuộc tài khoản khác). */
-export const getLocalPasskeyMark = (): LocalPasskeyMark | null => {
-  const employeeCode = currentEmployeeCode();
-  if (!employeeCode) return null;
-  try {
-    const mark = JSON.parse(localStorage.getItem(markKey(employeeCode)) || 'null');
-    return mark?.deviceId ? mark : null;
-  } catch {
-    return null;
-  }
-};
-
-export const clearLocalPasskeyMark = (): void => {
-  const employeeCode = currentEmployeeCode();
-  if (employeeCode) localStorage.removeItem(markKey(employeeCode));
-};
-
-const saveLocalPasskeyMark = (mark: LocalPasskeyMark): void => {
-  const employeeCode = currentEmployeeCode();
-  if (employeeCode) localStorage.setItem(markKey(employeeCode), JSON.stringify(mark));
-};
-
-/** Đăng ký passkey cho thiết bị — tạo yêu cầu chờ HR duyệt như thiết bị thường. */
-export const registerPasskey = async (): Promise<{ deviceId?: string; approved: boolean; credentialId?: string }> => {
+/** Đăng ký passkey để đăng nhập nhanh (dùng chung cho mọi thiết bị đã đăng nhập). */
+export const registerPasskey = async (): Promise<{ id?: string; credentialId?: string; hasPasskey: boolean; message?: string }> => {
   if (!isWebAuthnSupported()) throw new Error('Trình duyệt không hỗ trợ passkey (WebAuthn).');
   const data = await request('/webauthn/register/options', {});
   const publicKey = data?.options?.publicKey;
@@ -175,26 +150,17 @@ export const registerPasskey = async (): Promise<{ deviceId?: string; approved: 
     credential,
   });
   const credentialId = (credential as any)?.id || cred.id;
-  if (verified?.deviceId) {
-    saveLocalPasskeyMark({
-      deviceId: verified.deviceId,
-      credentialId: credentialId || '',
-      registeredAt: new Date().toISOString(),
-    });
-  }
-  return { deviceId: verified?.deviceId, approved: !!verified?.approved, credentialId };
+  return {
+    id: verified?.id,
+    credentialId,
+    hasPasskey: !!verified?.hasPasskey,
+    message: verified?.message,
+  };
 };
 
-/** Ký challenge để đưa vào payload chấm công; server verify trong giao dịch chấm công. */
-export const signAttendanceAssertion = async (): Promise<SignedAssertion | null> => {
-  if (!isWebAuthnSupported()) return null;
-  const data = await request('/webauthn/assert/options', {});
-  if (data?.needsRegistration) return null;
-  const publicKey = data?.options?.publicKey;
-  if (!publicKey) throw new Error('Máy chủ chưa trả về thử thách passkey.');
-  const cred = await navigator.credentials.get({ publicKey: toRequestOptions(publicKey) });
-  if (!cred) throw new Error('Bạn chưa xác thực bằng vân tay/Face ID.');
-  return { challengeId: data.challengeId, credential: serializeCredential(cred) };
+/** Gỡ passkey khỏi tài khoản — không ảnh hưởng thiết bị chấm công. */
+export const removePasskey = async (id: string): Promise<void> => {
+  await request(`/webauthn/credentials/${id}`, undefined, 'DELETE');
 };
 
 /**
@@ -218,7 +184,15 @@ export const loginWithPasskey = async (): Promise<{
   const data = await request('/webauthn/login/options', {});
   const publicKey = data?.options?.publicKey;
   if (!publicKey) throw new Error('Máy chủ chưa trả về thử thách đăng nhập passkey.');
-  const cred = await navigator.credentials.get({ publicKey: toRequestOptions(publicKey) });
+  let cred: Credential | null;
+  try {
+    cred = await navigator.credentials.get({ publicKey: toRequestOptions(publicKey) });
+  } catch (e: any) {
+    if (e?.name === 'NotAllowedError') {
+      throw new Error('Không tìm thấy passkey trên thiết bị này — hãy đăng nhập bằng mật khẩu rồi đăng ký passkey trong Cài đặt.');
+    }
+    throw e;
+  }
   if (!cred) throw new Error('Bạn chưa xác thực bằng vân tay/Face ID.');
   return request('/webauthn/login/verify', {
     challengeId: data.challengeId,

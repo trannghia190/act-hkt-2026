@@ -189,7 +189,7 @@ export const NotificationDropdown: React.FC = () => {
                 }}
                 className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
               >
-                Cài đặt thông báo (S36) →
+                Cài đặt thông báo →
               </button>
             </div>
           </div>

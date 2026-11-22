@@ -125,7 +125,7 @@ export const CalendarPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-1">
-            <span>📅</span> Lịch Chấm Công Cá Nhân (S06)
+            <span>📅</span> Lịch Chấm Công Cá Nhân
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink">Lịch Công Tháng Cá Nhân</h1>
           <p className="text-xs text-ink-muted mt-1">

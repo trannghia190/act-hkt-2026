@@ -347,7 +347,7 @@ export const MyTimesheetPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-1">
-            <span>📑</span> Bảng Công Cá Nhân (S11)
+            <span>📑</span> Bảng Công Cá Nhân
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink">{isOwnTimesheet ? 'Bảng Công Cá Nhân Của Tôi' : `Bảng Công Của ${data?.employeeName || viewedEmployeeCode}`}</h1>
           <p className="text-xs text-ink-muted mt-1">
@@ -532,7 +532,7 @@ export const MyTimesheetPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-center">7. Muộn (p)</th>
                   <th className="py-2.5 px-3 text-center">8. Ký Hiệu</th>
                   <th className="py-2.5 px-3">9. Trạng Thái</th>
-                  <th className="py-2.5 px-3 text-center">10. Khiếu Nại (S33)</th>
+                  <th className="py-2.5 px-3 text-center">10. Khiếu Nại</th>
                   <th className="py-2.5 px-3">11. Ghi Chú</th>
                 </tr>
               </thead>
