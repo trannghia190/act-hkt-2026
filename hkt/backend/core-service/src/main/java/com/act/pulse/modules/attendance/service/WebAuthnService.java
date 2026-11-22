@@ -1,8 +1,8 @@
 package com.act.pulse.modules.attendance.service;
 
-import com.act.pulse.modules.attendance.entity.DeviceRegistration;
+import com.act.pulse.modules.attendance.entity.PasskeyCredential;
 import com.act.pulse.modules.attendance.entity.WebAuthnChallenge;
-import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
+import com.act.pulse.modules.attendance.repository.PasskeyCredentialRepository;
 import com.act.pulse.modules.attendance.repository.WebAuthnChallengeRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -46,10 +46,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * WebAuthn/Passkey — lớp khóa thiết bị phần cứng khi chấm công.
+ * WebAuthn/Passkey dùng để ĐĂNG NHẬP nhanh (passwordless).
  *
- * <p>Server không bao giờ nhận private key. Mỗi lần chấm công client ký challenge bằng
- * passkey (Face ID/Touch ID/Windows Hello) và server verify bằng public key đã lưu.</p>
+ * <p>Đã tách hoàn toàn khỏi chấm công: chấm công chỉ dùng fingerprint thiết bị + khuôn mặt.
+ * Passkey nằm ở bảng riêng {@code passkey_credentials}, không chiếm hạn mức thiết bị.
+ * Server không bao giờ nhận private key — chỉ lưu public key COSE.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -57,15 +58,14 @@ import java.util.stream.Collectors;
 public class WebAuthnService {
 
     private static final String CEREMONY_REGISTER = "REGISTER";
-    private static final String CEREMONY_ASSERT = "ASSERT";
     /** Đăng nhập usernameless — challenge chưa gắn user, biết user sau khi verify. */
     private static final String CEREMONY_LOGIN = "LOGIN";
     private static final int CHALLENGE_TTL_SECONDS = 120;
+    private static final String DEFAULT_LABEL = "Passkey (WebAuthn)";
 
     private final UserRepository userRepository;
-    private final DeviceRegistrationRepository deviceRepository;
+    private final PasskeyCredentialRepository passkeyRepository;
     private final WebAuthnChallengeRepository challengeRepository;
-    private final RuleService ruleService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.webauthn.rp-id:localhost}")
@@ -84,8 +84,8 @@ public class WebAuthnService {
     @Value("${app.webauthn.allowed-origin-patterns:}")
     private String allowedOriginPatternsRaw;
 
-    private Set<String> allowedOrigins;
-    private List<Pattern> allowedOriginPatterns;
+    private Set<String> allowedOrigins = Set.of();
+    private List<Pattern> allowedOriginPatterns = List.of();
 
     /** RP ID khác nhau (localhost / tunnel host) phải có RelyingParty riêng. */
     private final Map<String, RelyingParty> relyingParties = new java.util.concurrent.ConcurrentHashMap<>();
@@ -157,6 +157,8 @@ public class WebAuthnService {
         return sb.toString();
     }
 
+    // ── Đăng ký passkey (đã đăng nhập bằng mật khẩu) ──────────────────────
+
     public Map<String, Object> startRegistration(User user, String originHeader) {
         String origin = requireAllowedOrigin(originHeader);
         UserIdentity identity = UserIdentity.builder()
@@ -190,174 +192,61 @@ public class WebAuthnService {
             response = PublicKeyCredential.parseRegistrationResponseJson(credentialJson);
         } catch (Exception e) {
             log.warn("WebAuthn registration payload invalid for {}: {}", user.getEmployeeCode(), e.getMessage(), e);
-            throw new WebAuthnException("Dữ liệu đăng ký thiết bị không hợp lệ. Vui lòng thử lại.", e);
+            throw new WebAuthnException("Dữ liệu đăng ký passkey không hợp lệ. Vui lòng thử lại.", e);
         }
 
         RegistrationResult result;
         try {
-            result = relyingPartyFor(rpIdFor(challenge.getOrigin()), challenge.getOrigin()).finishRegistration(FinishRegistrationOptions.builder()
-                    .request(request)
-                    .response(response)
-                    .build());
+            result = relyingPartyFor(rpIdFor(challenge.getOrigin()), challenge.getOrigin()).finishRegistration(
+                    FinishRegistrationOptions.builder()
+                            .request(request)
+                            .response(response)
+                            .build());
         } catch (Exception e) {
             log.warn("WebAuthn registration failed for {}: {}", user.getEmployeeCode(), e.getMessage());
-            throw new WebAuthnException("Không xác thực được thiết bị. Vui lòng thử lại bằng vân tay/Face ID.", e);
+            throw new WebAuthnException("Không xác thực được passkey. Vui lòng thử lại bằng vân tay/Face ID.", e);
         }
 
         String credentialId = result.getKeyId().getId().getBase64Url();
-        DeviceRegistration device = deviceRepository.findByCredentialId(credentialId).orElse(null);
-        if (device != null && !device.getUserId().equals(user.getId())) {
-            throw new WebAuthnException("Thiết bị này đã được đăng ký cho tài khoản khác.");
+        PasskeyCredential passkey = passkeyRepository.findByCredentialId(credentialId).orElse(null);
+        if (passkey != null && !passkey.getUserId().equals(user.getId())) {
+            throw new WebAuthnException("Passkey này đã được đăng ký cho tài khoản khác.");
         }
-        boolean isNew = device == null;
-        if (isNew) {
-            device = DeviceRegistration.builder()
+        if (passkey == null) {
+            passkey = PasskeyCredential.builder()
                     .userId(user.getId())
-                    .deviceFingerprint("passkey-" + credentialId)
-                    .deviceModel("Passkey (WebAuthn)")
-                    .osVersion("Web")
-                    .isApproved(false)
-                    .grantDays(0)
-                    .lastActiveAt(LocalDateTime.now())
+                    .credentialId(credentialId)
+                    .label(DEFAULT_LABEL)
                     .build();
-            device.setCreatedAt(LocalDateTime.now());
+            passkey.setCreatedAt(LocalDateTime.now());
         }
-        int maxDevices = ruleService.getInt("attendance_security", "max_devices", 2);
-        long approvedCount = deviceRepository.countByUserIdAndIsApprovedTrue(user.getId());
-        boolean approved = Boolean.TRUE.equals(device.getIsApproved()) || approvedCount < maxDevices;
-
-        device.setCredentialId(credentialId);
-        device.setPublicKeyCose(result.getPublicKeyCose().getBytes());
-        device.setUserHandleB64(userHandle(user).getBase64Url());
-        device.setSignatureCount(result.getSignatureCount());
-        device.setBackupEligible(result.isBackupEligible());
-        device.setBackupState(result.isBackedUp());
-        device.setAuthenticatorAttachment(result.getAuthenticatorAttachment()
+        passkey.setPublicKeyCose(result.getPublicKeyCose().getBytes());
+        passkey.setUserHandleB64(userHandle(user).getBase64Url());
+        passkey.setSignatureCount(result.getSignatureCount());
+        passkey.setBackupEligible(result.isBackupEligible());
+        passkey.setBackupState(result.isBackedUp());
+        passkey.setAuthenticatorAttachment(result.getAuthenticatorAttachment()
                 .map(Enum::name).orElse(null));
-        if (response.getResponse() instanceof com.yubico.webauthn.data.AuthenticatorAttestationResponse att
+        if (response.getResponse() instanceof AuthenticatorAttestationResponse att
                 && att.getTransports() != null) {
-            device.setTransports(att.getTransports().stream()
+            passkey.setTransports(att.getTransports().stream()
                     .map(t -> t.getId()).collect(Collectors.joining(",")));
         }
-        device.setIsApproved(approved);
-        device.setLastActiveAt(LocalDateTime.now());
-        device.setUpdatedAt(LocalDateTime.now());
-        deviceRepository.save(device);
+        passkey.setLastUsedAt(LocalDateTime.now());
+        passkey.setRevokedAt(null);
+        passkey.setUpdatedAt(LocalDateTime.now());
+        passkeyRepository.save(passkey);
         consume(challenge);
 
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("deviceId", device.getId());
-        out.put("approved", approved);
+        out.put("id", passkey.getId());
+        out.put("credentialId", credentialId);
         out.put("hasPasskey", true);
-        out.put("message", approved
-                ? "Thiết bị đã được đăng ký và có thể dùng để chấm công ngay."
-                : "Đã ghi nhận passkey — thiết bị đang chờ HR duyệt vì đã đủ hạn mức.");
+        out.put("message", "Đã đăng ký passkey — có thể dùng để đăng nhập nhanh.");
         return out;
     }
 
-    public Map<String, Object> startAssertion(User user, String originHeader) {
-        String origin = requireAllowedOrigin(originHeader);
-        List<DeviceRegistration> approved = deviceRepository.findByUserIdAndIsApprovedTrue(user.getId())
-                .stream()
-                .filter(d -> d.isHasPasskey() && d.getRevokedAt() == null)
-                .toList();
-        if (approved.isEmpty()) {
-            return Map.of(
-                    "needsRegistration", true,
-                    "message", "Thiết bị này chưa đăng ký passkey. Hãy đăng ký thiết bị bằng vân tay/Face ID trước khi chấm công.");
-        }
-        StartAssertionOptions options = StartAssertionOptions.builder()
-                .username(user.getEmployeeCode())
-                .timeout(CHALLENGE_TTL_SECONDS * 1000L)
-                .userVerification(UserVerificationRequirement.REQUIRED)
-                .build();
-        AssertionRequest request = relyingPartyFor(rpIdFor(origin), origin).startAssertion(options);
-        try {
-            return saveChallenge(user, CEREMONY_ASSERT, origin, request.toJson());
-        } catch (Exception e) {
-            throw new WebAuthnException("Không tạo được yêu cầu xác thực WebAuthn.", e);
-        }
-    }
-
-    /**
-     * Verify assertion và trả device. REQUIRES_NEW: challenge phải bị tiêu thụ kể cả khi
-     * transaction chấm công phía ngoài rollback vì lỗi lớp khác.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public DeviceRegistration finishAssertion(User user, String challengeId, String credentialJson) {
-        WebAuthnChallenge challenge = requireChallenge(challengeId, user.getId(), CEREMONY_ASSERT);
-        AssertionRequest request;
-        PublicKeyCredential<AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs> response;
-        try {
-            request = AssertionRequest.fromJson(challenge.getRequestJson());
-            response = PublicKeyCredential.parseAssertionResponseJson(credentialJson);
-        } catch (Exception e) {
-            throw new WebAuthnException("Dữ liệu xác thực thiết bị không hợp lệ. Vui lòng thử lại.", e);
-        }
-
-        AssertionResult result;
-        try {
-            result = relyingPartyFor(rpIdFor(challenge.getOrigin()), challenge.getOrigin()).finishAssertion(FinishAssertionOptions.builder()
-                    .request(request)
-                    .response(response)
-                    .build());
-        } catch (Exception e) {
-            log.warn("WebAuthn assertion failed for {}: {}", user.getEmployeeCode(), e.getMessage());
-            throw new WebAuthnException("Xác thực thiết bị thất bại. Vui lòng thử lại bằng vân tay/Face ID.", e);
-        }
-
-        String credentialId = result.getCredentialId().getBase64Url();
-        DeviceRegistration device = deviceRepository.findByCredentialId(credentialId)
-                .orElseThrow(() -> new WebAuthnException("Thiết bị chưa được đăng ký."));
-        if (!device.getUserId().equals(user.getId())) {
-            throw new WebAuthnException("Thiết bị không thuộc tài khoản này.");
-        }
-        if (!Boolean.TRUE.equals(device.getIsApproved())) {
-            throw new WebAuthnException("Thiết bị đang chờ HR duyệt — chưa thể chấm công.");
-        }
-        if (device.getRevokedAt() != null) {
-            throw new WebAuthnException("Thiết bị đã bị thu hồi — vui lòng đăng ký lại.");
-        }
-        device.setSignatureCount(result.getSignatureCount());
-        device.setBackupState(result.isBackedUp());
-        device.setLastActiveAt(LocalDateTime.now());
-        device.setUpdatedAt(LocalDateTime.now());
-        deviceRepository.save(device);
-        consume(challenge);
-        return device;
-    }
-
-    // ── helpers ───────────────────────────────────────────────────────────
-
-    private Map<String, Object> saveChallenge(User user, String ceremony, String origin, String requestJson) {
-        WebAuthnChallenge challenge = challengeRepository.save(WebAuthnChallenge.builder()
-                // LOGIN (usernameless) chưa biết người dùng — user_id được suy ra từ credential khi verify.
-                .userId(user == null ? null : user.getId())
-                .ceremonyType(ceremony)
-                .requestJson(requestJson)
-                .origin(origin)
-                .expiresAt(LocalDateTime.now().plusSeconds(CHALLENGE_TTL_SECONDS))
-                .build());
-        try {
-            // Lưu JSON gốc (không bọc publicKey) vì *Options.fromJson chỉ đọc phần trong;
-            // còn client cần wrapper chuẩn PublicKeyCredential{Request|Creation}OptionsJSON.
-            Map<String, Object> inner = objectMapper.readValue(requestJson, Map.class);
-            // AssertionRequest.toJson() bọc options trong publicKeyCredentialRequestOptions;
-            // client cần đúng PublicKeyCredentialRequestOptionsJSON ở trong wrapper publicKey.
-            if (inner.get("publicKeyCredentialRequestOptions") instanceof Map<?, ?> nested) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> casted = (Map<String, Object>) nested;
-                inner = casted;
-            }
-            Map<String, Object> options = Map.of("publicKey", inner);
-            Map<String, Object> out = new LinkedHashMap<>();
-            out.put("challengeId", challenge.getId());
-            out.put("options", options);
-            return out;
-        } catch (IOException e) {
-            throw new WebAuthnException("Không tạo được challenge WebAuthn.", e);
-        }
-    }
+    // ── Đăng nhập bằng passkey (usernameless) ─────────────────────────────
 
     /**
      * Bắt đầu đăng nhập bằng passkey (usernameless): không truyền username nên
@@ -406,22 +295,76 @@ public class WebAuthnService {
         }
 
         String credentialId = result.getCredentialId().getBase64Url();
-        DeviceRegistration device = deviceRepository.findByCredentialId(credentialId)
+        PasskeyCredential passkey = passkeyRepository.findByCredentialId(credentialId)
                 .orElseThrow(() -> new WebAuthnException(
                         "Thiết bị này chưa đăng ký passkey. Hãy đăng nhập bằng mật khẩu rồi đăng ký passkey trong Cài đặt."));
-        if (device.getRevokedAt() != null) {
-            throw new WebAuthnException("Passkey của thiết bị này đã bị HR thu hồi — vui lòng đăng ký lại.");
+        if (passkey.getRevokedAt() != null) {
+            throw new WebAuthnException("Passkey này đã bị gỡ — hãy đăng ký lại trong Cài đặt.");
         }
-        User user = userRepository.findById(device.getUserId())
+        User user = userRepository.findById(passkey.getUserId())
                 .orElseThrow(() -> new WebAuthnException("Không tìm thấy tài khoản gắn với passkey này."));
-        device.setSignatureCount(result.getSignatureCount());
-        device.setBackupState(result.isBackedUp());
-        device.setLastActiveAt(LocalDateTime.now());
-        device.setUpdatedAt(LocalDateTime.now());
-        deviceRepository.save(device);
+        passkey.setSignatureCount(result.getSignatureCount());
+        passkey.setBackupState(result.isBackedUp());
+        passkey.setLastUsedAt(LocalDateTime.now());
+        passkey.setUpdatedAt(LocalDateTime.now());
+        passkeyRepository.save(passkey);
         consume(challenge);
         log.info("Passkey login OK user={} credential={}", user.getEmployeeCode(), credentialId);
         return user;
+    }
+
+    // ── Quản lý passkey ───────────────────────────────────────────────────
+
+    public List<PasskeyCredential> listPasskeys(User user) {
+        return passkeyRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+    }
+
+    /** Gỡ passkey của chính mình — thu hồi mềm, giữ dấu vết trong DB. */
+    @Transactional
+    public void removePasskey(User user, UUID passkeyId) {
+        PasskeyCredential passkey = passkeyRepository.findByIdAndUserId(passkeyId, user.getId())
+                .orElseThrow(() -> new WebAuthnException("Không tìm thấy passkey của bạn."));
+        if (passkey.getRevokedAt() == null) {
+            passkey.setRevokedAt(LocalDateTime.now());
+            passkey.setUpdatedAt(LocalDateTime.now());
+            passkeyRepository.save(passkey);
+        }
+    }
+
+    public long countActivePasskeys(UUID userId) {
+        return passkeyRepository.countByUserIdAndRevokedAtIsNull(userId);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────
+
+    private Map<String, Object> saveChallenge(User user, String ceremony, String origin, String requestJson) {
+        WebAuthnChallenge challenge = challengeRepository.save(WebAuthnChallenge.builder()
+                // LOGIN (usernameless) chưa biết người dùng — user_id được suy ra từ credential khi verify.
+                .userId(user == null ? null : user.getId())
+                .ceremonyType(ceremony)
+                .requestJson(requestJson)
+                .origin(origin)
+                .expiresAt(LocalDateTime.now().plusSeconds(CHALLENGE_TTL_SECONDS))
+                .build());
+        try {
+            // Lưu JSON gốc (không bọc publicKey) vì *Options.fromJson chỉ đọc phần trong;
+            // còn client cần wrapper chuẩn PublicKeyCredential{Request|Creation}OptionsJSON.
+            Map<String, Object> inner = objectMapper.readValue(requestJson, Map.class);
+            // AssertionRequest.toJson() bọc options trong publicKeyCredentialRequestOptions;
+            // client cần đúng PublicKeyCredentialRequestOptionsJSON ở trong wrapper publicKey.
+            if (inner.get("publicKeyCredentialRequestOptions") instanceof Map<?, ?> nested) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> casted = (Map<String, Object>) nested;
+                inner = casted;
+            }
+            Map<String, Object> options = Map.of("publicKey", inner);
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("challengeId", challenge.getId());
+            out.put("options", options);
+            return out;
+        } catch (IOException e) {
+            throw new WebAuthnException("Không tạo được challenge WebAuthn.", e);
+        }
     }
 
     private WebAuthnChallenge requireLoginChallenge(String challengeId) {
@@ -493,21 +436,17 @@ public class WebAuthnService {
     /** Credential repository đọc/ghi DB — không giữ trạng thái trong RAM. */
     private final class DbCredentialRepository implements CredentialRepository {
 
-        private Optional<DeviceRegistration> usableByCredential(ByteArray credentialId) {
-            // Không lọc isApproved ở đây: đăng nhập passkey phải chạy được với thiết bị đang chờ duyệt;
-            // lớp chấm công tự kiểm tra duyệt/thu hồi với thông báo riêng.
-            return deviceRepository.findByCredentialId(credentialId.getBase64Url())
-                    .filter(d -> d.getRevokedAt() == null);
+        private Optional<PasskeyCredential> usableByCredential(ByteArray credentialId) {
+            return passkeyRepository.findByCredentialIdAndRevokedAtIsNull(credentialId.getBase64Url());
         }
 
         @Override
         public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
             return userRepository.findByEmployeeCode(username)
-                    .map(u -> deviceRepository.findByUserIdAndIsApprovedTrue(u.getId()).stream()
-                            .filter(DeviceRegistration::isHasPasskey)
-                            .filter(d -> d.getRevokedAt() == null)
-                            .map(d -> PublicKeyCredentialDescriptor.builder()
-                                    .id(b64u(d.getCredentialId()))
+                    .map(u -> passkeyRepository.findByUserIdOrderByCreatedAtDesc(u.getId()).stream()
+                            .filter(p -> p.getRevokedAt() == null)
+                            .map(p -> PublicKeyCredentialDescriptor.builder()
+                                    .id(b64u(p.getCredentialId()))
                                     .build())
                             .collect(Collectors.toSet()))
                     .orElseGet(Set::of);
@@ -531,20 +470,20 @@ public class WebAuthnService {
 
         @Override
         public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
-            return usableByCredential(credentialId).flatMap(d -> {
+            return usableByCredential(credentialId).flatMap(p -> {
                 if (userHandle != null) {
                     UUID id = uuidFromHandle(userHandle);
-                    if (id == null || !id.equals(d.getUserId())) return Optional.empty();
+                    if (id == null || !id.equals(p.getUserId())) return Optional.empty();
                 }
-                ByteArray handle = d.getUserHandleB64() == null
+                ByteArray handle = p.getUserHandleB64() == null
                         ? userHandle
-                        : b64u(d.getUserHandleB64());
+                        : b64u(p.getUserHandleB64());
                 if (handle == null) return Optional.empty();
                 return Optional.of(RegisteredCredential.builder()
-                        .credentialId(b64u(d.getCredentialId()))
+                        .credentialId(b64u(p.getCredentialId()))
                         .userHandle(handle)
-                        .publicKeyCose(new ByteArray(d.getPublicKeyCose()))
-                        .signatureCount(d.getSignatureCount() == null ? 0 : d.getSignatureCount())
+                        .publicKeyCose(new ByteArray(p.getPublicKeyCose()))
+                        .signatureCount(p.getSignatureCount() == null ? 0 : p.getSignatureCount())
                         .build());
             });
         }

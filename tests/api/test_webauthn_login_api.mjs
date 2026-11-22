@@ -34,8 +34,8 @@ const psql = (sql) => execFileSync(
 ).trim();
 
 const cleanup = () => psql(
-  "delete from devices where device_fingerprint like 'passkey-%' "
-  + "and user_id=(select id from users where employee_code='" + EMPLOYEE + "')",
+  "delete from passkey_credentials "
+  + "where user_id=(select id from users where employee_code='" + EMPLOYEE + "')",
 );
 
 const call = async (method, path, { token, body, headers = {}, expect } = {}) => {
@@ -146,16 +146,11 @@ const regVerify = (await call('POST', '/webauthn/register/verify', {
 })).json.data;
 check('Server verify attestation + lưu credential', regVerify.hasPasskey === true, regVerify);
 
-if (!regVerify.approved) {
-  const hrToken = (await call('POST', '/auth/login', {
-    body: { employeeCodeOrEmail: '01HR', password: '123456' }, expect: 200,
-  })).json.data.accessToken;
-  await call('POST', `/admin/devices/${regVerify.deviceId}/approve`, { token: hrToken, body: {}, expect: 200 });
-}
 const status = (await call('GET', '/webauthn/status', { token: passwordToken, expect: 200 })).json.data;
 check('Trạng thái tài khoản có passkey', status.hasPasskey === true, status);
+check('status trả danh sách passkey', Array.isArray(status.credentials) && status.credentials.length === 1, status);
 check('DB lưu credential_id dạng base64url',
-  psql("select count(*) from devices where credential_id='" + b64u(credentialId) + "'") === '1');
+  psql("select count(*) from passkey_credentials where credential_id='" + b64u(credentialId) + "'") === '1');
 
 // ── 2. Đăng nhập usernameless: challenge → ký assertion → JWT ──
 const signCount = 1;
@@ -194,7 +189,7 @@ check('JWT passkey mang đúng nhân viên', loginVerify.json.data.employeeCode 
 const me = await call('GET', '/webauthn/status', { token: passkeyToken, expect: 200 });
 check('Token passkey gọi được API cần đăng nhập', me.json.data.hasPasskey === true, me.json);
 check('signature_count trên DB tăng theo assertion',
-  psql("select signature_count from devices where credential_id='" + b64u(credentialId) + "'") === String(signCount));
+  psql("select signature_count from passkey_credentials where credential_id='" + b64u(credentialId) + "'") === String(signCount));
 
 // ── 3. Các nhánh phải bị từ chối ──
 const replay = await call('POST', '/webauthn/login/verify', { body: loginBody });
@@ -233,12 +228,9 @@ const evilOrigin = await call('POST', '/webauthn/login/options', {
 });
 check('Origin lạ bị từ chối', evilOrigin.code !== 200, evilOrigin);
 
-// ── 4. Thiết bị bị thu hồi thì không đăng nhập được ──
-await call('POST', `/admin/devices/${regVerify.deviceId}/revoke`, {
-  token: (await call('POST', '/auth/login', {
-    body: { employeeCodeOrEmail: '01HR', password: '123456' }, expect: 200,
-  })).json.data.accessToken,
-  body: { reason: 'ZZ webauthn login test' }, expect: 200,
+// ── 4. Passkey đã gỡ thì không đăng nhập được ──
+await call('DELETE', `/webauthn/credentials/${regVerify.id}`, {
+  token: passwordToken, expect: 200,
 });
 const revokedOptions = (await call('POST', '/webauthn/login/options', {
   body: {}, headers: { Origin: ORIGIN }, expect: 200,

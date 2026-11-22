@@ -11,8 +11,6 @@ import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.service.AttendanceService;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
-import com.act.pulse.modules.attendance.service.WebAuthnException;
-import com.act.pulse.modules.attendance.service.WebAuthnService;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.FaceProfileRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -57,7 +55,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final UserRepository userRepository;
     private final ShiftResolver shiftResolver;
     private final RequestRepository requestRepository;
-    private final WebAuthnService webAuthnService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -109,30 +106,12 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
-        // Máy đầu tiên của mỗi người được tự đăng ký (docs/01 §2); máy thứ 2/3 phải chờ HR duyệt.
+        // Trong hạn mức (mặc định 2 máy) thiết bị mới tự kích hoạt; vượt hạn mức mới chờ HR duyệt.
         String deviceFingerprint = request.getDeviceFingerprint();
         int maxDevices = ruleService.getInt("attendance_security", "max_devices", 2);
         boolean deviceApproved = false;
         String deviceDetail = "Thiết bị này chưa được HR duyệt — không chấm công được";
 
-        // WebAuthn/Passkey: nhân viên đã đăng ký passkey phải ký challenge mỗi lần chấm công.
-        // Xác minh xong mới biết đúng thiết bị, nên fingerprint lấy từ public key đã lưu.
-        boolean passkeyVerified = false;
-        String passkeyBlockDetail = null;
-        if (request.getWebauthnChallengeId() != null && !request.getWebauthnChallengeId().isBlank()) {
-            if (request.getWebauthnCredential() == null || request.getWebauthnCredential().isBlank()) {
-                passkeyBlockDetail = "Thiếu chữ ký passkey — hãy xác thực bằng vân tay/Face ID rồi chấm công lại.";
-            } else {
-                try {
-                    DeviceRegistration passkeyDevice = webAuthnService.finishAssertion(
-                            requester, request.getWebauthnChallengeId(), request.getWebauthnCredential());
-                    passkeyVerified = true;
-                    deviceFingerprint = passkeyDevice.getDeviceFingerprint();
-                } catch (WebAuthnException e) {
-                    passkeyBlockDetail = e.getMessage();
-                }
-            }
-        }
         if (deviceFingerprint != null && !deviceFingerprint.isBlank()) {
             Optional<DeviceRegistration> existingOpt = deviceRegistrationRepository
                     .findByDeviceFingerprint(deviceFingerprint);
@@ -152,9 +131,9 @@ public class AttendanceServiceImpl implements AttendanceService {
                 }
             } else {
                 long approvedCount = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId);
-                if (approvedCount == 0) {
-                    // Thiết bị đầu tiên — tự đăng ký
-                    DeviceRegistration first = DeviceRegistration.builder()
+                if (approvedCount < maxDevices) {
+                    // Còn hạn mức → máy mới tự kích hoạt, chấm công được ngay
+                    DeviceRegistration fresh = DeviceRegistration.builder()
                             .userId(userId)
                             .deviceFingerprint(deviceFingerprint)
                             .deviceModel("Web Browser")
@@ -162,45 +141,16 @@ public class AttendanceServiceImpl implements AttendanceService {
                             .isApproved(true)
                             .lastActiveAt(LocalDateTime.now())
                             .build();
-                    first.setCreatedAt(LocalDateTime.now());
-                    first.setUpdatedAt(LocalDateTime.now());
-                    deviceRegistrationRepository.save(first);
+                    fresh.setCreatedAt(LocalDateTime.now());
+                    fresh.setUpdatedAt(LocalDateTime.now());
+                    deviceRegistrationRepository.save(fresh);
                     deviceApproved = true;
                     deviceDetail = null;
-                } else if (approvedCount < maxDevices) {
-                    // Còn hạn mức nhưng máy mới → tạo yêu cầu chờ HR duyệt, KHÔNG cho chấm ngay
-                    DeviceRegistration pending = DeviceRegistration.builder()
-                            .userId(userId)
-                            .deviceFingerprint(deviceFingerprint)
-                            .deviceModel("Web Browser")
-                            .osVersion("Web")
-                            .isApproved(false)
-                            .lastActiveAt(LocalDateTime.now())
-                            .build();
-                    pending.setCreatedAt(LocalDateTime.now());
-                    pending.setUpdatedAt(LocalDateTime.now());
-                    deviceRegistrationRepository.save(pending);
-                    deviceDetail = "Thiết bị mới đã được gửi yêu cầu — cần HR duyệt trước khi chấm công";
                 } else {
                     deviceDetail = String.format("Bạn đã dùng đủ %d thiết bị — máy thứ %d phải được HR duyệt",
                             maxDevices, maxDevices + 1);
                 }
             }
-        }
-        if (!passkeyVerified) {
-            boolean webauthnRequired = ruleService.getBoolean("attendance_security", "webauthn_required", true);
-            boolean hasApprovedPasskey = deviceRegistrationRepository.findByUserIdAndIsApprovedTrue(userId).stream()
-                    .anyMatch(d -> d.isHasPasskey() && d.getRevokedAt() == null);
-            if (webauthnRequired && hasApprovedPasskey && passkeyBlockDetail == null) {
-                passkeyBlockDetail = "Bạn đã khóa thiết bị bằng passkey — hãy xác thực bằng vân tay/Face ID trước khi chấm công.";
-            }
-        }
-        if (passkeyBlockDetail != null) {
-            deviceApproved = false;
-            deviceDetail = passkeyBlockDetail;
-        } else if (passkeyVerified) {
-            deviceApproved = true;
-            deviceDetail = null;
         }
         layers.add(layer("DEVICE", "Thiết bị đã đăng ký", deviceApproved, deviceDetail));
 

@@ -141,7 +141,7 @@ export const TeamReviewPage: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Review OKR Cả Nhóm (S24)</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Review OKR Cả Nhóm</h1>
           <p className="text-xs text-ink-muted mt-1">1 bảng thay vì mở từng objective · điểm đề xuất theo rule · cảnh báo rủi ro · chấm hàng loạt.</p>
         </div>
         <div className="flex items-center gap-2">

@@ -74,21 +74,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Global Multi-channel Notification Center */}
         <NotificationDropdown />
 
-        {/* Face Enrollment Quick Button */}
-        <button
-          onClick={() => navigate('/auth/enroll-face')}
-          className={`px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer ${
-            user?.faceEnrolled === false
-              ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 animate-pulse font-bold'
-              : 'border-line bg-canvas hover:bg-surface text-ink-secondary hidden sm:inline-flex'
-          }`}
-          title="Đăng ký mẫu khuôn mặt"
-        >
-          <Camera className="w-3.5 h-3.5 text-accent" />
-          <span className="hidden lg:inline">
-            {user?.faceEnrolled === false ? 'Chưa ĐK Mặt' : 'ĐK Mặt'}
-          </span>
-        </button>
+        {/* Face Enrollment Quick Button — chỉ nhắc khi tài khoản chưa có mẫu mặt */}
+        {user?.faceEnrolled === false && (
+          <button
+            onClick={() => navigate('/auth/enroll-face')}
+            className="px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer bg-amber-500/10 text-amber-600 border-amber-500/30 font-bold"
+            title="Tài khoản chưa đăng ký khuôn mặt — bấm để đăng ký"
+          >
+            <Camera className="w-3.5 h-3.5 text-accent" />
+            <span>Chưa ĐK Mặt</span>
+          </button>
+        )}
 
         {/* User Profile Avatar & Logout */}
         <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-line">

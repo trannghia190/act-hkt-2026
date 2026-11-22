@@ -4,7 +4,6 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../../context/AuthContext';
-import { getWebAuthnStatus, signAttendanceAssertion } from '../../../utils/webauthn';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 
 interface AttendancePunchRecord {
@@ -48,9 +47,6 @@ export const CheckInPage: React.FC = () => {
 
   // Ca hiệu lực của tôi (ca ngoại lệ theo ưu tiên có thể đè ca chuẩn)
   const [myShift, setMyShift] = useState<any>(null);
-
-  // Passkey/WebAuthn — khi đã đăng ký, mỗi lần chấm công phải ký challenge.
-  const [hasPasskey, setHasPasskey] = useState(false);
 
   // Status for today and yesterday (Criterion B2 #2)
   const [yesterdayMissingCheckout, setYesterdayMissingCheckout] = useState(false);
@@ -157,8 +153,6 @@ export const CheckInPage: React.FC = () => {
       .then((r) => r.json())
       .then((j) => setMyShift(j?.data ?? null))
       .catch((err) => console.warn('Could not fetch my shift:', err));
-
-    getWebAuthnStatus().then((s) => setHasPasskey(s.hasPasskey));
   }, [user]);
 
   // Handle Real Camera stream cleanup
@@ -381,21 +375,6 @@ export const CheckInPage: React.FC = () => {
       })();
       if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
 
-      // Passkey: ký challenge ngay trước khi gửi — server verify trong cùng giao dịch chấm công.
-      let passkeyAssertion = null;
-      if (hasPasskey) {
-        try {
-          passkeyAssertion = await signAttendanceAssertion();
-        } catch (e: any) {
-          setCheckInStep('error');
-          setErrorType('DEVICE');
-          setErrorMessage(e?.message || 'Không xác thực được passkey.');
-          vibrate([50, 60, 50]);
-          setIsScanning(false);
-          return;
-        }
-      }
-
       const coreResponse = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
         headers: reqHeaders,
@@ -409,10 +388,6 @@ export const CheckInPage: React.FC = () => {
           longitude: geo.longitude,
           accuracyMeters: geo.accuracy,
           type: checkType === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
-          ...(passkeyAssertion ? {
-            webauthnChallengeId: passkeyAssertion.challengeId,
-            webauthnCredential: JSON.stringify(passkeyAssertion.credential),
-          } : {}),
         }),
       });
 
@@ -528,7 +503,7 @@ export const CheckInPage: React.FC = () => {
       {/* Header */}
       <div className="text-center space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line">
-          <span>🛡️</span> 5 Lớp Xác Thực Chấm Công Chống Gian Lận (S05m)
+          <span>🛡️</span> 5 Lớp Xác Thực Chấm Công Chống Gian Lận
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">Chấm Công Nhận Diện Khuôn Mặt</h1>
         <p className="text-xs text-ink-muted">

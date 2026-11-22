@@ -22,7 +22,7 @@ const pass = (msg) => console.log('PASS ' + msg);
 
 const psql = (sql) => execFileSync('psql', ['-h', '127.0.0.1', '-d', 'pulse_db', '-tAc', sql], { encoding: 'utf8' }).trim();
 const cleanup = () => psql(
-  "delete from devices where device_fingerprint like 'passkey-%' and user_id=(select id from users where employee_code='"
+  "delete from passkey_credentials where user_id=(select id from users where employee_code='"
   + EMPLOYEE + "')");
 cleanup();
 
@@ -54,14 +54,13 @@ await page.waitForURL('**/todo', { timeout: 10000 });
 const loginToken = await page.evaluate(() => JSON.parse(localStorage.getItem('pulse_auth_user') || '{}').accessToken);
 if (!loginToken) fail('Đăng nhập mật khẩu không lưu token');
 
-await page.goto(`${BASE}/attendance/devices`);
-await page.waitForSelector('text=Khóa thiết bị bằng Passkey', { timeout: 10000 });
+await page.goto(`${BASE}/account/passkey`);
+await page.waitForSelector('text=Đăng nhập nhanh bằng Passkey', { timeout: 10000 });
 await page.click('button:has-text("Đăng ký passkey")');
-// Tự duyệt hay chờ HR duyệt phụ thuộc quota max_devices — cả hai đều là đăng ký thành công.
-await page.waitForSelector('text=/Đã (đăng ký|ghi nhận) passkey|Không đăng ký/', { timeout: 15000 });
+await page.waitForSelector('text=/Đã đăng ký passkey|Không đăng ký/', { timeout: 15000 });
 const regMessage = (await page.evaluate(() => {
-  const p = [...document.querySelectorAll('p.text-xs')].find((el) => /passkey/i.test(el.textContent || ''));
-  return p ? p.textContent.trim() : '';
+  const el = [...document.querySelectorAll('div.text-sm')].find((d) => /passkey/i.test(d.textContent || '') && /Đã|Không/.test(d.textContent || ''));
+  return el ? el.textContent.trim() : '';
 })) || '(không đọc được thông báo)';
 if (/^Không đăng ký/.test(regMessage)) fail('Đăng ký passkey lỗi: ' + regMessage);
 pass('Đăng ký passkey qua UI: ' + regMessage);
@@ -100,7 +99,7 @@ if (usable.code !== 200 || !usable.body?.hasPasskey) {
 pass('Token từ passkey gọi được API');
 
 const signatureCount = psql(
-  "select coalesce(max(signature_count),0) from devices where device_fingerprint like 'passkey-%' and user_id="
+  "select coalesce(max(signature_count),0) from passkey_credentials where user_id="
   + "(select id from users where employee_code='" + EMPLOYEE + "')");
 if (!(Number(signatureCount) > 0)) fail('signature_count phải tăng sau đăng nhập — ' + signatureCount);
 pass('signature_count tăng sau đăng nhập passkey (' + signatureCount + ')');

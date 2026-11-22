@@ -26,6 +26,7 @@ import { PolicyDocPage } from '../modules/attendance/rules/PolicyDocPage';
 import { MyDevicesPage } from '../modules/attendance/devices/MyDevicesPage';
 import { AddDevicePage } from '../modules/attendance/devices/AddDevicePage';
 import { AdminDevicesPage } from '../modules/attendance/devices/AdminDevicesPage';
+import { PasskeySettingsPage } from '../modules/account/PasskeySettingsPage';
 import { LeaveTypesPage } from '../modules/attendance/leaves/LeaveTypesPage';
 import { LeaveTablePage } from '../modules/attendance/leaves/LeaveTablePage';
 import { DisputesPage } from '../modules/attendance/timesheet/DisputesPage';
@@ -166,6 +167,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/attendance/policy-doc" element={<PolicyDocPage />} />
       <Route path="/attendance/devices" element={<MyDevicesPage />} />
       <Route path="/attendance/devices/add" element={<AddDevicePage />} />
+      <Route path="/account/passkey" element={<PasskeySettingsPage />} />
       <Route path="/attendance/disputes" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><DisputesPage /></ProtectedRoute>} />
       <Route path="/attendance/disputes/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><DisputeDetailPage /></ProtectedRoute>} />
       <Route path="/attendance/leave-table" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><LeaveTablePage /></ProtectedRoute>} />
