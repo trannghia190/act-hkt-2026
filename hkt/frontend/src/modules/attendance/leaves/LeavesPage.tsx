@@ -28,6 +28,7 @@ export const LeavesPage: React.FC = () => {
     sickUsed: 0,
     adjust: 0,
     baseAnnual: 0,
+    positionBonus: 0,
     carriedGrant: 0,
     expiredCarry: 0,
     carryStatus: 'AVAILABLE',
@@ -57,6 +58,7 @@ export const LeavesPage: React.FC = () => {
           adjust,
           sickUsed: Number(j.data.sickUsed ?? 0),
           baseAnnual: Number(j.data.baseAnnual ?? 0),
+          positionBonus: Number(j.data.positionBonus ?? 0),
           carriedGrant: Number(j.data.carriedGrant ?? 0),
           expiredCarry: Number(j.data.expiredCarry ?? 0),
           carryStatus: String(j.data.carryStatus || 'AVAILABLE'),
@@ -139,28 +141,58 @@ export const LeavesPage: React.FC = () => {
       {/* Balance Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Tổng Phép Năm Được Hưởng</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.totalEntitlement} ngày</div>
-          <div className="text-[11px] text-ink-secondary mt-1">{balance.baseAnnual} chuẩn + {balance.carriedGrant} tồn + {balance.seniorityBonus} thâm niên{balance.adjust ? ` + ${balance.adjust} điều chỉnh` : ''}{balance.expiredCarry ? ` · ${balance.expiredCarry} tồn hết hạn` : ''}</div>
+          <div className="text-xs text-ink-muted">Phép tồn năm cũ</div>
+          <div className="text-2xl font-bold text-amber-700 mt-1">{balance.carriedGrant} ngày</div>
+          <div className="text-[11px] text-amber-600 mt-1">
+            Đã cấp {balance.carriedGrant} · còn {balance.carriedRemaining} sau luật tồn
+            {balance.expiredCarry ? ` · ${balance.expiredCarry} hết hạn` : ''}
+          </div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép Đã Sử Dụng</div>
+          <div className="text-xs text-ink-muted">Phép năm</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.baseAnnual} ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">Cấp theo quy chế phép năm (không gồm tồn/chức vụ/thâm niên)</div>
+        </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép chức vụ</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.positionBonus} ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">
+            {balance.positionBonus > 0 ? 'Theo cấu hình phép chức vụ (đã nằm trong tổng phép năm)' : 'Chức vụ hiện tại không được cộng thêm phép'}
+          </div>
+        </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép thâm niên</div>
+          <div className="text-2xl font-bold text-ink mt-1">{balance.seniorityBonus} ngày</div>
+          <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
+        </div>
+
+        <div className="p-4 bg-surface rounded-xl border border-line">
+          <div className="text-xs text-ink-muted">Phép đã sử dụng</div>
           <div className="text-2xl font-bold text-rose-700 mt-1">{balance.used} ngày</div>
           <div className="text-[11px] text-rose-600 mt-1">{ledger.filter(e => e.type === 'USED' && e.amount < 0).length} đợt nghỉ đã được duyệt</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20">
-          <div className="text-xs text-accent-dark font-medium">Tổng phép còn lại</div>
+          <div className="text-xs text-accent-dark font-medium">Phép còn lại</div>
           <div className="text-2xl font-extrabold text-accent mt-1">{balance.remaining} ngày</div>
           <div className="text-[11px] text-accent-dark mt-1">Phép năm {balance.annualRemaining} + Phép tồn {balance.carriedRemaining}</div>
-          <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${balance.totalEntitlement > 0 ? Math.round((balance.used / balance.totalEntitlement) * 100) : 0}%` }} /></div>
-          <div className="text-[10px] text-ink-muted mt-1">Đã dùng {balance.used}/{balance.totalEntitlement} ngày</div>
+          {(() => {
+            const total = balance.baseAnnual + balance.positionBonus + balance.seniorityBonus + balance.carriedGrant;
+            return (
+              <>
+                <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${total > 0 ? Math.min(100, Math.round((balance.used / total) * 100)) : 0}%` }} /></div>
+                <div className="text-[10px] text-ink-muted mt-1">Đã dùng {balance.used}/{total} ngày được cấp</div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép Tồn Còn Lại (hạn 01/07)</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{balance.expiringOnMarch31} ngày</div>
+          <div className="text-xs text-ink-muted">Phép tồn còn lại (hạn 01/07)</div>
+          <div className="text-2xl font-bold text-amber-700 mt-1">{balance.carriedRemaining} ngày</div>
           <div className="text-[11px] text-amber-600 mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
         </div>
 
@@ -168,12 +200,6 @@ export const LeavesPage: React.FC = () => {
           <div className="text-xs text-ink-muted">Phép ốm (S)</div>
           <div className="text-2xl font-bold text-ink mt-1">{balance.sickUsed} ngày</div>
           <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép thâm niên</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.seniorityBonus} ngày</div>
-          <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
         </div>
       </div>
 

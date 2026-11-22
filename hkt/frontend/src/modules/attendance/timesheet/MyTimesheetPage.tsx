@@ -456,7 +456,7 @@ export const MyTimesheetPage: React.FC = () => {
 
       {/* Square Calendar Grid (Criterion B4 #2) */}
       {data && (
-        <Card title={`Lịch Tháng Dạng Ô Vuông — ${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)} (Nhìn là thấy ngày có vấn đề)`}>
+        <Card title={`Lịch Tháng Dạng Ô Vuông — ${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`}>
           <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
             {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
               <div key={d} className="font-semibold text-ink-muted py-1 text-[11px]">
