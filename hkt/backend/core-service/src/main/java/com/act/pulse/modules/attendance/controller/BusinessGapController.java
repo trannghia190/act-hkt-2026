@@ -292,23 +292,42 @@ public class BusinessGapController {
                 dayStatus = "WEEKEND";
                 statusText = "Ngày nghỉ";
                 symbol = "";
-            } else if (leaveReq != null) {
-                dayStatus = "LEAVE";
-                String lt = leaveReq.getLeaveType() != null ? leaveReq.getLeaveType() : "AL";
-                boolean halfDay = leaveReq.getPayload() != null && leaveReq.getPayload().contains("half_day_period");
-                dayLeave += halfDay ? 0.5 : 1.0;
-                if ("S".equalsIgnoreCase(lt)) daySick++;
-                else if ("RO".equalsIgnoreCase(lt)) dayComp++;
-                else if ("UP".equalsIgnoreCase(lt)) dayUnpaid++;
-                symbol = halfDay ? lt + "/0.50" : lt;
-                statusText = "Nghỉ phép (" + symbol + ")";
-            } else if (wfhReq != null) {
-                dayStatus = "WFH";
-                boolean halfDay = wfhReq.getPayload() != null && wfhReq.getPayload().contains("half_day_period");
-                dayWfh += halfDay ? 0.5 : 1.0;
-                dayActual += halfDay ? 0.5 : 1.0;
-                symbol = halfDay ? "R/0.50" : "R";
-                statusText = "Làm việc từ xa (WFH)";
+            } else if (leaveReq != null || wfhReq != null) {
+                String lt = leaveReq == null ? "AL"
+                        : (leaveReq.getLeaveType() != null ? leaveReq.getLeaveType().toUpperCase() : "AL");
+                String leaveHalf = leaveReq == null ? null : TimesheetSymbols.halfDayPeriod(leaveReq.getPayload());
+                String wfhHalf = wfhReq == null ? null : TimesheetSymbols.halfDayPeriod(wfhReq.getPayload());
+                if (leaveReq != null && wfhReq != null) {
+                    // Hai buổi khác loại trong cùng ngày: nửa ngày nghỉ + nửa ngày làm từ xa.
+                    symbol = lt + "/R";
+                    dayStatus = "LEAVE";
+                    statusText = "Nửa ngày nghỉ " + lt + " + nửa ngày làm việc từ xa";
+                } else if (leaveReq != null) {
+                    symbol = leaveHalf != null ? lt + "/0.50" : lt;
+                    dayStatus = "LEAVE";
+                    statusText = leaveHalf != null
+                            ? "Nghỉ " + lt + " nửa ngày (buổi " + ("MORNING".equals(leaveHalf) ? "sáng" : "chiều")
+                              + ") — buổi còn lại vẫn đi làm"
+                            : "Nghỉ phép (" + symbol + ")";
+                    if ("S".equalsIgnoreCase(lt)) daySick++;
+                    else if ("RO".equalsIgnoreCase(lt)) dayComp++;
+                    else if ("UP".equalsIgnoreCase(lt)) dayUnpaid++;
+                } else {
+                    symbol = wfhHalf != null ? "R/0.50" : "R";
+                    dayStatus = "WFH";
+                    statusText = wfhHalf != null
+                            ? "WFH nửa ngày (buổi " + ("MORNING".equals(wfhHalf) ? "sáng" : "chiều")
+                              + ") — buổi còn lại vẫn đi làm"
+                            : "Làm việc từ xa (WFH)";
+                }
+                // Tổng ngày lấy từ chính ký hiệu ô (cùng phép tính với lưới HR) để hai màn
+                // không lệch khi ngày có nửa nghỉ/nửa WFH hoặc ô dạng CODE/0.50.
+                dayActual = TimesheetSymbols.workUnits(symbol);
+                dayWfh = TimesheetSymbols.wfhUnits(symbol);
+                dayLeave = TimesheetSymbols.leaveUnits(symbol);
+                if (log != null && log.getCheckInAt() != null && log.getCheckOutAt() != null) {
+                    statusText += " — đã chấm " + hoursWorked + "h";
+                }
             } else if (log != null) {
                 if (log.getCheckInAt() != null && log.getCheckOutAt() != null) {
                     if (dayUnits > 0) {
@@ -414,6 +433,7 @@ public class BusinessGapController {
                 di.put("requestedKind", dispute.getRequestedKind() == null ? "TIME_FIX" : dispute.getRequestedKind());
                 di.put("requestedLeaveType", dispute.getRequestedLeaveType());
                 di.put("requestedLeaveTypeName", leaveTypeName(dispute.getRequestedLeaveType()));
+                di.put("requestedHalfDay", dispute.getRequestedHalfDay());
                 disputeInfo = di;
             }
 
@@ -809,34 +829,81 @@ public class BusinessGapController {
         return leaveTypeRepository.findByCode(code).map(LeaveType::getName).orElse(code);
     }
 
-    private boolean hasApprovedRequestOn(UUID userId, java.time.LocalDate day, String type) {
+    /**
+     * Ngày đã có đơn cùng loại phủ buổi {@code halfDay} chưa. NULL = cả ngày nên trùng với mọi
+     * buổi; đơn nửa ngày chỉ trùng khi cùng buổi (sáng + chiều vẫn tạo được 2 đơn khác loại buổi).
+     */
+    private boolean hasApprovedRequestOn(UUID userId, java.time.LocalDate day, String type, String halfDay) {
         return requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .anyMatch(r -> type.equals(r.getRequestType()) && "APPROVED".equals(r.getStatus())
-                        && r.getWorkDate() != null
-                        && !day.isBefore(r.getWorkDate())
-                        && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()));
+                        && requestCovers(r, day) && sameSlot(halfDay, r));
     }
 
     /** Ngày đã có đơn cùng loại đang chờ duyệt hoặc đã duyệt — dùng để chặn chuyển duyệt trùng. */
-    private boolean hasOpenRequestOn(UUID userId, java.time.LocalDate day, String type) {
+    private boolean hasOpenRequestOn(UUID userId, java.time.LocalDate day, String type, String halfDay) {
         return requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .anyMatch(r -> type.equals(r.getRequestType())
                         && ("APPROVED".equals(r.getStatus()) || "PENDING_APPROVAL".equals(r.getStatus()))
-                        && r.getWorkDate() != null
-                        && !day.isBefore(r.getWorkDate())
-                        && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate()));
+                        && requestCovers(r, day) && sameSlot(halfDay, r));
+    }
+
+    private static boolean requestCovers(RequestEntity r, java.time.LocalDate day) {
+        return r.getWorkDate() != null
+                && !day.isBefore(r.getWorkDate())
+                && !day.isAfter(r.getEndDate() == null ? r.getWorkDate() : r.getEndDate());
+    }
+
+    private static boolean sameSlot(String halfDay, RequestEntity r) {
+        String other = TimesheetSymbols.halfDayPeriod(r.getPayload());
+        return halfDay == null || other == null || halfDay.equals(other);
+    }
+
+    /** "MORNING"/"AFTERNOON" từ body hoặc dữ liệu khiếu nại; chuỗi khác bị từ chối. */
+    private static String normalizeHalfDay(Object fromBody, String stored) {
+        String raw = fromBody != null && !String.valueOf(fromBody).isBlank() ? String.valueOf(fromBody) : stored;
+        if (raw == null || raw.isBlank()) return null;
+        String up = raw.trim().toUpperCase();
+        if (!Set.of("MORNING", "AFTERNOON").contains(up)) {
+            throw new RuntimeException("Buổi nửa ngày không hợp lệ (" + raw + ") — chỉ nhận MORNING, AFTERNOON");
+        }
+        return up;
+    }
+
+    /**
+     * Ký hiệu ô cuối cùng của một ngày: đơn đã duyệt (cả ngày/nửa ngày) là nguồn sự thật,
+     * thiếu đơn mới dùng ký hiệu suy từ giờ chấm. Giữ đúng quy ước ghép ô của lưới HR:
+     * AL, R, AL/0.50, R/0.50, AL/R — để ô ghi từ khiếu nại không lệch với lưới.
+     */
+    private String composeDaySymbol(UUID userId, java.time.LocalDate day, String fallbackWorkSymbol) {
+        List<RequestEntity> approved = requestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(r -> "APPROVED".equals(r.getStatus()) && requestCovers(r, day)
+                        && ("LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType())))
+                .toList();
+        RequestEntity leave = approved.stream().filter(r -> "LEAVE".equals(r.getRequestType())).findFirst().orElse(null);
+        RequestEntity wfh = approved.stream().filter(r -> "WFH".equals(r.getRequestType())).findFirst().orElse(null);
+        if (leave == null && wfh == null) return fallbackWorkSymbol;
+        String lt = leave == null ? "AL"
+                : (leave.getLeaveType() != null ? leave.getLeaveType().toUpperCase() : "AL");
+        String leaveHalf = leave == null ? null : TimesheetSymbols.halfDayPeriod(leave.getPayload());
+        String wfhHalf = wfh == null ? null : TimesheetSymbols.halfDayPeriod(wfh.getPayload());
+        if (leave != null && wfh != null) return lt + "/R";
+        if (leave != null) return leaveHalf != null ? lt + "/0.50" : lt;
+        return wfhHalf != null ? "R/0.50" : "R";
     }
 
     /** Tạo đơn đã duyệt (LEAVE/WFH) từ khiếu nại để mọi bảng công tính đúng như đơn thường. */
-    private RequestEntity createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type, String leaveType, String reason) {
+    private RequestEntity createApprovedRequest(UUID userId, java.time.LocalDate workDate, String type,
+                                                String leaveType, String reason, String halfDay) {
         // Ô đánh tay cũ (HR từng sửa) không được đè lên kết quả khiếu nại vừa duyệt.
         java.time.YearMonth ym = java.time.YearMonth.from(workDate);
         timesheetRepository.findByUserIdAndPeriodMonthAndPeriodYear(userId, ym.getMonthValue(), ym.getYear())
                 .flatMap(sheet -> timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), workDate))
                 .ifPresent(timesheetCellRepository::delete);
+        // Cùng khoá payload với đơn thường: có half_day_period là đơn nửa ngày.
+        String payload = halfDay == null ? "{}" : "{\"half_day_period\":\"" + halfDay + "\"}";
         return requestRepository.save(RequestEntity.builder()
                 .userId(userId).requestType(type).leaveType(leaveType)
-                .payload("{}").workDate(workDate).endDate(workDate)
+                .payload(payload).workDate(workDate).endDate(workDate)
                 .reason(reason).status("APPROVED").currentStep(1)
                 .decidedBy(CurrentUser.userId()).decidedAt(LocalDateTime.now())
                 .decisionComment("Duyệt qua khiếu nại bảng công")
@@ -852,14 +919,14 @@ public class BusinessGapController {
         }
     }
 
-    /** Trừ quỹ phép giống luồng duyệt đơn nghỉ (1 ngày; bỏ qua cuối tuần/ngày lễ). */
-    private void deductLeaveForDispute(UUID userId, java.time.LocalDate day, String leaveType) {
+    /** Trừ quỹ phép giống luồng duyệt đơn nghỉ (1 ngày, nửa ngày = 0.5; bỏ qua cuối tuần/ngày lễ). */
+    private void deductLeaveForDispute(UUID userId, java.time.LocalDate day, String leaveType, String halfDay) {
         boolean workday = day.getDayOfWeek().getValue() < 6
                 && holidayRepository.findAll().stream().noneMatch(h -> h.covers(day));
         if (!workday) return;
         java.math.BigDecimal prev = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(LeaveLedgerEntry::getAmount).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-        java.math.BigDecimal amount = java.math.BigDecimal.valueOf(-1);
+        java.math.BigDecimal amount = java.math.BigDecimal.valueOf(halfDay == null ? -1 : -0.5);
         leaveLedgerRepository.save(LeaveLedgerEntry.builder()
                 .userId(userId).leaveType(leaveType).action("USED").amount(amount)
                 .balanceAfter(prev.add(amount))
@@ -973,6 +1040,7 @@ public class BusinessGapController {
         m.put("requestedKind", d.getRequestedKind() == null ? "TIME_FIX" : d.getRequestedKind());
         m.put("requestedLeaveType", d.getRequestedLeaveType());
         m.put("requestedLeaveTypeName", leaveTypeName(d.getRequestedLeaveType()));
+        m.put("requestedHalfDay", d.getRequestedHalfDay());
         m.put("attachmentCount", disputeAttachmentRepository.countByDisputeId(d.getId()));
         m.put("status", d.getStatus());
         m.put("deadline", d.getDeadline() == null ? null : d.getDeadline().toLocalDate().toString());
@@ -1018,6 +1086,8 @@ public class BusinessGapController {
             requireActiveLeaveType(leaveType);
             leaveCfg = leaveTypeRepository.findByCode(leaveType).orElse(null);
         }
+        // Nghỉ/WFH nửa ngày: buổi NV xin (MORNING/AFTERNOON); bỏ trống = cả ngày.
+        String halfDay = "TIME_FIX".equals(kind) ? null : normalizeHalfDay(body.get("requestedHalfDay"), null);
         // Sửa giờ: nhân viên có thể chỉ nêu lý do (để HR tự đối chiếu), nhưng nếu đề xuất giờ
         // thì phải đủ CẢ cặp vào+ra — công ngày đó tính theo đúng cặp giờ này, thiếu một đầu là vô nghĩa.
         java.time.LocalTime reqIn = null, reqOut = null;
@@ -1057,22 +1127,27 @@ public class BusinessGapController {
             }
         }
         // Giới hạn 2 đơn/ngày: chặn khi còn đơn chờ xử lý; bị từ chối thì chỉ được gửi lại 1 lần.
+        // Nghỉ/WFH nửa ngày chỉ chiếm 1 buổi — buổi còn lại vẫn khiếu nại được trong cùng ngày.
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.util.List<TimesheetDispute> sameDay = timesheetDisputeRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(x -> userId.equals(x.getUserId()) && workDate.equals(x.getWorkDate())).toList();
-        boolean stillPending = sameDay.stream().anyMatch(x -> "PENDING".equals(x.getStatus())
+        java.util.List<TimesheetDispute> sameSlot = timesheetDisputeRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(x -> userId.equals(x.getUserId()) && workDate.equals(x.getWorkDate()))
+                .filter(x -> halfDay == null || x.getRequestedHalfDay() == null
+                        || halfDay.equals(x.getRequestedHalfDay())).toList();
+        boolean stillPending = sameSlot.stream().anyMatch(x -> "PENDING".equals(x.getStatus())
                 && (x.getDeadline() == null || x.getDeadline().isAfter(now)));
         if (stillPending) {
-            throw new RuntimeException("Ngày " + workDate + " đang có khiếu nại chờ HR xử lý — chờ kết quả rồi gửi lại");
+            throw new RuntimeException("Ngày " + workDate + (halfDay == null ? ""
+                    : " buổi " + ("MORNING".equals(halfDay) ? "sáng" : "chiều"))
+                    + " đang có khiếu nại chờ HR xử lý — chờ kết quả rồi gửi lại");
         }
-        if (sameDay.size() >= 2) {
+        if (sameSlot.size() >= 2) {
             throw new RuntimeException("Ngày " + workDate + " đã khiếu nại 2 lần — không gửi thêm được nữa");
         }
         TimesheetDispute d = TimesheetDispute.builder()
                 .id("DC-" + UUID.randomUUID().toString().substring(0, 8))
                 .userId(userId).workDate(workDate).reason(reason).status("PENDING")
                 .requestedCheckIn(reqIn).requestedCheckOut(reqOut)
-                .requestedKind(kind).requestedLeaveType(leaveType)
+                .requestedKind(kind).requestedLeaveType(leaveType).requestedHalfDay(halfDay)
                 .deadline(java.time.LocalDateTime.now().plusDays(2)).build();
         timesheetDisputeRepository.save(d);
         for (Map<String, Object> f : files) {
@@ -1291,9 +1366,12 @@ public class BusinessGapController {
                     }
                     requireActiveLeaveType(leaveType);
                 }
-                // Ngày đó đã có đơn cùng loại được duyệt → không tạo trùng (tránh trừ phép 2 lần).
-                if (hasApprovedRequestOn(d.getUserId(), d.getWorkDate(), kind)) {
+                // Buổi của ngày nửa ngày: ưu tiên body, không có thì theo đúng buổi NV xin khiếu nại.
+                String halfDay = normalizeHalfDay(body.get("requestedHalfDay"), d.getRequestedHalfDay());
+                // Ngày đó đã có đơn cùng loại phủ CÙNG BUỔI được duyệt → không tạo trùng (tránh trừ phép 2 lần).
+                if (hasApprovedRequestOn(d.getUserId(), d.getWorkDate(), kind, halfDay)) {
                     throw new RuntimeException("Ngày " + d.getWorkDate() + " đã có đơn " + kind
+                            + (halfDay == null ? "" : " buổi " + ("MORNING".equals(halfDay) ? "sáng" : "chiều"))
                             + " được duyệt — không tạo thêm");
                 }
                 // Loại nghỉ yêu cầu giấy tờ (ốm/thai sản…) → khiếu nại phải có giấy tờ mới duyệt được,
@@ -1306,9 +1384,9 @@ public class BusinessGapController {
                             + ") bắt buộc có giấy tờ đính kèm — khiếu nại này chưa có giấy tờ nên chưa duyệt được");
                 }
                 if ("LEAVE".equals(kind)) {
-                    deductLeaveForDispute(d.getUserId(), d.getWorkDate(), leaveType);
+                    deductLeaveForDispute(d.getUserId(), d.getWorkDate(), leaveType, halfDay);
                 }
-                RequestEntity created = createApprovedRequest(d.getUserId(), d.getWorkDate(), kind, leaveType, reason);
+                RequestEntity created = createApprovedRequest(d.getUserId(), d.getWorkDate(), kind, leaveType, reason, halfDay);
                 // Giấy tờ nhân viên gửi kèm khiếu nại được chuyển sang đơn đã duyệt để HR xem/tải lại.
                 if ("LEAVE".equals(kind)) {
                     copyDisputeAttachmentsToRequest(d.getId(), created.getId());
@@ -1344,8 +1422,10 @@ public class BusinessGapController {
                 if (log.getShiftId() == null && logShift != null) log.setShiftId(logShift.getId());
                 attendanceLogRepository.save(log);
                 timesNote = " [giờ duyệt " + hhmm(inAt.toLocalTime()) + "→" + hhmm(outAt.toLocalTime()) + "]";
-                // Công thực tế suy ra từ số giờ đã duyệt theo ca yêu cầu (đủ ca = 1.00, đủ nửa = 0.50, còn lại 0.00).
-                String symbol = shiftResolver.workSymbol(logShift, log);
+                // Công thực tế suy ra từ số giờ đã duyệt theo ca yêu cầu (đủ ca = 1.00, đủ nửa = 0.50,
+                // còn lại 0.00); ngày có đơn nửa ngày đã duyệt thì giữ đúng dạng ghép của lưới HR.
+                String symbol = composeDaySymbol(d.getUserId(), d.getWorkDate(),
+                        shiftResolver.workSymbol(logShift, log));
                 TimesheetCell cell = timesheetCellRepository.findByTimesheetIdAndWorkDate(sheet.getId(), d.getWorkDate())
                         .orElseGet(() -> TimesheetCell.builder().timesheetId(sheet.getId()).workDate(d.getWorkDate()).build());
                 String oldSymbol = cell.getSymbol();
@@ -1367,8 +1447,10 @@ public class BusinessGapController {
                 throw new RuntimeException("Chế độ nhân viên xin trong khiếu nại không hợp lệ (" + kind + ")");
             }
             String requestType = "TIME_FIX".equals(kind) ? "ADJUST" : kind;
-            if (hasOpenRequestOn(d.getUserId(), d.getWorkDate(), requestType)) {
+            String halfDay = "TIME_FIX".equals(kind) ? null : normalizeHalfDay(null, d.getRequestedHalfDay());
+            if (hasOpenRequestOn(d.getUserId(), d.getWorkDate(), requestType, halfDay)) {
                 throw new RuntimeException("Ngày " + d.getWorkDate() + " đã có đơn " + requestType
+                        + (halfDay == null ? "" : " buổi " + ("MORNING".equals(halfDay) ? "sáng" : "chiều"))
                         + " đang chờ/đã duyệt — không chuyển duyệt trùng");
             }
             String leaveType = null;
@@ -1393,6 +1475,15 @@ public class BusinessGapController {
                 p.put("dispute_id", id);
                 if (d.getRequestedCheckIn() != null) p.put("requested_check_in", hhmm(d.getRequestedCheckIn()));
                 if (d.getRequestedCheckOut() != null) p.put("requested_check_out", hhmm(d.getRequestedCheckOut()));
+                try {
+                    payload = objectMapper.writeValueAsString(p);
+                } catch (Exception ignored) { /* giữ payload mặc định */ }
+            } else if (halfDay != null) {
+                // WFH/nghỉ nửa ngày: giữ đúng buổi NV xin trong khiếu nại để luồng duyệt đơn hiểu.
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("source", "DISPUTE");
+                p.put("dispute_id", id);
+                p.put("half_day_period", halfDay);
                 try {
                     payload = objectMapper.writeValueAsString(p);
                 } catch (Exception ignored) { /* giữ payload mặc định */ }

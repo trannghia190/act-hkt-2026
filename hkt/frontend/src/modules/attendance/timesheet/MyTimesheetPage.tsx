@@ -123,6 +123,8 @@ export const MyTimesheetPage: React.FC = () => {
   // Ngày đó nên thành gì: sửa giờ | WFH | nghỉ theo danh mục loại nghỉ.
   const [disputeKind, setDisputeKind] = useState<'TIME_FIX' | 'WFH' | 'LEAVE'>('TIME_FIX');
   const [disputeLeaveType, setDisputeLeaveType] = useState('');
+  // Nghỉ/WFH nửa ngày: NV chọn buổi để HR duyệt đúng ô công (AL/0.50, R/0.50).
+  const [disputeHalf, setDisputeHalf] = useState<'FULL' | 'MORNING' | 'AFTERNOON'>('FULL');
   const [leaveTypeOptions, setLeaveTypeOptions] = useState<{ code: string; name: string; requiresAttachment?: boolean }[]>([]);
   // Giấy tờ đính kèm khiếu nại — bắt buộc với loại nghỉ có requires_attachment (ốm, thai sản…).
   const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
@@ -222,6 +224,7 @@ export const MyTimesheetPage: React.FC = () => {
     setDisputeCheckOut(day.checkOut || '');
     setDisputeKind('TIME_FIX');
     setDisputeLeaveType('');
+    setDisputeHalf('FULL');
     setDisputeFiles([]);
     setDisputeError(null);
   };
@@ -291,6 +294,7 @@ export const MyTimesheetPage: React.FC = () => {
           reason: disputeReason.trim(),
           requestedKind: disputeKind,
           ...(disputeKind === 'LEAVE' ? { requestedLeaveType: disputeLeaveType } : {}),
+          ...(disputeKind !== 'TIME_FIX' && disputeHalf !== 'FULL' ? { requestedHalfDay: disputeHalf } : {}),
           ...(disputeKind === 'TIME_FIX' ? { requestedCheckIn: disputeCheckIn, requestedCheckOut: disputeCheckOut } : {}),
           ...(attachments.length ? { attachments } : {}),
         }),
@@ -727,11 +731,29 @@ export const MyTimesheetPage: React.FC = () => {
               </div>
                 </>
               ) : (
+                <>
+                <label className="block">
+                  <span className="block text-ink-muted mb-1">Thời lượng</span>
+                  <select
+                    value={disputeHalf}
+                    onChange={(e) => setDisputeHalf(e.target.value as typeof disputeHalf)}
+                    className="w-full border border-line rounded-lg p-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    <option value="FULL">Cả ngày</option>
+                    <option value="MORNING">Nửa ngày — buổi sáng</option>
+                    <option value="AFTERNOON">Nửa ngày — buổi chiều</option>
+                  </select>
+                </label>
                 <p className="text-[11px] text-ink-muted">
                   {disputeKind === 'WFH'
-                    ? 'HR duyệt thì ngày này được công nhận làm việc từ xa — không cần giờ vào/ra.'
-                    : 'HR duyệt thì ngày này thành ngày nghỉ theo loại đã chọn và trừ quỹ phép tương ứng.'}
+                    ? (disputeHalf === 'FULL'
+                      ? 'HR duyệt thì ngày này được công nhận làm việc từ xa — không cần giờ vào/ra.'
+                      : 'HR duyệt thì nửa ngày này được công nhận WFH (ô công R/0.50), nửa ngày còn lại vẫn tính công đi làm.')
+                    : (disputeHalf === 'FULL'
+                      ? 'HR duyệt thì ngày này thành ngày nghỉ theo loại đã chọn và trừ quỹ phép tương ứng.'
+                      : 'HR duyệt thì nửa ngày này thành nghỉ (ô công ' + disputeLeaveType + '/0.50) và trừ 0.5 ngày quỹ phép.')}
                 </p>
+                </>
               )}
             </div>
 
