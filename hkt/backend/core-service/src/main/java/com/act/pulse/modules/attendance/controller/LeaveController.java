@@ -243,7 +243,20 @@ public class LeaveController {
         map.put("seniority", seniorityGrant);
         map.put("adjust", adjust);
         map.put("sickUsed", sickUsed);
-        map.put("baseAnnual", annualGrant);
+        // Phép chức vụ là một KHOẢN RIÊNG trong tổng phép năm đã cấp (không cộng thêm lần nữa):
+        // quản lý hưởng manager_bonus_days, chức vụ khác hưởng position_bonus_days theo rule
+        // leave_position_bonus. Tách ra để S09 hiển thị đúng từng ô, tổng quyền lợi không đổi.
+        String role = userRepository.findById(userId).map(u -> u.getRole()).orElse("");
+        Map<String, Object> positionRule = ruleService.get("leave_position_bonus");
+        Object bonusRaw = "MANAGER".equalsIgnoreCase(role)
+                ? positionRule.get("manager_bonus_days") : positionRule.get("position_bonus_days");
+        BigDecimal positionRuleDays = BigDecimal.ZERO;
+        if (bonusRaw != null) {
+            try { positionRuleDays = new BigDecimal(String.valueOf(bonusRaw)); } catch (NumberFormatException ignored) { }
+        }
+        BigDecimal positionBonus = positionRuleDays.max(BigDecimal.ZERO).min(annualGrant.max(BigDecimal.ZERO));
+        map.put("positionBonus", positionBonus);
+        map.put("baseAnnual", annualGrant.subtract(positionBonus));
         map.put("carriedGrant", carryGrant);
         Map<String, BigDecimal> usedByType = new HashMap<>();
         for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
