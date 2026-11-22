@@ -106,6 +106,11 @@ public class TimesheetController {
                         shiftResolver.workSymbol(shiftResolver.resolveFor(u, log), log));
             }
             int late = 0;
+            // Ngày nửa ngày có thể gồm 2 buổi khác loại (nghỉ buổi sáng + WFH buổi chiều…).
+            // Gom buổi nghỉ / buổi WFH riêng rồi ghép thành một ký hiệu duy nhất cho ngày:
+            // CODE/0.50 (nghỉ nửa ngày), R/0.50 (WFH nửa ngày), CODE/R (nửa nghỉ + nửa WFH).
+            Map<Integer, String> leaveHalfByDay = new HashMap<>();
+            Set<Integer> wfhHalfDays = new HashSet<>();
             for (RequestEntity r : requestRepository.findByUserIdOrderByCreatedAtDesc(u.getId())) {
                 if (!"APPROVED".equals(r.getStatus()) || r.getWorkDate() == null) continue;
                 boolean rangeType = "LEAVE".equals(r.getRequestType()) || "WFH".equals(r.getRequestType());
@@ -122,7 +127,8 @@ public class TimesheetController {
                         for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
                             if (!YearMonth.from(cur).equals(ym)) continue;
                             if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
-                            daySymbol.put(cur.getDayOfMonth(), halfDay ? "R/0.50" : "R");
+                            if (halfDay) wfhHalfDays.add(cur.getDayOfMonth());
+                            else daySymbol.put(cur.getDayOfMonth(), "R");
                         }
                     }
                     case "LEAVE" -> {
@@ -133,11 +139,20 @@ public class TimesheetController {
                         for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
                             if (!YearMonth.from(cur).equals(ym)) continue;
                             if (cur.getDayOfWeek().getValue() >= 6 || holidays.contains(cur)) continue;
-                            daySymbol.put(cur.getDayOfMonth(), halfDay ? sym + "/0.50" : sym);
+                            if (halfDay) leaveHalfByDay.put(cur.getDayOfMonth(), sym);
+                            else daySymbol.put(cur.getDayOfMonth(), sym);
                         }
                     }
                     default -> { if ("LATE_EARLY".equals(r.getRequestType())) late++; }
                 }
+            }
+            for (Map.Entry<Integer, String> e : leaveHalfByDay.entrySet()) {
+                if (wfhHalfDays.contains(e.getKey())) continue;
+                daySymbol.put(e.getKey(), e.getValue() + "/0.50");
+            }
+            for (int d : wfhHalfDays) {
+                String leaveSym = leaveHalfByDay.get(d);
+                daySymbol.put(d, leaveSym == null ? "R/0.50" : leaveSym + "/R");
             }
             int holidayCount = 0;
             int workingDays = 0;

@@ -120,19 +120,56 @@ public class ShiftResolver {
     /**
      * Công trong ngày theo ca hiệu lực: đủ số giờ yêu cầu → 1.00, đủ nửa → 0.50, còn lại → 0.00.
      * Thiếu giờ vào hoặc giờ ra → 0.00 (phải làm đơn bổ sung công mới được tính).
+     * <p>Ngày nửa ngày (nghỉ/WFH một buổi): log chỉ phủ TRỌN buổi còn lại theo khung ca thì được
+     * 0.50 dù ít hơn nửa số giờ ca (VD ca 8h, chỉ làm 4h buổi sáng nếu công ty nghỉ trưa 12:00).
      */
     public double workUnits(Shift shift, AttendanceLog log) {
+        return workUnits(shift, log, false);
+    }
+
+    /**
+     * Như {@link #workUnits(Shift, AttendanceLog)}; {@code halfDay=true} nghĩa là ngày đã có đơn
+     * nghỉ/WFH một buổi, nên log chỉ cần phủ trọn buổi còn lại là đủ 0.50 công.
+     */
+    public double workUnits(Shift shift, AttendanceLog log, boolean halfDay) {
         if (log == null || log.getCheckInAt() == null || log.getCheckOutAt() == null) return 0.0;
         double worked = workedHours(shift, log);
         double required = requiredHours(shift);
         if (worked + 1e-6 >= required) return 1.0;
         if (worked + 1e-6 >= required / 2.0) return 0.5;
+        if (halfDay && (coversSession(shift, log, true) || coversSession(shift, log, false))) return 0.5;
         return 0.0;
+    }
+
+    /**
+     * Log có phủ trọn buổi sáng/chiều theo khung ca không — cho phép vào trễ/ra sớm tối đa
+     * 30 phút (ca linh hoạt, nghỉ trưa lệch ngày). Dùng cho ngày nửa ngày khi buổi kia đã
+     * có đơn nghỉ/WFH nên 4 giờ còn lại chính là toàn bộ ngày làm việc thật.
+     */
+    private boolean coversSession(Shift shift, AttendanceLog log, boolean morning) {
+        LocalTime from;
+        LocalTime to;
+        if (morning) {
+            from = shift != null && shift.getCheckInStart() != null ? shift.getCheckInStart() : LocalTime.of(8, 30);
+            to = shift != null && shift.getLunchBreakStart() != null ? shift.getLunchBreakStart() : LocalTime.of(12, 0);
+        } else {
+            from = shift != null && shift.getLunchBreakEnd() != null ? shift.getLunchBreakEnd() : LocalTime.of(13, 0);
+            to = shift != null && shift.getCheckOutEnd() != null ? shift.getCheckOutEnd() : LocalTime.of(17, 30);
+        }
+        if (!to.isAfter(from)) return false;
+        LocalTime in = log.getCheckInAt().toLocalTime();
+        LocalTime out = log.getCheckOutAt().toLocalTime();
+        return !in.isAfter(from.plusMinutes(30)) && !out.isBefore(to.minusMinutes(30));
     }
 
     /** Ký hiệu ô công tương ứng (1.00 / 0.50 / 0.00). */
     public String workSymbol(Shift shift, AttendanceLog log) {
-        double units = workUnits(shift, log);
+        return workSymbol(shift, log, false);
+    }
+
+    /** Như {@link #workSymbol(Shift, AttendanceLog)}; {@code halfDay}: ngày có đơn nửa ngày. */
+    public String workSymbol(Shift shift, AttendanceLog log, boolean halfDay) {
+        double units = workUnits(shift, log, halfDay);
         if (units >= 1.0) return "1.00";
         if (units >= 0.5) return "0.50";
         return "0.00";

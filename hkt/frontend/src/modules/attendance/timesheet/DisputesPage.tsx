@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 interface Dispute {
   id: string; employee: string; date: string; reason: string; status: string; deadline?: string; daysLeft?: number;
   requestedKind?: string; requestedLeaveType?: string; requestedLeaveTypeName?: string;
+  requestedHalfDay?: string;
   requestedCheckIn?: string; requestedCheckOut?: string; attachmentCount?: number;
 }
 
@@ -222,10 +223,16 @@ export const DisputesPage: React.FC = () => {
               <div>
                 <Link to={`/attendance/disputes/${d.id}`} className="font-semibold hover:underline">{d.employee} · {d.date}</Link>
                 <div className="text-xs text-ink-muted">{d.reason}</div>
-                {kindOf(d) === 'WFH' && <div className="text-[11px] text-emerald-700">NV xin: công nhận làm việc từ xa (WFH)</div>}
+                {kindOf(d) === 'WFH' && (
+                  <div className="text-[11px] text-emerald-700">
+                    NV xin: công nhận làm việc từ xa (WFH)
+                    {d.requestedHalfDay ? (d.requestedHalfDay === 'MORNING' ? ' — nửa ngày sáng' : ' — nửa ngày chiều') : ''}
+                  </div>
+                )}
                 {kindOf(d) === 'LEAVE' && (
                   <div className="text-[11px] text-emerald-700">
                     NV xin: chuyển thành nghỉ — {d.requestedLeaveTypeName || d.requestedLeaveType || '—'}
+                    {d.requestedHalfDay ? (d.requestedHalfDay === 'MORNING' ? ' (nửa ngày sáng)' : ' (nửa ngày chiều)') : ''}
                   </div>
                 )}
                 {kindOf(d) === 'TIME_FIX' && (d.requestedCheckIn || d.requestedCheckOut) && (

@@ -14,6 +14,8 @@ export const DisputeDetailPage: React.FC = () => {
   // Chế độ HR chốt cho ngày đó — mặc định theo đúng nhân viên đã xin, HR đổi được trước khi duyệt.
   const [fixKind, setFixKind] = useState<'TIME_FIX' | 'WFH' | 'LEAVE'>('TIME_FIX');
   const [fixLeaveType, setFixLeaveType] = useState('');
+  // Nghỉ/WFH nửa ngày: buổi HR chốt — FULL = cả ngày. Ô công tương ứng AL/0.50, R/0.50, AL/R.
+  const [fixHalf, setFixHalf] = useState<'FULL' | 'MORNING' | 'AFTERNOON'>('FULL');
   const [fixReason, setFixReason] = useState('Đã đối chiếu 3 nguồn dữ liệu');
   const token = () => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken || ''; } catch { return ''; } };
   const headers = () => (token() ? { Authorization: `Bearer ${token()}` } : {});
@@ -31,6 +33,8 @@ export const DisputeDetailPage: React.FC = () => {
     setFixOut(data.requestedCheckOut || data.log?.checkOut || '');
     setFixKind((data.requestedKind as 'TIME_FIX' | 'WFH' | 'LEAVE') || 'TIME_FIX');
     setFixLeaveType(data.requestedLeaveType || '');
+    setFixHalf(data.requestedHalfDay === 'MORNING' || data.requestedHalfDay === 'AFTERNOON'
+      ? data.requestedHalfDay : 'FULL');
   }, [data]);
   useEffect(() => {
     fetch('/api/v1/leave-types', { headers: headers() }).then(r => r.json())
@@ -71,17 +75,19 @@ export const DisputeDetailPage: React.FC = () => {
       setError(`Loại nghỉ ${leaveTypes[fixLeaveType] || fixLeaveType} bắt buộc có giấy tờ đính kèm — khiếu nại này chưa có giấy tờ nên chưa duyệt được`);
       return;
     }
+    const halfLabel = fixHalf === 'MORNING' ? ' buổi sáng' : fixHalf === 'AFTERNOON' ? ' buổi chiều' : '';
     await post({
       action: 'FIX',
       reason: fixReason.trim(),
       requestedKind: fixKind,
       ...(fixKind === 'LEAVE' ? { requestedLeaveType: fixLeaveType } : {}),
-      ...(fixKind === 'TIME_FIX' ? { requestedCheckIn: fixIn, requestedCheckOut: fixOut } : {}),
+      ...(fixKind === 'TIME_FIX' ? { requestedCheckIn: fixIn, requestedCheckOut: fixOut }
+        : fixHalf === 'FULL' ? {} : { requestedHalfDay: fixHalf }),
     }, fixKind === 'TIME_FIX'
       ? 'Đã duyệt — giờ được ghi vào bảng công, ngày hôm đó đã tính lại công'
       : fixKind === 'WFH'
-        ? 'Đã duyệt — ngày này được công nhận làm việc từ xa'
-        : 'Đã duyệt — ngày này thành ngày nghỉ, quỹ phép đã trừ');
+        ? `Đã duyệt — ${halfLabel ? 'WFH' + halfLabel + ', ô công còn lại vẫn là công đi làm' : 'ngày này được công nhận làm việc từ xa'}`
+        : `Đã duyệt — ${halfLabel ? 'nghỉ' + halfLabel + ', quỹ phép trừ 0.5 ngày' : 'ngày này thành ngày nghỉ, quỹ phép đã trừ'}`);
   };
 
   const act = async (action: 'MAKEUP' | 'REJECT') => {
@@ -126,11 +132,15 @@ export const DisputeDetailPage: React.FC = () => {
           <div className="text-sm mt-2">
             <div className="text-ink">{data?.reason || '—'}</div>
             {data?.requestedKind === 'WFH' && (
-              <div className="text-[11px] mt-1 text-emerald-700">NV đề xuất: công nhận làm việc từ xa (WFH)</div>
+              <div className="text-[11px] mt-1 text-emerald-700">
+                NV đề xuất: công nhận làm việc từ xa (WFH)
+                {data?.requestedHalfDay ? (data.requestedHalfDay === 'MORNING' ? ' — nửa ngày buổi sáng' : ' — nửa ngày buổi chiều') : ''}
+              </div>
             )}
             {data?.requestedKind === 'LEAVE' && (
               <div className="text-[11px] mt-1 text-emerald-700">
                 NV đề xuất: chuyển thành nghỉ — {data?.requestedLeaveTypeName || data?.requestedLeaveType || '—'}
+                {data?.requestedHalfDay ? (data.requestedHalfDay === 'MORNING' ? ' (nửa ngày buổi sáng)' : ' (nửa ngày buổi chiều)') : ''}
               </div>
             )}
             {(!data?.requestedKind || data?.requestedKind === 'TIME_FIX') && (data?.requestedCheckIn || data?.requestedCheckOut) && (
@@ -238,10 +248,24 @@ export const DisputeDetailPage: React.FC = () => {
           </p>
             </>
           ) : (
+            <>
+            <label className="block text-xs">
+              <span className="block text-ink-muted mb-1">Thời lượng</span>
+              <select value={fixHalf} onChange={(e) => setFixHalf(e.target.value as typeof fixHalf)}
+                className="w-full border border-line rounded-lg p-2 text-xs text-ink">
+                <option value="FULL">Cả ngày</option>
+                <option value="MORNING">Nửa ngày — buổi sáng</option>
+                <option value="AFTERNOON">Nửa ngày — buổi chiều</option>
+              </select>
+            </label>
             <p className="text-[11px] text-ink-muted">
               {fixKind === 'WFH'
-                ? 'Duyệt sẽ tạo đơn WFH đã duyệt cho ngày này — không cần giờ vào/ra.'
-                : `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" đã duyệt và trừ 1 ngày quỹ phép.`}
+                ? (fixHalf === 'FULL'
+                  ? 'Duyệt sẽ tạo đơn WFH đã duyệt cho ngày này — không cần giờ vào/ra.'
+                  : `Duyệt sẽ tạo đơn WFH ${fixHalf === 'MORNING' ? 'buổi sáng' : 'buổi chiều'} — ô công hiện R/0.50, buổi còn lại vẫn tính công đi làm.`)
+                : (fixHalf === 'FULL'
+                  ? `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" đã duyệt và trừ 1 ngày quỹ phép.`
+                  : `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" ${fixHalf === 'MORNING' ? 'buổi sáng' : 'buổi chiều'} — ô công hiện ${(fixLeaveType || 'AL')}/0.50, quỹ phép trừ 0.5 ngày.`)}
               {fixKind === 'LEAVE' && leaveNeedsDoc[fixLeaveType] && (
                 <span className="block text-rose-600 mt-1">
                   ⚠ Loại nghỉ này bắt buộc có giấy tờ đính kèm
@@ -249,6 +273,7 @@ export const DisputeDetailPage: React.FC = () => {
                 </span>
               )}
             </p>
+            </>
           )}
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block text-xs">

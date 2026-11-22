@@ -24,6 +24,11 @@ public class TimesheetDispute {
     @Builder.Default private String requestedKind = "TIME_FIX";
     /** Mã loại nghỉ trong danh mục leave_types — chỉ dùng khi requestedKind = LEAVE. */
     @Column(name = "requested_leave_type", length = 20) private String requestedLeaveType;
+    /**
+     * Buổi của ngày nửa ngày (MORNING = xin nghỉ/WFH buổi sáng, chiều vẫn đi làm; AFTERNOON
+     * ngược lại). NULL = cả ngày. Chỉ dùng khi requestedKind = WFH hoặc LEAVE.
+     */
+    @Column(name = "requested_half_day", length = 10) private String requestedHalfDay;
     @Column(name = "status", nullable = false, length = 20) @Builder.Default private String status = "PENDING";
     @Column(name = "deadline") private LocalDateTime deadline;
     @Column(name = "resolution_action", length = 30) private String resolutionAction;
