@@ -893,7 +893,7 @@ export const OrgTreePage: React.FC = () => {
               <Network className="w-5 h-5 text-accent" />
               Cây Phân Tầng Quản Lý &amp; Sơ Đồ Cơ Cấu
             </h1>
-            <Badge variant="accent">S41 / P0 · A4</Badge>
+            <Badge variant="accent">P0 · A4</Badge>
           </div>
           <p className="text-xs text-ink-muted">
             Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động

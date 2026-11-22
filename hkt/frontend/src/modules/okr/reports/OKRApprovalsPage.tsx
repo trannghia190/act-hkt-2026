@@ -139,7 +139,7 @@ export const OKRApprovalsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu OKR Cấp Dưới (S42)</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu OKR Cấp Dưới</h1>
           <p className="text-xs text-ink-muted mt-1">
             Phê duyệt hoặc trả lại bộ mục tiêu 2 nhóm (Business & People) của nhân viên thuộc phạm vi quản lý trực tiếp.
           </p>

@@ -241,7 +241,7 @@ export const OKRReportsPage: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR — 9 Trường (S25)</h1>
+          <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR — 9 Trường</h1>
           <p className="text-xs text-ink-muted mt-1">Bảng tổng hợp HR · thời gian công tác tự tính · 4 widget · tóm tắt C15 · rủi ro · export Excel.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

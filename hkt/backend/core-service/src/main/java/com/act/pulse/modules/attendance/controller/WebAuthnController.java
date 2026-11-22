@@ -2,8 +2,9 @@ package com.act.pulse.modules.attendance.controller;
 
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
-import com.act.pulse.modules.attendance.entity.DeviceRegistration;
-import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
+import com.act.pulse.modules.attendance.entity.AuditLog;
+import com.act.pulse.modules.attendance.entity.PasskeyCredential;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.service.WebAuthnService;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
 import com.act.pulse.modules.auth.entity.User;
@@ -17,25 +18,27 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * WebAuthn/Passkey cho lớp khóa thiết bị phần cứng (Lớp 4).
- * Client chỉ gửi public credential; private key không bao giờ rời thiết bị.
+ * WebAuthn/Passkey dùng cho ĐĂNG NHẬP nhanh (passwordless).
+ * <p>Không liên quan tới chấm công — chấm công dùng thiết bị đã đăng ký + khuôn mặt.
+ * Client chỉ gửi public credential; private key không bao giờ rời thiết bị.</p>
  */
 @RestController
 @RequestMapping("/webauthn")
 @RequiredArgsConstructor
-@Tag(name = "9. WebAuthn / Passkey API", description = "Đăng ký passkey thiết bị và ký challenge khi chấm công")
+@Tag(name = "9. WebAuthn / Passkey API", description = "Đăng ký và đăng nhập bằng passkey")
 public class WebAuthnController {
 
     private final WebAuthnService webAuthnService;
     private final AuthService authService;
-    private final DeviceRegistrationRepository deviceRepository;
     private final UserRepository userRepository;
+    private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
     @Data
@@ -54,31 +57,10 @@ public class WebAuthnController {
     }
 
     @PostMapping("/register/verify")
-    @Operation(summary = "Xác minh attestation và lưu public key thiết bị")
+    @Operation(summary = "Xác minh attestation và lưu public key passkey")
     public ApiResponse<Map<String, Object>> registerVerify(@RequestBody VerifyRequest body) {
         return ApiResponse.ok(webAuthnService.finishRegistration(currentUser(), body.getChallengeId(),
                 credentialJson(body)), "Đăng ký WebAuthn");
-    }
-
-    @PostMapping("/assert/options")
-    @Operation(summary = "Lấy challenge để ký khi chấm công")
-    public ApiResponse<Map<String, Object>> assertOptions(
-            @RequestHeader(value = "Origin", required = false) String origin,
-            @RequestHeader(value = "X-App-Origin", required = false) String appOrigin) {
-        return ApiResponse.ok(webAuthnService.startAssertion(currentUser(), originOf(origin, appOrigin)),
-                "Yêu cầu xác thực WebAuthn");
-    }
-
-    @PostMapping("/assert/verify")
-    @Operation(summary = "Xác minh chữ ký challenge — thiết bị phải đã được duyệt")
-    public ApiResponse<Map<String, Object>> assertVerify(@RequestBody VerifyRequest body) {
-        DeviceRegistration device = webAuthnService.finishAssertion(currentUser(), body.getChallengeId(),
-                credentialJson(body));
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("deviceId", device.getId());
-        out.put("verified", true);
-        out.put("lastActiveAt", device.getLastActiveAt());
-        return ApiResponse.ok(out, "Thiết bị đã xác thực");
     }
 
     /** Đăng nhập bằng passkey (usernameless): endpoint công khai, không cần JWT. */
@@ -104,18 +86,48 @@ public class WebAuthnController {
         return ApiResponse.ok(authService.loginWithPasskey(user), "Đăng nhập bằng passkey thành công");
     }
 
-    /** Trạng thái khóa thiết bị — UI hiển thị nhắc đăng ký passkey trước khi chấm công. */
+    /** Trạng thái passkey của tài khoản — dùng cho trang "Passkey & bảo mật". */
     @GetMapping("/status")
-    @Operation(summary = "Thiết bị hiện tại có passkey đã duyệt chưa")
+    @Operation(summary = "Tài khoản đã có passkey chưa + danh sách passkey")
     public ApiResponse<Map<String, Object>> status() {
-        UUID userId = CurrentUser.userId();
-        List<DeviceRegistration> approved = deviceRepository.findByUserIdAndIsApprovedTrue(userId);
-        boolean hasApprovedPasskey = approved.stream()
-                .anyMatch(d -> d.isHasPasskey() && d.getRevokedAt() == null);
+        User user = currentUser();
+        List<PasskeyCredential> passkeys = webAuthnService.listPasskeys(user).stream()
+                .filter(p -> p.getRevokedAt() == null)
+                .toList();
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("hasPasskey", hasApprovedPasskey);
-        out.put("approvedDevices", approved.size());
+        out.put("hasPasskey", !passkeys.isEmpty());
+        out.put("credentials", passkeys.stream().map(p -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", p.getId());
+            item.put("label", p.getLabel());
+            item.put("createdAt", p.getCreatedAt());
+            item.put("lastUsedAt", p.getLastUsedAt());
+            return item;
+        }).toList());
         return ApiResponse.ok(out, "Trạng thái WebAuthn");
+    }
+
+    @DeleteMapping("/credentials/{id}")
+    @Operation(summary = "Gỡ một passkey của chính mình")
+    public ApiResponse<Map<String, Object>> removePasskey(@PathVariable UUID id) {
+        User user = currentUser();
+        String label = webAuthnService.listPasskeys(user).stream()
+                .filter(p -> p.getId().equals(id))
+                .map(PasskeyCredential::getLabel)
+                .findFirst().orElse("Passkey");
+        webAuthnService.removePasskey(user, id);
+        audit("REMOVE_PASSKEY", id, "Gỡ passkey " + label);
+        return ApiResponse.ok(Map.of("removed", true), "Đã gỡ passkey");
+    }
+
+    private void audit(String action, UUID passkeyId, String reason) {
+        AuditLog log = AuditLog.builder()
+                .action(action).entityName("PASSKEY").entityId(String.valueOf(passkeyId))
+                .userId(CurrentUser.userId()).userCode(CurrentUser.employeeCode())
+                .newValue("REVOKED").reason(reason)
+                .build();
+        log.setCreatedAt(LocalDateTime.now());
+        auditLogRepository.save(log);
     }
 
     private User currentUser() {

@@ -403,7 +403,7 @@ export const TodoInboxPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Cần Làm (Todo Inbox)</h1>
-            <Badge variant="accent">S02 · Trang Mặc Định</Badge>
+            <Badge variant="accent">Trang Mặc Định</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Trung tâm gom mọi việc đang chờ của CẢ 2 module: Chấm công ra vào, check-in OKR, đơn từ và các phê duyệt của quản lý
@@ -438,7 +438,7 @@ export const TodoInboxPage: React.FC = () => {
             <Sun className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Số dư phép năm cá nhân (S02 / C1)</div>
+            <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Số dư phép năm cá nhân</div>
             <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
               <span className="text-accent text-2xl font-extrabold">{leaveSummary.totalRemaining} ngày</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">

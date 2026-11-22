@@ -29,10 +29,4 @@ public class CheckInRequest {
 
     /** Danh sách frame liên tiếp để kiểm tra liveness (chuyển động thật). */
     private List<String> livenessFrames;
-
-    /** WebAuthn/Passkey: challengeId lấy từ /webauthn/assert/options. */
-    private String webauthnChallengeId;
-
-    /** PublicKeyCredential JSON đã ký bằng passkey (Base64URL). */
-    private String webauthnCredential;
 }

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/common/Button';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
+
+/** Hạn mức thiết bị mặc định — khớp attendance_security.max_devices bên backend. */
+const MAX_DEVICES = 2;
 
 export const AddDevicePage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,13 +21,36 @@ export const AddDevicePage: React.FC = () => {
   const [activeNow, setActiveNow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Còn hạn mức → kích hoạt ngay; hết hạn mức mới phải nhập lý do + chờ HR duyệt.
+  const [withinQuota, setWithinQuota] = useState<boolean | null>(null);
 
   const [fingerprint] = useState(getDeviceFingerprint());
 
+  useEffect(() => {
+    const token = (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
+        return u?.accessToken || '';
+      } catch {
+        return '';
+      }
+    })();
+    fetch('/api/v1/devices', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => r.json())
+      .then((j) => {
+        const approved = Array.isArray(j?.data)
+          ? j.data.filter((d: any) => d.isApproved && !d.revokedAt).length
+          : 0;
+        setWithinQuota(approved < MAX_DEVICES);
+      })
+      .catch(() => setWithinQuota(false));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) {
-      setError('Bắt buộc nhập lý do khi yêu cầu thêm thiết bị');
+    if (withinQuota === null) return;
+    if (!withinQuota && !reason.trim()) {
+      setError(`Bắt buộc nhập lý do khi đăng ký quá ${MAX_DEVICES} thiết bị`);
       return;
     }
     setError(null);
@@ -50,7 +76,7 @@ export const AddDevicePage: React.FC = () => {
         body: JSON.stringify({
           fingerprint,
           deviceName,
-          reason: reason.trim(),
+          reason: reason.trim() || 'Đăng ký thiết bị trong hạn mức',
           wifiBssid: 'ACT_OFFICE_5G',
         }),
       });
@@ -61,7 +87,7 @@ export const AddDevicePage: React.FC = () => {
         if (res.status === 403) {
           setError('Yêu cầu thêm thiết bị chỉ nhận từ mạng nội bộ công ty (Wi-Fi ACT_OFFICE_5G).');
         } else {
-          setError(json?.message || `Gửi yêu cầu thất bại (HTTP ${res.status})`);
+          setError(json?.message || `Đăng ký thiết bị thất bại (HTTP ${res.status})`);
         }
         setLoading(false);
         return;
@@ -79,9 +105,9 @@ export const AddDevicePage: React.FC = () => {
   return (
     <div className="max-w-xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <h1 className="text-xl font-bold text-ink mt-1">Đăng ký thêm thiết bị (S29)</h1>
+        <h1 className="text-xl font-bold text-ink mt-1">Đăng ký thiết bị đang dùng</h1>
         <p className="text-xs text-ink-muted mt-1">
-          Một flow duy nhất: Thiết bị mặc định 2 máy. Muốn thêm máy thứ 3 phải có lý do và chờ HR duyệt từ mạng nội bộ công ty.
+          Trang này đăng ký chính trình duyệt/thiết bị bạn đang mở. Hạn mức mặc định 2 máy; máy thứ 3 trở đi cần lý do và chờ HR duyệt từ mạng nội bộ công ty.
         </p>
       </div>
 
@@ -95,7 +121,7 @@ export const AddDevicePage: React.FC = () => {
         <div className="bg-surface border border-emerald-200 rounded-xl p-6 text-center space-y-3">
           <div className="text-3xl text-emerald-600">✓</div>
           <h2 className="text-sm font-bold text-emerald-800">
-            {activeNow ? 'Thiết bị đầu tiên đã được kích hoạt' : 'Yêu cầu đã được gửi thành công'}
+            {activeNow ? 'Thiết bị đã được kích hoạt' : 'Yêu cầu đã được gửi thành công'}
           </h2>
           <p className="text-xs text-ink-muted">
             {activeNow ? (
@@ -134,27 +160,35 @@ export const AddDevicePage: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">
-              Lý do cần thêm thiết bị <span className="text-rose-500">* (Bắt buộc)</span>
-            </label>
-            <textarea
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="VD: Đổi máy mới do điện thoại cũ bị hỏng màn hình..."
-            />
-            <p className="text-[11px] text-ink-muted mt-1">
-              Thiếu lý do hệ thống sẽ không cho phép gửi yêu cầu.
-            </p>
-          </div>
+          {withinQuota === true ? (
+            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] text-emerald-800">
+              Bạn còn hạn mức thiết bị — bấm đăng ký là dùng được ngay, không cần lý do hay chờ HR duyệt.
+            </div>
+          ) : withinQuota === false ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Lý do cần thêm thiết bị <span className="text-rose-500">* (Bắt buộc)</span>
+                </label>
+                <textarea
+                  className="w-full border border-line rounded-lg p-2.5 text-xs bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                  rows={3}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="VD: Đổi máy mới do điện thoại cũ bị hỏng màn hình..."
+                />
+                <p className="text-[11px] text-ink-muted mt-1">
+                  Bạn đã đủ {MAX_DEVICES} thiết bị — thiếu lý do hệ thống sẽ không cho phép gửi yêu cầu.
+                </p>
+              </div>
 
-          <div className="p-3 bg-canvas-subtle rounded-lg border border-line text-[11px] text-ink-muted space-y-1">
-            <div className="font-semibold text-ink">Quy định phê duyệt:</div>
-            <div>• Chỉ gửi được yêu cầu từ mạng nội bộ công ty (ACT_OFFICE_5G).</div>
-            <div>• Yêu cầu có thời hạn hiệu lực 30 ngày trong hàng chờ của HR.</div>
-          </div>
+              <div className="p-3 bg-canvas-subtle rounded-lg border border-line text-[11px] text-ink-muted space-y-1">
+                <div className="font-semibold text-ink">Quy định phê duyệt:</div>
+                <div>• Chỉ gửi được yêu cầu từ mạng nội bộ công ty (ACT_OFFICE_5G).</div>
+                <div>• Yêu cầu có thời hạn hiệu lực 30 ngày trong hàng chờ của HR.</div>
+              </div>
+            </>
+          ) : null}
 
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" variant="outline" size="sm" onClick={() => navigate('/attendance/devices')}>
@@ -162,10 +196,14 @@ export const AddDevicePage: React.FC = () => {
             </Button>
             <button
               type="submit"
-              disabled={!reason.trim() || loading}
+              disabled={withinQuota === null || (!withinQuota && !reason.trim()) || loading}
               className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-hover transition-colors"
             >
-              {loading ? 'Đang gửi...' : 'Gửi yêu cầu chờ HR duyệt'}
+              {withinQuota === null
+                ? 'Đang kiểm tra hạn mức...'
+                : loading
+                  ? 'Đang xử lý...'
+                  : withinQuota ? 'Thêm thiết bị' : 'Gửi yêu cầu chờ HR duyệt'}
             </button>
           </div>
         </form>
