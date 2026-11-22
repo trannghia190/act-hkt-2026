@@ -201,7 +201,7 @@ export const EmployeeManagementPage: React.FC = () => {
     if (!selectedEmp) return;
 
     if (!changeManagerReason.trim()) {
-      setManagerError('Lý do đổi quản lý là bắt buộc theo quy định kiểm toán S40.');
+      setManagerError('Lý do đổi quản lý là bắt buộc theo quy định kiểm toán.');
       return;
     }
     if (!newManagerId) {
@@ -377,7 +377,7 @@ export const EmployeeManagementPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Nhân Viên &amp; Sơ Đồ Duyệt</h1>
-            <Badge variant="accent">S40 / P0</Badge>
+            <Badge variant="accent">P0</Badge>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Mọi luồng duyệt bắt đầu từ một câu hỏi: ai duyệt cho ai. Quản lý phân nhóm linh hoạt, chuỗi cấp trên, đổi quản lý bảo lưu đơn chờ
@@ -406,7 +406,7 @@ export const EmployeeManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Metrics Summary Strip (S40) */}
+      {/* Metrics Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
           <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
@@ -542,7 +542,7 @@ export const EmployeeManagementPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Employee List Table with Approval Chain (S40) */}
+      {/* Employee List Table with Approval Chain */}
       <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -816,7 +816,7 @@ export const EmployeeManagementPage: React.FC = () => {
         <Modal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          title="Thêm Nhân Viên Mới Vào Tổ Chức (S40)"
+          title="Thêm Nhân Viên Mới Vào Tổ Chức"
         >
           <form onSubmit={handleCreateEmployee} className="space-y-4 text-xs">
             {/* Hướng dẫn an ninh & Gmail */}
@@ -871,7 +871,7 @@ export const EmployeeManagementPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-ink">Mật Khẩu Mặc Định Khởi Tạo *</label>
-                <span className="text-[10px] text-amber-500 font-bold">Bắt buộc đổi pass lần đầu (S01-A)</span>
+                <span className="text-[10px] text-amber-500 font-bold">Bắt buộc đổi pass lần đầu</span>
               </div>
               <div className="relative">
                 <input
@@ -1011,7 +1011,7 @@ export const EmployeeManagementPage: React.FC = () => {
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-[11px] space-y-1">
               <div className="font-bold flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-amber-400" />
-                <span>Quy định bảo mật lần đầu đăng nhập (S01-A)</span>
+                <span>Quy định bảo mật lần đầu đăng nhập</span>
               </div>
               <p className="text-amber-200/80 leading-relaxed">
                 Khi nhân viên đăng nhập bằng mật khẩu mặc định này tại <code>/login</code>, hệ thống sẽ cưỡng chế hiển thị giao diện đổi mật khẩu bắt buộc trước khi cấp quyền truy cập các tính năng chấm công và xin đơn.
@@ -1151,7 +1151,7 @@ export const EmployeeManagementPage: React.FC = () => {
                     <div>
                       <span className="text-ink-muted block text-[10px]">Đổi mật khẩu lần đầu:</span>
                       <strong className={viewDetailEmp.mustChangePassword ? 'text-amber-400' : 'text-emerald-400'}>
-                        {viewDetailEmp.mustChangePassword ? 'Chờ đổi pass (S01-A)' : 'Đã hoàn tất đổi mật khẩu'}
+                        {viewDetailEmp.mustChangePassword ? 'Chờ đổi pass' : 'Đã hoàn tất đổi mật khẩu'}
                       </strong>
                     </div>
                     {viewDetailEmp.mustChangePassword && (

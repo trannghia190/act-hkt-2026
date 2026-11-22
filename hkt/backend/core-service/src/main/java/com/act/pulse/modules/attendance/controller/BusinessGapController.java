@@ -733,26 +733,6 @@ public class BusinessGapController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
-        if (request.getReason() == null || request.getReason().trim().isEmpty()) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "Bắt buộc nhập lý do khi yêu cầu thêm thiết bị");
-        }
-
-        // Kiểm tra mạng nội bộ công ty (Criterion B6 #5)
-        String wifi = request.getWifiBssid();
-        String remoteAddr = httpRequest.getRemoteAddr();
-        String fwd = httpRequest.getHeader("X-Forwarded-For");
-        String officeHeader = httpRequest.getHeader("X-Office-Network");
-        boolean isOffice = (wifi != null && (wifi.toLowerCase().contains("act_office") || wifi.toLowerCase().contains("act-office")))
-                || "true".equalsIgnoreCase(officeHeader)
-                || isLocalOrOfficeIp(remoteAddr)
-                || isLocalOrOfficeIp(fwd);
-
-        if (!isOffice) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, "Yêu cầu thêm thiết bị chỉ nhận từ mạng nội bộ công ty");
-        }
-
         String fp = (request.getFingerprint() != null && !request.getFingerprint().isBlank())
                 ? request.getFingerprint()
                 : "web-" + UUID.randomUUID().toString().substring(0, 8);
@@ -763,19 +743,46 @@ public class BusinessGapController {
                     org.springframework.http.HttpStatus.CONFLICT,
                     "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi");
         }
+
+        // Còn hạn mức (mặc định 2 máy) thì thêm thẳng, không cần lý do/HR duyệt.
+        // Từ máy vượt hạn mức mới phải gửi yêu cầu từ mạng nội bộ công ty.
+        int maxDevices = ruleService.getInt("attendance_security", "max_devices", 2);
+        boolean alreadyApproved = existing != null && Boolean.TRUE.equals(existing.getIsApproved());
+        long approvedCount = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId);
+        boolean withinQuota = alreadyApproved || approvedCount < maxDevices;
+
+        if (!withinQuota) {
+            if (request.getReason() == null || request.getReason().trim().isEmpty()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Bắt buộc nhập lý do khi đăng ký quá " + maxDevices + " thiết bị");
+            }
+
+            // Kiểm tra mạng nội bộ công ty (Criterion B6 #5)
+            String wifi = request.getWifiBssid();
+            String remoteAddr = httpRequest.getRemoteAddr();
+            String fwd = httpRequest.getHeader("X-Forwarded-For");
+            String officeHeader = httpRequest.getHeader("X-Office-Network");
+            boolean isOffice = (wifi != null && (wifi.toLowerCase().contains("act_office") || wifi.toLowerCase().contains("act-office")))
+                    || "true".equalsIgnoreCase(officeHeader)
+                    || isLocalOrOfficeIp(remoteAddr)
+                    || isLocalOrOfficeIp(fwd);
+
+            if (!isOffice) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "Yêu cầu thêm thiết bị chỉ nhận từ mạng nội bộ công ty");
+            }
+        }
+
         DeviceRegistration device = existing != null ? existing : DeviceRegistration.builder()
                 .userId(userId)
                 .deviceFingerprint(fp)
                 .build();
 
-        // Máy đầu tiên của mỗi người được tự duyệt giống luồng chấm công lần đầu
-        // (AttendanceServiceImpl): cùng một hành động phải ra cùng kết quả.
-        boolean firstDevice = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId) == 0;
-
         device.setUserId(userId);
         device.setDeviceModel(request.getDeviceName() != null ? request.getDeviceName() : "Web Device");
         device.setOsVersion("Web");
-        if (!Boolean.TRUE.equals(device.getIsApproved())) device.setIsApproved(firstDevice);
+        if (!Boolean.TRUE.equals(device.getIsApproved())) device.setIsApproved(withinQuota);
         device.setExpiresAt(LocalDateTime.now().plusDays(30));
         device.setUpdatedAt(LocalDateTime.now());
         if (device.getCreatedAt() == null) device.setCreatedAt(LocalDateTime.now());
@@ -795,7 +802,7 @@ public class BusinessGapController {
         auditLogRepository.save(audit);
 
         return ApiResponse.ok(saved, Boolean.TRUE.equals(saved.getIsApproved())
-                ? "Thiết bị đầu tiên đã được kích hoạt — dùng để chấm công ngay"
+                ? "Thiết bị đã được kích hoạt — dùng để chấm công ngay"
                 : "Đã gửi yêu cầu — chờ HR duyệt");
     }
 

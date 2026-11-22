@@ -67,6 +67,7 @@ export const COMMON_GROUPS: NavGroup[] = [
     items: [
       { id: 'policy', label: 'Quy định tra cứu', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
       { id: 'device', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
+      { id: 'passkey', label: 'Passkey & bảo mật', path: '/account/passkey', icon: 'Shield', screenId: 'S28m' },
     ],
   },
 ];
