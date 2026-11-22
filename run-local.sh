@@ -377,6 +377,7 @@ print_dashboard() {
     echo "    136ACT → Nhân viên  (tự chấm công, tạo đơn, xem phép/bảng công)"
     echo "    137ACT → QA/Nhân viên (tài khoản độc lập: sổ phép mẫu + log thiếu giờ ra hôm qua)"
     echo "    138ACT → Trưởng nhóm Optimus (thấy lịch nhóm mình, không phải toàn công ty)"
+    echo "    179ACT → Hoàng Quyên (vào 01/06/2025: phép tồn 2025, cộng phép tháng, chưa thâm niên)"
   fi
   echo "=================================================================="
   echo

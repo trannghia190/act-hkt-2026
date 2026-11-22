@@ -51,6 +51,7 @@ export const COMMON_GROUPS: NavGroup[] = [
       { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
       { id: 'balance', label: 'Số dư phép', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
       { id: 'mytime', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
+      { id: 'policy', label: 'Quy định tra cứu', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
     ],
   },
   {
@@ -63,9 +64,9 @@ export const COMMON_GROUPS: NavGroup[] = [
     ],
   },
   {
-    groupName: 'Chung',
+    groupName: 'Cá nhân',
     items: [
-      { id: 'policy', label: 'Quy định tra cứu', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
+      { id: 'profile', label: 'Hồ sơ cá nhân', path: '/account/profile', icon: 'UserCircle', screenId: 'S29' },
       { id: 'device', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
       { id: 'passkey', label: 'Passkey & bảo mật', path: '/account/passkey', icon: 'Shield', screenId: 'S28m' },
     ],

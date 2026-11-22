@@ -21,7 +21,16 @@ public class CheckInRequest {
     private BigDecimal latitude;
     private BigDecimal longitude;
     private BigDecimal accuracyMeters;
+
+    /**
+     * @deprecated Chấm công ngoại tuyến đã bị bỏ. Giữ field để từ chối tường minh
+     *             mọi request cũ bằng OFFLINE_NOT_SUPPORTED.
+     */
+    @Deprecated
     private Boolean isOffline = false;
+
+    /** @deprecated Xem {@link #isOffline}. */
+    @Deprecated
     private java.time.LocalDateTime offlinePunchedAt;
 
     /** Fingerprint thiết bị (canvas + screen + user-agent hash) để đối chiếu thiết bị đã đăng ký. */

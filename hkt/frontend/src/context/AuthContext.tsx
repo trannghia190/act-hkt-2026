@@ -11,6 +11,7 @@ export interface PasskeySession {
   fullName?: string;
   email?: string;
   role: string;
+  avatarUrl?: string;
   faceEnrolled?: boolean;
   mustChangePassword?: boolean;
   status?: string;
@@ -91,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? fallbackEmail
         : `${authData.employeeCode.toLowerCase()}@act-corp.internal`),
       role: authData.role as UserRole,
+      avatarUrl: authData.avatarUrl,
       accessToken: authData.accessToken,
       refreshToken: authData.refreshToken,
       faceEnrolled: authData.faceEnrolled ?? true,

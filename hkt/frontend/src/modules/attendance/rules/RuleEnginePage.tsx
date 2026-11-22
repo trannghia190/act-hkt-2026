@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RuleFieldEditor } from './RuleFieldEditor';
+import { OfficeLocationMap } from './OfficeLocationMap';
 import { RuleValueSummary } from './RuleValueSummary';
 import { fieldMeta } from './ruleFieldMeta';
 
@@ -159,7 +160,6 @@ export const RuleEnginePage: React.FC = () => {
   };
 
   const isFieldVisible = (key: string, values: Record<string, any>): boolean => {
-    if (key === 'offline_max_hours') return Boolean(values.allow_offline_punch);
     if (key === 'geofence_radius_m' || key === 'gps_accuracy_tolerance_m' || key === 'office_lat' || key === 'office_lng') {
       return Boolean(values.require_geofence);
     }
@@ -263,8 +263,24 @@ export const RuleEnginePage: React.FC = () => {
             {editing.description && <div className="text-xs text-ink-secondary">{editing.description}</div>}
             <div className="text-xs font-semibold">Thiết lập quy định</div>
             <div className="grid sm:grid-cols-2 gap-2 max-h-[50vh] overflow-auto pr-1">
+              {editing.ruleKey === 'attendance_security' && formValues && isFieldVisible('office_lat', formValues) && (
+                <OfficeLocationMap
+                  lat={Number.isFinite(Number(formValues.office_lat)) ? Number(formValues.office_lat) : 21.0285}
+                  lng={Number.isFinite(Number(formValues.office_lng)) ? Number(formValues.office_lng) : 105.8542}
+                  radius={Number(formValues.geofence_radius_m) || 150}
+                  onChange={(lat, lng) =>
+                    setFormValues((v) => ({
+                      ...v,
+                      office_lat: Number(lat.toFixed(6)),
+                      office_lng: Number(lng.toFixed(6)),
+                    }))
+                  }
+                  onRadiusChange={(r) => setFormValues((v) => ({ ...v, geofence_radius_m: r }))}
+                />
+              )}
               {Object.entries(formValues || {})
                 .filter(([key]) => isFieldVisible(key, formValues))
+                .filter(([key]) => !(key === 'office_lat' || key === 'office_lng' || key === 'geofence_radius_m'))
                 .map(([key, value]) => renderField(key, value))}
             </div>
             <div className="grid sm:grid-cols-2 gap-3">

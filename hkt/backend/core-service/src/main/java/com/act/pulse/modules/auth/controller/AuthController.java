@@ -3,7 +3,9 @@ package com.act.pulse.modules.auth.controller;
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
+import com.act.pulse.modules.auth.dto.request.UpdateProfileRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
+import com.act.pulse.modules.auth.dto.response.ProfileResponse;
 import com.act.pulse.modules.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -108,6 +110,18 @@ public class AuthController {
         data.put("employeeCode", code != null ? code : "Admin");
         data.put("role", role != null ? role : "ADMIN");
         return ApiResponse.ok(data, "Thông tin tài khoản");
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "Hồ sơ cá nhân đầy đủ của tài khoản đang đăng nhập")
+    public ApiResponse<ProfileResponse> profile() {
+        return ApiResponse.ok(authService.getMyProfile(), "Hồ sơ cá nhân");
+    }
+
+    @PutMapping("/profile")
+    @Operation(summary = "Nhân viên tự cập nhật tên hiển thị, số điện thoại và avatar")
+    public ApiResponse<ProfileResponse> updateProfile(@RequestBody UpdateProfileRequest request) {
+        return ApiResponse.ok(authService.updateMyProfile(request), "Đã cập nhật hồ sơ cá nhân");
     }
 
     @PostMapping("/reset-password-request")

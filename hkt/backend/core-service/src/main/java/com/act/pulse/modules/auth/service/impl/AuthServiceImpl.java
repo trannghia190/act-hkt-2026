@@ -1,9 +1,15 @@
 package com.act.pulse.modules.auth.service.impl;
 
+import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.common.security.JwtService;
 import com.act.pulse.common.service.EmailService;
+import com.act.pulse.modules.attendance.entity.Team;
+import com.act.pulse.modules.attendance.repository.PasskeyCredentialRepository;
+import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
+import com.act.pulse.modules.auth.dto.request.UpdateProfileRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
+import com.act.pulse.modules.auth.dto.response.ProfileResponse;
 import com.act.pulse.modules.auth.entity.LoginAttempt;
 import com.act.pulse.modules.auth.entity.RefreshToken;
 import com.act.pulse.modules.auth.entity.User;
@@ -23,6 +29,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,6 +59,8 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptService loginAttemptService;
     private final FaceProfileRepository faceProfileRepository;
+    private final TeamRepository teamRepository;
+    private final PasskeyCredentialRepository passkeyCredentialRepository;
 
     @Override
     @Transactional
@@ -147,9 +156,11 @@ public class AuthServiceImpl implements AuthService {
                 .employeeCode(user.getEmployeeCode())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .avatarUrl(user.getAvatarUrl())
                 .mustChangePassword(forceChangePassword)
-                .faceEnrolled(Boolean.TRUE.equals(user.getFaceEnrolled())
-                        && faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
+                // Hồ sơ active là nguồn sự thật — cờ users.face_enrolled có thể lệch nếu
+                // lần đồng bộ Core trước đó thất bại (vector do AI Face Service ghi).
+                .faceEnrolled(faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
                 .build();
     }
 
@@ -198,9 +209,11 @@ public class AuthServiceImpl implements AuthService {
                 .employeeCode(user.getEmployeeCode())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .avatarUrl(user.getAvatarUrl())
                 .mustChangePassword(forceChangePassword)
-                .faceEnrolled(Boolean.TRUE.equals(user.getFaceEnrolled())
-                        && faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
+                // Hồ sơ active là nguồn sự thật — cờ users.face_enrolled có thể lệch nếu
+                // lần đồng bộ Core trước đó thất bại (vector do AI Face Service ghi).
+                .faceEnrolled(faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
                 .build();
     }
 
@@ -281,25 +294,14 @@ public class AuthServiceImpl implements AuthService {
         }
         userRepository.save(user);
 
-        // Ensure active FaceProfile in database for pgvector consistency
+        // Vector do AI Face Service ghi vào face_profiles trước khi gọi endpoint này.
+        // Core chỉ bật hồ sơ (status/enrolled_at) — KHÔNG ghi embedding.
         FaceProfile fp = faceProfileRepository.findByUserId(user.getId())
-                .orElse(FaceProfile.builder().userId(user.getId()).build());
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Chưa có hồ sơ khuôn mặt từ dịch vụ AI. Vui lòng chụp lại và đăng ký lại."));
         fp.setStatus("active");
         fp.setEnrolledAt(LocalDateTime.now());
-        if (embedding != null && embedding.length > 0) {
-            float[] finalVector = embedding;
-            if (embedding.length < 512) {
-                finalVector = new float[512];
-                System.arraycopy(embedding, 0, finalVector, 0, embedding.length);
-            }
-            fp.setEmbedding(finalVector);
-            faceProfileRepository.save(fp);
-        } else if (fp.getEmbedding() != null) {
-            // Already has embedding in PostgreSQL
-            faceProfileRepository.save(fp);
-        } else {
-            log.info("Face profile activated without direct embedding vector for employee: {}", employeeCode);
-        }
+        faceProfileRepository.save(fp);
 
         log.info("Enrolled face profile for employee: {}", employeeCode);
         return true;
@@ -467,5 +469,110 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void sendNotification(String toEmail, String fullName, String requestId, String requestType, String decision, String approverName, String approverComment) {
         emailService.sendRequestDecisionNotification(toEmail, fullName, requestId, requestType, decision, approverName, approverComment);
+    }
+
+    // ── Hồ sơ cá nhân ────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfileResponse getMyProfile() {
+        return toProfileResponse(requireCurrentUser());
+    }
+
+    @Override
+    @Transactional
+    public ProfileResponse updateMyProfile(UpdateProfileRequest req) {
+        User user = requireCurrentUser();
+
+        if (req.getFullName() != null) {
+            String fullName = req.getFullName().trim();
+            if (fullName.isEmpty()) {
+                throw new RuntimeException("Họ tên không được để trống");
+            }
+            if (fullName.length() > 150) {
+                throw new RuntimeException("Họ tên không được vượt quá 150 ký tự");
+            }
+            user.setFullName(fullName);
+        }
+
+        if (req.getPhone() != null) {
+            String phone = req.getPhone().trim();
+            if (phone.length() > 20) {
+                throw new RuntimeException("Số điện thoại không được vượt quá 20 ký tự");
+            }
+            if (!phone.isEmpty() && !phone.matches("[0-9+()\\-\\s.]+")) {
+                throw new RuntimeException("Số điện thoại không hợp lệ");
+            }
+            user.setPhone(phone.isEmpty() ? null : phone);
+        }
+
+        if (req.getAvatarUrl() != null) {
+            String avatarUrl = req.getAvatarUrl().trim();
+            if (avatarUrl.isEmpty()) {
+                user.setAvatarUrl(null);
+            } else {
+                if (!avatarUrl.matches("^data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$")) {
+                    throw new RuntimeException("Ảnh đại diện không hợp lệ (chỉ nhận PNG/JPEG/WEBP)");
+                }
+                if (avatarUrl.length() > 400_000) {
+                    throw new RuntimeException("Ảnh đại diện quá lớn — vui lòng chọn ảnh nhỏ hơn");
+                }
+                user.setAvatarUrl(avatarUrl);
+            }
+        }
+
+        userRepository.save(user);
+        log.info("Nhân viên {} cập nhật hồ sơ cá nhân", user.getEmployeeCode());
+        return toProfileResponse(user);
+    }
+
+    private User requireCurrentUser() {
+        UUID userId = CurrentUser.userId();
+        if (userId == null) {
+            throw new RuntimeException("Chưa đăng nhập");
+        }
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản đang đăng nhập"));
+    }
+
+    private ProfileResponse toProfileResponse(User user) {
+        String teamName = null;
+        String departmentName = null;
+        if (user.getTeamId() != null) {
+            Team team = teamRepository.findById(user.getTeamId()).orElse(null);
+            if (team != null) {
+                teamName = team.getName();
+                if (team.getParentId() != null) {
+                    departmentName = teamRepository.findById(team.getParentId())
+                            .map(Team::getName).orElse(null);
+                }
+            }
+        }
+
+        User manager = user.getManagerId() == null ? null
+                : userRepository.findById(user.getManagerId()).orElse(null);
+        LocalDate hireDate = user.getHireDate() != null ? user.getHireDate() : user.getJoinedDate();
+
+        return ProfileResponse.builder()
+                .employeeCode(user.getEmployeeCode())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
+                .role(user.getRole())
+                .teamName(teamName)
+                .departmentName(departmentName)
+                .positionName(user.getPositionName())
+                .managerCode(manager != null ? manager.getEmployeeCode() : null)
+                .managerName(manager != null ? manager.getFullName() : null)
+                .hireDate(hireDate != null ? hireDate.toString() : null)
+                .status(user.getStatus())
+                // Hồ sơ active là nguồn sự thật — cờ users.face_enrolled có thể lệch nếu
+                // lần đồng bộ Core trước đó thất bại (vector do AI Face Service ghi).
+                .faceEnrolled(faceProfileRepository.existsByUserIdAndStatus(user.getId(), "active"))
+                .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
+                .hasPasskey(passkeyCredentialRepository
+                        .countByUserIdAndRevokedAtIsNull(user.getId()) > 0)
+                .build();
     }
 }

@@ -9,4 +9,7 @@ public interface AttendanceService {
     CheckInResponse checkIn(UUID userId, CheckInRequest request);
     CheckInResponse checkOut(UUID userId, CheckInRequest request);
     Map<String, Object> getTodayStatus(UUID userId);
+
+    /** Chẩn đoán lớp "mạng nội bộ": IP server thấy, tiền tố khớp/không khớp, quy định đang áp dụng. */
+    Map<String, Object> diagnoseNetwork(UUID userId, String ipAddress);
 }

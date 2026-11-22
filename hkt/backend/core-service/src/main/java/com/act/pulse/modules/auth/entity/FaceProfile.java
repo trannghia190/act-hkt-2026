@@ -23,8 +23,14 @@ public class FaceProfile extends BaseEntity {
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
-    /** Vector 512 chiều — lưu dạng pgvector. */
-    @Column(name = "embedding", nullable = false, columnDefinition = "vector(512)")
+    /**
+     * Vector 512 chiều — lưu dạng pgvector.
+     * AI Face Service là nơi DUY NHẤT ghi vector; Core Service chỉ đọc.
+     * insertable/updatable = false để Hibernate không bind kiểu pgvector
+     * (gây lỗi "Unsupported Types value" khi chỉ cập nhật status/enrolled_at).
+     */
+    @Column(name = "embedding", nullable = false, columnDefinition = "vector(512)",
+            insertable = false, updatable = false)
     @Convert(converter = PgVectorConverter.class)
     private float[] embedding;
 

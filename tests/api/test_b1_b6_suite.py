@@ -108,7 +108,7 @@ check("B1.10: GPS accuracy > 100m blocked with window guidance",
       inacc_gps.get("passed") is False and "cửa sổ" in (inacc_gps.get("detail") or ""),
       str(inacc_gps))
 
-# B1.11: Offline punch > 24h rejected
+# B1.11: Offline punch is no longer supported (client-supplied time/GPS untrusted)
 old_time = (datetime.now() - timedelta(hours=28)).strftime('%Y-%m-%dT%H:%M:%S')
 status, off_res = call("POST", "/attendance/check-in", {
     "latitude": 21.0285, "longitude": 105.8542, "accuracyMeters": 15.0,
@@ -116,8 +116,8 @@ status, off_res = call("POST", "/attendance/check-in", {
     "isOffline": True, "offlinePunchedAt": old_time
 }, token=token)
 off_data = off_res.get("data") or {}
-check("B1.11: Offline punch > 24h rejected with OFFLINE_EXPIRED",
-      off_data.get("status") == "REJECTED" and off_data.get("rejectReason") == "OFFLINE_EXPIRED",
+check("B1.11: Offline punch rejected with OFFLINE_NOT_SUPPORTED",
+      off_data.get("status") == "REJECTED" and off_data.get("rejectReason") == "OFFLINE_NOT_SUPPORTED",
       str(off_data))
 
 
