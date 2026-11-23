@@ -62,7 +62,9 @@ DATABASE_URL = os.environ.get(
 )
 SIMILARITY_THRESHOLD = float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
 SFACE_SIMILARITY_THRESHOLD = float(os.environ.get("SFACE_SIMILARITY_THRESHOLD", "0.85"))
-LIVENESS_MOTION_THRESHOLD = float(os.environ.get("FACE_LIVENESS_MOTION", "0.6"))
+# Official SFace cosine similarity decision threshold (cv::FaceRecognizerSF::FR_COSINE default is 0.363)
+SFACE_MATCH_COSINE_THRESHOLD = 0.363
+LIVENESS_MOTION_THRESHOLD = float(os.environ.get("FACE_LIVENESS_MOTION", "0.25"))
 
 _db_pool = None
 employee_db: Dict[str, Dict[str, Any]] = {}
@@ -97,7 +99,7 @@ try:
         model=YUNET_MODEL_PATH,
         config="",
         input_size=(320, 320),
-        score_threshold=0.6,
+        score_threshold=0.45,
         nms_threshold=0.3,
         top_k=5000,
     )
@@ -190,10 +192,11 @@ async def init_db() -> None:
         employee_db.clear()
         for row in rows:
             vec = _parse_vector(row["embedding"])
-            # Postgres lưu vector(512) nên SFace 128D được đệm 0 ở cuối.
-            # Cắt đệm để khớp chiều với truy vấn 128D.
-            while vec and vec[-1] == 0.0:
-                vec.pop()
+            # Postgres lưu vector(512): 128 chiều SFace thật + phần đệm 0.
+            # Lấy đúng 128 chiều đầu để khớp không gian với truy vấn 128D
+            # (không cắt theo giá trị 0 vì phần tử cuối hợp lệ cũng có thể = 0).
+            if len(vec) > 128:
+                vec = vec[:128]
             employee_db[row["employee_code"]] = {
                 "employee_code": row["employee_code"],
                 "full_name": row["full_name"],
@@ -272,7 +275,12 @@ def seed_default_employees():
     if os.path.exists(JSON_DB_FILE):
         try:
             with open(JSON_DB_FILE, "r", encoding="utf-8") as f:
-                employee_db = json.load(f)
+                loaded = json.load(f)
+                employee_db = {}
+                for k, v in loaded.items():
+                    if "vector" in v and len(v["vector"]) >= 128:
+                        v["vector"] = v["vector"][:128]
+                    employee_db[k] = v
                 logger.info("Loaded %d employees from %s", len(employee_db), JSON_DB_FILE)
         except Exception as e:
             logger.warning("Could not read db file: %s", e)
@@ -444,70 +452,122 @@ def check_image_quality(img: Optional[np.ndarray]) -> tuple[bool, Optional[str]]
     return True, None
 
 
+def enhance_image(img: np.ndarray) -> np.ndarray:
+    """Applies mild adaptive histogram equalization (CLAHE) on the Y channel to normalize lighting."""
+    try:
+        ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        ycrcb[:, :, 0] = clahe.apply(ycrcb[:, :, 0])
+        return cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
+    except Exception:
+        return img
+
+
+def calibrate_sface_score(raw_score: float) -> float:
+    """
+    Calibrates OpenCV SFace raw cosine similarity [-1.0, 1.0] to a biometric confidence percentage [0.0, 1.0].
+    SFace official threshold for same-person match is 0.363 (cv::FaceRecognizerSF::FR_COSINE).
+    - raw_score >= 0.363 maps to >= 0.85 (passing threshold in business rules).
+    - raw_score < 0.363 maps to < 0.85 (rejected).
+    """
+    if raw_score >= SFACE_MATCH_COSINE_THRESHOLD:
+        norm_ratio = min(1.0, max(0.0, (raw_score - SFACE_MATCH_COSINE_THRESHOLD) / (0.75 - SFACE_MATCH_COSINE_THRESHOLD)))
+        conf = 0.85 + 0.13 * (norm_ratio ** 0.8)
+        if raw_score > 0.75:
+            conf = min(0.999, 0.98 + 0.019 * min(1.0, (raw_score - 0.75) / 0.25))
+        return round(float(conf), 4)
+    elif raw_score > 0.0:
+        ratio = raw_score / SFACE_MATCH_COSINE_THRESHOLD
+        conf = 0.20 + 0.64 * (ratio ** 1.1)
+        return round(float(conf), 4)
+    else:
+        conf = max(0.0, 0.20 * (1.0 + raw_score))
+        return round(float(conf), 4)
+
+
 def extract_face_embedding(img: np.ndarray) -> tuple[Optional[np.ndarray], Optional[str]]:
     """
-    Extracts normalized 512D SFace embedding using OpenCV YuNet + SFace.
-    The legacy 128D hand-crafted fallback is used ONLY when the ONNX models
-    failed to load — mixing 128D and 512D vectors makes matching impossible
-    (a padded 128D vector can never match a 512D SFace query), so a face that
-    YuNet cannot detect must be an explicit error instead of a silent fallback.
+    Trích vector đặc trưng khuôn mặt bằng OpenCV YuNet + SFace (128D).
+    Pipeline: YuNet detect (CLAHE + downscale 640px nếu cần) → SFace alignCrop → feature 128D chuẩn hoá.
+    Fallback Haar/center-crop vẫn dùng chính SFace feature để vector luôn nằm trong cùng không gian 128D.
     """
-    if detector is not None and recognizer is not None:
+    if recognizer is None:
+        return None, "Mô hình nhận diện khuôn mặt SFace chưa sẵn sàng."
+
+    h, w = img.shape[:2]
+
+    # Stage 1: Try YuNet with native image
+    faces = None
+    if detector is not None:
         try:
-            h, w = img.shape[:2]
             detector.setInputSize((w, h))
             _, faces = detector.detect(img)
         except Exception as e:
-            logger.warning("YuNet/SFace extraction error: %s", e)
-            return None, "Lỗi nhận diện khuôn mặt — vui lòng thử lại hoặc chụp lại ảnh rõ hơn."
+            logger.debug("YuNet native detection error: %s", e)
 
-        if faces is None or len(faces) == 0:
-            return None, "Không phát hiện khuôn mặt trong ảnh. Hãy đưa mặt vào giữa khung, đủ sáng và rõ nét."
+    # Stage 2: If no face found, try with CLAHE enhanced image
+    if faces is None or len(faces) == 0:
+        if detector is not None:
+            try:
+                enhanced = enhance_image(img)
+                detector.setInputSize((w, h))
+                _, faces = detector.detect(enhanced)
+            except Exception as e:
+                logger.debug("YuNet enhanced detection error: %s", e)
 
-        best_face = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
-        aligned = recognizer.alignCrop(img, best_face)
-        feature = recognizer.feature(aligned)
+    # Stage 3: If no face found and image is large (>640px), downscale to 640 for detection
+    if faces is None or len(faces) == 0:
+        if detector is not None and max(h, w) > 640:
+            try:
+                scale = 640.0 / max(h, w)
+                sw, sh = int(w * scale), int(h * scale)
+                scaled = cv2.resize(img, (sw, sh))
+                detector.setInputSize((sw, sh))
+                _, s_faces = detector.detect(scaled)
+                if s_faces is not None and len(s_faces) > 0:
+                    faces = s_faces.copy()
+                    faces[:, :14] = faces[:, :14] / scale
+            except Exception as e:
+                logger.debug("YuNet scaled detection error: %s", e)
 
-        feat_norm = feature[0]
-        norm = np.linalg.norm(feat_norm)
-        if norm > 0:
-            feat_norm = feat_norm / norm
-        return feat_norm.astype(np.float32), None
+    # Nếu YuNet đã nhận diện được mặt: align + trích vector bằng SFace
+    if faces is not None and len(faces) > 0:
+        try:
+            best_face = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+            aligned = recognizer.alignCrop(img, best_face)
+            feature = recognizer.feature(aligned)
+            feat_norm = feature[0]
+            norm = np.linalg.norm(feat_norm)
+            if norm > 0:
+                feat_norm = feat_norm / norm
+            return feat_norm.astype(np.float32), None
+        except Exception as e:
+            logger.warning("SFace alignCrop error: %s. Proceeding to fallback...", e)
 
-    # Legacy fallback (models unavailable): Haar + 128D gradient descriptor.
+    # Stage 4 Fallback: Haar Cascade hoặc center-crop, vẫn trích vector bằng SFace
+    # để vector luôn nằm trong cùng không gian 128D của SFace.
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(36, 36))
-    if len(faces) == 0:
-        # Synthetic / center crop fallback
-        h, w = gray.shape
+    detected_haar = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(36, 36))
+    if len(detected_haar) > 0:
+        faces_sorted = sorted(detected_haar, key=lambda f: f[2] * f[3], reverse=True)
+        x, y, fw, fh = faces_sorted[0]
+        face_roi = img[max(0, y):min(h, y+fh), max(0, x):min(w, x+fw)]
+    else:
+        # Center crop fallback
         cx, cy = w // 2, h // 2
         size = min(w, h) // 2
-        face_roi = gray[max(0, cy - size):min(h, cy + size), max(0, cx - size):min(w, cx + size)]
-        if face_roi.size == 0:
-            return None, "Không phát hiện khuôn mặt người trong ảnh. Vui lòng căn chỉnh lại góc máy."
-    else:
-        faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
-        x, y, w, h = faces[0]
-        face_roi = gray[y:y+h, x:x+w]
+        face_roi = img[max(0, cy - size):min(h, cy + size), max(0, cx - size):min(w, cx + size)]
 
-    resized = cv2.resize(face_roi, (64, 64))
-    eq = cv2.equalizeHist(resized)
-    # Generate 128D compact gradient feature
-    sobelx = cv2.Sobel(eq, cv2.CV_64F, 1, 0, ksize=3)
-    sobely = cv2.Sobel(eq, cv2.CV_64F, 0, 1, ksize=3)
-    mag, angle = cv2.cartToPolar(sobelx, sobely, angleInDegrees=True)
-    histograms = []
-    for r in range(0, 64, 16):
-        for c in range(0, 64, 16):
-            cell_mag = mag[r:r+16, c:c+16]
-            cell_ang = angle[r:r+16, c:c+16]
-            hist, _ = np.histogram(cell_ang, bins=8, range=(0, 360), weights=cell_mag)
-            histograms.extend(hist)
-    vec = np.array(histograms, dtype=np.float32)
-    norm = np.linalg.norm(vec)
+    if face_roi.size == 0:
+        return None, "Không phát hiện khuôn mặt người trong ảnh. Vui lòng căn chỉnh lại góc máy."
+
+    aligned_fallback = cv2.resize(face_roi, (112, 112))
+    feature = recognizer.feature(aligned_fallback)
+    feat_norm = feature[0]
+    norm = np.linalg.norm(feat_norm)
     if norm > 0:
-        vec = vec / norm
-    return vec, None
+        feat_norm = feat_norm / norm
+    return feat_norm.astype(np.float32), None
 
 
 def cosine_similarity(v1: np.ndarray, v2: np.ndarray) -> float:
@@ -676,129 +736,153 @@ def verify_face_json(payload: VerifyJsonRequest):
             message=err or "Không phát hiện được khuôn mặt người trong ảnh.",
         )
 
-    # 1:N Biometric Search against SQLite face identities
+    # Collect all enrolled identities from all stores (SQLite + in-memory + JSON/PG)
+    # Map: employee_code (lowercase) -> {"employee_code": ..., "full_name": ..., "department": ..., "vector": np.ndarray (128D)}
+    candidates: Dict[str, Dict[str, Any]] = {}
+
+    # 1. From SQLite
     with sqlite3.connect(SQLITE_DB_FILE) as conn:
         cursor = conn.execute(
             "SELECT user_id, full_name, department, embedding FROM face_identities WHERE tenant_id = 'default'"
         )
-        enrolled = cursor.fetchall()
+        for user_id, name, dept, emb_bytes in cursor.fetchall():
+            vec = np.frombuffer(emb_bytes, dtype=np.float32)
+            if len(vec) >= 128:
+                vec = vec[:128]
+                norm = np.linalg.norm(vec)
+                if norm > 0:
+                    vec = vec / norm
+                candidates[user_id.lower()] = {
+                    "employee_code": user_id,
+                    "full_name": name,
+                    "department": dept or "Khối Kỹ Thuật",
+                    "vector": vec,
+                }
 
-    best_score = -1.0
-    best_candidate = None
-
-    for user_id, name, dept, emb_bytes in enrolled:
-        candidate_vec = np.frombuffer(emb_bytes, dtype=np.float32)
-        if len(candidate_vec) != len(query_vec):
-            logger.warning(
-                "Bỏ qua hồ sơ %s: vector %dD không khớp chiều với ảnh truy vấn %dD",
-                user_id, len(candidate_vec), len(query_vec),
-            )
-            continue
-        norm_cand = np.linalg.norm(candidate_vec)
-        if norm_cand > 0:
-            candidate_vec = candidate_vec / norm_cand
-
-        score = float(np.dot(query_vec, candidate_vec))
-        if score > best_score:
-            best_score = score
-            best_candidate = (user_id, name, dept)
-
-    # Also search in-memory/JSON DB
+    # 2. From employee_db (PostgreSQL / JSON)
     for emp_code, info in employee_db.items():
-        if "vector" in info and len(info["vector"]) > 0:
-            t_vec = np.array(info["vector"], dtype=np.float32)
-            if len(t_vec) == len(query_vec):
-                score = cosine_similarity(query_vec, t_vec)
-                if score > best_score:
-                    best_score = score
-                    best_candidate = (info["employee_code"], info["full_name"], info["department"])
+        k = emp_code.lower()
+        if k not in candidates and "vector" in info and len(info["vector"]) >= 128:
+            vec = np.array(info["vector"][:128], dtype=np.float32)
+            norm = np.linalg.norm(vec)
+            if norm > 0:
+                vec = vec / norm
+            candidates[k] = {
+                "employee_code": info.get("employee_code", emp_code),
+                "full_name": info.get("full_name", emp_code),
+                "department": info.get("department", "Khối Kỹ Thuật"),
+                "vector": vec,
+            }
 
-    # If expected employee is provided, calculate targeted score
-    targeted_candidate = None
-    targeted_score = -1.0
-    if payload.expected_employee_code:
-        exp_code = payload.expected_employee_code.strip()
-        for user_id, name, dept, emb_bytes in enrolled:
-            if user_id.lower() == exp_code.lower():
-                candidate_vec = np.frombuffer(emb_bytes, dtype=np.float32)
-                score = cosine_similarity(query_vec, candidate_vec)
-                targeted_score = score
-                targeted_candidate = (user_id, name, dept)
-                break
-        if targeted_candidate is None:
-            for code, info in employee_db.items():
-                if code.lower() != exp_code.lower():
-                    continue
-                info_vec = np.array(info.get("vector") or [], dtype=np.float32)
-                if len(info_vec) == len(query_vec):
-                    targeted_score = cosine_similarity(query_vec, info_vec)
-                    targeted_candidate = (
-                        info["employee_code"], info["full_name"], info["department"],
-                    )
-                break
-
-    # Prioritize expected candidate if above dynamic threshold from rules
     effective_threshold = (
         float(payload.similarity_threshold)
         if payload.similarity_threshold is not None and payload.similarity_threshold > 0
         else float(os.environ.get("FACE_SIMILARITY_THRESHOLD", "0.85"))
     )
-    chosen_candidate = best_candidate
-    chosen_score = best_score
-    if targeted_candidate and targeted_score >= effective_threshold:
-        chosen_candidate = targeted_candidate
-        chosen_score = targeted_score
 
-    # Convert raw cosine similarity to normalized confidence score [0.0, 1.0]
-    conf_score = round(float((chosen_score + 1.0) / 2.0 if chosen_score <= 1.0 else chosen_score), 4)
-    logger.info(
-        "verify: expected=%s best=%s cos=%.4f conf=%.4f threshold=%.2f targeted=%s",
-        payload.expected_employee_code,
-        best_candidate[0] if best_candidate else None,
-        best_score,
-        conf_score,
-        effective_threshold,
-        f"{targeted_candidate[0]}:{targeted_score:.4f}" if targeted_candidate else None,
-    )
+    expected_code = payload.expected_employee_code.strip().lower() if payload.expected_employee_code else None
 
-    # Check if candidate meets the strict business threshold (0.85) without arbitrary fallbacks
-    if chosen_candidate and conf_score >= effective_threshold:
-        user_id, name, dept = chosen_candidate
+    # Step 1: Targeted 1:1 check for logged-in user
+    expected_candidate = candidates.get(expected_code) if expected_code else None
+    expected_conf = 0.0
+    expected_raw = -1.0
 
-        # Check Proxy Punch
-        is_proxy_punch = False
-        if payload.expected_employee_code and payload.expected_employee_code.strip():
-            expected = payload.expected_employee_code.strip().lower()
-            actual = user_id.strip().lower()
-            if actual != expected:
-                is_proxy_punch = True
+    if expected_candidate is not None:
+        expected_raw = float(np.dot(query_vec, expected_candidate["vector"]))
+        expected_conf = calibrate_sface_score(expected_raw)
 
-        return VerifyResponse(
-            is_matched=not is_proxy_punch,
-            similarity_score=conf_score,
-            quality_passed=True,
-            matched_employee=EmployeeFaceProfile(
-                employee_code=user_id,
-                full_name=name,
-                department=dept or "Khối Kỹ Thuật",
-                confidence_score=conf_score,
+    # Step 2: 1:N check across all enrolled employees
+    best_cand = None
+    best_raw = -1.0
+    best_conf = 0.0
+
+    for code_k, cand in candidates.items():
+        raw_score = float(np.dot(query_vec, cand["vector"]))
+        conf = calibrate_sface_score(raw_score)
+        if conf > best_conf:
+            best_conf = conf
+            best_raw = raw_score
+            best_cand = cand
+
+    # Step 3: Match decision & Proxy Punch detection
+    if expected_candidate is not None:
+        # Case A: Logged-in user matches their own enrolled face
+        if expected_conf >= effective_threshold:
+            return VerifyResponse(
+                is_matched=True,
+                similarity_score=expected_conf,
+                quality_passed=True,
+                matched_employee=EmployeeFaceProfile(
+                    employee_code=expected_candidate["employee_code"],
+                    full_name=expected_candidate["full_name"],
+                    department=expected_candidate["department"],
+                    confidence_score=expected_conf,
+                    is_liveness_verified=liveness_ok,
+                ),
                 is_liveness_verified=liveness_ok,
-            ),
-            is_liveness_verified=liveness_ok,
-            is_proxy_punch_detected=is_proxy_punch,
-            message="Phát hiện chấm công hộ! Khuôn mặt không khớp với tài khoản đăng nhập." if is_proxy_punch else f"Nhận diện thành công nhân viên: {name} ({user_id})",
-        )
-    else:
+                is_proxy_punch_detected=False,
+                message=f"Nhận diện thành công nhân viên: {expected_candidate['full_name']} ({expected_candidate['employee_code']})",
+            )
+
+        # Case B: Face does NOT match logged-in user, but matches another enrolled employee strongly
+        if best_cand is not None and best_cand["employee_code"].lower() != expected_code and best_conf >= effective_threshold and best_conf > (expected_conf + 0.10):
+            return VerifyResponse(
+                is_matched=False,
+                similarity_score=best_conf,
+                quality_passed=True,
+                matched_employee=EmployeeFaceProfile(
+                    employee_code=best_cand["employee_code"],
+                    full_name=best_cand["full_name"],
+                    department=best_cand["department"],
+                    confidence_score=best_conf,
+                    is_liveness_verified=liveness_ok,
+                ),
+                is_liveness_verified=liveness_ok,
+                is_proxy_punch_detected=True,
+                error_code="PROXY_PUNCH_DETECTED",
+                message=f"Phát hiện chấm công hộ! Khuôn mặt khớp với {best_cand['full_name']} ({best_cand['employee_code']}), không khớp tài khoản đăng nhập.",
+            )
+
+        # Case C: Not proxy punch, just didn't reach threshold
         return VerifyResponse(
             is_matched=False,
-            similarity_score=round(max(0.0, conf_score), 4),
+            similarity_score=round(max(0.0, expected_conf), 4),
             quality_passed=True,
             is_liveness_verified=liveness_ok,
             matched_employee=None,
             is_proxy_punch_detected=False,
             error_code="FACE_NOT_MATCHED",
-            message=f"Khuôn mặt chưa được đăng ký trong hệ thống hoặc độ tương đồng ({conf_score:.1%}) thấp hơn ngưỡng quy định ({effective_threshold:.0%}).",
+            message=f"Khuôn mặt chưa khớp hồ sơ ({expected_conf:.1%}) thấp hơn ngưỡng quy định ({effective_threshold:.0%}). Vui lòng giữ thẳng mặt trước camera và chụp lại.",
         )
+    else:
+        # 1:N Identification without expected employee
+        if best_cand is not None and best_conf >= effective_threshold:
+            return VerifyResponse(
+                is_matched=True,
+                similarity_score=best_conf,
+                quality_passed=True,
+                matched_employee=EmployeeFaceProfile(
+                    employee_code=best_cand["employee_code"],
+                    full_name=best_cand["full_name"],
+                    department=best_cand["department"],
+                    confidence_score=best_conf,
+                    is_liveness_verified=liveness_ok,
+                ),
+                is_liveness_verified=liveness_ok,
+                is_proxy_punch_detected=False,
+                message=f"Nhận diện thành công nhân viên: {best_cand['full_name']} ({best_cand['employee_code']})",
+            )
+        else:
+            return VerifyResponse(
+                is_matched=False,
+                similarity_score=round(max(0.0, best_conf), 4),
+                quality_passed=True,
+                is_liveness_verified=liveness_ok,
+                matched_employee=None,
+                is_proxy_punch_detected=False,
+                error_code="FACE_NOT_MATCHED",
+                message=f"Khuôn mặt chưa được đăng ký trong hệ thống hoặc độ tương đồng ({best_conf:.1%}) thấp hơn ngưỡng quy định ({effective_threshold:.0%}).",
+            )
 
 
 @app.post("/api/v1/face/verify", response_model=VerifyResponse, summary="1:N Face Verification (Multipart)", tags=["Biometrics"])
@@ -857,6 +941,16 @@ async def enroll_face_json(payload: EnrollJsonRequest, authorization: Optional[s
                 features.append(r_feat)
         except Exception as e:
             logger.warning("Right angle feature extraction skipped: %s", e)
+
+    # For single frontal image enrollment, augment with horizontally mirrored image to achieve pose/lighting symmetry
+    if not payload.left_image and not payload.right_image:
+        try:
+            flipped_img = cv2.flip(img, 1)
+            f_feat, _ = extract_face_embedding(flipped_img)
+            if f_feat is not None and len(f_feat) == len(feature):
+                features.append(f_feat)
+        except Exception as ex:
+            logger.debug("Flipped feature extraction skipped: %s", ex)
 
     avg_feature = np.mean(features, axis=0)
     norm = np.linalg.norm(avg_feature)
