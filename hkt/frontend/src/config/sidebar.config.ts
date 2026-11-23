@@ -32,7 +32,6 @@ export const COMMON_GROUPS: NavGroup[] = [
     items: [
       { id: 'todo', label: 'Cần làm', path: '/todo', icon: 'CheckSquare', badgeKey: 'todo', badgeColor: 'accent', screenId: 'S02' },
       { id: 'notif', label: 'Thông báo', path: '/notifications', icon: 'Bell', badgeKey: 'notif', badgeColor: 'accent', screenId: 'S04m' },
-      { id: 'prefs', label: 'Tuỳ chỉnh thông báo', path: '/settings/notifications', icon: 'Settings', screenId: 'S36' },
     ],
   },
   {
@@ -67,6 +66,7 @@ export const COMMON_GROUPS: NavGroup[] = [
     groupName: 'Cá nhân',
     items: [
       { id: 'profile', label: 'Hồ sơ cá nhân', path: '/account/profile', icon: 'UserCircle', screenId: 'S29' },
+      { id: 'prefs', label: 'Tuỳ chỉnh thông báo', path: '/account/notifications', icon: 'Settings', screenId: 'S36' },
       { id: 'device', label: 'Thiết bị của tôi', path: '/attendance/devices', icon: 'Smartphone', screenId: 'S27' },
       { id: 'passkey', label: 'Passkey & bảo mật', path: '/account/passkey', icon: 'Shield', screenId: 'S28m' },
     ],

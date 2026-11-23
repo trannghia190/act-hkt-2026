@@ -182,7 +182,10 @@ export const AppRoutes: React.FC = () => {
       <Route path="/attendance/leave-table" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><LeaveTablePage /></ProtectedRoute>} />
       <Route path="/admin/devices" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><AdminDevicesPage /></ProtectedRoute>} />
       <Route path="/admin/leave-types" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><LeaveTypesPage /></ProtectedRoute>} />
-      <Route path="/settings/notifications" element={<NotificationPrefsPage />} />
+      <Route path="/account/notifications" element={<NotificationPrefsPage />} />
+      {/* Giữ tương thích link cũ */}
+      <Route path="/settings/notifications" element={<Navigate to="/account/notifications" replace />} />
+      <Route path="/notifications/preferences" element={<Navigate to="/account/notifications" replace />} />
       <Route path="/notifications" element={<MobileNotificationsPage />} />
 
       {/* =========================================

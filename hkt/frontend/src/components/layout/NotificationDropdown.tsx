@@ -185,7 +185,7 @@ export const NotificationDropdown: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  navigate('/notifications/preferences');
+                  navigate('/account/notifications');
                 }}
                 className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
               >
