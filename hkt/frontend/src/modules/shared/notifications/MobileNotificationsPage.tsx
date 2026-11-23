@@ -137,7 +137,7 @@ export const MobileNotificationsPage: React.FC = () => {
           <Badge variant="accent">Mobile Center</Badge>
           <button
             type="button"
-            onClick={() => navigate('/notifications/preferences')}
+            onClick={() => navigate('/account/notifications')}
             className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium"
           >
             <Settings className="w-3.5 h-3.5" />

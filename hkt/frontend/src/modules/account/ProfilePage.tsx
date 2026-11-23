@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  Bell,
   Briefcase,
   Calendar,
   Fingerprint,
@@ -336,6 +337,26 @@ export const ProfilePage: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Thông báo */}
+      <Card title="Thông báo" subtitle="Chọn kênh nhận và khung giờ không làm phiền">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-ink">Tuỳ chỉnh thông báo</div>
+              <div className="text-[11px] text-ink-muted mt-0.5">
+                Bật/tắt từng sự kiện theo Web · Email · Push, giới hạn số lần gửi và giờ yên lặng.
+              </div>
+            </div>
+          </div>
+          <Link to="/account/notifications">
+            <Button variant="outline" size="sm">Tuỳ chỉnh</Button>
+          </Link>
+        </div>
+      </Card>
 
       {/* Bảo mật & đăng nhập */}
       <Card title="Bảo mật & đăng nhập" subtitle="Quản lý cách bạn đăng nhập và xác thực">

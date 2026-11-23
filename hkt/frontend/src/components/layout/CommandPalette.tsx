@@ -67,7 +67,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { title: 'Quản lý nhân viên & tài khoản', subtitle: 'Danh sách nhân sự, chuỗi cấp trên', kind: 'page', url: '/admin/employees', keywords: 'quan ly nhan vien employees danh ba tai khoan' },
     { title: 'Sơ đồ tổ chức phòng ban (Org Tree)', subtitle: 'Cây nhóm lồng nhau không giới hạn tầng', kind: 'page', url: '/admin/org-tree', keywords: 'so do to chuc org tree phong ban cay nhom' },
     { title: 'Nhật ký kiểm toán hệ thống (Audit Logs)', subtitle: 'Lịch sử sửa công, sửa điểm append-only', kind: 'page', url: '/admin/audit-logs', keywords: 'audit log nhat ky kiem toan lich su thay doi' },
-    { title: 'Tùy chỉnh thông báo & Giờ yên lặng', subtitle: '3 kênh, chống spam, quiet hours', kind: 'page', url: '/notifications/preferences', keywords: 'thong bao tuy chinh cai dat preferences quiet hours gio yen lang' },
+    { title: 'Tùy chỉnh thông báo & Giờ yên lặng', subtitle: '3 kênh, chống spam, quiet hours', kind: 'page', url: '/account/notifications', keywords: 'thong bao tuy chinh cai dat preferences quiet hours gio yen lang' },
   ];
 
   // Shortcut Ctrl+K / Cmd+K và Escape
