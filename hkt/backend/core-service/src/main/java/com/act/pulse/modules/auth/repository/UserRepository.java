@@ -19,4 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByEmployeeCodeOrEmail(String employeeCode, String email);
     Optional<User> findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(String employeeCode, String email);
+    java.util.List<User> findByRoleIn(java.util.Collection<String> roles);
+
+    /** Đếm nhân viên báo cáo trực tiếp — dùng để xác định "có vai trò quản lý". */
+    long countByManagerId(UUID managerId);
 }

@@ -31,6 +31,14 @@ public class Notification {
     @Column(name = "type", nullable = false, length = 50)
     private String type;
 
+    /**
+     * Khóa sự kiện chuẩn hóa để map với bật/tắt của người dùng
+     * (MISSING_CHECKIN, REQUEST_REJECTED, OKR_*…). {@code type} cũ đang bị dùng quá tải
+     * ("REQUEST" cho cả duyệt/từ chối) nên không map được.
+     */
+    @Column(name = "event_key", length = 50)
+    private String eventKey;
+
     @Column(name = "priority", length = 20)
     private String priority;
 

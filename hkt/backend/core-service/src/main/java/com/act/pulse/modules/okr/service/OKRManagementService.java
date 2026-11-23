@@ -1,9 +1,7 @@
 package com.act.pulse.modules.okr.service;
 
 import com.act.pulse.common.security.CurrentUser;
-import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.Team;
-import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -29,7 +27,7 @@ public class OKRManagementService {
     private final OKRMidYearReviewRepository midYearReviewRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
-    private final NotificationRepository notificationRepository;
+    private final com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
     private final OKRCycleRepository cycleRepository;
     private final OKRPhaseService phaseService;
 
@@ -526,18 +524,18 @@ public class OKRManagementService {
                 .build());
     }
 
+    /** Gửi thông báo cho user — đi qua dispatcher để tôn trọng cấu hình tuỳ chỉnh. */
     public void notify(UUID userId, String title, String content, String type, String actionUrl) {
+        notify(userId, title, content, type, "MEDIUM", actionUrl, null);
+    }
+
+    /** @param eventKey khóa sự kiện chuẩn hóa (bật/tắt theo người dùng); null = dùng {@code type}. */
+    public void notify(UUID userId, String title, String content, String type, String priority,
+                       String actionUrl, String eventKey) {
         if (userId == null) return;
-        notificationRepository.save(Notification.builder()
-                .userId(userId)
-                .title(title)
-                .content(content)
-                .type(type)
-                .priority("MEDIUM")
-                .actionUrl(actionUrl)
-                .isRead(false)
-                .createdAt(LocalDateTime.now())
-                .build());
+        notificationDispatcher.dispatch(
+                eventKey != null && !eventKey.isBlank() ? eventKey : type,
+                userId, title, content, type, priority, actionUrl, null);
     }
 
     private String nullToEmpty(String value) {

@@ -16,6 +16,7 @@ import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.attendance.service.TimesheetSymbols;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.notification.service.NotificationDispatcher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ import java.util.*;
 public class TimesheetController {
 
     private final UserRepository userRepository;
+    private final NotificationDispatcher notificationDispatcher;
     private final AttendanceLogRepository attendanceLogRepository;
     private final RequestRepository requestRepository;
     private final HolidayRepository holidayRepository;
@@ -342,6 +344,13 @@ public class TimesheetController {
             s.setDisputeDeadline(deadline.atTime(23, 59));
         }
         timesheetRepository.saveAll(rows);
+        for (Timesheet s : rows) {
+            notificationDispatcher.dispatch("TIMESHEET_CLOSED", s.getUserId(),
+                    "Bảng công kỳ " + ym + " đã chốt",
+                    "Bảng công đã được công bố. Hạn khiếu nại đến " + deadline + " — kiểm tra và khiếu nại nếu sai sót.",
+                    "TIMESHEET_CLOSED", "MEDIUM", "/attendance/my-timesheet",
+                    "timesheet-closed:" + ym + ":" + s.getUserId());
+        }
         return Map.of("month", ym.toString(), "status", "published", "disputeDeadline", deadline.toString());
     }
 

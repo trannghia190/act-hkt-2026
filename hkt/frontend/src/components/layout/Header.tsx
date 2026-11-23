@@ -20,6 +20,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const shortcutLabel =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)
+      ? '⌘K'
+      : 'Ctrl+K';
 
   return (
     <header className="h-14 border-b border-line bg-surface px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
@@ -52,11 +56,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenCommandPalette}
           className="px-2 sm:px-2.5 py-1.5 text-xs border border-line rounded-lg bg-canvas hover:bg-surface text-ink-secondary flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs transition-colors"
-          title="Tìm kiếm chức năng nhanh (Ctrl+K)"
+          title={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
         >
           <Search className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Tìm kiếm</span>
-          <kbd className="hidden sm:inline text-[10px] bg-line px-1 rounded font-mono font-bold">Ctrl+K</kbd>
+          <kbd className="hidden sm:inline text-[10px] bg-line px-1 rounded font-mono font-bold">{shortcutLabel}</kbd>
         </button>
 
         {/* Enterprise Gmail Setup Button */}

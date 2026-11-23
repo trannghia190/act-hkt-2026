@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Clock, AlertTriangle, Info, CheckCircle2, ShieldCheck, ArrowRight, Settings, Search, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Settings, Search, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
-import { Modal } from '../../../components/common/Modal';
 
 interface MobileNotifItem {
   id: string;
@@ -14,45 +13,158 @@ interface MobileNotifItem {
   read: boolean;
   actionUrl?: string;
   actionLabel?: string;
-  eventRule?: string;
+  eventKey: string;
 }
+
+/** Nhãn cho các thông báo cũ chưa có eventKey (chỉ có type). */
+const LEGACY_TYPE_LABELS: Record<string, string> = {
+  ATTENDANCE: 'Chấm công',
+  REQUEST: 'Đơn từ',
+  OKR: 'OKR',
+  DISPUTE: 'Khiếu nại bảng công',
+  ONBOARDING: 'Onboarding',
+  SYSTEM: 'Hệ thống',
+};
+
+/** Hiển thị thời gian gọn: 23/11 16:50. */
+const formatTime = (raw?: string) => {
+  if (!raw) return 'Vừa xong';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())} ${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
+};
+
+const PAGE_SIZE = 30;
+
+const mapNotification = (d: any): MobileNotifItem => ({
+  id: d.id,
+  title: d.title,
+  detail: d.message || d.content || d.title,
+  kind: d.level === 'urgent' ? 'urgent' : d.level === 'warning' ? 'warn' : 'info',
+  timestamp: formatTime(d.timestamp || d.createdAt),
+  read: !!d.read,
+  actionUrl: d.actionUrl,
+  actionLabel: 'Xử lý ngay',
+  eventKey: d.eventKey || d.type || 'OTHER',
+});
+
+const headerNumber = (res: Response, name: string): number => {
+  const value = Number(res.headers.get(name));
+  return Number.isFinite(value) ? value : 0;
+};
 
 export const MobileNotificationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [newType, setNewType] = useState('ATTENDANCE');
-  const [newPriority, setNewPriority] = useState('HIGH');
-  const [newActionUrl, setNewActionUrl] = useState('/todo');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [eventFilter, setEventFilter] = useState('ALL');
+  const [eventLabels, setEventLabels] = useState<Record<string, string>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [items, setItems] = useState<MobileNotifItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  // Gõ tìm kiếm → đợi 300ms rồi mới gọi server (tránh bắn request mỗi ký tự).
   useEffect(() => {
-    fetch('/api/v1/notifications')
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Danh mục sự kiện để dựng bộ lọc (không phụ thuộc trang đang tải).
+  useEffect(() => {
+    fetch('/api/v1/notifications/preferences/events')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          const mapped: MobileNotifItem[] = data.data.map((d: any) => ({
-            id: d.id,
-            title: d.title,
-            detail: d.message || d.content || d.title,
-            kind: d.level === 'urgent' ? 'urgent' : d.level === 'warning' ? 'warn' : 'info',
-            timestamp: d.timestamp || 'Hôm nay',
-            read: !!d.read,
-            actionUrl: d.actionUrl,
-            actionLabel: 'Xử lý ngay',
-            eventRule: d.type ? `#Event · ${d.type}` : '#Event · Đa kênh',
-          }));
-          setItems(mapped);
+          const labels: Record<string, string> = {};
+          data.data.forEach((e: any) => {
+            if (e.key) labels[e.key] = e.label || e.key;
+          });
+          setEventLabels(labels);
         }
       })
       .catch(() => {});
   }, []);
 
-  const unreadCount = items.filter((i) => !i.read).length;
+  // Đổi tab/lọc/từ khoá → tải lại từ trang 0 phía server.
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({
+      page: '0',
+      size: String(PAGE_SIZE),
+      unread: String(activeFilter === 'UNREAD'),
+    });
+    if (eventFilter !== 'ALL') params.set('eventKey', eventFilter);
+    if (debouncedSearch) params.set('q', debouncedSearch);
+
+    setLoading(true);
+    fetch(`/api/v1/notifications?${params.toString()}`)
+      .then(async (res) => {
+        const total = headerNumber(res, 'X-Total-Count');
+        const unread = headerNumber(res, 'X-Unread-Count');
+        const more = res.headers.get('X-Has-More') === 'true';
+        const data = await res.json();
+        return { data, total, unread, more };
+      })
+      .then(({ data, total, unread, more }) => {
+        if (cancelled) return;
+        setItems(data.success && Array.isArray(data.data) ? data.data.map(mapNotification) : []);
+        setPage(0);
+        setTotalCount(total);
+        setUnreadCount(unread);
+        setHasMore(more);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFilter, eventFilter, debouncedSearch]);
+
+  const loadMore = () => {
+    if (loading || !hasMore) return;
+    const nextPage = page + 1;
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      size: String(PAGE_SIZE),
+      unread: String(activeFilter === 'UNREAD'),
+    });
+    if (eventFilter !== 'ALL') params.set('eventKey', eventFilter);
+    if (debouncedSearch) params.set('q', debouncedSearch);
+
+    setLoading(true);
+    fetch(`/api/v1/notifications?${params.toString()}`)
+      .then(async (res) => {
+        const unread = headerNumber(res, 'X-Unread-Count');
+        const more = res.headers.get('X-Has-More') === 'true';
+        const data = await res.json();
+        return { data, unread, more };
+      })
+      .then(({ data, unread, more }) => {
+        if (data.success && Array.isArray(data.data)) {
+          const mapped = data.data.map(mapNotification);
+          setItems((prev) => {
+            const seen = new Set(prev.map((i) => i.id));
+            return [...prev, ...mapped.filter((i) => !seen.has(i.id))];
+          });
+        }
+        setPage(nextPage);
+        setUnreadCount(unread);
+        setHasMore(more);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -61,12 +173,20 @@ export const MobileNotificationsPage: React.FC = () => {
 
   const handleMarkAllRead = () => {
     fetch('/api/v1/notifications/mark-all-read', { method: 'PUT' }).catch(() => {});
-    setItems((prev) => prev.map((i) => ({ ...i, read: true })));
+    setUnreadCount(0);
+    if (activeFilter === 'UNREAD') {
+      setItems([]);
+      setTotalCount(0);
+      setHasMore(false);
+    } else {
+      setItems((prev) => prev.map((i) => ({ ...i, read: true })));
+    }
     showToast('Đã đánh dấu đã đọc tất cả');
   };
 
   const handleClickItem = (item: MobileNotifItem) => {
     fetch(`/api/v1/notifications/${item.id}/read`, { method: 'PUT' }).catch(() => {});
+    if (!item.read) setUnreadCount((prev) => Math.max(0, prev - 1));
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, read: true } : i)));
     if (item.actionUrl) {
       navigate(item.actionUrl);
@@ -75,93 +195,40 @@ export const MobileNotificationsPage: React.FC = () => {
 
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const target = items.find((i) => i.id === id);
     fetch(`/api/v1/notifications/${id}`, { method: 'DELETE' }).catch(() => {});
     setItems((prev) => prev.filter((i) => i.id !== id));
+    setTotalCount((prev) => Math.max(0, prev - 1));
+    if (target && !target.read) setUnreadCount((prev) => Math.max(0, prev - 1));
     showToast('Đã xóa thông báo thành công');
   };
 
-  const handleCreateNotification = async () => {
-    if (!newTitle.trim()) {
-      showToast('Vui lòng nhập tiêu đề thông báo');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/v1/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newTitle,
-          content: newContent || newTitle,
-          type: newType,
-          priority: newPriority,
-          actionUrl: newActionUrl,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        const created: MobileNotifItem = {
-          id: data.data.id,
-          title: data.data.title,
-          detail: data.data.content || data.data.title,
-          kind: newPriority === 'HIGH' ? 'urgent' : newPriority === 'MEDIUM' ? 'warn' : 'info',
-          timestamp: 'Vừa xong',
-          read: false,
-          actionUrl: data.data.actionUrl || '/todo',
-          actionLabel: 'Xử lý ngay',
-          eventRule: `#Event · ${newType}`,
-        };
-        setItems((prev) => [created, ...prev]);
-        showToast('Đã lưu thông báo mới vào Database!');
-      }
-    } catch {
-      showToast('Lỗi khi gửi thông báo');
-    }
-    setIsCreateModalOpen(false);
-    setNewTitle('');
-    setNewContent('');
-  };
-
-  const filteredByTab = activeFilter === 'ALL' ? items : items.filter((i) => !i.read);
-  const displayedItems = filteredByTab.filter((i) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return i.title.toLowerCase().includes(term) || i.detail.toLowerCase().includes(term);
-  });
+  // Bộ lọc sự kiện lấy từ danh mục chuẩn, không phụ thuộc trang đang tải.
+  const eventOptions = useMemo(() => {
+    return Object.entries(eventLabels)
+      .map(([key, label]) => ({ key, label: label || LEGACY_TYPE_LABELS[key] || key }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+  }, [eventLabels]);
 
   return (
-    <div className="max-w-md mx-auto space-y-4 pb-12">
+    <div className="mx-auto w-full max-w-3xl space-y-4 px-3 pb-12 sm:px-4 lg:max-w-5xl">
       {/* Top Banner (Mockup S04m) */}
-      <div className="bg-canvas border border-line rounded-2xl p-5 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <Badge variant="accent">Mobile Center</Badge>
+      <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 shadow-2xs space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <Badge variant="accent">Trung tâm thông báo</Badge>
           <button
             type="button"
             onClick={() => navigate('/account/notifications')}
-            className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium"
+            className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium shrink-0"
           >
             <Settings className="w-3.5 h-3.5" />
             Cài đặt
           </button>
         </div>
-        <h1 className="text-lg font-bold text-ink">Thông Báo &amp; Nhắc Việc</h1>
-        <p className="text-xs text-ink-muted leading-relaxed">
-          3 kênh nhắc việc tự động: Trong web · Email digest 08:00 · Web Push. Đúng người theo ma trận 17 sự kiện × 3 vai trò.
+        <h1 className="text-lg sm:text-xl font-bold text-ink">Thông Báo &amp; Nhắc Việc</h1>
+        <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+          Thông báo được hệ thống gửi tự động qua 3 kênh: Trong web · Email digest 08:00 · Web Push.
         </p>
-
-        {/* Anti-spam Policy Summary */}
-        <div className="p-3 bg-surface rounded-xl border border-line text-[11px] text-ink-secondary space-y-1.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 text-accent font-semibold">
-            <ShieldCheck className="w-4 h-4 shrink-0 text-accent" />
-            Chính sách chống spam thông minh (C2 / C12)
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-[10px] text-ink-muted pt-1 border-t border-line">
-            <div>• Tối đa: <strong>3 push/ngày</strong> (QL: 5)</div>
-            <div>• Giờ yên lặng: <strong>21:00 – 07:00</strong></div>
-            <div>• Cửa sổ chống trùng: <strong>12 giờ</strong></div>
-            <div>• Escalate quá hạn: <strong>&gt; 3 ngày</strong></div>
-          </div>
-        </div>
       </div>
 
       {/* Toast Notification */}
@@ -172,8 +239,8 @@ export const MobileNotificationsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Search Bar & Add Notification Button */}
-      <div className="flex items-center gap-2">
+      {/* Search Bar & Event Filter */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <input
@@ -181,17 +248,24 @@ export const MobileNotificationsPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Tìm theo tiêu đề, nội dung..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
+            className="w-full pl-8 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
           />
         </div>
-        <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          + Tạo Mới
-        </Button>
+        <select
+          value={eventFilter}
+          onChange={(e) => setEventFilter(e.target.value)}
+          className="w-full sm:w-64 px-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent cursor-pointer"
+          title="Lọc theo sự kiện"
+        >
+          <option value="ALL">Tất cả sự kiện</option>
+          {eventOptions.map((opt) => (
+            <option key={opt.key} value={opt.key}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Filter Tabs & Quick Action */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex gap-2 text-xs font-semibold">
           <button
             type="button"
@@ -202,7 +276,7 @@ export const MobileNotificationsPage: React.FC = () => {
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
-            Tất cả ({items.length})
+            Tất cả ({totalCount})
           </button>
           <button
             type="button"
@@ -229,15 +303,19 @@ export const MobileNotificationsPage: React.FC = () => {
       </div>
 
       {/* Notification List */}
-      <div className="space-y-3">
-        {displayedItems.length === 0 ? (
-          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted space-y-2 shadow-2xs">
+      <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+        {loading && items.length === 0 ? (
+          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted shadow-2xs md:col-span-2">
+            Đang tải thông báo…
+          </div>
+        ) : items.length === 0 ? (
+          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted space-y-2 shadow-2xs md:col-span-2">
             <div className="text-2xl">🎉</div>
             <div className="font-semibold text-ink">Hộp thông báo trống</div>
             <p>Bạn đã đọc hết mọi thông báo và nhắc việc.</p>
           </div>
         ) : (
-          displayedItems.map((item) => (
+          items.map((item) => (
             <div
               key={item.id}
               onClick={() => handleClickItem(item)}
@@ -270,7 +348,9 @@ export const MobileNotificationsPage: React.FC = () => {
               <p className="text-xs text-ink-secondary leading-relaxed pl-4">{item.detail}</p>
 
               <div className="pt-2 pl-4 flex items-center justify-between border-t border-line/60">
-                <span className="text-[10px] font-mono text-ink-muted">{item.eventRule}</span>
+                <span className="text-[10px] font-mono text-ink-muted">
+                  # {eventLabels[item.eventKey] || LEGACY_TYPE_LABELS[item.eventKey] || item.eventKey}
+                </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -300,93 +380,24 @@ export const MobileNotificationsPage: React.FC = () => {
         )}
       </div>
 
+      {/* Phân trang: chỉ tải thêm khi người dùng cần */}
+      {items.length > 0 && (
+        <div className="flex flex-col items-center gap-2 pt-1 text-[11px] text-ink-muted">
+          <span>Đã hiển thị {items.length}/{totalCount} thông báo</span>
+          {hasMore && (
+            <Button variant="outline" size="sm" onClick={loadMore} disabled={loading}>
+              {loading ? 'Đang tải…' : 'Tải thêm'}
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Footer Info */}
       <div className="text-[11px] text-ink-muted text-center pt-2 space-y-1">
         <div>Tắt thông báo không làm mất việc khỏi trang <strong>"Cần làm"</strong>.</div>
         <div>Badge số việc luôn đồng bộ theo thời gian thực.</div>
       </div>
 
-      {/* Modal: Tạo Thông Báo Mới Vào DB */}
-      {isCreateModalOpen && (
-        <Modal
-          isOpen={true}
-          onClose={() => setIsCreateModalOpen(false)}
-          title="Tạo Thông Báo Mới (Lưu vào Database)"
-        >
-          <div className="space-y-3.5 text-xs">
-            <div>
-              <label className="block text-ink font-semibold mb-1">Tiêu đề thông báo *</label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Ví dụ: Nhắc nhở chấm công, duyệt đơn..."
-                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-ink font-semibold mb-1">Nội dung chi tiết</label>
-              <textarea
-                rows={2}
-                value={newContent}
-                onChange={(e) => setNewContent(e.target.value)}
-                placeholder="Nội dung gửi đến người nhận..."
-                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-ink font-semibold mb-1">Loại thông báo</label>
-                <select
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
-                >
-                  <option value="ATTENDANCE">Chấm công (ATTENDANCE)</option>
-                  <option value="REQUEST">Đơn từ (REQUEST)</option>
-                  <option value="OKR">OKR Mục tiêu</option>
-                  <option value="SYSTEM">Hệ thống (SYSTEM)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-ink font-semibold mb-1">Mức độ ưu tiên</label>
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
-                >
-                  <option value="HIGH">Khẩn cấp (HIGH - Urgent)</option>
-                  <option value="MEDIUM">Cảnh báo (MEDIUM - Warn)</option>
-                  <option value="LOW">Thông tin (LOW - Info)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-ink font-semibold mb-1">Đường dẫn hành động (Action URL)</label>
-              <input
-                type="text"
-                value={newActionUrl}
-                onChange={(e) => setNewActionUrl(e.target.value)}
-                placeholder="/todo, /attendance/checkin, ..."
-                className="w-full p-2 rounded-lg border border-line bg-surface text-ink text-xs"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-line">
-              <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)}>
-                Hủy bỏ
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleCreateNotification}>
-                Lưu &amp; Gửi Thông Báo
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

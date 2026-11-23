@@ -804,7 +804,8 @@ public class OKRController {
                 okrReviewRepository.save(review);
                 management.audit(review.getId(), review.getCycleId(), null, "RETURN", "status", oldStatus, "returned", finalFeedback);
                 management.notify(review.getUserId(), "OKR bị trả lại để chỉnh sửa",
-                        "Quản lý đã trả lại OKR của bạn kèm góp ý: " + finalFeedback, "OKR_RETURNED", "/okr/my-okr");
+                        "Quản lý đã trả lại OKR của bạn kèm góp ý: " + finalFeedback,
+                        "OKR_RETURNED", "MEDIUM", "/okr/my-okr", "OKR_OBJECTIVE_RETURNED");
                 return ResponseEntity.ok(ApiResponse.ok(true, "Đã trả lại bộ OKR cho nhân viên kèm góp ý"));
             }
             case "REOPEN" -> {

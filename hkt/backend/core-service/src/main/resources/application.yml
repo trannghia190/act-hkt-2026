@@ -61,11 +61,18 @@ spring:
           writetimeout: 8000
 
 app:
+  notification:
+    # Tự động xoá thông báo ĐÃ ĐỌC cũ hơn số ngày này; chưa đọc luôn được giữ.
+    retention-days: ${NOTIFICATION_RETENTION_DAYS:90}
   jwt:
     # HS512 yêu cầu tối thiểu 64 byte (512 bit). Thay bằng secret riêng khi triển khai.
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiration-ms: 900000          # 15 phút — business docs/01 §3.2
     refresh-expiration-ms: 604800000 # 7 ngày — business docs/01 §3.2
+  mail:
+    # Dev: chưa cấu hình SMTP thì in email ra log và coi như đã gửi (run-local.sh bật).
+    # Production: để false — thiếu SMTP thì email bị bỏ qua kèm cảnh báo trong log.
+    dev-log: ${MAIL_DEV_LOG:false}
   services:
     ai-face-service-url: ${AI_FACE_SERVICE_URL:http://localhost:8000}
   webauthn:
@@ -77,6 +84,15 @@ app:
     # Origin động cho tunnel demo — RP ID tự suy ra từ host của Origin.
     # Production: đặt WEBAUTHN_ALLOWED_ORIGIN_PATTERNS='' để tắt.
     allowed-origin-patterns: ${WEBAUTHN_ALLOWED_ORIGIN_PATTERNS:https://*.trycloudflare.com,https://*.ngrok-free.app}
+  push:
+    # Demo/dev: sinh cặp khoá VAPID tạm khi khởi động. Production: đặt PUSH_ENABLED=true
+    # kèm VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY cố định để subscription không mất hiệu lực
+    # sau mỗi lần restart.
+    enabled: ${PUSH_ENABLED:true}
+    vapid:
+      public-key: ${VAPID_PUBLIC_KEY:}
+      private-key: ${VAPID_PRIVATE_KEY:}
+      subject: ${VAPID_SUBJECT:mailto:it@act-corp.internal}
 
 springdoc:
   api-docs:

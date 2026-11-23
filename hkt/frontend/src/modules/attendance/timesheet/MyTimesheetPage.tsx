@@ -640,7 +640,14 @@ export const MyTimesheetPage: React.FC = () => {
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-ink-secondary text-[11px]">
-                        {r.dispute ? `Đã khiếu nại: ${r.dispute.reason}` : r.statusText}
+                        {r.dispute
+                          ? `Khiếu nại: ${
+                              r.dispute.status === 'RESOLVED' ? 'đã xử lý'
+                              : r.dispute.status === 'REJECTED' ? 'bị từ chối'
+                              : r.dispute.status === 'EXPIRED' ? 'quá hạn'
+                              : 'chờ xử lý'
+                            } — ${r.dispute.reason}`
+                          : r.statusText}
                       </td>
                     </tr>
                   );

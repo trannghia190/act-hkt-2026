@@ -5,7 +5,6 @@ import com.act.pulse.common.security.CurrentUser;
 import com.act.pulse.modules.attendance.entity.AttendanceLog;
 import com.act.pulse.modules.attendance.entity.AuditLog;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
-import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.entity.RequestAttachment;
 import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.Holiday;
@@ -18,7 +17,6 @@ import java.math.BigDecimal;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
-import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.act.pulse.modules.attendance.service.RuleService;
@@ -55,7 +53,7 @@ public class RequestController {
     private final UserRepository userRepository;
     private final RuleService ruleService;
     private final LeaveTypeRepository leaveTypeRepository;
-    private final NotificationRepository notificationRepository;
+    private final com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
     private final AttendanceLogRepository attendanceLogRepository;
     private final RequestAttachmentRepository requestAttachmentRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
@@ -256,7 +254,29 @@ public class RequestController {
                 .build();
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
-        return ApiResponse.ok(requestRepository.save(entity),
+        RequestEntity saved = requestRepository.save(entity);
+
+        // Báo cho quản lý trực tiếp (trước đây KHÔNG ai được báo đơn mới).
+        if (!Boolean.TRUE.equals(body.getDraft())) {
+            User employee = userRepository.findById(userId).orElse(null);
+            User approver = employee != null && employee.getManagerId() != null
+                    ? userRepository.findById(employee.getManagerId()).orElse(null) : null;
+            if (approver != null) {
+                notificationDispatcher.dispatch(
+                        "REQUEST_SUBMITTED",
+                        approver.getId(),
+                        "Có đơn mới cần duyệt",
+                        (employee == null ? "" : employee.getFullName() + " ("
+                                + employee.getEmployeeCode() + ")") + " gửi đơn "
+                                + saved.getRequestType() + " ngày " + saved.getWorkDate(),
+                        "REQUEST",
+                        "MEDIUM",
+                        "/attendance/approvals",
+                        "request-submitted:" + saved.getId());
+            }
+        }
+
+        return ApiResponse.ok(saved,
                 Boolean.TRUE.equals(body.getDraft()) ? "Đã lưu nháp — không trừ quota" : "Đã gửi đơn tới quản lý");
     }
 
@@ -930,16 +950,18 @@ public class RequestController {
         }
 
         // Nhân viên nhận thông báo kết quả duyệt/từ chối (từ chối luôn kèm lý do).
-        notificationRepository.save(Notification.builder()
-                .userId(owner.getId())
-                .title(approve ? "Đơn đã được duyệt" : "Đơn bị từ chối")
-                .content("Đơn " + r.getRequestType() + " ngày " + r.getWorkDate()
-                        + (comment == null || comment.isBlank() ? "" : " — Lý do: " + comment))
-                .type("REQUEST")
-                .priority(approve ? "MEDIUM" : "HIGH")
-                .actionUrl("/attendance/requests")
-                .isRead(false)
-                .build());
+        // Đi qua dispatcher để TÔN TRỌNG cấu hình tuỳ chỉnh thông báo của người dùng
+        // (tắt kênh / giờ yên lặng / dedupe / giới hạn push mỗi ngày).
+        notificationDispatcher.dispatch(
+                approve ? "REQUEST_APPROVED" : "REQUEST_REJECTED",
+                owner.getId(),
+                approve ? "Đơn đã được duyệt" : "Đơn bị từ chối",
+                "Đơn " + r.getRequestType() + " ngày " + r.getWorkDate()
+                        + (comment == null || comment.isBlank() ? "" : " — Lý do: " + comment),
+                "REQUEST",
+                approve ? "MEDIUM" : "HIGH",
+                "/attendance/requests/" + r.getId(),
+                "request:" + r.getId() + ":" + (approve ? "approved" : "rejected"));
 
         return ApiResponse.ok(saved, approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
     }

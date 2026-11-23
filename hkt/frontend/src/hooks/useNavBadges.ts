@@ -39,13 +39,13 @@ export function useNavBadges() {
         // Fallback to default
       }
 
-      // 2. Fetch Notification unread count from /api/v1/notifications
+      // 2. Chỉ lấy số chưa đọc — không tải cả hộp thư chỉ để đếm badge.
       try {
-        const res = await fetch('/api/v1/notifications', { headers });
+        const res = await fetch('/api/v1/notifications/unread-count', { headers });
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            const unread = json.data.filter((n: any) => !n.read).length;
+          if (json.success && typeof json.data?.count === 'number') {
+            const unread = json.data.count;
             if (isMounted) {
               setBadges((prev) => ({ ...prev, notif: unread }));
             }

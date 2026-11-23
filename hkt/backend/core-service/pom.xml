@@ -112,6 +112,13 @@
             <version>2.6.0</version>
         </dependency>
 
+        <!-- Web Push (VAPID) — kênh push thật cho tuỳ chỉnh thông báo S36 -->
+        <dependency>
+            <groupId>dev.blanke.webpush</groupId>
+            <artifactId>webpush</artifactId>
+            <version>6.1.3</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

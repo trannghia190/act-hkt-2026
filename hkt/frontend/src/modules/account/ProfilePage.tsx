@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Briefcase,
@@ -46,6 +46,7 @@ const fmtDate = (value?: string | null) =>
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<MyProfile | null>(null);
@@ -58,6 +59,14 @@ export const ProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+
+  // Command Palette: mở thẳng form đổi mật khẩu (CORE-CMD-02).
+  useEffect(() => {
+    if ((location.state as { openPassword?: boolean } | null)?.openPassword) {
+      setPasswordOpen(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     getMyProfile()

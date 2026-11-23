@@ -115,6 +115,7 @@ export const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose, onChange
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink">Mật khẩu hiện tại</label>
               <input
+                autoFocus
                 type="password"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}

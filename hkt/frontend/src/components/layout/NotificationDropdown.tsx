@@ -13,16 +13,24 @@ export interface NotificationItem {
   actionUrl?: string;
 }
 
+/** Dropdown chỉ tải N thông báo mới nhất — không kéo cả hộp thư lịch sử. */
+const DROPDOWN_SIZE = 15;
+
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'ALL' | 'UNREAD'>('ALL');
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    fetch('/api/v1/notifications')
-      .then((res) => res.json())
+  const loadNewest = () => {
+    fetch(`/api/v1/notifications?page=0&size=${DROPDOWN_SIZE}`)
+      .then((res) => {
+        const unreadHeader = Number(res.headers.get('X-Unread-Count'));
+        if (Number.isFinite(unreadHeader)) setUnreadCount(unreadHeader);
+        return res.json();
+      })
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           const mapped: NotificationItem[] = data.data.map((d: any) => ({
@@ -39,17 +47,28 @@ export const NotificationDropdown: React.FC = () => {
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadNewest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Mở dropdown thì làm mới 15 mục mới nhất + badge chưa đọc.
+  useEffect(() => {
+    if (isOpen) loadNewest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleMarkAllAsRead = () => {
     fetch('/api/v1/notifications/mark-all-read', { method: 'PUT' }).catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
   };
 
   const handleClickItem = (item: NotificationItem) => {
     fetch(`/api/v1/notifications/${item.id}/read`, { method: 'PUT' }).catch(() => {});
+    if (!item.read) setUnreadCount((prev) => Math.max(0, prev - 1));
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
     );
@@ -74,8 +93,8 @@ export const NotificationDropdown: React.FC = () => {
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
-            {unreadCount}
+          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
@@ -94,7 +113,7 @@ export const NotificationDropdown: React.FC = () => {
                 <span className="font-bold text-xs text-ink">Trung Tâm Thông Báo</span>
                 {unreadCount > 0 && (
                   <span className="text-[10px] bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded font-bold">
-                    {unreadCount} mới
+                    {unreadCount > 99 ? '99+' : unreadCount} mới
                   </span>
                 )}
               </div>
@@ -110,29 +129,29 @@ export const NotificationDropdown: React.FC = () => {
               )}
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex border-b border-line text-xs font-semibold bg-surface">
+            {/* Tabs */}
+            <div className="flex bg-canvas px-2 border-b border-line">
               <button
                 type="button"
                 onClick={() => setActiveTab('ALL')}
-                className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                className={`px-3 py-2 text-[11px] transition-colors cursor-pointer ${
                   activeTab === 'ALL'
-                    ? 'text-accent border-b-2 border-accent font-bold'
+                    ? 'text-accent border-t-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                Tất cả ({notifications.length})
+                Tất cả
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('UNREAD')}
-                className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                className={`px-3 py-2 text-[11px] transition-colors cursor-pointer ${
                   activeTab === 'UNREAD'
-                    ? 'text-accent border-b-2 border-accent font-bold'
+                    ? 'text-accent border-t-2 border-accent font-bold'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                Chưa đọc ({unreadCount})
+                Chưa đọc ({unreadCount > 99 ? '99+' : unreadCount})
               </button>
             </div>
 
@@ -166,13 +185,11 @@ export const NotificationDropdown: React.FC = () => {
                         </span>
                         {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
                       </div>
-                      <p className="text-[11px] text-ink-secondary mt-0.5 line-clamp-2 leading-relaxed">
-                        {item.message}
-                      </p>
-                      <div className="text-[10px] text-ink-muted mt-1 font-mono">
-                        {item.timestamp}
-                      </div>
+                      <p className="text-[11px] text-ink-secondary mt-0.5 line-clamp-2">{item.message}</p>
+                      <span className="text-[10px] text-ink-muted mt-1 block">{item.timestamp}</span>
                     </div>
+
+                    {item.read && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />}
                   </div>
                 ))
               )}
@@ -180,7 +197,16 @@ export const NotificationDropdown: React.FC = () => {
 
             {/* Footer */}
             <div className="p-2 border-t border-line bg-canvas flex items-center justify-between text-[11px] px-3">
-              <span className="text-[10px] text-ink-muted">In-app · Push · Email</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/notifications');
+                }}
+                className="text-[11px] text-accent hover:underline font-semibold cursor-pointer"
+              >
+                Xem tất cả thông báo →
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -189,7 +215,7 @@ export const NotificationDropdown: React.FC = () => {
                 }}
                 className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
               >
-                Cài đặt thông báo →
+                Cài đặt
               </button>
             </div>
           </div>
