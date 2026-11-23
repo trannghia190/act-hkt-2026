@@ -1,6 +1,5 @@
 package com.act.pulse.modules.okr.service;
 
-import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
@@ -42,6 +41,7 @@ public class OKRPhaseDeadlineReminderJob {
     private final OKRMidYearReviewRepository midYearRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
 
     @Scheduled(cron = "0 5 8 * * *")
     public void remindPhaseDeadlines() {
@@ -145,16 +145,15 @@ public class OKRPhaseDeadlineReminderJob {
                 .anyMatch(n -> type.equals(n.getType()) && n.getCreatedAt() != null
                         && n.getCreatedAt().toLocalDate().equals(today));
         if (sentToday) return 0;
-        notificationRepository.save(Notification.builder()
-                .userId(userId)
-                .title(title)
-                .content(content)
-                .type(type)
-                .priority(daysLeft <= 1 ? "HIGH" : "MEDIUM")
-                .actionUrl(url)
-                .isRead(false)
-                .createdAt(LocalDateTime.now())
-                .build());
+        notificationDispatcher.dispatch(
+                type,
+                userId,
+                title,
+                content,
+                type,
+                daysLeft <= 1 ? "HIGH" : "MEDIUM",
+                url,
+                type + ":" + today);
         return 1;
     }
 }

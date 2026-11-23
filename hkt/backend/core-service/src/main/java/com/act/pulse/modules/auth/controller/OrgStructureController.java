@@ -24,10 +24,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -69,6 +73,9 @@ public class OrgStructureController {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -676,21 +683,21 @@ public class OrgStructureController {
             emailStatusMessage = "Lỗi khi gửi email: " + e.getMessage();
         }
 
-        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3)
+        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3).
+        // Chỉ gửi lần TẠO tài khoản — cập nhật user không gửi lại lời chào.
         try {
-            Notification notif = Notification.builder()
-                    .userId(userToSave.getId())
-                    .title("Chào mừng thành viên mới đến với ACT PULSE!")
-                    .content("Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
-                            + userToSave.getEmployeeCode() + ", Mật khẩu mặc định: " + rawPassword
-                            + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.")
-                    .type("ONBOARDING")
-                    .priority("HIGH")
-                    .actionUrl("/profile")
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            notificationRepository.save(notif);
+            if (existing.isEmpty()) {
+                notificationDispatcher.dispatch(
+                        "ONBOARDING",
+                        userToSave.getId(),
+                        "Chào mừng thành viên mới đến với ACT PULSE!",
+                        "Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
+                                + userToSave.getEmployeeCode() + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.",
+                        "ONBOARDING",
+                        "HIGH",
+                        "/account/profile",
+                        "onboarding:" + userToSave.getId());
+            }
         } catch (Exception ignored) {
         }
 
@@ -1632,6 +1639,49 @@ public class OrgStructureController {
                 .toLowerCase().trim();
     }
 
+    /** Khớp mờ: chuỗi con, bỏ khoảng trắng (chamcong ≈ chấm công), hoặc đủ từ không cần đúng thứ tự. */
+    private boolean fuzzyMatch(String unaccentedText, String cleanQuery) {
+        if (cleanQuery == null || cleanQuery.isEmpty())
+            return true;
+        String text = unaccentedText == null ? "" : unaccentedText;
+        if (text.contains(cleanQuery))
+            return true;
+        String compactQuery = cleanQuery.replaceAll("\\s+", "");
+        if (!compactQuery.isEmpty() && text.replaceAll("\\s+", "").contains(compactQuery))
+            return true;
+        String[] tokens = cleanQuery.split("\\s+");
+        if (tokens.length > 1) {
+            boolean all = true;
+            for (String token : tokens) {
+                if (!token.isEmpty() && !text.contains(token)) {
+                    all = false;
+                    break;
+                }
+            }
+            if (all)
+                return true;
+        }
+        return false;
+    }
+
+    private static boolean isHrOnlyUrl(String url) {
+        if (url == null)
+            return false;
+        return url.startsWith("/attendance/leave-ledger")
+                || url.startsWith("/attendance/leave-table")
+                || url.startsWith("/attendance/disputes")
+                || url.equals("/attendance/rules")
+                || url.startsWith("/admin/employees")
+                || url.startsWith("/admin/users")
+                || url.equals("/admin/shifts")
+                || url.equals("/admin/rules")
+                || url.equals("/admin/leave-types")
+                || url.equals("/admin/devices")
+                || url.equals("/admin/audit-logs")
+                || url.equals("/okr/cycles")
+                || url.equals("/okr/summary-report");
+    }
+
     @GetMapping("/search/quick")
     @Operation(summary = "Tìm kiếm nhanh Command Palette Ctrl+K (CORE-CMD-01)")
     public ApiResponse<List<Map<String, String>>> quickSearch(@RequestParam(defaultValue = "") String q) {
@@ -1689,8 +1739,10 @@ public class OrgStructureController {
                         "Quản trị hệ thống · S16/S17"));
 
         for (Map<String, String> rc : ruleCatalog) {
+            if (!isHr && isHrOnlyUrl(rc.get("url")))
+                continue;
             String keywords = unaccent(rc.get("keywords") + " " + rc.get("title"));
-            if (keywords.contains(cleanQ) || rc.get("keywords").contains(cleanQ)) {
+            if (fuzzyMatch(keywords, cleanQ)) {
                 results.add(Map.of(
                         "title", rc.get("title"),
                         "subtitle", rc.get("sub"),
@@ -1699,16 +1751,18 @@ public class OrgStructureController {
             }
         }
 
-        // Search dynamic rules from DB
+        // Search dynamic rules from DB — chỉ HR/Admin được xem cấu hình.
         try {
-            for (Rule r : ruleRepository.findAll()) {
-                String rText = unaccent(r.getName() + " " + r.getRuleKey() + " " + r.getDescription());
-                if (rText.contains(cleanQ)) {
-                    results.add(Map.of(
-                            "title", "Quy tắc: " + r.getName(),
-                            "subtitle", "Tham số hệ thống · Key: " + r.getRuleKey(),
-                            "kind", "rule",
-                            "url", "/admin/rules"));
+            if (isHr) {
+                for (Rule r : ruleRepository.findAll()) {
+                    String rText = unaccent(r.getName() + " " + r.getRuleKey() + " " + r.getDescription());
+                    if (fuzzyMatch(rText, cleanQ)) {
+                        results.add(Map.of(
+                                "title", "Quy tắc: " + r.getName(),
+                                "subtitle", "Tham số hệ thống · Key: " + r.getRuleKey(),
+                                "kind", "rule",
+                                "url", "/admin/rules"));
+                    }
                 }
             }
         } catch (Exception ignored) {
@@ -1732,13 +1786,19 @@ public class OrgStructureController {
 
                 String uText = unaccent(
                         u.getFullName() + " " + u.getEmployeeCode() + " " + (u.getEmail() != null ? u.getEmail() : ""));
-                if (uText.contains(cleanQ)) {
+                if (fuzzyMatch(uText, cleanQ)) {
+                    // HR xem hồ sơ đầy đủ; Manager xem sơ đồ tổ chức; Employee về hồ sơ cá nhân.
+                    String userUrl = isHr
+                            ? "/admin/employees?search=" + u.getEmployeeCode()
+                            : isManager
+                                    ? "/admin/org-tree?search=" + u.getEmployeeCode()
+                                    : "/account/profile";
                     results.add(Map.of(
                             "title", u.getFullName() + " (" + u.getEmployeeCode() + ")",
                             "subtitle",
                             "Nhân sự · " + (u.getPositionName() != null ? u.getPositionName() : u.getRole()),
                             "kind", "user",
-                            "url", "/admin/employees?search=" + u.getEmployeeCode()));
+                            "url", userUrl));
                 }
             }
         } catch (Exception ignored) {
@@ -1775,8 +1835,10 @@ public class OrgStructureController {
                         "sub", "Cài đặt cá nhân"));
 
         for (Map<String, String> s : screens) {
+            if (!isHr && isHrOnlyUrl(s.get("url")))
+                continue;
             String keywords = unaccent(s.get("keywords") + " " + s.get("title"));
-            if (keywords.contains(cleanQ)) {
+            if (fuzzyMatch(keywords, cleanQ)) {
                 results.add(Map.of(
                         "title", s.get("title"),
                         "subtitle", s.get("sub"),
@@ -1802,8 +1864,11 @@ public class OrgStructureController {
 
         List<Map<String, String>> actions = new ArrayList<>();
         actions.add(Map.of("action", "CHECK_IN", "label", "Chấm công vào/ra ngay", "url", "/attendance/checkin"));
-        actions.add(Map.of("action", "SUBMIT_LEAVE", "label", "Tạo đơn xin nghỉ phép / WFH", "url",
+        actions.add(Map.of("action", "SUBMIT_LEAVE", "label", "Tạo đơn xin nghỉ phép", "url",
                 "/attendance/requests"));
+        actions.add(Map.of("action", "SUBMIT_WFH", "label", "Tạo đơn làm việc từ xa (WFH)", "url",
+                "/attendance/requests"));
+        actions.add(Map.of("action", "CHANGE_PASSWORD", "label", "Đổi mật khẩu", "url", "/account/profile"));
         actions.add(Map.of("action", "CHECKIN_OKR", "label", "Check-in tiến độ Key Results OKR", "url", "/okr/my-okr"));
         actions.add(Map.of("action", "VIEW_MY_TIMESHEET", "label", "Xem bảng công của tôi", "url",
                 "/attendance/my-timesheet"));
@@ -1826,23 +1891,43 @@ public class OrgStructureController {
     }
 
     @GetMapping("/notifications")
-    @Operation(summary = "Danh sách thông báo thời gian thực trên Header (CORE-NOTIF-01)")
-    public ApiResponse<List<Map<String, Object>>> getNotifications() {
+    @Operation(summary = "Danh sách thông báo phân trang + lọc phía server (CORE-NOTIF-01)")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(defaultValue = "false") boolean unread,
+            @RequestParam(required = false) String eventKey,
+            @RequestParam(required = false) String q) {
         UUID uid = CurrentUser.userId();
-        List<Notification> dbList = uid != null
-                ? notificationRepository.findByUserIdOrderByCreatedAtDesc(uid)
-                : notificationRepository.findByOrderByCreatedAtDesc();
-        if (dbList.isEmpty() && uid != null) {
-            dbList = notificationRepository.findByOrderByCreatedAtDesc();
+        int pageSize = size != null ? size : (limit != null ? limit : 50);
+        pageSize = Math.max(1, Math.min(100, pageSize));
+        int safePage = Math.max(0, page);
+        long unreadCount = uid == null ? 0 : notificationRepository.countUnread(uid);
+
+        Page<Notification> dbPage = Page.empty(PageRequest.of(safePage, pageSize));
+        if (uid != null) {
+            String normalizedKey = eventKey == null || eventKey.isBlank() ? null : eventKey.trim();
+            String normalizedQ = q == null || q.isBlank() ? null : q.trim();
+            dbPage = notificationRepository.search(
+                    uid, unread, normalizedKey, normalizedQ,
+                    PageRequest.of(safePage, pageSize, Sort.by(Sort.Direction.DESC, "createdAt")));
         }
+
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Notification entity : dbList) {
+        for (Notification entity : dbPage.getContent()) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", entity.getId().toString());
             map.put("title", entity.getTitle());
             map.put("message", entity.getContent());
             map.put("content", entity.getContent());
             map.put("type", entity.getType());
+            map.put("eventKey", entity.getEventKey());
+            map.put("category", entity.getEventKey() == null ? null
+                    : com.act.pulse.modules.notification.service.NotificationEventCatalog
+                            .get(entity.getEventKey()) == null ? null
+                    : com.act.pulse.modules.notification.service.NotificationEventCatalog
+                            .get(entity.getEventKey()).category());
             map.put("priority", entity.getPriority());
             map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent"
                     : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");
@@ -1853,7 +1938,25 @@ public class OrgStructureController {
             map.put("createdAt", entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "");
             result.add(map);
         }
-        return ApiResponse.ok(result, "Lấy thông báo thành công");
+
+        // Giữ nguyên `data` là mảng để client cũ không vỡ; metadata nằm ở header.
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Total-Count", String.valueOf(dbPage.getTotalElements()));
+        headers.add("X-Unread-Count", String.valueOf(unreadCount));
+        headers.add("X-Page", String.valueOf(safePage));
+        headers.add("X-Page-Size", String.valueOf(pageSize));
+        headers.add("X-Has-More", String.valueOf(dbPage.hasNext()));
+        return ResponseEntity.ok().headers(headers)
+                .body(ApiResponse.ok(result, "Lấy thông báo thành công"));
+    }
+
+    @GetMapping("/notifications/unread-count")
+    @Operation(summary = "Số thông báo chưa đọc (badge) — không tải cả hộp thư")
+    public ApiResponse<Map<String, Object>> unreadNotificationCount() {
+        UUID uid = CurrentUser.userId();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("count", uid == null ? 0 : notificationRepository.countUnread(uid));
+        return ApiResponse.ok(out, "Số thông báo chưa đọc");
     }
 
     @PutMapping("/notifications/{id}/read")
@@ -1864,6 +1967,11 @@ public class OrgStructureController {
             Optional<Notification> notifOpt = notificationRepository.findById(uid);
             if (notifOpt.isPresent()) {
                 Notification notif = notifOpt.get();
+                // Chỉ đánh dấu được thông báo của chính mình.
+                UUID currentUid = CurrentUser.userId();
+                if (currentUid != null && !currentUid.equals(notif.getUserId()) && !CurrentUser.isHr()) {
+                    return ApiResponse.ok(false, "Không có quyền đánh dấu thông báo của người khác");
+                }
                 notif.setIsRead(true);
                 notificationRepository.save(notif);
                 return ApiResponse.ok(true, "Đã đánh dấu thông báo " + id + " đã đọc");
@@ -1875,17 +1983,12 @@ public class OrgStructureController {
 
     @PutMapping("/notifications/mark-all-read")
     @Operation(summary = "Đánh dấu tất cả thông báo đã đọc (CORE-NOTIF-02)")
+    @Transactional
     public ApiResponse<Boolean> markAllNotificationsRead() {
-        try {
-            UUID currentUid = CurrentUser.userId();
-            List<Notification> list = (currentUid != null)
-                    ? notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(currentUid)
-                    : notificationRepository.findAll();
-            for (Notification n : list) {
-                n.setIsRead(true);
-            }
-            notificationRepository.saveAll(list);
-        } catch (Exception ignored) {
+        UUID currentUid = CurrentUser.userId();
+        // Chỉ đánh dấu hộp thư của chính mình — không bao giờ quét toàn hệ thống.
+        if (currentUid != null) {
+            notificationRepository.markAllRead(currentUid);
         }
         return ApiResponse.ok(true, "Đã đánh dấu tất cả thông báo đã đọc");
     }
@@ -1895,14 +1998,16 @@ public class OrgStructureController {
     public ApiResponse<Notification> createNotification(@RequestBody Map<String, Object> body) {
         UUID uid = CurrentUser.userId();
         if (uid == null) {
-            List<User> users = userRepository.findAll();
-            uid = !users.isEmpty() ? users.get(0).getId() : UUID.randomUUID();
+            // Không ghi vào user ngẫu nhiên — yêu cầu đăng nhập.
+            return ApiResponse.error("Vui lòng đăng nhập để tạo thông báo.");
         }
+        String eventKey = (String) body.getOrDefault("eventKey", "MANUAL");
         Notification entity = Notification.builder()
                 .userId(uid)
                 .title((String) body.getOrDefault("title", "Thông báo mới"))
                 .content((String) body.getOrDefault("content", "Nội dung thông báo mới"))
                 .type((String) body.getOrDefault("type", "ATTENDANCE"))
+                .eventKey(eventKey)
                 .priority((String) body.getOrDefault("priority", "MEDIUM"))
                 .actionUrl((String) body.getOrDefault("actionUrl", "/todo"))
                 .isRead(false)
@@ -1915,7 +2020,16 @@ public class OrgStructureController {
     public ApiResponse<Boolean> deleteNotification(@PathVariable String id) {
         try {
             UUID uid = UUID.fromString(id);
-            notificationRepository.deleteById(uid);
+            // Chỉ xóa được thông báo của chính mình (HR được xóa tất cả).
+            notificationRepository.findById(uid).ifPresent(notif -> {
+                UUID currentUid = CurrentUser.userId();
+                if (currentUid != null && !currentUid.equals(notif.getUserId()) && !CurrentUser.isHr()) {
+                    throw new IllegalArgumentException("Không có quyền xóa thông báo của người khác");
+                }
+                notificationRepository.delete(notif);
+            });
+        } catch (IllegalArgumentException ex) {
+            return ApiResponse.error(ex.getMessage());
         } catch (Exception ignored) {
         }
         return ApiResponse.ok(true, "Đã xóa thông báo");

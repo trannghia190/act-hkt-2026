@@ -1,6 +1,5 @@
 package com.act.pulse.modules.okr.service;
 
-import com.act.pulse.modules.attendance.entity.Notification;
 import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.okr.entity.OKRCycle;
 import com.act.pulse.modules.okr.entity.OKRReview;
@@ -34,6 +33,7 @@ public class OKRCheckInReminderJob {
     private final OKRItemRepository okrItemRepository;
     private final OKRCheckInRepository checkInRepository;
     private final NotificationRepository notificationRepository;
+    private final com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
 
     @Scheduled(cron = "0 0 8 * * *")
     public void remindUpcomingCheckIn() {
@@ -52,6 +52,7 @@ public class OKRCheckInReminderJob {
             if (items.isEmpty()) continue;
             if (!checkInRepository.findByReviewIdAndPeriodOrderByCreatedAtDesc(review.getId(), period).isEmpty()) continue;
 
+            // Chống trùng: 1 nhắc/ngày/kỳ (dispatcher cũng áp thêm cửa sổ dedupe của người dùng).
             boolean alreadySentToday = notificationRepository
                     .findByUserIdOrderByCreatedAtDesc(review.getUserId()).stream()
                     .anyMatch(n -> "OKR_CHECKIN_REMINDER".equals(n.getType())
@@ -59,17 +60,16 @@ public class OKRCheckInReminderJob {
                             && n.getCreatedAt().toLocalDate().equals(today));
             if (alreadySentToday) continue;
 
-            notificationRepository.save(Notification.builder()
-                    .userId(review.getUserId())
-                    .title("Nhắc check-in OKR kỳ " + period)
-                    .content("Còn " + daysLeft + " ngày đến hạn check-in kỳ " + period + " (" + deadline
-                            + "). Cập nhật giá trị mới cho " + items.size() + " đầu việc.")
-                    .type("OKR_CHECKIN_REMINDER")
-                    .priority(daysLeft <= 1 ? "HIGH" : "MEDIUM")
-                    .actionUrl("/okr/my-okr")
-                    .isRead(false)
-                    .createdAt(LocalDateTime.now())
-                    .build());
+            notificationDispatcher.dispatch(
+                    "OKR_CHECKIN_DUE",
+                    review.getUserId(),
+                    "Nhắc check-in OKR kỳ " + period,
+                    "Còn " + daysLeft + " ngày đến hạn check-in kỳ " + period + " (" + deadline
+                            + "). Cập nhật giá trị mới cho " + items.size() + " đầu việc.",
+                    "OKR_CHECKIN_REMINDER",
+                    daysLeft <= 1 ? "HIGH" : "MEDIUM",
+                    "/okr/my-okr",
+                    "okr-checkin:" + review.getId() + ":" + period);
         }
     }
 }

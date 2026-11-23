@@ -64,7 +64,14 @@ public class TodoController {
     }
 
     private List<TodoItem> itemsForCurrentUser() {
-        UUID userId = CurrentUser.userId();
+        return itemsFor(CurrentUser.userId());
+    }
+
+    /**
+     * Việc chờ của một user cụ thể — dùng chung cho Todo Inbox, thẻ "việc chờ" trên
+     * trang Tuỳ chỉnh thông báo và job digest 08:00 để số liệu luôn khớp.
+     */
+    public List<TodoItem> itemsFor(UUID userId) {
         Set<String> done = new HashSet<>();
         if (userId != null) {
             todoCompletionRepository.findByUserId(userId).forEach(c -> done.add(c.getTodoId()));

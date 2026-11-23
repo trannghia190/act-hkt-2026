@@ -29,6 +29,14 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
 
+    /**
+     * Chế độ dev: chưa cấu hình SMTP thì in email ra log và vẫn coi là đã gửi.
+     * Bật qua {@code MAIL_DEV_LOG=true} (run-local.sh) — mặc định tắt để production
+     * không âm thầm bỏ qua email.
+     */
+    @Value("${app.mail.dev-log:false}")
+    private boolean devLogMail;
+
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
 
     @Override
@@ -69,6 +77,11 @@ public class EmailServiceImpl implements EmailService {
                     && impl.getPassword() != null && !impl.getPassword().isBlank();
         }
         return senderEmail != null && !senderEmail.isBlank();
+    }
+
+    @Override
+    public boolean isMailDeliverable() {
+        return isSmtpConfigured() || devLogMail;
     }
 
     @Override
@@ -331,10 +344,42 @@ public class EmailServiceImpl implements EmailService {
     }
 
     // =========================================================================
+    // 3b. THÔNG BÁO SỰ KIỆN TỔNG QUÁT (kênh email của tuỳ chỉnh S36)
+    // =========================================================================
+    @Override
+    public boolean sendEventEmail(String toEmail, String fullName, String title, String content, String actionUrl) {
+        if (toEmail == null || toEmail.isBlank()) return false;
+        String subject = "[ACT PULSE] " + (title == null ? "Thông báo" : title);
+        String link = actionUrl == null || actionUrl.isBlank() ? "" : actionUrl;
+        String htmlContent = """
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #064e3b 0%%, #047857 100%%); padding: 20px 24px; color: #ffffff;">
+                <div style="font-size: 13px; opacity: 0.85;">ACT PULSE · Thông báo</div>
+                <div style="font-size: 18px; font-weight: 800; margin-top: 4px;">%s</div>
+              </div>
+              <div style="padding: 20px 24px; color: #334155; font-size: 14px; line-height: 1.6;">
+                <p>Kính gửi <strong>%s</strong>,</p>
+                <p style="margin: 12px 0;">%s</p>
+                %s
+              </div>
+              <div style="padding: 12px 24px; background: #f8fafc; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0;">
+                Bạn nhận được email này vì đang bật kênh Email cho loại thông báo này trong Tuỳ chỉnh thông báo cá nhân.
+              </div>
+            </div>
+            """.formatted(
+                title == null ? "Thông báo" : title,
+                fullName == null ? "" : fullName,
+                content == null ? "" : content,
+                link.isEmpty() ? ""
+                        : "<a href=\"%s\" style=\"display:inline-block;margin-top:8px;padding:10px 16px;background:#047857;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;\">Mở trong hệ thống →</a>".formatted(link));
+        return sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    // =========================================================================
     // 4. DAILY MORNING DIGEST (08:00 AM)
     // =========================================================================
     @Override
-    public void sendDailyDigestEmail(String toEmail, String fullName, List<Map<String, Object>> tasks, Map<String, Object> leaveSummary) {
+    public boolean sendDailyDigestEmail(String toEmail, String fullName, List<Map<String, Object>> tasks, Map<String, Object> leaveSummary) {
         String subject = "[ACT PULSE] Bản Tin Công Việc Buổi Sáng · 08:00 AM";
         String preheader = "Bản tin 08:00: Bạn có " + (tasks != null ? tasks.size() : 0) + " việc cần xử lý và số dư phép năm hiện tại.";
 
@@ -407,7 +452,7 @@ public class EmailServiceImpl implements EmailService {
                 "http://localhost:3000/todo"
         );
 
-        sendHtmlEmail(toEmail, subject, htmlContent);
+        return sendHtmlEmail(toEmail, subject, htmlContent);
     }
 
     // =========================================================================
@@ -642,6 +687,17 @@ public class EmailServiceImpl implements EmailService {
         if (toEmail == null || toEmail.isBlank()) {
             log.error("Không thể gửi email: Địa chỉ người nhận trống");
             return false;
+        }
+
+        if (!isSmtpConfigured()) {
+            if (!devLogMail) {
+                log.warn("Bỏ qua email tới {} ({}): SMTP chưa cấu hình và MAIL_DEV_LOG đang tắt.",
+                        toEmail, subject);
+                return false;
+            }
+            // Dev-log: không gửi thật, in nội dung để kiểm thử luồng mà không cần SMTP.
+            log.info("[MAIL DEV-LOG] Tới: {} | Tiêu đề: {}\n{}", toEmail, subject, htmlContent);
+            return true;
         }
 
         try {

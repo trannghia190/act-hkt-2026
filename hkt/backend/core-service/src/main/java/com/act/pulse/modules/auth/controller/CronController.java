@@ -9,6 +9,7 @@ import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.notification.service.NotificationDigestJob;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,9 @@ public class CronController {
     private final RuleService ruleService;
     private final AuditLogRepository auditLogRepository;
     private final EmailService emailService;
+    private final NotificationDigestJob digestJob;
+    private final com.act.pulse.modules.notification.service.NotificationReminderJob reminderJob;
+    private final com.act.pulse.modules.notification.service.NotificationCleanupJob cleanupJob;
 
     @PostMapping("/check-sla-escalation")
     @Operation(summary = "Kiểm tra SLA 48h và tự động chuyển cấp duyệt (CORE-TODO-05)")
@@ -68,26 +72,52 @@ public class CronController {
     }
 
     @PostMapping("/send-daily-digest")
-    @Operation(summary = "Email digest tổng hợp 8h sáng qua Gmail (CORE-DIGEST-01)")
-    public ApiResponse<Boolean> sendDailyDigest(@RequestBody(required = false) Map<String, Object> body) {
-        if (emailService.isSmtpConfigured()) {
-            String targetEmail = body != null && body.containsKey("email") ? String.valueOf(body.get("email")) : null;
-            if (targetEmail != null && !targetEmail.isBlank()) {
-                userRepository.findByEmail(targetEmail).ifPresent(u -> {
-                    try {
-                        List<Map<String, Object>> userTasks = List.of(
-                                Map.of("title", "Quên chấm công ra ca chiều", "urgency", "overdue", "description", "Cần lập đơn bổ sung công trong 48h"),
-                                Map.of("title", "Check-in tiến độ OKR tháng 11", "urgency", "soon", "description", "Cập nhật Key Results nhóm Business & People"),
-                                Map.of("title", "Chấm công vào ca hôm nay", "urgency", "today", "description", "Check-in khuôn mặt trước 09:00")
-                        );
-                        Map<String, Object> leave = Map.of("totalRemaining", 10.5, "carriedRemaining", 3.5, "annualRemaining", 7.0);
-                        emailService.sendDailyDigestEmail(u.getEmail(), u.getFullName(), userTasks, leave);
-                    } catch (Exception ignored) {}
-                });
-            }
+    @Operation(summary = "Chạy digest 08:00 thật (mục bị dồn + việc chờ) cho 1 người hoặc toàn bộ (CORE-DIGEST-01)")
+    public ApiResponse<Map<String, Object>> sendDailyDigest(@RequestBody(required = false) Map<String, Object> body) {
+        String targetEmail = body != null && body.containsKey("email") ? String.valueOf(body.get("email")) : null;
+        if (targetEmail != null && !targetEmail.isBlank()) {
+            boolean sent = userRepository.findByEmail(targetEmail)
+                    .map(digestJob::sendDigestFor)
+                    .orElse(false);
+            return ApiResponse.ok(Map.of("sent", sent, "recipient", targetEmail),
+                    sent ? "Đã gửi digest cho " + targetEmail : "Không có việc nào để gửi digest cho " + targetEmail);
         }
+        int sent = digestJob.sendDigestForAll();
+        return ApiResponse.ok(Map.of("sent", sent, "recipient", "ALL"),
+                "Digest 08:00 đã gửi cho " + sent + " người dùng");
+    }
 
-        return ApiResponse.ok(true, "Đã kích hoạt gửi email digest tổng hợp 08:00 sáng thành công qua Gmail");
+    @PostMapping("/cleanup-notifications")
+    @Operation(summary = "Dọn thông báo đã đọc quá hạn lưu trữ (mặc định 90 ngày)")
+    public ApiResponse<Map<String, Object>> cleanupNotifications() {
+        int removed = cleanupJob.cleanup();
+        return ApiResponse.ok(Map.of("removed", removed),
+                "Đã dọn " + removed + " thông báo đã đọc quá hạn");
+    }
+
+    @PostMapping("/notification-reminders")
+    @Operation(summary = "Chạy toàn bộ phép quét nhắc thông báo (chấm công, đơn từ, bảng công, OKR)")
+    public ApiResponse<Map<String, Object>> notificationReminders(@RequestBody(required = false) Map<String, Object> body) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalTime at = java.time.LocalTime.now();
+        try {
+            if (body != null && body.get("date") != null) {
+                today = java.time.LocalDate.parse(String.valueOf(body.get("date")));
+                at = java.time.LocalTime.of(23, 59);
+            }
+            if (body != null && body.get("time") != null) {
+                at = java.time.LocalTime.parse(String.valueOf(body.get("time")));
+            }
+        } catch (Exception e) {
+            return ApiResponse.error("Tham số date (YYYY-MM-DD) hoặc time (HH:mm) không hợp lệ.");
+        }
+        Map<String, Integer> counts = reminderJob.runAll(today, at);
+        Map<String, Object> out = new HashMap<>();
+        out.put("date", today.toString());
+        out.put("time", at.toString());
+        out.put("counts", counts);
+        out.put("total", counts.values().stream().mapToInt(Integer::intValue).sum());
+        return ApiResponse.ok(out, "Đã chạy phép quét nhắc thông báo");
     }
 
     private int accrualDay() {

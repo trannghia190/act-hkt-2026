@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-ro
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { PushOnboardingPrompt } from './components/layout/PushOnboardingPrompt';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { EnterpriseGmailModal } from './components/common/EnterpriseGmailModal';
@@ -71,7 +72,10 @@ function MainLayout() {
       {/* 5. Global Enterprise Gmail / SMTP Setup Modal */}
       <EnterpriseGmailModal isOpen={isGmailModalOpen} onClose={() => setIsGmailModalOpen(false)} />
 
-      {/* 6. Forced First-Login Change Password Modal */}
+      {/* 6. Lời mời bật Web Push cho lần đăng nhập đầu trên thiết bị (S36) */}
+      <PushOnboardingPrompt />
+
+      {/* 7. Forced First-Login Change Password Modal */}
       <FirstLoginChangePasswordModal
         isOpen={Boolean(user?.mustChangePassword)}
         onSuccess={() => {

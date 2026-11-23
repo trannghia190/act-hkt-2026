@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -9,6 +9,8 @@ import { AttendanceRequestItem } from './requestStore';
 
 export const RequestsPage: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<AttendanceRequestItem[]>([]);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -69,6 +71,20 @@ export const RequestsPage: React.FC = () => {
     leaveType: 'AL',
     reason: 'Việc cá nhân',
   });
+
+  // Command Palette: mở sẵn form tạo đơn đúng loại (CORE-CMD-02).
+  useEffect(() => {
+    const openCreate = (location.state as { openCreate?: string } | null)?.openCreate;
+    if (!openCreate) return;
+    if (openCreate === 'LEAVE' || openCreate === 'WFH' || openCreate === 'LATE_EARLY' || openCreate === 'ADJUST') {
+      setEditingId(null);
+      setEditingAttachmentCount(0);
+      setAttachments([]);
+      setNewReq(prev => ({ ...prev, type: openCreate }));
+      setIsCreateOpen(true);
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
 
   const authHeaders = (): Record<string, string> => {
     try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }
@@ -763,6 +779,7 @@ export const RequestsPage: React.FC = () => {
           <div>
             <label className="block font-medium text-ink mb-1">Loại Đơn Yêu Cầu</label>
             <select
+              autoFocus
               value={newReq.type}
               onChange={e => handleTypeChange(e.target.value as any)}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"

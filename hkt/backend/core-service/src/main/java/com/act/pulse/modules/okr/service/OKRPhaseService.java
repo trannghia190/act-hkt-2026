@@ -128,6 +128,11 @@ public class OKRPhaseService {
         return phase(cycle, key).map(p -> ACTIVE.equals(p.get("effective_status"))).orElse(false);
     }
 
+    /** Như {@link #isOpen(OKRCycle, String)} nhưng tính theo ngày cho trước (job quét lùi/giả lập). */
+    public boolean isOpen(OKRCycle cycle, String key, LocalDate today) {
+        return phase(cycle, key).map(p -> ACTIVE.equals(effectiveStatus(cycle, p, today))).orElse(false);
+    }
+
     public LocalDate dueDate(OKRCycle cycle, String key) {
         return phase(cycle, key).map(p -> parseDate(p.get("due_date"))).orElse(null);
     }
