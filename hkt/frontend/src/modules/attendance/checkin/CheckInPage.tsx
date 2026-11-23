@@ -215,8 +215,12 @@ export const CheckInPage: React.FC = () => {
       canvas.height = video.videoHeight || 320;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        ctx.save();
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL('image/jpeg', 0.8);
+        ctx.restore();
+        return canvas.toDataURL('image/jpeg', 0.85);
       }
     }
 
@@ -574,7 +578,7 @@ export const CheckInPage: React.FC = () => {
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover rounded-full ${useRealCamera && cameraStream ? 'block' : 'hidden'}`}
+            className={`w-full h-full object-cover rounded-full -scale-x-100 ${useRealCamera && cameraStream ? 'block' : 'hidden'}`}
           />
 
           {/* Oval guideline overlay */}
