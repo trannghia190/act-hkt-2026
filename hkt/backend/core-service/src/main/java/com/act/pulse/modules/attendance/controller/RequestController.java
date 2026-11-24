@@ -872,7 +872,8 @@ public class RequestController {
         return days;
     }
 
-    private ApiResponse<RequestEntity> decide(UUID id, boolean approve, String comment) {
+    /** Dùng chung cho luồng duyệt chuẩn và Todo Inbox để luồng duyệt/SLA không bị lệch. */
+    public ApiResponse<RequestEntity> decide(UUID id, boolean approve, String comment) {
         RequestEntity r = requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
         User owner = userRepository.findById(r.getUserId()).orElseThrow();
         UUID me = CurrentUser.userId();

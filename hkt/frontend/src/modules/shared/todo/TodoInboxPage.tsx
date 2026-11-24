@@ -31,6 +31,8 @@ export interface PersonalTask {
   dueTime: string;
   actionLabel: string;
   actionUrl: string;
+  completable?: boolean;
+  deletable?: boolean;
 }
 
 export interface ApprovalRequest {
@@ -52,7 +54,25 @@ export interface LeaveSummary {
   annualRemaining: number;
   carriedExpiryDate: string;
   policyNotice?: string;
+  carryStatus?: 'AVAILABLE' | 'CAPPED' | 'EXPIRED' | string;
+  carriedYear?: number;
+  annualYear?: number;
 }
+
+export interface CompletedLogItem {
+  id: string;
+  title: string;
+  completedAt: string | null;
+}
+
+/** Giờ hoàn tất theo giờ địa phương: 18:46 23/11/2026. */
+const formatCompletedAt = (raw: string | null): string => {
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())} ${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+};
 
 export const TodoInboxPage: React.FC = () => {
   const { user } = useAuth();
@@ -76,11 +96,12 @@ export const TodoInboxPage: React.FC = () => {
 
   // Leave balance summary (Criteria G1-#4: Số phép còn lại hiện ngay trên trang này)
   const [leaveSummary, setLeaveSummary] = useState<LeaveSummary>({
-    totalRemaining: 10.5,
-    carriedRemaining: 3.5,
-    annualRemaining: 7.0,
-    carriedExpiryDate: '31/03/2027',
-    policyNotice: 'Phép tồn năm 2025 được bảo lưu tối đa đến 31/03/2027',
+    totalRemaining: 0,
+    carriedRemaining: 0,
+    annualRemaining: 0,
+    carriedExpiryDate: '',
+    carriedYear: new Date().getFullYear() - 1,
+    annualYear: new Date().getFullYear(),
   });
 
   // 1. Personal Action Items (Theo hợp đồng C1 / S02 trong docs/04-convenience-features.md)
@@ -101,6 +122,8 @@ export const TodoInboxPage: React.FC = () => {
             dueTime: item.dueDate || 'Hôm nay',
             actionLabel: item.actionLabel || 'Xử lý ngay',
             actionUrl: item.actionUrl || '/attendance/checkin',
+            completable: item.completable !== false,
+            deletable: item.deletable === true,
           }));
           setPersonalTasks(mapped);
         }
@@ -145,7 +168,13 @@ export const TodoInboxPage: React.FC = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setCompletedList(data.data);
+          setCompletedList(
+            data.data.map((item: any) =>
+              typeof item === 'string'
+                ? { id: item, title: item, completedAt: null }
+                : { id: item.id, title: item.title || 'Việc đã hoàn tất', completedAt: item.completedAt ?? null }
+            )
+          );
         }
       })
       .catch(() => {});
@@ -160,23 +189,50 @@ export const TodoInboxPage: React.FC = () => {
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
 
   // 3. Completed Tasks History
-  const [completedList, setCompletedList] = useState<string[]>([]);
+  const [completedList, setCompletedList] = useState<CompletedLogItem[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleCompletePersonalTask = (task: PersonalTask) => {
-    // Call backend API to record completion
-    fetch(`/api/v1/todos/${task.id}/complete`, { method: 'POST' }).catch(() => {});
+  const handleCompletePersonalTask = async (task: PersonalTask) => {
+    if (task.completable === false) {
+      showToast('Mục tổng hợp này tự cập nhật theo dữ liệu thật, không tick tay được.');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/todos/${task.id}/complete`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err?.message || 'Không cập nhật được trạng thái việc này.');
+        return;
+      }
+    } catch {
+      showToast('Không kết nối được máy chủ.');
+      return;
+    }
     setPersonalTasks((prev) => prev.filter((t) => t.id !== task.id));
-    setCompletedList((prev) => [`Đã hoàn thành: ${task.title}`, ...prev]);
+    setCompletedList((prev) => [
+      { id: task.id, title: task.title, completedAt: new Date().toISOString() },
+      ...prev,
+    ]);
     showToast(`Đã đánh dấu hoàn tất: ${task.title}`);
   };
 
-  const handleDeletePersonalTask = (taskId: string, e: React.MouseEvent) => {
+  const handleDeletePersonalTask = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    try {
+      const res = await fetch(`/api/v1/todos/${taskId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err?.message || 'Chỉ xoá được việc do bạn tự tạo.');
+        return;
+      }
+    } catch {
+      showToast('Không kết nối được máy chủ.');
+      return;
+    }
     setPersonalTasks((prev) => prev.filter((t) => t.id !== taskId));
     showToast('Đã xóa bỏ công việc khỏi danh sách');
   };
@@ -213,43 +269,50 @@ export const TodoInboxPage: React.FC = () => {
           dueTime: data.data.dueDate || 'Hôm nay',
           actionLabel: data.data.actionLabel || 'Xử lý ngay',
           actionUrl: data.data.actionUrl || '/attendance/checkin',
+          completable: true,
+          deletable: true,
         };
         setPersonalTasks((prev) => [created, ...prev]);
+        showToast('Đã thêm việc cần làm thành công!');
+        setIsCreateTaskModalOpen(false);
+        setNewTaskTitle('');
+        setNewTaskDesc('');
       } else {
-        // Fallback local addition
-        const newTask: PersonalTask = {
-          id: `todo-custom-${Date.now()}`,
-          module: newTaskModule,
-          urgency: newTaskUrgency,
-          title: newTaskTitle,
-          description: newTaskDesc || 'Nhiệm vụ mới tạo',
-          dueTime: newTaskUrgency === 'overdue' ? 'Quá hạn' : newTaskUrgency === 'soon' ? 'Còn 2 ngày' : 'Hôm nay',
-          actionLabel: newTaskActionLabel,
-          actionUrl: newTaskActionUrl,
-        };
-        setPersonalTasks((prev) => [newTask, ...prev]);
+        showToast(data?.message || 'Không tạo được công việc — vui lòng thử lại.');
       }
-      showToast('Đã thêm việc cần làm thành công!');
-      setIsCreateTaskModalOpen(false);
-      setNewTaskTitle('');
-      setNewTaskDesc('');
     } catch {
-      showToast('Đã thêm việc cần làm');
-      setIsCreateTaskModalOpen(false);
+      showToast('Không kết nối được máy chủ.');
     }
   };
 
-  const handleApprovalAction = (action: 'approve' | 'reject') => {
+  const handleApprovalAction = async (action: 'approve' | 'reject') => {
     if (!selectedApproval) return;
     const actionText = action === 'approve' ? 'Phê duyệt' : 'Từ chối';
-    fetch(`/api/v1/todos/approvals/${selectedApproval.id}/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: action.toUpperCase(), comment: actionReason || actionText }),
-    }).catch(() => {});
+    try {
+      const res = await fetch(`/api/v1/todos/approvals/${selectedApproval.id}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action.toUpperCase(), comment: actionReason || actionText }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(payload?.message || 'Không xử lý được đơn — kiểm tra quyền duyệt.');
+        return;
+      }
+    } catch {
+      showToast('Không kết nối được máy chủ.');
+      return;
+    }
 
     setApprovals((prev) => prev.filter((a) => a.id !== selectedApproval.id));
-    setCompletedList((prev) => [`${actionText} đơn ${selectedApproval.id} của ${selectedApproval.requester}`, ...prev]);
+    setCompletedList((prev) => [
+      {
+        id: `local-${selectedApproval.id}`,
+        title: `${actionText} đơn ${selectedApproval.id} của ${selectedApproval.requester}`,
+        completedAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
     showToast(`Đã ${actionText.toLowerCase()} đơn ${selectedApproval.id} thành công!`);
     setSelectedApproval(null);
     setActiveActionModal(null);
@@ -270,7 +333,11 @@ export const TodoInboxPage: React.FC = () => {
 
     setApprovals((prev) => prev.filter((a) => a.priority !== 'green'));
     setCompletedList((prev) => [
-      `Đã duyệt hàng loạt ${greenItems.length} đơn kế hoạch theo lịch`,
+      {
+        id: `local-batch-${greenItems.length}-${prev.length}`,
+        title: `Đã duyệt hàng loạt ${greenItems.length} đơn kế hoạch theo lịch`,
+        completedAt: new Date().toISOString(),
+      },
       ...prev,
     ]);
     showToast(`Đã duyệt nhanh thành công ${greenItems.length} mục xanh theo lịch!`);
@@ -342,7 +409,15 @@ export const TodoInboxPage: React.FC = () => {
               )}
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
-              {task.module === 'timesheet' ? 'Chấm Công' : task.module === 'okr' ? 'OKR Mục Tiêu' : 'Phép Năm'}
+              {task.module === 'timesheet'
+                ? 'Chấm Công'
+                : task.module === 'okr'
+                  ? 'OKR Mục Tiêu'
+                  : task.module === 'leave'
+                    ? 'Phép Năm'
+                    : task.module === 'requests'
+                      ? 'Đơn Từ'
+                      : 'Hệ Thống'}
             </span>
           </div>
           <Badge
@@ -366,22 +441,26 @@ export const TodoInboxPage: React.FC = () => {
 
       <div className="pt-3 mt-3 border-t border-line/60 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleCompletePersonalTask(task)}
-            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-          >
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Đã xong</span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => handleDeletePersonalTask(task.id, e)}
-            className="p-1 rounded-lg text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            title="Xóa bỏ nhiệm vụ"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {task.completable !== false && (
+            <button
+              type="button"
+              onClick={() => handleCompletePersonalTask(task)}
+              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Đã xong</span>
+            </button>
+          )}
+          {task.deletable === true && (
+            <button
+              type="button"
+              onClick={(e) => handleDeletePersonalTask(task.id, e)}
+              className="p-1 rounded-lg text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Xóa bỏ nhiệm vụ"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <Button
@@ -441,16 +520,20 @@ export const TodoInboxPage: React.FC = () => {
             <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Số dư phép năm cá nhân</div>
             <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
               <span className="text-accent text-2xl font-extrabold">{leaveSummary.totalRemaining} ngày</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
-                Tồn 2025: {leaveSummary.carriedRemaining} ngày
-              </span>
+              {leaveSummary.carriedRemaining > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
+                  Tồn {leaveSummary.carriedYear ?? new Date().getFullYear() - 1}: {leaveSummary.carriedRemaining} ngày
+                </span>
+              )}
               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
-                Phép 2026: {leaveSummary.annualRemaining} ngày
+                Phép {leaveSummary.annualYear ?? new Date().getFullYear()}: {leaveSummary.annualRemaining} ngày
               </span>
             </div>
-            <div className="text-[11px] text-ink-muted mt-1">
-              ⏳ Hạn bảo lưu phép tồn 2025: <strong className="text-amber-800 font-bold">{leaveSummary.carriedExpiryDate}</strong>
-            </div>
+            {leaveSummary.policyNotice && (
+              <div className="text-[11px] text-ink-muted mt-1">
+                ℹ️ {leaveSummary.policyNotice}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2.5 self-end sm:self-center">
@@ -760,13 +843,15 @@ export const TodoInboxPage: React.FC = () => {
             <div className="p-8 text-center text-xs text-ink-muted">Chưa có bản ghi nào.</div>
           ) : (
             <div className="divide-y divide-line text-xs">
-              {completedList.map((log, idx) => (
-                <div key={idx} className="py-3 flex items-center justify-between text-ink-secondary">
-                  <div className="flex items-center gap-2">
+              {completedList.map((log) => (
+                <div key={log.id} className="py-3 flex items-center justify-between gap-3 text-ink-secondary">
+                  <div className="flex items-center gap-2 min-w-0">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>{log}</span>
+                    <span className="truncate">{log.title}</span>
                   </div>
-                  <span className="text-[11px] font-mono text-ink-muted">Vừa xong</span>
+                  <span className="text-[11px] font-mono text-ink-muted shrink-0">
+                    {formatCompletedAt(log.completedAt)}
+                  </span>
                 </div>
               ))}
             </div>

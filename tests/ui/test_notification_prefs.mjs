@@ -42,6 +42,7 @@ const original = originalPrefs.events[EVENT];
 const originalQuiet = originalPrefs.quietHoursEnabled;
 const originalMaxPush = originalPrefs.maxPushPerDay;
 const originalDedupe = originalPrefs.dedupeHours;
+const createdNotifs = [];
 
 const browser = await chromium.launch({ headless: true, channel: 'chromium' });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -131,19 +132,34 @@ try {
     .last();
   const emailBox = row.locator('input[type="checkbox"]').nth(1);
 
-  await emailBox.click();
-  await page.waitForSelector('text=/Đã lưu|Đã cập nhật/', { timeout: 10000 }).catch(() => {});
-  const afterOn = await readPrefs();
-  if (afterOn.events[EVENT].email !== !original.email) {
-    fail('Bật EMAIL qua UI không lưu vào backend — ' + JSON.stringify(afterOn.events[EVENT]));
-  }
-  pass(`Bật kênh EMAIL qua UI: backend email=${afterOn.events[EVENT].email}`);
+  const waitForEmail = async (expected) => {
+    const deadline = Date.now() + 10000;
+    let last;
+    while (Date.now() < deadline) {
+      last = (await readPrefs()).events[EVENT];
+      if (last.email === expected) return last;
+      await page.waitForTimeout(400);
+    }
+    return last;
+  };
 
   await emailBox.click();
-  await page.waitForTimeout(800);
-  const afterOff = await readPrefs();
-  if (afterOff.events[EVENT].email !== original.email) {
-    fail('Tắt lại EMAIL qua UI không lưu — ' + JSON.stringify(afterOff.events[EVENT]));
+  const afterOn = await waitForEmail(!original.email);
+  if (afterOn.email !== !original.email) {
+    fail('Bật EMAIL qua UI không lưu vào backend — ' + JSON.stringify(afterOn));
+  }
+  if (afterOn.web !== original.web || afterOn.push !== original.push) {
+    fail('Bật EMAIL làm đổi kênh khác — ' + JSON.stringify({ original, afterOn }));
+  }
+  pass(`Bật kênh EMAIL qua UI: backend email=${afterOn.email}`);
+
+  await emailBox.click();
+  const afterOff = await waitForEmail(original.email);
+  if (afterOff.email !== original.email) {
+    fail('Tắt lại EMAIL qua UI không lưu — ' + JSON.stringify(afterOff));
+  }
+  if (afterOff.web !== original.web || afterOff.push !== original.push) {
+    fail('Tắt EMAIL làm đổi kênh khác — ' + JSON.stringify({ original, afterOff }));
   }
   pass('Tắt lại kênh EMAIL: backend trở về nguyên trạng');
 
@@ -192,6 +208,62 @@ try {
   await page.locator('a', { hasText: 'Việc của tôi (Personal Actions)' }).first().click();
   await page.waitForURL('**/todo', { timeout: 15000 });
   pass('Thẻ "Việc của tôi" mở Todo Inbox');
+
+  // Hộp thư lọc theo NHÓM sự kiện, không phải từng sự kiện lẻ.
+  const catalog = (await (await fetch(`${API}/notifications/preferences/events`, {
+    headers: { Authorization: `Bearer ${apiToken}` },
+  })).json()).data;
+  const groupLabels = Array.from(new Set(catalog.map((e) => e.categoryLabel || e.category)));
+  const categoryLabel = (cat) => (catalog.find((e) => e.category === cat)?.categoryLabel) || cat;
+  const mark = 'ZZUI' + Date.now();
+  const createNotif = async (eventKey, type, title) => {
+    const res = await fetch(`${API}/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiToken}` },
+      body: JSON.stringify({ eventKey, type, title, content: title, priority: 'LOW' }),
+    });
+    const body = await res.json();
+    if (!body.success) fail('Không tạo được thông báo test: ' + JSON.stringify(body));
+    createdNotifs.push(body.data.id);
+    return body.data.id;
+  };
+  const attTitle = `${mark} Chấm công`;
+  const reqTitle = `${mark} Đơn từ`;
+  await createNotif('MISSING_CHECKOUT', 'ATTENDANCE', attTitle);
+  await createNotif('REQUEST_APPROVED', 'REQUEST', reqTitle);
+
+  await page.goto(`${BASE}/notifications`);
+  const categorySelect = page.locator('select[title="Lọc theo nhóm sự kiện"]');
+  await categorySelect.waitFor({ timeout: 15000 });
+  const optionTexts = (await categorySelect.locator('option').allTextContents()).map((s) => s.trim());
+  if (optionTexts[0] !== 'Tất cả nhóm sự kiện') {
+    fail('Thiếu lựa chọn "Tất cả nhóm sự kiện" — ' + optionTexts.slice(0, 3).join(' | '));
+  }
+  const stray = optionTexts.slice(1).filter((label) => !groupLabels.includes(label));
+  if (stray.length > 0) {
+    fail('Bộ lọc còn sự kiện lẻ thay vì nhóm: ' + stray.join(', '));
+  }
+  if (groupLabels.length < 2 || optionTexts.length < 3) {
+    fail('Bộ lọc nhóm không đủ nhóm: ' + optionTexts.join(', '));
+  }
+  pass(`Hộp thư lọc theo ${optionTexts.length - 1} nhóm sự kiện (${optionTexts.slice(1).join(', ')})`);
+
+  // Chọn nhóm → server lọc thật, danh sách không rỗng dù thông báo cũ chỉ có type.
+  let lastUrl = '';
+  page.on('request', (r) => {
+    if (r.url().includes('/api/v1/notifications?')) lastUrl = r.url();
+  });
+  await categorySelect.selectOption({ label: categoryLabel('ATTENDANCE') });
+  await page.waitForSelector(`text=${attTitle}`, { timeout: 15000 });
+  if (!lastUrl.includes('category=ATTENDANCE')) fail('Chọn nhóm không gọi server với category: ' + lastUrl);
+  if (await page.locator(`text=${reqTitle}`).count()) fail('Lọc Chấm công vẫn hiện thông báo Đơn từ');
+  pass('Lọc nhóm Chấm công: chỉ trả đúng thông báo chấm công');
+
+  await categorySelect.selectOption({ label: categoryLabel('REQUEST') });
+  await page.waitForSelector(`text=${reqTitle}`, { timeout: 15000 });
+  if (!lastUrl.includes('category=REQUEST')) fail('Lọc Đơn từ không gọi server với category: ' + lastUrl);
+  if (await page.locator(`text=${attTitle}`).count()) fail('Lọc Đơn từ vẫn hiện thông báo Chấm công');
+  pass('Lọc nhóm Đơn từ: chỉ trả đúng thông báo đơn từ');
 } finally {
   // Khôi phục nguyên trạng qua API dù test lỗi giữa chừng.
   const current = await readPrefs();
@@ -208,6 +280,12 @@ try {
       events: { ...current.events, [EVENT]: original },
     }),
   });
+  for (const id of createdNotifs) {
+    await fetch(`${API}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${apiToken}` },
+    }).catch(() => {});
+  }
   await browser.close();
 }
 

@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -36,6 +36,12 @@ export const EmployeeManagementPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Danh sách nhóm thật từ API — dropdown chọn nhóm không hard-code danh sách.
+  const [teams, setTeams] = useState<{ id: string; name: string; parentName?: string; memberCount?: number }[]>([]);
+  // Lỗi khi thêm nhân viên (trùng mã/email…) — hiện ngay trong modal.
+  const [addError, setAddError] = useState<string | null>(null);
+  // Lý do đánh dấu nghỉ việc (bắt buộc có lý do như các thao tác nhân sự khác).
+  const [resignReason, setResignReason] = useState('');
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -50,7 +56,7 @@ export const EmployeeManagementPage: React.FC = () => {
     code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
     fullName: '',
     email: '',
-    team: 'Sirius',
+    team: '',   // sẽ điền bằng nhóm đầu tiên nạp từ API
     positionName: 'Kỹ sư Phần mềm',
     role: 'EMPLOYEE' as const,
     password: '123456',
@@ -89,7 +95,7 @@ export const EmployeeManagementPage: React.FC = () => {
   const [managerError, setManagerError] = useState<string | null>(null);
 
   // Change Team Form
-  const [newTeamName, setNewTeamName] = useState('Sirius');
+  const [newTeamName, setNewTeamName] = useState('');
   const [changeTeamReason, setChangeTeamReason] = useState('');
 
   const showToast = (msg: string) => {
@@ -124,6 +130,31 @@ export const EmployeeManagementPage: React.FC = () => {
     fetchEmployees();
   }, [searchTerm, filterTeam, filterRole, filterStatus]);
 
+  // Nạp danh sách nhóm thật để các dropdown "Nhóm Làm Việc" luôn khớp với DB.
+  const fetchTeams = async () => {
+    try {
+      const res = await fetch('/api/v1/admin/teams', { headers: getAuthHeaders() });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (Array.isArray(json?.data)) {
+        setTeams(json.data.map((t: any) => ({
+          id: String(t.id), name: String(t.name),
+          parentName: t.parentName ?? undefined, memberCount: Number(t.memberCount ?? 0),
+        })));
+      }
+    } catch (err) {
+      console.warn('Failed to load teams from API', err);
+    }
+  };
+  useEffect(() => { fetchTeams(); }, []);
+
+  // Nhóm đầu tiên trong DB làm giá trị mặc định cho form (không hard-code tên nhóm).
+  useEffect(() => {
+    if (teams.length === 0) return;
+    setNewEmp((e) => (e.team ? e : { ...e, team: teams[0].name }));
+    setNewTeamName((n) => (n && teams.some((t) => t.name === n) ? n : teams[0].name));
+  }, [teams]);
+
   // Available managers for dropdown selection
   const availableManagers = employees.filter(
     (e) => (e.role === 'MANAGER' || e.role === 'ADMIN' || e.role === 'HR_ADMIN') && (!selectedEmp || e.id !== selectedEmp.id)
@@ -136,10 +167,11 @@ export const EmployeeManagementPage: React.FC = () => {
   // Handle Add Employee (Tự gán nhóm và ca mặc định nếu để trống & Gửi email kích hoạt)
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddError(null);
     try {
       const res = await fetch('/api/v1/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           employeeCode: newEmp.code,
           fullName: newEmp.fullName,
@@ -166,22 +198,25 @@ export const EmployeeManagementPage: React.FC = () => {
           emailStatusMessage: empData?.emailStatusMessage || json.message,
         });
         showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || newEmp.password || '123456'}`);
-        // Reset code for next entry
+        // Reset code for next entry (giữ nhóm đang chọn, không hard-code tên nhóm)
         setNewEmp({
           code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
           fullName: '',
           email: '',
-          team: 'Sirius',
+          team: newEmp.team,
           positionName: 'Kỹ sư Phần mềm',
           role: 'EMPLOYEE' as const,
           password: '123456',
         });
         fetchEmployees();
       } else {
-        showToast(`Lỗi: ${json.message || 'Không thể tạo nhân viên'}`);
+        // Trùng mã/email → hiện lỗi ngay trong modal, không tạo và không ghi đè nhân viên cũ.
+        const msg = json.message || 'Không thể tạo nhân viên';
+        setAddError(msg);
+        showToast(`Lỗi: ${msg}`);
       }
     } catch (err) {
-      showToast('Đã tạo nhân viên thành công trên hệ thống!');
+      setAddError('Không kết nối được tới máy chủ — nhân viên chưa được tạo.');
       setIsAddModalOpen(false);
     }
   };
@@ -238,7 +273,9 @@ export const EmployeeManagementPage: React.FC = () => {
   // Open Change Team Modal
   const handleOpenChangeTeam = (emp: Employee) => {
     setSelectedEmp(emp);
-    setNewTeamName(emp.team && emp.team !== 'Chưa có nhóm' ? emp.team : 'Sirius');
+    setNewTeamName(emp.team && emp.team !== 'Chưa có nhóm'
+      ? emp.team
+      : (teams[0]?.name ?? ''));
     setChangeTeamReason('');
     setIsChangeTeamModalOpen(true);
   };
@@ -265,6 +302,35 @@ export const EmployeeManagementPage: React.FC = () => {
     } catch (err) {
       showToast('Đã lưu thông tin chuyển nhóm!');
       setIsChangeTeamModalOpen(false);
+    }
+  };
+
+  // Đánh dấu nhân viên đã nghỉ việc — rời khỏi tổ chức, giữ lịch sử chấm công.
+  const handleResign = async (emp: Employee) => {
+    const reason = window.prompt(
+      `Đánh dấu ${emp.fullName} (${emp.employeeCode}) đã nghỉ việc?\n\n`
+      + `• Rời khỏi nhóm & quản lý trực tiếp, giữ nguyên lịch sử chấm công.\n`
+      + `• Mã nhân viên vẫn giữ — không nhân viên mới nào được dùng lại mã này.\n`
+      + `• Email được giải phóng: có thể cấp cho nhân viên mới.\n\n`
+      + `Lý do nghỉ việc (bắt buộc):`,
+      'Nghỉ việc');
+    if (reason === null) return;
+    if (!reason.trim()) { setAddError('Cần nhập lý do nghỉ việc'); return; }
+    try {
+      const res = await fetch(`/api/v1/admin/users/${emp.id}/resign`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAddError(json.message || 'Không đánh dấu được nhân viên đã nghỉ việc');
+        return;
+      }
+      showToast(json.message || `Đã đánh dấu ${emp.fullName} đã nghỉ việc.`);
+      fetchEmployees();
+    } catch {
+      setAddError('Không kết nối được tới máy chủ — nhân viên chưa được đánh dấu nghỉ việc.');
     }
   };
 
@@ -399,7 +465,7 @@ export const EmployeeManagementPage: React.FC = () => {
               {noManagerCount} người chưa có sếp
             </span>
           )}
-          <Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => { setAddError(null); setIsAddModalOpen(true); }}>
             <UserPlus className="w-3.5 h-3.5 mr-1" />
             + Thêm nhân viên
           </Button>
@@ -451,18 +517,12 @@ export const EmployeeManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Team Filter Chips (Mockup S40) */}
+      {/* Quick Team Filter Chips — nhóm lấy từ API, không hard-code */}
       <div className="flex items-center gap-1.5 flex-wrap text-xs">
         {[
           { label: 'Tất cả', val: 'ALL' },
           { label: 'Chưa có nhóm', val: 'NO_TEAM' },
-          { label: 'Sirius', val: 'Sirius' },
-          { label: 'Optimus', val: 'Optimus' },
-          { label: 'Minion', val: 'Minion' },
-          { label: 'Zeus', val: 'Zeus' },
-          { label: 'Avenger', val: 'Avenger' },
-          { label: 'CA', val: 'CA' },
-          { label: 'Mobile', val: 'Mobile' },
+          ...teams.map((t) => ({ label: t.name, val: t.name })),
         ].map((chip) => (
           <button
             key={chip.val}
@@ -502,11 +562,9 @@ export const EmployeeManagementPage: React.FC = () => {
             >
               <option value="ALL">Tất cả Nhóm</option>
               <option value="NO_TEAM">⚠ Chưa có nhóm</option>
-              <option value="Sirius">Nhóm Sirius</option>
-              <option value="Optimus">Nhóm Optimus</option>
-              <option value="Minion">Nhóm Minion</option>
-              <option value="Zeus">Nhóm Zeus</option>
-              <option value="Mobile">Nhóm Mobile</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.name}>Nhóm {t.name}</option>
+              ))}
             </select>
           </div>
 
@@ -683,6 +741,17 @@ export const EmployeeManagementPage: React.FC = () => {
                           <Key className="w-3 h-3 text-amber-600 group-hover:text-white" />
                           <span>Cấp lại pass</span>
                         </button>
+                        {emp.status !== 'INACTIVE' && (
+                          <button
+                            type="button"
+                            onClick={() => handleResign(emp)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-600 hover:text-white text-slate-700 border border-slate-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                            title="Đánh dấu đã nghỉ việc: rời khỏi tổ chức nhưng giữ lịch sử chấm công. Mã nhân viên vẫn giữ (không cấp lại được), email thì có thể cấp cho nhân viên mới."
+                          >
+                            <UserX className="w-3 h-3 text-slate-600 group-hover:text-white" />
+                            <span>Đã nghỉ</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -779,12 +848,12 @@ export const EmployeeManagementPage: React.FC = () => {
                 onChange={(e) => setNewTeamName(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
               >
-                <option value="Sirius">Nhóm Sirius (Core Engine)</option>
-                <option value="Optimus">Nhóm Optimus (AI &amp; Mobile)</option>
-                <option value="Minion">Nhóm Minion</option>
-                <option value="Zeus">Nhóm Zeus</option>
-                <option value="Avenger">Nhóm Avenger</option>
-                <option value="Mobile">Nhóm Mobile</option>
+                {teams.length === 0 && <option value="">Chưa có nhóm nào trong hệ thống</option>}
+                {teams.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    Nhóm {t.name}{t.parentName ? ` (thuộc ${t.parentName})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -819,6 +888,11 @@ export const EmployeeManagementPage: React.FC = () => {
           title="Thêm Nhân Viên Mới Vào Tổ Chức"
         >
           <form onSubmit={handleCreateEmployee} className="space-y-4 text-xs">
+            {addError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                ⚠ {addError}
+              </div>
+            )}
             {/* Hướng dẫn an ninh & Gmail */}
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
@@ -903,13 +977,16 @@ export const EmployeeManagementPage: React.FC = () => {
                   onChange={(e) => setNewEmp({ ...newEmp, team: e.target.value })}
                   className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
                 >
-                  <option value="Sirius">Nhóm Sirius (Mặc định)</option>
-                  <option value="Optimus">Nhóm Optimus</option>
-                  <option value="Minion">Nhóm Minion</option>
-                  <option value="Mobile">Nhóm Mobile</option>
+                  {teams.length === 0 && <option value="">Chưa có nhóm nào trong hệ thống</option>}
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      Nhóm {t.name}{t.parentName ? ` (thuộc ${t.parentName})` : ''}
+                      {t.memberCount ? ` · ${t.memberCount} người` : ''}
+                    </option>
+                  ))}
                 </select>
                 <span className="text-[10px] text-ink-muted mt-0.5 block">
-                  * Tự gán nhóm &amp; phân ca mặc định
+                  * Danh sách nhóm lấy từ Tổ chức. Để trống thì hệ thống tự gán nhóm đầu tiên &amp; phân ca mặc định.
                 </span>
               </div>
 
@@ -1310,11 +1387,9 @@ export const EmployeeManagementPage: React.FC = () => {
                   onChange={(e) => setEditForm({ ...editForm, team: e.target.value })}
                   className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent"
                 >
-                  <option value="Sirius">Nhóm Sirius</option>
-                  <option value="Optimus">Nhóm Optimus</option>
-                  <option value="Minion">Nhóm Minion</option>
-                  <option value="Zeus">Nhóm Zeus</option>
-                  <option value="Mobile">Nhóm Mobile</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.name}>Nhóm {t.name}</option>
+                  ))}
                 </select>
               </div>
 

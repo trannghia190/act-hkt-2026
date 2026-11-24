@@ -6,4 +6,7 @@ import java.util.*;
 
 public interface TodoCompletionRepository extends JpaRepository<TodoCompletion, TodoCompletion.Key> {
     List<TodoCompletion> findByUserId(UUID userId);
+
+    /** Nhật ký gần đây, mới nhất trước — tránh trả cả lịch sử dài cho mỗi lần mở trang. */
+    List<TodoCompletion> findTop50ByUserIdOrderByCompletedAtDesc(UUID userId);
 }

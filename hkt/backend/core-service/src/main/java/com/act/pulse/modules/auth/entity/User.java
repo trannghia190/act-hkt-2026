@@ -26,7 +26,13 @@ public class User extends BaseEntity {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    @Column(name = "email", unique = true, nullable = false, length = 150)
+    /**
+     * Email nhân viên. Ràng buộc duy nhất do DB đảm bảo chỉ trong nhóm ĐANG HOẠT ĐỘNG
+     * (unique index partial {@code users_email_unique_active}) — nhân viên đã nghỉ việc
+     * (INACTIVE) giải phóng email để cấp cho nhân viên mới.
+     * Không đánh dấu {@code unique = true} ở đây vì Hibernate sẽ tạo lại unique index cứng.
+     */
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
 
     /** Số điện thoại liên hệ (nhân viên tự cập nhật trong hồ sơ). */

@@ -86,8 +86,12 @@ public class AuthServiceImpl implements AuthService {
         }
         final String searchAlt = altIdentifier;
 
-        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
-                .or(() -> userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(searchAlt, searchAlt))
+        // Tìm theo mã nhân viên trước; email có thể trùng giữa người đang hoạt động và người
+        // đã nghỉ (email được giải phóng khi nghỉ) → luôn ưu tiên tài khoản ĐANG HOẠT ĐỘNG.
+        User user = userRepository.findByEmployeeCodeIgnoreCase(identifier)
+                .or(() -> userRepository.findByEmail(identifier))
+                .or(() -> userRepository.findByEmployeeCodeIgnoreCase(searchAlt))
+                .or(() -> userRepository.findByEmail(searchAlt))
                 .orElseThrow(() -> {
                     loginAttemptService.registerFailure(identifier, now);
                     return new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
@@ -228,7 +232,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public boolean changePasswordForUser(String employeeCode, String oldPassword, String newPassword) {
-        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
+        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
 
         boolean isBcryptMatched = passwordEncoder.matches(oldPassword, user.getPasswordHash());
@@ -284,7 +288,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public boolean enrollFace(String employeeCode, String faceDataUrl, Double confidenceScore, float[] embedding) {
-        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
+        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
 
         user.setFaceEnrolled(true);
@@ -310,7 +314,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public boolean resetFace(String employeeCode) {
-        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
+        User user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + employeeCode));
 
         user.setFaceEnrolled(false);
@@ -337,7 +341,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void revokeAllSessionsByEmployeeCode(String employeeCode, String reason) {
         if (employeeCode == null || employeeCode.isBlank()) return;
-        userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode, employeeCode)
+        userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(employeeCode)
                 .ifPresent(u -> revokeAllSessions(u.getId(), reason));
     }
 
@@ -360,7 +364,7 @@ public class AuthServiceImpl implements AuthService {
         String target = email.trim();
         User user = userRepository.findByEmail(target).orElse(null);
         if (user == null) {
-            user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(target, target).orElse(null);
+            user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(target).orElse(null);
         }
         if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
             String otp = String.format("%06d", (int) (Math.random() * 900000) + 100000);
@@ -387,7 +391,7 @@ public class AuthServiceImpl implements AuthService {
         PasswordResetOtpInfo info = OTP_STORE.get(key);
 
         User user = userRepository.findByEmail(emailOrEmployeeCode.trim())
-                .orElseGet(() -> userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(emailOrEmployeeCode.trim(), emailOrEmployeeCode.trim())
+                .orElseGet(() -> userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(emailOrEmployeeCode.trim())
                         .orElse(null));
 
         if (user == null && info != null) {

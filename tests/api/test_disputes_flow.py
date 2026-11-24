@@ -123,6 +123,8 @@ c,j=call('POST','/timesheets/lock?month=2024-09',H,expect=200)
 check('12. Khiếu nại kỳ khác không chặn khoá kỳ này', (j.get('data') or {}).get('status')=='locked')
 
 # 12b. Cùng kỳ còn khiếu nại mở → chặn khoá; xử lý xong mới khoá được
+# Trả kỳ 2024-10 về draft để chạy lại được sau lần chạy trước đã khoá.
+psql("update timesheets set status='draft' where period_month=10 and period_year=2024")
 call('POST','/timesheets/publish?month=2024-10',H,expect=200)
 fresh('2024-10-15')
 c,j=call('POST','/disputes',E,{'workDate':'2024-10-15','reason':'Khoá kỳ 10'},expect=200)

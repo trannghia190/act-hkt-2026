@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight, Settings, Search, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
@@ -59,8 +59,9 @@ export const MobileNotificationsPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [eventFilter, setEventFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [eventLabels, setEventLabels] = useState<Record<string, string>>({});
+  const [categoryOptions, setCategoryOptions] = useState<{ key: string; label: string }[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [items, setItems] = useState<MobileNotifItem[]>([]);
   const [page, setPage] = useState(0);
@@ -82,10 +83,17 @@ export const MobileNotificationsPage: React.FC = () => {
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           const labels: Record<string, string> = {};
+          const categories: { key: string; label: string }[] = [];
+          const seen = new Set<string>();
           data.data.forEach((e: any) => {
             if (e.key) labels[e.key] = e.label || e.key;
+            if (e.category && !seen.has(e.category)) {
+              seen.add(e.category);
+              categories.push({ key: e.category, label: e.categoryLabel || e.category });
+            }
           });
           setEventLabels(labels);
+          setCategoryOptions(categories);
         }
       })
       .catch(() => {});
@@ -99,7 +107,7 @@ export const MobileNotificationsPage: React.FC = () => {
       size: String(PAGE_SIZE),
       unread: String(activeFilter === 'UNREAD'),
     });
-    if (eventFilter !== 'ALL') params.set('eventKey', eventFilter);
+    if (categoryFilter !== 'ALL') params.set('category', categoryFilter);
     if (debouncedSearch) params.set('q', debouncedSearch);
 
     setLoading(true);
@@ -129,7 +137,7 @@ export const MobileNotificationsPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeFilter, eventFilter, debouncedSearch]);
+  }, [activeFilter, categoryFilter, debouncedSearch]);
 
   const loadMore = () => {
     if (loading || !hasMore) return;
@@ -139,7 +147,7 @@ export const MobileNotificationsPage: React.FC = () => {
       size: String(PAGE_SIZE),
       unread: String(activeFilter === 'UNREAD'),
     });
-    if (eventFilter !== 'ALL') params.set('eventKey', eventFilter);
+    if (categoryFilter !== 'ALL') params.set('category', categoryFilter);
     if (debouncedSearch) params.set('q', debouncedSearch);
 
     setLoading(true);
@@ -203,13 +211,6 @@ export const MobileNotificationsPage: React.FC = () => {
     showToast('Đã xóa thông báo thành công');
   };
 
-  // Bộ lọc sự kiện lấy từ danh mục chuẩn, không phụ thuộc trang đang tải.
-  const eventOptions = useMemo(() => {
-    return Object.entries(eventLabels)
-      .map(([key, label]) => ({ key, label: label || LEGACY_TYPE_LABELS[key] || key }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'vi'));
-  }, [eventLabels]);
-
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 px-3 pb-12 sm:px-4 lg:max-w-5xl">
       {/* Top Banner (Mockup S04m) */}
@@ -252,13 +253,13 @@ export const MobileNotificationsPage: React.FC = () => {
           />
         </div>
         <select
-          value={eventFilter}
-          onChange={(e) => setEventFilter(e.target.value)}
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
           className="w-full sm:w-64 px-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent cursor-pointer"
-          title="Lọc theo sự kiện"
+          title="Lọc theo nhóm sự kiện"
         >
-          <option value="ALL">Tất cả sự kiện</option>
-          {eventOptions.map((opt) => (
+          <option value="ALL">Tất cả nhóm sự kiện</option>
+          {categoryOptions.map((opt) => (
             <option key={opt.key} value={opt.key}>{opt.label}</option>
           ))}
         </select>

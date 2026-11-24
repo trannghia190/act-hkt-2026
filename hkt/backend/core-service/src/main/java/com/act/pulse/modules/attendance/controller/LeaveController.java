@@ -10,7 +10,7 @@ import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
-import com.act.pulse.modules.attendance.service.RuleService;
+import com.act.pulse.modules.attendance.service.LeaveBalanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class LeaveController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
-    private final RuleService ruleService;
+    private final LeaveBalanceService leaveBalanceService;
 
     @GetMapping("/leave-types")
     @Operation(summary = "Danh sách loại nghỉ đang áp dụng (S30/S32)")
@@ -120,7 +120,7 @@ public class LeaveController {
     @GetMapping("/leaves/ledger/by-code/{code}")
     @Operation(summary = "Sổ phép theo mã nhân viên (D5)")
     public ApiResponse<List<LeaveLedgerEntry>> ledgerByCode(@PathVariable String code) {
-        var user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code, code)
+        var user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + code));
         return ApiResponse.ok(leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()), "Sổ phép nhân viên");
     }
@@ -129,7 +129,7 @@ public class LeaveController {
     @Operation(summary = "HR điều chỉnh tay số dư phép — tạo dòng ADJUST có lý do")
     public ApiResponse<LeaveLedgerEntry> adjust(@RequestBody Map<String, Object> body) {
         String code = String.valueOf(body.get("employeeCode"));
-        var user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code, code)
+        var user = userRepository.findByEmployeeCodeIgnoreCaseOrEmailIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + code));
         BigDecimal amount = new BigDecimal(String.valueOf(body.getOrDefault("amount", "0")));
         String reason = String.valueOf(body.getOrDefault("reason", "Điều chỉnh tay"));
@@ -183,100 +183,6 @@ public class LeaveController {
     }
 
     private Map<String, Object> balanceOf(UUID userId) {
-        if (userId == null) {
-            return Map.of("granted", 0, "used", 0, "remaining", 0,
-                    "annualRemaining", 0, "carriedRemaining", 0);
-        }
-        BigDecimal annualGrant = BigDecimal.ZERO, carryGrant = BigDecimal.ZERO, seniorityGrant = BigDecimal.ZERO;
-        BigDecimal used = BigDecimal.ZERO, adjust = BigDecimal.ZERO, sickUsed = BigDecimal.ZERO;
-        // Cấu hình "trừ phép năm" của từng loại là nguồn sự thật duy nhất.
-        // (AL được seed deduct = TRUE — xem V42; không hard-code để HR sửa được.)
-        java.util.Set<String> deductTypes = leaveTypeRepository.findAll().stream()
-                .filter(lt -> Boolean.TRUE.equals(lt.getDeductsAnnualLeave()))
-                .map(lt -> lt.getCode().toUpperCase()).collect(java.util.stream.Collectors.toSet());
-        for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
-            String reasonLower = e.getReason() == null ? "" : e.getReason().toLowerCase();
-            boolean carry = reasonLower.contains("bảo lưu") || reasonLower.contains("tồn");
-            boolean seniority = reasonLower.contains("thâm niên");
-            boolean affectsAnnual = e.getLeaveType() == null || deductTypes.contains(e.getLeaveType().toUpperCase());
-            if ("GRANT".equals(e.getAction())) {
-                if (seniority) seniorityGrant = seniorityGrant.add(e.getAmount());
-                else if (carry) carryGrant = carryGrant.add(e.getAmount());
-                else annualGrant = annualGrant.add(e.getAmount());
-            } else if ("USED".equals(e.getAction())) {
-                if (e.getLeaveType() != null && "S".equalsIgnoreCase(e.getLeaveType())) sickUsed = sickUsed.add(e.getAmount().abs());
-                if (affectsAnnual) used = used.add(e.getAmount().abs());
-            } else if ("ADJUST".equals(e.getAction()) && affectsAnnual) {
-                adjust = adjust.add(e.getAmount());
-            }
-        }
-        BigDecimal usedFromCarry = used.min(carryGrant.max(BigDecimal.ZERO));
-        BigDecimal carriedRemaining = carryGrant.subtract(usedFromCarry);
-        BigDecimal annualRemaining = annualGrant.add(seniorityGrant).add(adjust).subtract(used.subtract(usedFromCarry));
-
-        // Luật phép tồn: 01/04 giữ tối đa N ngày, 01/07 về 0.
-        Map<String, Object> carryRule = ruleService.get("leave_carryover");
-        int maxKeep = carryRule.get("max_keep_days") == null ? 5 : Integer.parseInt(String.valueOf(carryRule.get("max_keep_days")));
-        String expireFrom = carryRule.get("expire_from") == null ? "07-01" : String.valueOf(carryRule.get("expire_from"));
-        String capFrom = carryRule.get("max_keep_from") == null ? "04-01" : String.valueOf(carryRule.get("max_keep_from"));
-        LocalDate today = LocalDate.now();
-        String todayMd = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
-        BigDecimal carriedAvailable = carriedRemaining.max(BigDecimal.ZERO);
-        String carryStatus = "AVAILABLE";
-        if (todayMd.compareTo(expireFrom) >= 0) {
-            carriedAvailable = BigDecimal.ZERO;
-            carryStatus = "EXPIRED";
-        } else if (todayMd.compareTo(capFrom) >= 0) {
-            carriedAvailable = carriedAvailable.min(BigDecimal.valueOf(maxKeep));
-            carryStatus = "CAPPED";
-        }
-        BigDecimal expiredCarry = carriedRemaining.subtract(carriedAvailable).max(BigDecimal.ZERO);
-
-        Map<String, Object> map = new HashMap<>();
-        map.put("granted", annualGrant.add(carryGrant).add(seniorityGrant));
-        map.put("used", used);
-        map.put("remaining", annualRemaining.add(carriedAvailable));
-        map.put("annualRemaining", annualRemaining);
-        map.put("carriedRemaining", carriedAvailable);
-        map.put("expiredCarry", expiredCarry);
-        map.put("carryStatus", carryStatus);
-        map.put("seniority", seniorityGrant);
-        map.put("adjust", adjust);
-        map.put("sickUsed", sickUsed);
-        // Phép chức vụ là một KHOẢN RIÊNG trong tổng phép năm đã cấp (không cộng thêm lần nữa):
-        // quản lý hưởng manager_bonus_days, chức vụ khác hưởng position_bonus_days theo rule
-        // leave_position_bonus. Tách ra để S09 hiển thị đúng từng ô, tổng quyền lợi không đổi.
-        String role = userRepository.findById(userId).map(u -> u.getRole()).orElse("");
-        Map<String, Object> positionRule = ruleService.get("leave_position_bonus");
-        Object bonusRaw = "MANAGER".equalsIgnoreCase(role)
-                ? positionRule.get("manager_bonus_days") : positionRule.get("position_bonus_days");
-        BigDecimal positionRuleDays = BigDecimal.ZERO;
-        if (bonusRaw != null) {
-            try { positionRuleDays = new BigDecimal(String.valueOf(bonusRaw)); } catch (NumberFormatException ignored) { }
-        }
-        BigDecimal positionBonus = positionRuleDays.max(BigDecimal.ZERO).min(annualGrant.max(BigDecimal.ZERO));
-        map.put("positionBonus", positionBonus);
-        map.put("baseAnnual", annualGrant.subtract(positionBonus));
-        map.put("carriedGrant", carryGrant);
-        Map<String, BigDecimal> usedByType = new HashMap<>();
-        for (LeaveLedgerEntry e : leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
-            if ("USED".equals(e.getAction()) && e.getLeaveType() != null) {
-                usedByType.merge(e.getLeaveType().toUpperCase(), e.getAmount().abs(), BigDecimal::add);
-            }
-        }
-        List<Map<String, Object>> byType = new java.util.ArrayList<>();
-        for (var lt : leaveTypeRepository.findAll()) {
-            BigDecimal usedThis = usedByType.getOrDefault(lt.getCode().toUpperCase(), BigDecimal.ZERO);
-            if (!Boolean.TRUE.equals(lt.getIsActive())) continue;
-            Map<String, Object> m = new HashMap<>();
-            m.put("code", lt.getCode());
-            m.put("name", lt.getName());
-            m.put("used", usedThis);
-            m.put("defaultDays", lt.getDefaultDays());
-            m.put("unit", lt.getUnit());
-            byType.add(m);
-        }
-        map.put("byType", byType);
-        return map;
+        return leaveBalanceService.balanceOf(userId);
     }
 }

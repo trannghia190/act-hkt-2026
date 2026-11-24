@@ -27,6 +27,13 @@ const GROUP_ITEMS: { suffix: 'Results' | 'Adjustments' | 'Difficulties' | 'Lesso
   { suffix: 'Lessons', label: 'Bài học', placeholder: 'Bài học rút ra…' },
 ];
 
+interface OkrItemLite {
+  id: string;
+  title: string;
+  detail?: string | null;
+  progress: number;
+}
+
 interface Form4Box {
   employeeCode: string;
   employeeName: string;
@@ -36,8 +43,10 @@ interface Form4Box {
   reviewStatus?: string | null;
   status: string;
   box1?: PersonalInfo;
-  box2?: { progress?: number | null };
-  box3?: { progress?: number | null };
+  box2?: { progress?: number | null; items?: OkrItemLite[] };
+  box3?: { progress?: number | null; items?: OkrItemLite[] };
+  box2Items?: OkrItemLite[];
+  box3Items?: OkrItemLite[];
   box2Results?: string | null;
   box2Adjustments?: string | null;
   box2Difficulties?: string | null;
@@ -309,11 +318,11 @@ export const OKRAssessmentPage: React.FC = () => {
             )}
           </Card>
 
-          {/* Box 2 Business / Box 3 People — mỗi box 4 mục + điểm 1–5 */}
+          {/* Box 2 Business / Box 3 People — mục tiêu + tiến độ check-in + điểm tự chấm / quản lý chấm */}
           {([
-            { box: 2 as const, title: 'Thành tựu công việc (Business)', scoreKey: 'box2BusinessScore' as const, managerScore: form.managerBusinessScore, progress: form.box2?.progress, badge: 'accent' as const },
-            { box: 3 as const, title: 'Thành tựu con người (People)', scoreKey: 'box3PeopleScore' as const, managerScore: form.managerPeopleScore, progress: form.box3?.progress, badge: 'ok' as const },
-          ]).map(({ box, title, scoreKey, managerScore, progress, badge }) => (
+            { box: 2 as const, title: 'Thành tựu công việc (Business)', scoreKey: 'box2BusinessScore' as const, managerScore: form.managerBusinessScore, progress: form.box2?.progress, items: form.box2Items, badge: 'accent' as const },
+            { box: 3 as const, title: 'Thành tựu con người (People)', scoreKey: 'box3PeopleScore' as const, managerScore: form.managerPeopleScore, progress: form.box3?.progress, items: form.box3Items, badge: 'ok' as const },
+          ]).map(({ box, title, scoreKey, managerScore, progress, items, badge }) => (
             <Card key={box} className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-2">
                 <div>
@@ -324,43 +333,118 @@ export const OKRAssessmentPage: React.FC = () => {
                 </div>
                 <Badge variant={badge}>Chấm {scaleText} · không điểm lẻ</Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {GROUP_ITEMS.map(({ suffix, label, placeholder, required }) => {
-                  const key = `box${box}${suffix}` as keyof Form4Box;
-                  return (
-                    <div key={key}>
-                      <label className="block text-xs font-semibold text-ink mb-1">
-                        {label}
-                        {required && form.selfAssessPhase !== 'MIDYEAR' && <span className="text-danger"> *</span>}
-                      </label>
-                      <textarea
-                        rows={3}
-                        disabled={!canEditSelf}
-                        value={(selfDraft[key] as string | null | undefined) || ''}
-                        onChange={(e) => setSelfDraft({ ...selfDraft, [key]: e.target.value })}
-                        placeholder={placeholder}
-                        className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                <div>
-                  <div className="text-xs font-semibold text-ink mb-1">Điểm tự chấm</div>
-                  <ScorePicker
-                    min={scaleMin}
-                    max={scaleMax}
-                    value={selfDraft[scoreKey]}
-                    disabled={!canEditSelf}
-                    onChange={(v) => setSelfDraft({ ...selfDraft, [scoreKey]: v })}
-                  />
-                </div>
-                <div className="rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-ink-secondary">
-                  Quản lý chấm: <b className="text-accent">{managerScore ?? '—'}</b>
-                  {managerScore != null && selfDraft[scoreKey] != null && managerScore !== selfDraft[scoreKey] && (
-                    <span className="ml-1 text-ink-muted">(lệch {Number(managerScore) - Number(selfDraft[scoreKey]) > 0 ? '+' : ''}{Number(managerScore) - Number(selfDraft[scoreKey])})</span>
+
+              {/* Mục tiêu + tiến độ — hiển thị giống màn check-in */}
+              <div className="rounded-xl border border-line bg-canvas p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-ink">Mục tiêu &amp; tiến độ</div>
+                  {(items || []).length > 0 && (
+                    <div className="text-[11px] text-ink-muted">{(items || []).length} mục tiêu</div>
                   )}
+                </div>
+                {(items || []).length === 0 ? (
+                  <div className="text-[11px] text-ink-muted py-2">
+                    Nhóm này chưa có mục tiêu nào được duyệt — tiến độ sẽ hiện khi có check-in.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(items || []).map((it) => (
+                      <div key={it.id} className="rounded-lg border border-line bg-surface p-2.5">
+                        <div className="text-xs font-semibold text-ink leading-snug">{it.title}</div>
+                        {it.detail && <div className="text-[11px] text-ink-muted mt-0.5">{it.detail}</div>}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 h-1.5 bg-line rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-accent"
+                              style={{ width: `${Math.min(100, Math.max(0, it.progress ?? 0))}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-ink-muted whitespace-nowrap">
+                            Tiến độ: <b className="text-ink font-semibold">{it.progress ?? 0}%</b>
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Ghi chú tự đánh giá — gộp gọn vì phần chính là mục tiêu + tiến độ + điểm.
+                  "Kết quả" vẫn bắt buộc khi nộp bản cuối năm (quy định form 4 Box). */}
+              <details className="rounded-xl border border-line bg-canvas p-3" open={form.selfAssessPhase !== 'MIDYEAR'}>
+                <summary className="cursor-pointer text-xs font-bold text-ink select-none">
+                  Ghi chú tự đánh giá
+                  <span className="ml-1 font-normal text-ink-muted">(Kết quả bắt buộc khi nộp bản cuối năm)</span>
+                </summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  {GROUP_ITEMS.map(({ suffix, label, placeholder, required }) => {
+                    const key = `box${box}${suffix}` as keyof Form4Box;
+                    return (
+                      <div key={key}>
+                        <label className="block text-xs font-semibold text-ink mb-1">
+                          {label}
+                          {required && form.selfAssessPhase !== 'MIDYEAR' && <span className="text-danger"> *</span>}
+                        </label>
+                        <textarea
+                          rows={3}
+                          disabled={!canEditSelf}
+                          value={(selfDraft[key] as string | null | undefined) || ''}
+                          onChange={(e) => setSelfDraft({ ...selfDraft, [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full border border-line rounded-lg p-2.5 text-xs bg-surface disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+
+              {/* Điểm: tự chấm to & rõ, quản lý chấm nổi bật tương đương */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-line bg-surface p-3">
+                  <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Điểm tự chấm</div>
+                  <div className="mt-1.5">
+                    <ScorePicker
+                      min={scaleMin}
+                      max={scaleMax}
+                      value={selfDraft[scoreKey]}
+                      disabled={!canEditSelf}
+                      onChange={(v) => setSelfDraft({ ...selfDraft, [scoreKey]: v })}
+                    />
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-1.5">
+                    Nhân viên tự đánh giá theo thang {scaleText}.
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-xl border-2 p-3 ${
+                    managerScore != null
+                      ? 'border-accent bg-accent-soft/30 shadow-sm'
+                      : 'border-dashed border-line bg-canvas'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-accent-dark">Điểm quản lý chấm</div>
+                    {managerScore != null && <Badge variant="accent">Đã chấm</Badge>}
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className={`text-4xl font-black leading-none ${
+                      managerScore != null ? 'text-accent' : 'text-ink-muted'
+                    }`}>
+                      {managerScore ?? '—'}
+                    </span>
+                    {managerScore != null && (
+                      <span className="text-[11px] text-ink-muted">/ {scaleText}</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-1.5">
+                    {managerScore != null
+                      ? (selfDraft[scoreKey] != null && managerScore !== selfDraft[scoreKey]
+                        ? `Lệch so với tự chấm: ${Number(managerScore) - Number(selfDraft[scoreKey]) > 0 ? '+' : ''}${Number(managerScore) - Number(selfDraft[scoreKey])} điểm`
+                        : 'Trùng với điểm tự chấm')
+                      : 'Chưa có Quản lý chấm — điểm hiển thị khi Quản lý nộp.'}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -376,9 +460,22 @@ export const OKRAssessmentPage: React.FC = () => {
                 <div className="text-[11px] text-ink-muted">Tự chấm (Business + People) / 2</div>
                 <div className="text-2xl font-black text-ink">{selfAverage == null ? '—' : selfAverage.toFixed(1)}</div>
               </div>
-              <div className="rounded-lg border border-line bg-canvas p-3">
-                <div className="text-[11px] text-ink-muted">Quản lý chấm (Business + People) / 2</div>
-                <div className="text-2xl font-black text-accent">{form.managerAverageScore == null ? '—' : form.managerAverageScore.toFixed(1)}</div>
+              <div className={`rounded-lg p-3 ${
+                form.managerAverageScore != null
+                  ? 'border-2 border-accent bg-accent-soft/30'
+                  : 'border border-dashed border-line bg-canvas'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-accent-dark">
+                    Quản lý chấm (Business + People) / 2
+                  </div>
+                  {form.managerAverageScore != null && <Badge variant="accent">Điểm chính thức</Badge>}
+                </div>
+                <div className={`text-4xl font-black leading-none mt-1 ${
+                  form.managerAverageScore != null ? 'text-accent' : 'text-ink-muted'
+                }`}>
+                  {form.managerAverageScore == null ? '—' : form.managerAverageScore.toFixed(1)}
+                </div>
               </div>
             </div>
             {isSelf && canEditSelf && form.selfAssessPhase === 'MIDYEAR' && (
@@ -434,17 +531,35 @@ export const OKRAssessmentPage: React.FC = () => {
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs font-semibold text-ink mb-1">Business</div>
-                      <ScorePicker min={scaleMin} max={scaleMax} value={managerDraft.business} onChange={(v) => setManagerDraft({ ...managerDraft, business: v })} disabled={!canEditManager} />
+                    <div className="rounded-xl border border-line bg-canvas p-3">
+                      <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Điểm Business</div>
+                      <div className="mt-1.5">
+                        <ScorePicker min={scaleMin} max={scaleMax} value={managerDraft.business} onChange={(v) => setManagerDraft({ ...managerDraft, business: v })} disabled={!canEditManager} />
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold text-ink mb-1">People</div>
-                      <ScorePicker min={scaleMin} max={scaleMax} value={managerDraft.people} onChange={(v) => setManagerDraft({ ...managerDraft, people: v })} disabled={!canEditManager} />
+                    <div className="rounded-xl border border-line bg-canvas p-3">
+                      <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Điểm People</div>
+                      <div className="mt-1.5">
+                        <ScorePicker min={scaleMin} max={scaleMax} value={managerDraft.people} onChange={(v) => setManagerDraft({ ...managerDraft, people: v })} disabled={!canEditManager} />
+                      </div>
                     </div>
                   </div>
-                  <div className="text-xs text-ink-secondary">
-                    Điểm TB Quản lý: <b>{managerAverage.toFixed(1)}</b> · Tự chấm: <b>{selfAverage == null ? '—' : selfAverage.toFixed(1)}</b>
+                  <div className="rounded-xl border-2 border-accent bg-accent-soft/30 p-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-accent-dark">
+                        Điểm trung bình Quản lý chấm
+                      </div>
+                      <div className="text-[11px] text-ink-muted mt-0.5">
+                        Tự chấm: <b className="text-ink">{selfAverage == null ? '—' : selfAverage.toFixed(1)}</b>
+                        {selfAverage != null && Math.abs(managerAverage - selfAverage) > 0.001 && (
+                          <> · lệch {managerAverage - selfAverage > 0 ? '+' : ''}{(managerAverage - selfAverage).toFixed(1)}</>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-4xl font-black leading-none text-accent">{managerAverage.toFixed(1)}</span>
+                      <span className="text-[11px] text-ink-muted">/ {scaleText}</span>
+                    </div>
                   </div>
                   <textarea
                     rows={3}

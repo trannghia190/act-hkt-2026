@@ -906,6 +906,20 @@ public class OKRController {
         m.put("selfScore", r == null ? null : b ? r.getBox2SelfScore() : r.getBox3SelfScore());
         m.put("managerScore", r == null ? null : b ? r.getBox2ManagerScore() : r.getBox3ManagerScore());
         m.put("progress", r == null ? null : Math.round(management.groupProgress(r.getId(), b ? "BUSINESS" : "PEOPLE") * 10.0) / 10.0);
+        // Danh sách mục tiêu + tiến độ check-in của nhóm — màn đánh giá hiển thị giống màn check-in.
+        m.put("items", r == null ? List.of()
+                : okrItemRepository.findByReviewIdOrderById(r.getId()).stream()
+                        .filter(i -> i.getDeletedAt() == null
+                                && (b ? "BUSINESS" : "PEOPLE").equalsIgnoreCase(i.getGroupType()))
+                        .map(i -> {
+                            Map<String, Object> im = new LinkedHashMap<>();
+                            im.put("id", i.getId().toString());
+                            im.put("title", i.getTitle());
+                            im.put("detail", i.getDetail());
+                            im.put("progress", i.getProgress());
+                            return im;
+                        })
+                        .toList());
         return m;
     }
 
@@ -966,6 +980,8 @@ public class OKRController {
         form.put("box1", box1);
         form.put("box2", groupBox(review, 2));
         form.put("box3", groupBox(review, 3));
+        form.put("box2Items", ((Map<?, ?>) form.get("box2")).get("items"));
+        form.put("box3Items", ((Map<?, ?>) form.get("box3")).get("items"));
         for (String k : List.of("Results", "Adjustments", "Difficulties", "Lessons")) {
             form.put("box2" + k, ((Map<?, ?>) form.get("box2")).get(k.toLowerCase()));
             form.put("box3" + k, ((Map<?, ?>) form.get("box3")).get(k.toLowerCase()));
