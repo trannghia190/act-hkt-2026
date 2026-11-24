@@ -104,20 +104,17 @@ export const MyOKRPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Modal thêm đầu việc
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState<{ groupType: GroupKey; title: string; detail: string }>({
-    groupType: 'BUSINESS',
-    title: '',
-    detail: '',
-  });
+  // Thêm đầu việc trực tiếp trên danh sách (inline — nhóm nào đang mở form)
+  const [addingGroup, setAddingGroup] = useState<GroupKey | null>(null);
+  const [addForm, setAddForm] = useState<{ title: string; detail: string }>({ title: '', detail: '' });
+  const [addSaving, setAddSaving] = useState(false);
 
   // Modal xoá (bắt buộc lý do)
   const [deleteModalItem, setDeleteModalItem] = useState<OKRItem | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
 
-  // Modal sửa đầu việc
-  const [editModalItem, setEditModalItem] = useState<OKRItem | null>(null);
+  // Sửa đầu việc trực tiếp trên danh sách (inline)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ title: string; detail: string }>({ title: '', detail: '' });
   const [editSaving, setEditSaving] = useState(false);
 
@@ -188,20 +185,21 @@ export const MyOKRPage: React.FC = () => {
   const proposalLocked = Boolean(data?.proposalLocked);
   const proposalSubmitted = Boolean(data?.box4SubmittedAt);
 
-  // Thêm mục mới
-  const handleAddItem = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Thêm mục mới ngay trên danh sách của nhóm
+  const handleAddItem = async (group: GroupKey) => {
+    if (addSaving) return;
     if (!addForm.title.trim()) {
       showToast('Vui lòng nhập tên đầu việc');
       return;
     }
+    setAddSaving(true);
     try {
       const res = await fetch('/api/v1/okr/objectives', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           year: data?.cycleYear,
-          groupType: addForm.groupType,
+          groupType: group,
           title: addForm.title.trim(),
           detail: addForm.detail.trim(),
         }),
@@ -211,11 +209,48 @@ export const MyOKRPage: React.FC = () => {
         throw new Error(json?.message || 'Lỗi khi tạo mục tiêu');
       }
       showToast('Đã thêm đầu việc OKR thành công!');
-      setIsAddOpen(false);
-      setAddForm({ groupType: 'BUSINESS', title: '', detail: '' });
+      setAddingGroup(null);
+      setAddForm({ title: '', detail: '' });
       loadData(true);
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi thêm mục tiêu');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  // Mở/đóng form thêm & sửa inline (chỉ 1 form tại một thời điểm)
+  const startAdd = (group: GroupKey) => {
+    if (isLocked) return;
+    setEditingItemId(null);
+    setAddingGroup(group);
+    setAddForm({ title: '', detail: '' });
+  };
+
+  const cancelAdd = () => {
+    setAddingGroup(null);
+    setAddForm({ title: '', detail: '' });
+  };
+
+  const startEdit = (item: OKRItem) => {
+    setAddingGroup(null);
+    setEditingItemId(item.id);
+    setEditForm({ title: item.title, detail: item.detail || '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingItemId(null);
+    setEditForm({ title: '', detail: '' });
+  };
+
+  // Ctrl/⌘ + Enter để lưu, Esc để huỷ — dùng chung cho form inline
+  const inlineKeyDown = (e: React.KeyboardEvent, onSave: () => void, onCancel: () => void) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      onSave();
     }
   };
 
@@ -352,13 +387,13 @@ export const MyOKRPage: React.FC = () => {
     }
   };
 
-  // Lưu chỉnh sửa đầu việc
-  const handleUpdateItem = async () => {
-    if (!editModalItem) return;
+  // Lưu chỉnh sửa đầu việc (inline)
+  const handleUpdateItem = async (itemId: string) => {
+    if (editSaving) return;
     if (!editForm.title.trim()) { showToast('Tiêu đề không được để trống'); return; }
     setEditSaving(true);
     try {
-      const res = await fetch(`/api/v1/okr/items/${editModalItem.id}`, {
+      const res = await fetch(`/api/v1/okr/items/${itemId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editForm.title.trim(), detail: editForm.detail.trim() }),
@@ -366,7 +401,8 @@ export const MyOKRPage: React.FC = () => {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || 'Lỗi khi lưu chỉnh sửa');
       showToast('Đã cập nhật đầu việc thành công!');
-      setEditModalItem(null);
+      setEditingItemId(null);
+      setEditForm({ title: '', detail: '' });
       loadData(true);
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi lưu chỉnh sửa');
@@ -519,6 +555,110 @@ export const MyOKRPage: React.FC = () => {
   const renderGroup = (group: GroupKey, title: string, subtitle: string, itemsList: OKRItem[]) => {
     const mgrSuggestions = managerObjectives.filter((m) => m.groupType === group);
 
+    // Form thêm inline — hiển thị ngay cuối danh sách của nhóm
+    const addFormCard = (
+      <div className="border-2 border-dashed border-accent/60 rounded-lg p-3.5 bg-accent-soft/20 space-y-2.5">
+        <div>
+          <label className="block text-[11px] font-semibold text-ink mb-1">
+            Tên đầu việc <span className="text-danger">*</span>{' '}
+            <span className="text-ink-muted font-normal">(tự do, không giới hạn số chữ)</span>
+          </label>
+          <textarea
+            autoFocus
+            rows={2}
+            className="w-full border border-line rounded-lg p-2 text-xs bg-canvas focus:outline-none focus:border-accent resize-y"
+            placeholder="Nhập tên đầu việc hoặc mục tiêu cụ thể..."
+            value={addForm.title}
+            onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+            onKeyDown={(e) => inlineKeyDown(e, () => handleAddItem(group), cancelAdd)}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-ink mb-1">
+            Mô tả chi tiết / Tiêu chí hoàn thành <span className="text-ink-muted font-normal">(tuỳ chọn)</span>
+          </label>
+          <textarea
+            rows={2}
+            className="w-full border border-line rounded-lg p-2 text-xs bg-canvas focus:outline-none focus:border-accent resize-y"
+            placeholder="Mô tả hành động, chỉ số hoặc kết quả dự kiến..."
+            value={addForm.detail}
+            onChange={(e) => setAddForm({ ...addForm, detail: e.target.value })}
+            onKeyDown={(e) => inlineKeyDown(e, () => handleAddItem(group), cancelAdd)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-ink-muted">
+            ℹ️ Không đính kèm tệp ở bước tạo — evidence bổ sung ở bước Check-in · Ctrl/⌘ + Enter để lưu · Esc để huỷ
+          </span>
+          <div className="flex gap-2 shrink-0 ml-auto">
+            <Button type="button" variant="ghost" size="sm" className="h-auto py-1 px-2.5 text-xs" onClick={cancelAdd} disabled={addSaving}>
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="h-auto py-1 px-2.5 text-xs"
+              onClick={() => handleAddItem(group)}
+              disabled={addSaving || !addForm.title.trim()}
+            >
+              {addSaving ? 'Đang lưu...' : 'Thêm đầu việc'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+
+    // Form sửa inline — thay thế đúng dòng đầu việc đang sửa
+    const editCard = (item: OKRItem) => (
+      <div key={item.id} className="border-2 border-accent rounded-lg p-3.5 bg-surface space-y-2.5">
+        <div>
+          <label className="block text-[11px] font-semibold text-ink mb-1">
+            Tên đầu việc <span className="text-danger">*</span>
+          </label>
+          <textarea
+            autoFocus
+            rows={2}
+            className="w-full border border-line rounded-lg p-2 text-xs bg-canvas focus:outline-none focus:border-accent resize-y"
+            value={editForm.title}
+            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+            onKeyDown={(e) => inlineKeyDown(e, () => handleUpdateItem(item.id), cancelEdit)}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-ink mb-1">Chi tiết / Mô tả</label>
+          <textarea
+            rows={2}
+            className="w-full border border-line rounded-lg p-2 text-xs bg-canvas focus:outline-none focus:border-accent resize-y"
+            placeholder="Mô tả thêm về đầu việc, chỉ số đo lường, deadline..."
+            value={editForm.detail}
+            onChange={(e) => setEditForm({ ...editForm, detail: e.target.value })}
+            onKeyDown={(e) => inlineKeyDown(e, () => handleUpdateItem(item.id), cancelEdit)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-ink-muted">
+            ℹ️ Tiến độ cập nhật qua Check-in — hệ thống tự tính · Ctrl/⌘ + Enter để lưu · Esc để huỷ
+          </span>
+          <div className="flex gap-2 shrink-0 ml-auto">
+            <Button type="button" variant="ghost" size="sm" className="h-auto py-1 px-2.5 text-xs" onClick={cancelEdit} disabled={editSaving}>
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              className="h-auto py-1 px-2.5 text-xs"
+              onClick={() => handleUpdateItem(item.id)}
+              disabled={editSaving || !editForm.title.trim()}
+            >
+              {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+
     return (
       <Card className="space-y-4">
         <div className="flex items-center justify-between border-b border-line pb-3">
@@ -531,14 +671,11 @@ export const MyOKRPage: React.FC = () => {
           </div>
           {!isLocked && (
             <Button
-              variant="outline"
+              variant={addingGroup === group ? 'ghost' : 'outline'}
               size="sm"
-              onClick={() => {
-                setAddForm({ groupType: group, title: '', detail: '' });
-                setIsAddOpen(true);
-              }}
+              onClick={() => (addingGroup === group ? cancelAdd() : startAdd(group))}
             >
-              + Thêm đầu việc
+              {addingGroup === group ? 'Đóng form' : '+ Thêm đầu việc'}
             </Button>
           )}
         </div>
@@ -579,8 +716,8 @@ export const MyOKRPage: React.FC = () => {
           </div>
         )}
 
-        {/* Danh sách mục tiêu của nhóm */}
-        {itemsList.length === 0 ? (
+        {/* Danh sách mục tiêu của nhóm (thêm/sửa inline ngay trên dòng) */}
+        {itemsList.length === 0 && addingGroup !== group ? (
           <div className="text-xs text-ink-muted py-6 text-center bg-canvas rounded-lg border border-dashed border-line">
             {isLocked ? (
               <>Chưa có đầu việc nào. 🔒 {data?.lockReason}</>
@@ -593,7 +730,7 @@ export const MyOKRPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {itemsList.map((item) => (
+            {itemsList.map((item) => editingItemId === item.id ? editCard(item) : (
               <div key={item.id} className="border border-line rounded-lg p-3.5 hover:border-line-hover transition-colors bg-surface">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -609,10 +746,7 @@ export const MyOKRPage: React.FC = () => {
                         size="sm"
                         variant="outline"
                         className="text-xs h-auto py-1 px-2.5"
-                        onClick={() => {
-                          setEditForm({ title: item.title, detail: item.detail || '' });
-                          setEditModalItem(item);
-                        }}
+                        onClick={() => startEdit(item)}
                       >
                         ✏️ Sửa
                       </Button>
@@ -638,6 +772,7 @@ export const MyOKRPage: React.FC = () => {
                 </div>
               </div>
             ))}
+            {addingGroup === group && addFormCard}
           </div>
         )}
       </Card>
@@ -894,57 +1029,6 @@ export const MyOKRPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Modal Thêm đầu việc (KHÔNG có ô đính kèm ở bước tạo — Tiêu chí 3) */}
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Thêm đầu việc OKR mới">
-        <form onSubmit={handleAddItem} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Nhóm mục tiêu (Cố định theo Form HR)</label>
-            <select
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
-              value={addForm.groupType}
-              onChange={(e) => setAddForm({ ...addForm, groupType: e.target.value as GroupKey })}
-            >
-              <option value="BUSINESS">Business — Mục tiêu kinh doanh & dự án</option>
-              <option value="PEOPLE">People — Mục tiêu con người & đội ngũ</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">
-              Tên đầu việc <span className="text-danger">*</span> (Tự do, không giới hạn số chữ)
-            </label>
-            <textarea
-              rows={3}
-              required
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
-              placeholder="Nhập tên đầu việc hoặc mục tiêu cụ thể..."
-              value={addForm.title}
-              onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Mô tả chi tiết / Tiêu chí hoàn thành (Tuỳ chọn)</label>
-            <textarea
-              rows={3}
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
-              placeholder="Mô tả hành động, chỉ số hoặc kết quả dự kiến..."
-              value={addForm.detail}
-              onChange={(e) => setAddForm({ ...addForm, detail: e.target.value })}
-            />
-          </div>
-          <div className="bg-canvas p-2.5 rounded border border-line text-[11px] text-ink-muted">
-            ℹ️ <b>Lưu ý theo quy định HR:</b> Không đính kèm tệp ở bước tạo. Tệp minh chứng (evidence) chỉ được bổ sung ở các kỳ Check-in định kỳ hoặc Đánh giá cuối năm.
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddOpen(false)}>
-              Huỷ
-            </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Thêm đầu việc
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
       {/* Modal Xoá mục tiêu (Bắt buộc nhập lý do — Tiêu chí 6) */}
       <Modal isOpen={Boolean(deleteModalItem)} onClose={() => setDeleteModalItem(null)} title="Xác nhận xoá mục tiêu">
         <div className="space-y-4">
@@ -980,50 +1064,6 @@ export const MyOKRPage: React.FC = () => {
               onClick={handleConfirmDelete}
             >
               Xác nhận xoá
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal Sửa đầu việc */}
-      <Modal isOpen={Boolean(editModalItem)} onClose={() => setEditModalItem(null)} title="Chỉnh sửa đầu việc OKR">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">
-              Tên đầu việc <span className="text-danger">*</span>
-            </label>
-            <textarea
-              rows={3}
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
-              value={editForm.title}
-              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Chi tiết / Mô tả</label>
-            <textarea
-              rows={3}
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
-              placeholder="Mô tả thêm về đầu việc, chỉ số đo lường, deadline..."
-              value={editForm.detail}
-              onChange={(e) => setEditForm({ ...editForm, detail: e.target.value })}
-            />
-          </div>
-          <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
-            ℹ️ Tiến độ được cập nhật qua <b>Check-in tiến độ</b> — hệ thống tự tính, không sửa trực tiếp tại đây.
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setEditModalItem(null)}>
-              Huỷ
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={editSaving || !editForm.title.trim()}
-              onClick={handleUpdateItem}
-            >
-              {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </Button>
           </div>
         </div>
