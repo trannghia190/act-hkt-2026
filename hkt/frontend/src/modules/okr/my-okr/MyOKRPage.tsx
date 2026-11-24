@@ -669,15 +669,6 @@ export const MyOKRPage: React.FC = () => {
             </h2>
             <p className="text-xs text-ink-muted mt-0.5">{subtitle} · {itemsList.length} đầu việc tự do (không giới hạn số chữ)</p>
           </div>
-          {!isLocked && (
-            <Button
-              variant={addingGroup === group ? 'ghost' : 'outline'}
-              size="sm"
-              onClick={() => (addingGroup === group ? cancelAdd() : startAdd(group))}
-            >
-              {addingGroup === group ? 'Đóng form' : '+ Thêm đầu việc'}
-            </Button>
-          )}
         </div>
 
         {/* Gợi ý kế thừa từ Quản lý trực tiếp (C14) */}
@@ -716,21 +707,21 @@ export const MyOKRPage: React.FC = () => {
           </div>
         )}
 
-        {/* Danh sách mục tiêu của nhóm (thêm/sửa inline ngay trên dòng) */}
-        {itemsList.length === 0 && addingGroup !== group ? (
-          <div className="text-xs text-ink-muted py-6 text-center bg-canvas rounded-lg border border-dashed border-line">
-            {isLocked ? (
-              <>Chưa có đầu việc nào. 🔒 {data?.lockReason}</>
-            ) : (
-              <>
-                Chưa có đầu việc nào trong nhóm này. Hãy bấm <b>+ Thêm đầu việc</b> để tự nhập
-                {managerObjectives.some((m) => m.groupType === group) ? <> hoặc <b>Chép 1-chạm</b> từ Quản lý</> : null}.
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {itemsList.map((item) => editingItemId === item.id ? editCard(item) : (
+        {/* Danh sách mục tiêu của nhóm — nút thêm & form thêm nằm ngay cuối danh sách */}
+        <div className="space-y-2.5">
+          {itemsList.length === 0 ? (
+            <div className="text-xs text-ink-muted py-6 text-center bg-canvas rounded-lg border border-dashed border-line">
+              {isLocked ? (
+                <>Chưa có đầu việc nào. 🔒 {data?.lockReason}</>
+              ) : (
+                <>
+                  Chưa có đầu việc nào trong nhóm này. Hãy bấm <b>+ Thêm đầu việc</b> bên dưới để tự nhập
+                  {managerObjectives.some((m) => m.groupType === group) ? <> hoặc <b>Chép 1-chạm</b> từ Quản lý</> : null}.
+                </>
+              )}
+            </div>
+          ) : (
+            itemsList.map((item) => editingItemId === item.id ? editCard(item) : (
               <div key={item.id} className="border border-line rounded-lg p-3.5 hover:border-line-hover transition-colors bg-surface">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -771,10 +762,21 @@ export const MyOKRPage: React.FC = () => {
                   />
                 </div>
               </div>
-            ))}
-            {addingGroup === group && addFormCard}
-          </div>
-        )}
+            ))
+          )}
+
+          {!isLocked && (
+            addingGroup === group ? addFormCard : (
+              <button
+                type="button"
+                onClick={() => startAdd(group)}
+                className="w-full border-2 border-dashed border-line rounded-lg py-2.5 text-xs font-semibold text-ink-muted hover:border-accent hover:text-accent hover:bg-accent-soft/20 transition-colors"
+              >
+                + Thêm đầu việc
+              </button>
+            )
+          )}
+        </div>
       </Card>
     );
   };
