@@ -101,6 +101,7 @@ public class NotificationPreferenceController {
             m.put("key", def.key());
             m.put("label", def.label());
             m.put("category", def.category());
+            m.put("categoryLabel", NotificationEventCatalog.categoryLabel(def.category()));
             m.put("defaultWeb", def.defaultWeb());
             m.put("defaultEmail", def.defaultEmail());
             m.put("defaultPush", def.defaultPush());

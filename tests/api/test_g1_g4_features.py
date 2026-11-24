@@ -43,6 +43,14 @@ def api_put(endpoint, body=None, token=None):
     with urllib.request.urlopen(req) as resp:
         return resp.status, json.loads(resp.read().decode())
 
+def api_delete(endpoint, token=None):
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"{BASE_URL}{endpoint}", headers=headers, method="DELETE")
+    with urllib.request.urlopen(req) as resp:
+        return resp.status, json.loads(resp.read().decode())
+
 def test_all():
     print("=== Testing G1: Todo Inbox ===")
     emp_token, emp_user = login("136ACT")
@@ -63,16 +71,16 @@ def test_all():
     status, leave_summary = api_get("/todos/leave-summary", emp_token)
     assert status == 200
     assert "totalRemaining" in leave_summary["data"]
-    print(f"PASS: GET /todos/leave-summary returned totalRemaining = {leave_summary['data']['totalRemaining']}")
+    # Phải khớp Sổ phép (S09) — trước đây thẻ này trả số hard-code 10,5 ngày.
+    status, balance = api_get("/leaves/my-balance", emp_token)
+    assert status == 200, balance
+    assert abs(float(leave_summary["data"]["totalRemaining"]) - float(balance["data"]["remaining"])) < 1e-6, (
+        leave_summary["data"], balance["data"])
+    print(f"PASS: GET /todos/leave-summary totalRemaining = {leave_summary['data']['totalRemaining']} "
+          f"khớp /leaves/my-balance")
     
-    # 2. Complete a todo item
-    if items:
-        target_id = items[0]["id"]
-        status, comp = api_post(f"/todos/{target_id}/complete", {}, emp_token)
-        assert status == 200
-        print(f"PASS: Completed todo item {target_id}")
-    
-    # 3. Create a custom task
+    # 2. Create a custom task — dùng chính việc tự tạo này để kiểm tra hoàn tất
+    #    và dọn sạch, tránh tick vĩnh viễn một việc hệ thống của nhân viên.
     status, created = api_post("/todos/create-task", {
         "title": "Nhiệm vụ kiểm thử G1",
         "urgency": "today",
@@ -81,7 +89,19 @@ def test_all():
         "actionLabel": "Chấm công ngay"
     }, emp_token)
     assert status == 200
+    target_id = created["data"]["id"]
     print(f"PASS: Created custom task via /todos/create-task: {created['data']['title']}")
+
+    # 3. Complete it, then remove it (xoá luôn bản ghi hoàn tất) để không để lại rác.
+    try:
+        status, comp = api_post(f"/todos/{target_id}/complete", {}, emp_token)
+        assert status == 200
+        print(f"PASS: Completed todo item {target_id}")
+    finally:
+        try:
+            api_delete(f"/todos/{target_id}", emp_token)
+        except Exception as exc:
+            print(f"WARN: Không dọn được todo kiểm thử {target_id}: {exc}")
 
     print("\n=== Testing G2: Command Palette Ctrl+K ===")
     # 1. Search 'phep' (unaccented)

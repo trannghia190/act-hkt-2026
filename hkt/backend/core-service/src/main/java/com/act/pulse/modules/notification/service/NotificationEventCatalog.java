@@ -131,6 +131,60 @@ public final class NotificationEventCatalog {
         return EVENTS.containsKey(key);
     }
 
+    /** Nhãn hiển thị của một nhóm sự kiện (dùng cho bộ lọc hộp thư). */
+    public static String categoryLabel(String category) {
+        if (category == null) return null;
+        return switch (category) {
+            case CATEGORY_ATTENDANCE -> "Chấm công";
+            case CATEGORY_REQUEST -> "Đơn từ & phép";
+            case CATEGORY_OKR -> "OKR";
+            case CATEGORY_TIMESHEET -> "Bảng công";
+            case CATEGORY_SYSTEM -> "Hệ thống";
+            default -> category;
+        };
+    }
+
+    /** Các event key thuộc một nhóm — dùng để lọc hộp thư theo nhóm. */
+    public static List<String> keysInCategory(String category) {
+        if (category == null) return List.of();
+        return EVENTS.values().stream()
+                .filter(def -> category.equalsIgnoreCase(def.category()))
+                .map(EventDef::key)
+                .toList();
+    }
+
+    /**
+     * Nhóm của thông báo CŨ chỉ có {@code type}, chưa có {@code eventKey}.
+     * Giữ khớp với cách phân nhóm của các producer hiện tại.
+     */
+    public static String categoryForType(String type) {
+        if (type == null || type.isBlank()) return null;
+        String t = type.trim().toUpperCase();
+        if (t.startsWith("OKR")) return CATEGORY_OKR;
+        return switch (t) {
+            case "ATTENDANCE" -> CATEGORY_ATTENDANCE;
+            case "REQUEST", "DISPUTE" -> CATEGORY_REQUEST;
+            case "TIMESHEET" -> CATEGORY_TIMESHEET;
+            case "ONBOARDING", "SYSTEM", "MANUAL" -> CATEGORY_SYSTEM;
+            default -> null;
+        };
+    }
+
+    /** Các giá trị {@code type} cũ thuộc một nhóm — lọc được cả thông báo trước khi có eventKey. */
+    public static List<String> legacyTypesInCategory(String category) {
+        if (category == null) return List.of();
+        List<String> types = new java.util.ArrayList<>();
+        for (String t : List.of("ATTENDANCE", "REQUEST", "DISPUTE", "TIMESHEET",
+                "ONBOARDING", "SYSTEM", "MANUAL")) {
+            if (category.equalsIgnoreCase(categoryForType(t))) types.add(t);
+        }
+        if (category.equalsIgnoreCase(CATEGORY_OKR)) {
+            types.add("OKR");
+            types.add("OKR_SETUP_OPEN");
+        }
+        return types;
+    }
+
     /** Map mặc định web/email/push cho toàn bộ sự kiện — dùng khi tạo pref lần đầu. */
     public static Map<String, Map<String, Boolean>> defaultChannelMap() {
         Map<String, Map<String, Boolean>> out = new LinkedHashMap<>();

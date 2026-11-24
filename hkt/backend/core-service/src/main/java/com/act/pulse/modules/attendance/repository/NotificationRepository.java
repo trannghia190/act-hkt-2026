@@ -20,29 +20,38 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     /**
      * Hộp thư phân trang + lọc phía server. {@code eventKey}/{@code q} null nghĩa là
-     * không lọc; {@code unreadOnly} chỉ giữ thông báo chưa đọc.
+     * không lọc; {@code unreadOnly} chỉ giữ thông báo chưa đọc; {@code filterByCategory}
+     * giới hạn theo {@code categoryKeys} (event key) hoặc {@code legacyTypes} (type cũ
+     * của thông báo chưa có event key).
      */
     @Query(value = """
             select n from Notification n
             where n.userId = :userId
               and (:unreadOnly = false or n.isRead = false)
-              and (:eventKey is null or n.eventKey = :eventKey)
-              and (:q is null
-                   or lower(n.title) like lower(concat('%', :q, '%'))
-                   or lower(n.content) like lower(concat('%', :q, '%')))
+              and (cast(:eventKey as string) is null or n.eventKey = :eventKey)
+              and (:filterByCategory = false or n.eventKey in :categoryKeys
+                   or n.type in :legacyTypes)
+              and (cast(:q as string) is null
+                   or lower(n.title) like lower(concat('%', cast(:q as string), '%'))
+                   or lower(n.content) like lower(concat('%', cast(:q as string), '%')))
             """,
             countQuery = """
             select count(n) from Notification n
             where n.userId = :userId
               and (:unreadOnly = false or n.isRead = false)
-              and (:eventKey is null or n.eventKey = :eventKey)
-              and (:q is null
-                   or lower(n.title) like lower(concat('%', :q, '%'))
-                   or lower(n.content) like lower(concat('%', :q, '%')))
+              and (cast(:eventKey as string) is null or n.eventKey = :eventKey)
+              and (:filterByCategory = false or n.eventKey in :categoryKeys
+                   or n.type in :legacyTypes)
+              and (cast(:q as string) is null
+                   or lower(n.title) like lower(concat('%', cast(:q as string), '%'))
+                   or lower(n.content) like lower(concat('%', cast(:q as string), '%')))
             """)
     Page<Notification> search(@Param("userId") UUID userId,
                               @Param("unreadOnly") boolean unreadOnly,
                               @Param("eventKey") String eventKey,
+                              @Param("filterByCategory") boolean filterByCategory,
+                              @Param("categoryKeys") List<String> categoryKeys,
+                              @Param("legacyTypes") List<String> legacyTypes,
                               @Param("q") String q,
                               Pageable pageable);
 

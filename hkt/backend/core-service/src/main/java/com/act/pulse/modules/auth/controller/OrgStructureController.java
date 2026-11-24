@@ -177,6 +177,44 @@ public class OrgStructureController {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class TeamOptionDto {
+        private String id;
+        private String name;
+        private String parentName;
+        private String leaderName;
+        private int memberCount;
+    }
+
+    @GetMapping(value = { "/admin/teams", "/admin/departments", "/teams" })
+    @Operation(summary = "Danh sách nhóm làm việc — nguồn duy nhất cho các dropdown chọn nhóm (S40)")
+    public ApiResponse<List<TeamOptionDto>> listTeams() {
+        Map<UUID, String> teamNames = new HashMap<>();
+        for (Team t : teamRepository.findAll()) teamNames.put(t.getId(), t.getName());
+        Map<UUID, String> userNames = new HashMap<>();
+        for (User u : userRepository.findAll()) userNames.put(u.getId(), u.getFullName());
+        Map<UUID, Integer> memberCount = new HashMap<>();
+        for (User u : userRepository.findAll()) {
+            if (u.getTeamId() != null) memberCount.merge(u.getTeamId(), 1, Integer::sum);
+        }
+        List<TeamOptionDto> out = new ArrayList<>();
+        for (Team t : teamRepository.findAll()) {
+            out.add(TeamOptionDto.builder()
+                    .id(t.getId().toString())
+                    .name(t.getName())
+                    .parentName(t.getParentId() == null ? null : teamNames.get(t.getParentId()))
+                    .leaderName(t.getLeaderId() == null ? null : userNames.get(t.getLeaderId()))
+                    .memberCount(memberCount.getOrDefault(t.getId(), 0))
+                    .build());
+        }
+        out.sort(Comparator.comparing(TeamOptionDto::getName,
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        return ApiResponse.ok(out, "Danh sách nhóm làm việc");
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class OrgTreeNodeDto {
         private String id;
         private String code;
@@ -609,56 +647,50 @@ public class OrgStructureController {
             defaultManagerId = mgrOpt.get().getId();
         }
 
-        Optional<User> existing = Optional.empty();
+        // Trùng mã/email → báo lỗi & CHẶN, không ghi đè hồ sơ nhân viên đang có.
+        // Ngoại lệ: email của nhân VIÊN ĐÃ NGHỈ (INACTIVE) được tái sử dụng — nhân viên mới có thể
+        // dùng lại email cũ; còn MÃ NHÂN VIÊN thì luôn phải duy nhất (kể cả người đã nghỉ).
         if (req.getEmployeeCode() != null && !req.getEmployeeCode().isBlank()) {
-            existing = userRepository.findByEmployeeCodeIgnoreCase(req.getEmployeeCode().trim());
+            Optional<User> byCode = userRepository.findByEmployeeCodeIgnoreCase(req.getEmployeeCode().trim());
+            if (byCode.isPresent()) {
+                throw new RuntimeException("Mã nhân viên " + req.getEmployeeCode().trim()
+                        + " đã tồn tại (đang dùng bởi " + byCode.get().getFullName() + ") — vui lòng chọn mã khác");
+            }
         }
-        if (existing.isEmpty() && req.getEmail() != null && !req.getEmail().isBlank()) {
-            existing = userRepository.findByEmail(req.getEmail().trim());
+        if (req.getEmail() != null && !req.getEmail().isBlank()) {
+            Optional<User> byEmail = userRepository
+                    .findFirstByEmailIgnoreCaseAndStatusNot(req.getEmail().trim(), "INACTIVE");
+            if (byEmail.isPresent()) {
+                throw new RuntimeException("Email " + req.getEmail().trim()
+                        + " đã được dùng bởi nhân viên đang hoạt động (" + byEmail.get().getFullName()
+                        + " — mã " + byEmail.get().getEmployeeCode() + ") — vui lòng dùng email khác");
+            }
         }
         User userToSave;
         String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
                 ? req.getPassword().trim()
                 : "123456";
 
-        if (existing.isPresent()) {
-            userToSave = existing.get();
-            if (req.getFullName() != null && !req.getFullName().isBlank())
-                userToSave.setFullName(req.getFullName().trim());
-            if (req.getEmail() != null && !req.getEmail().isBlank())
-                userToSave.setEmail(req.getEmail().trim());
-            if (req.getRole() != null && !req.getRole().isBlank())
-                userToSave.setRole(req.getRole().toUpperCase().trim());
-            if (req.getPositionName() != null && !req.getPositionName().isBlank())
-                userToSave.setPositionName(req.getPositionName().trim());
-            if (defaultTeamId != null)
-                userToSave.setTeamId(defaultTeamId);
-            if (defaultShiftId != null)
-                userToSave.setShiftId(defaultShiftId);
-            if (userToSave.getManagerId() == null && defaultManagerId != null)
-                userToSave.setManagerId(defaultManagerId);
-        } else {
-            userToSave = User.builder()
-                    .employeeCode(code)
-                    .fullName(fullName)
-                    .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim()
-                            : code.toLowerCase() + "@act.vn")
-                    .passwordHash(passwordEncoder.encode(rawPassword))
-                    .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim()
-                            : "EMPLOYEE")
-                    .positionName(req.getPositionName() != null && !req.getPositionName().isBlank()
-                            ? req.getPositionName().trim()
-                            : "Chuyên viên")
-                    .teamId(defaultTeamId)
-                    .shiftId(defaultShiftId)
-                    .managerId(defaultManagerId)
-                    .status("ACTIVE")
-                    .mustChangePassword(true)
-                    .faceEnrolled(false)
-                    .hireDate(LocalDate.now())
-                    .joinedDate(LocalDate.now())
-                    .build();
-        }
+        userToSave = User.builder()
+                .employeeCode(code)
+                .fullName(fullName)
+                .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim()
+                        : code.toLowerCase() + "@act.vn")
+                .passwordHash(passwordEncoder.encode(rawPassword))
+                .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim()
+                        : "EMPLOYEE")
+                .positionName(req.getPositionName() != null && !req.getPositionName().isBlank()
+                        ? req.getPositionName().trim()
+                        : "Chuyên viên")
+                .teamId(defaultTeamId)
+                .shiftId(defaultShiftId)
+                .managerId(defaultManagerId)
+                .status("ACTIVE")
+                .mustChangePassword(true)
+                .faceEnrolled(false)
+                .hireDate(LocalDate.now())
+                .joinedDate(LocalDate.now())
+                .build();
 
         userRepository.save(userToSave);
 
@@ -683,33 +715,30 @@ public class OrgStructureController {
             emailStatusMessage = "Lỗi khi gửi email: " + e.getMessage();
         }
 
-        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3).
-        // Chỉ gửi lần TẠO tài khoản — cập nhật user không gửi lại lời chào.
+        // Tạo thông báo nội bộ trong hệ thống (Notification bell G3) cho tài khoản vừa tạo.
         try {
-            if (existing.isEmpty()) {
-                notificationDispatcher.dispatch(
-                        "ONBOARDING",
-                        userToSave.getId(),
-                        "Chào mừng thành viên mới đến với ACT PULSE!",
-                        "Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
-                                + userToSave.getEmployeeCode() + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.",
-                        "ONBOARDING",
-                        "HIGH",
-                        "/account/profile",
-                        "onboarding:" + userToSave.getId());
-            }
+            notificationDispatcher.dispatch(
+                    "ONBOARDING",
+                    userToSave.getId(),
+                    "Chào mừng thành viên mới đến với ACT PULSE!",
+                    "Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
+                            + userToSave.getEmployeeCode() + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.",
+                    "ONBOARDING",
+                    "HIGH",
+                    "/account/profile",
+                    "onboarding:" + userToSave.getId());
         } catch (Exception ignored) {
         }
 
         // Audit log
         AuditLog audit = AuditLog.builder()
-                .action(existing.isPresent() ? "UPDATE_USER" : "CREATE_USER")
+                .action("CREATE_USER")
                 .entityName("USER")
                 .entityId(userToSave.getId().toString())
                 .userId(CurrentUser.userId())
                 .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
                 .userName(resolveActorName())
-                .newValue((existing.isPresent() ? "Cập nhật nhân viên " : "Tạo nhân viên ") + userToSave.getFullName()
+                .newValue("Tạo nhân viên " + userToSave.getFullName()
                         + " (" + userToSave.getEmployeeCode() + ") - Nhóm: " + teamName)
                 .reason("Tuyển dụng / cập nhật nhân sự")
                 .ipAddress("127.0.0.1")
@@ -952,6 +981,43 @@ public class OrgStructureController {
     public ApiResponse<EmployeeDto> getEmployeeDetail(@PathVariable String id) {
         User u = findUserByIdOrCode(id);
         return ApiResponse.ok(toEmployeeDto(u), "Lấy thông tin chi tiết nhân viên thành công");
+    }
+
+    @PostMapping("/admin/users/{id}/resign")
+    @Operation(summary = "Đánh dấu nhân viên đã nghỉ việc (INACTIVE) — rời khỏi tổ chức nhưng giữ lịch sử")
+    public ApiResponse<EmployeeDto> resignEmployee(@PathVariable String id,
+                                                 @RequestBody(required = false) Map<String, Object> req) {
+        User u = findUserByIdOrCode(id);
+        if ("INACTIVE".equalsIgnoreCase(u.getStatus())) {
+            throw new RuntimeException("Nhân viên " + u.getEmployeeCode() + " đã ở trạng thái nghỉ việc");
+        }
+        String reason = req != null && req.get("reason") != null && !String.valueOf(req.get("reason")).isBlank()
+                ? String.valueOf(req.get("reason")).trim()
+                : "Đánh dấu nghỉ việc từ trang quản lý nhân sự";
+        String oldStatus = u.getStatus();
+        u.setStatus("INACTIVE");
+        // Rời khỏi tổ chức: bỏ nhóm/đơn vị trực tiếp nhưng GIỮ ca & quản lý để lịch sử chấm công còn tra cứu được.
+        u.setTeamId(null);
+        u.setManagerId(null);
+        userRepository.save(u);
+
+        AuditLog audit = AuditLog.builder()
+                .action("RESIGN_EMPLOYEE")
+                .entityName("USER")
+                .entityId(u.getId().toString())
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .oldValue("Trạng thái: " + oldStatus)
+                .newValue("Trạng thái: INACTIVE")
+                .reason(reason)
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        return ApiResponse.ok(toEmployeeDto(u),
+                "Đã đánh dấu " + u.getFullName() + " (" + u.getEmployeeCode() + ") đã nghỉ việc. "
+                        + "Mã nhân viên vẫn giữ nguyên (không dùng lại được); email có thể cấp lại cho nhân viên mới.");
     }
 
     @PutMapping("/admin/users/{id}")
@@ -1898,6 +1964,7 @@ public class OrgStructureController {
             @RequestParam(required = false) Integer limit,
             @RequestParam(defaultValue = "false") boolean unread,
             @RequestParam(required = false) String eventKey,
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) String q) {
         UUID uid = CurrentUser.userId();
         int pageSize = size != null ? size : (limit != null ? limit : 50);
@@ -1909,8 +1976,18 @@ public class OrgStructureController {
         if (uid != null) {
             String normalizedKey = eventKey == null || eventKey.isBlank() ? null : eventKey.trim();
             String normalizedQ = q == null || q.isBlank() ? null : q.trim();
+            // Lọc theo nhóm sự kiện: đổi nhóm → tập event key; nhóm lạ → không khớp gì.
+            boolean filterByCategory = category != null && !category.isBlank();
+            List<String> categoryKeys = filterByCategory
+                    ? com.act.pulse.modules.notification.service.NotificationEventCatalog
+                            .keysInCategory(category.trim())
+                    : List.of();
+            List<String> legacyTypes = filterByCategory
+                    ? com.act.pulse.modules.notification.service.NotificationEventCatalog
+                            .legacyTypesInCategory(category.trim())
+                    : List.of();
             dbPage = notificationRepository.search(
-                    uid, unread, normalizedKey, normalizedQ,
+                    uid, unread, normalizedKey, filterByCategory, categoryKeys, legacyTypes, normalizedQ,
                     PageRequest.of(safePage, pageSize, Sort.by(Sort.Direction.DESC, "createdAt")));
         }
 
@@ -1923,11 +2000,12 @@ public class OrgStructureController {
             map.put("content", entity.getContent());
             map.put("type", entity.getType());
             map.put("eventKey", entity.getEventKey());
-            map.put("category", entity.getEventKey() == null ? null
+            var eventDef = entity.getEventKey() == null ? null
                     : com.act.pulse.modules.notification.service.NotificationEventCatalog
-                            .get(entity.getEventKey()) == null ? null
+                            .get(entity.getEventKey());
+            map.put("category", eventDef != null ? eventDef.category()
                     : com.act.pulse.modules.notification.service.NotificationEventCatalog
-                            .get(entity.getEventKey()).category());
+                            .categoryForType(entity.getType()));
             map.put("priority", entity.getPriority());
             map.put("level", "HIGH".equalsIgnoreCase(entity.getPriority()) ? "urgent"
                     : "MEDIUM".equalsIgnoreCase(entity.getPriority()) ? "warning" : "info");

@@ -7,7 +7,9 @@ Hộp thư thông báo phân trang + lọc phía server (S04 / CORE-NOTIF-01).
      X-Has-More đúng.
   3. Quá trang cuối → rỗng, hasMore=false.
   4. `unread=true` lọc đúng; đánh dấu 1 đã đọc → còn 4.
-  5. `eventKey` lọc đúng; `/notifications/unread-count` trả số nguyên.
+  5. `eventKey` lọc đúng; `category` lọc theo NHÓM sự kiện (danh mục trả
+     `categoryLabel`) và bao gồm cả thông báo cũ chỉ có `type` (event_key NULL);
+     `/notifications/unread-count` trả số nguyên.
   6. Dọn dữ liệu test.
 
 Chạy (backend :8080, DB pulse_db):
@@ -119,6 +121,52 @@ try:
     check("Sau khi đọc, unread còn 4", len(js["data"]) == 4, len(js["data"]))
     st, _, js = call("GET", f"/notifications?eventKey={EVENT}&q={urllib.parse.quote(MARK)}&size=100", token)
     check("Lọc tất cả vẫn 5", len(js["data"]) == 5, len(js["data"]))
+
+    # ── 4b. Lọc theo NHÓM sự kiện ──────────────────────────────────
+    st, _, catalog = call("GET", "/notifications/preferences/events", token)
+    check("Danh mục sự kiện trả 200", st == 200 and catalog["data"], catalog)
+    check("Danh mục có nhãn nhóm (categoryLabel)",
+          all(e.get("categoryLabel") for e in catalog["data"]), catalog["data"][:1])
+    by_cat = {}
+    for e in catalog["data"]:
+        by_cat.setdefault(e["category"], e["key"])
+    check("Danh mục có >=2 nhóm để kiểm thử", len(by_cat) >= 2, list(by_cat))
+    cat_a, cat_b = list(by_cat.items())[:2]
+    group_ids = {}
+    for cat, key in (cat_a, cat_b):
+        st, _, js = call("POST", "/notifications", token, {
+            "title": f"{title_prefix} nhóm {cat}",
+            "content": f"Nội dung kiểm thử lọc nhóm {MARK} {cat}",
+            "type": "SYSTEM",
+            "eventKey": key,
+            "priority": "LOW",
+        })
+        check(f"Tạo thông báo nhóm {cat}", st == 200, js)
+        created.append(js["data"]["id"])
+        group_ids[cat] = js["data"]["id"]
+    for cat, _ in (cat_a, cat_b):
+        st, hs, js = call("GET", f"/notifications?category={cat}&q={urllib.parse.quote(MARK)}&size=100", token)
+        ids = [n["id"] for n in js["data"]]
+        check(f"Lọc nhóm {cat} chỉ trả thông báo nhóm đó",
+              st == 200 and all(n.get("category") == cat for n in js["data"])
+              and group_ids[cat] in ids and len(ids) == 1,
+              [(n["id"], n.get("category")) for n in js["data"]])
+    st, hs, js = call("GET", f"/notifications?category=BOGUS&size=100", token)
+    check("Nhóm không tồn tại → rỗng", st == 200 and len(js["data"]) == 0, js["data"][:1])
+
+    # ── 4c. Thông báo CŨ chỉ có type (event_key NULL) vẫn lọc được theo nhóm ──
+    legacy_title = f"{title_prefix} legacy"
+    legacy_id = psql(
+        "insert into notifications (id, user_id, title, content, type, priority, action_url, is_read, created_at) "
+        "values (gen_random_uuid(), (select id from users where employee_code='" + EMPLOYEE + "'), "
+        "'" + legacy_title + "', 'Nội dung cũ chưa có event key', 'REQUEST', 'LOW', '/todo', false, now()) "
+        "returning id").splitlines()[0]
+    created.append(legacy_id)
+    st, _, js = call("GET", f"/notifications?category=REQUEST&q={urllib.parse.quote('legacy')}&size=100", token)
+    ids = [n["id"] for n in js["data"]]
+    check("Thông báo cũ (chỉ có type) lọc được theo nhóm",
+          st == 200 and legacy_id in ids and all(n.get("category") == "REQUEST" for n in js["data"]),
+          [(n["id"], n.get("category")) for n in js["data"]])
 
     # ── 5. Endpoint đếm chưa đọc ───────────────────────────────────
     st, _, js = call("GET", "/notifications/unread-count", token)
