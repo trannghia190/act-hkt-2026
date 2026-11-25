@@ -210,18 +210,39 @@ try:
     check("7. GET /okr/dashboard của 136ACT trả 200", st2 == 200, (st2, dash2))
     if st2 == 200:
         d2 = dash2["data"]
-        deadline = d2.get("checkinDeadline")
-        expected = None
-        if deadline:
-            left = (date.fromisoformat(deadline) - today).days
-            expected = "Hạn hôm nay" if left <= 0 else f"Còn {left} ngày"
         okr_real = [i for i in real if i.get("module") == "okr"]
-        check("7a. Hạn mục OKR ở Inbox khớp hạn check-in thật của dashboard",
-              all(i.get("dueDate") == expected for i in okr_real),
-              ([(i.get("title"), i.get("dueDate")) for i in okr_real], expected))
-        check("7b. Mục OKR chỉ tồn tại khi dashboard cũng có việc OKR",
-              bool(okr_real) == bool(d2.get("todos")),
-              (len(okr_real), len(d2.get("todos", []))))
+
+        # 7a. Mỗi mục OKR ở Inbox phải suy ra hạn từ deadline THẬT của dashboard
+        # (mỗi loại việc có hạn riêng: tạo OKR = hạn setup, check-in = hạn kỳ,
+        # tự chấm = hạn final) — không được hard-code.
+        dash_todos = {t["id"]: t for t in (d2.get("todos") or [])}
+        mismatched = []
+        for i in okr_real:
+            t = dash_todos.get(i["id"])
+            if t is None:
+                mismatched.append((i["id"], "không có trong dashboard"))
+                continue
+            due = t.get("deadline")
+            if due is None:
+                if i.get("dueDate") != "Không hạn":
+                    mismatched.append((i["id"], i.get("dueDate")))
+                continue
+            left = (date.fromisoformat(due) - today).days
+            expected = "Hạn hôm nay" if left <= 0 else f"Còn {left} ngày"
+            if i.get("dueDate") != expected:
+                mismatched.append((i["id"], i.get("dueDate"), expected))
+        check("7a. Hạn mục OKR ở Inbox suy ra từ deadline thật của dashboard",
+              not mismatched, mismatched)
+
+        # 7b. Danh sách việc OKR ở Inbox khớp dashboard (cùng nguồn).
+        check("7b. Danh sách việc OKR ở Inbox khớp dashboard OKR",
+              {i["id"] for i in okr_real} == set(dash_todos),
+              (sorted(i["id"] for i in okr_real), sorted(dash_todos)))
+
+        # 7c. Không mục OKR nào dùng hạn hard-code.
+        check("7c. Không mục OKR nào dùng hạn hard-code",
+              all(i.get("dueDate") != "Còn 2 ngày" for i in okr_real),
+              [(i.get("title"), i.get("dueDate")) for i in okr_real])
 
     print("\nALL TODO INBOX SOURCE TESTS PASSED")
 finally:

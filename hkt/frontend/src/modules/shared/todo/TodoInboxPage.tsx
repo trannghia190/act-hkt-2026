@@ -86,6 +86,18 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
   system: <Calendar className="w-4 h-4" />,
 };
 
+/** Nhãn nút hành động rút gọn cho màn hẹp (mobile) — nhãn đầy đủ vẫn ở title/aria-label. */
+const SHORT_ACTION_LABELS: Record<string, string> = {
+  'Xem Đơn Của Tôi': 'Xem Đơn',
+  'Bổ sung Công': 'Bổ sung',
+  'Liên Hệ HR': 'Liên hệ HR',
+  'Chấm Công Ngay': 'Chấm công',
+  'Chấm Công Ra': 'Chấm công ra',
+  'Cập Nhật OKR': 'Cập nhật',
+  'Xem Bảng Công': 'Xem bảng công',
+  'Duyệt Đơn Ngay': 'Duyệt đơn',
+};
+
 /** Giờ hoàn tất theo giờ địa phương: 18:46 23/11/2026. */
 const formatCompletedAt = (raw: string | null): string => {
   if (!raw) return '';
@@ -350,8 +362,12 @@ export const TodoInboxPage: React.FC = () => {
   }, [completedList]);
 
   /**
-   * Mỗi việc là MỘT hàng ngang (đúng mockup S02): icon · tiêu đề+mô tả ·
+   * Mỗi việc là MỘT hàng ngang trên desktop (đúng mockup S02): icon · tiêu đề+mô tả ·
    * chip nguồn · nút hành động. Việc phụ ("Đã xong", "Xoá") nằm trong menu ⋯.
+   *
+   * Trên MOBILE (<sm) 1 hàng ngang không đủ chỗ → chuyển sang 2 dòng: dòng 1 là
+   * icon + nội dung (tiêu đề xuống dòng thay vì bị cắt "B…"), dòng 2 là chip
+   * nguồn + hạn + nút hành động. Nút hành động luôn nằm ở góc phải dòng 2.
    */
   const renderTaskCard = (task: PersonalTask) => {
     const isOverdue = task.urgency === 'overdue';
@@ -372,81 +388,126 @@ export const TodoInboxPage: React.FC = () => {
           ? 'bg-accent-soft text-accent'
           : 'bg-emerald-50 text-emerald-600';
 
+    // Nhãn nút hành động rút gọn trên mobile ("Xem Đơn Của Tôi" → "Xem Đơn") để
+    // dòng 2 không tràn ngang — nhưng nhãn đầy đủ vẫn nằm trong title/aria-label.
+    const shortLabel = SHORT_ACTION_LABELS[task.actionLabel] ?? task.actionLabel;
+
+    const actionButton = (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => navigate(task.actionUrl)}
+        className="shrink-0"
+        title={task.actionLabel}
+        aria-label={task.actionLabel}
+      >
+        <span className="hidden sm:inline">{task.actionLabel}</span>
+        <span className="sm:hidden">{shortLabel}</span>
+        <ArrowRight className="w-3.5 h-3.5 ml-1" />
+      </Button>
+    );
+
+    const menuButton = (
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => setOpenTaskMenu((prev) => (prev === task.id ? null : task.id))}
+          className="w-7 h-7 grid place-items-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink transition-colors cursor-pointer"
+          title="Tuỳ chọn khác"
+          aria-label={`Tuỳ chọn khác cho ${task.title}`}
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+        {openTaskMenu === task.id && (
+          <div className="absolute right-0 top-8 z-20 w-44 bg-surface border border-line rounded-lg shadow-lg py-1">
+            {task.completable !== false && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenTaskMenu(null);
+                  handleCompletePersonalTask(task);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-canvas flex items-center gap-2 cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Đánh dấu đã xong
+              </button>
+            )}
+            {!task.completable && (
+              <div className="px-3 py-2 text-[11px] text-ink-muted">
+                Mục tổng hợp — tự cập nhật theo dữ liệu thật.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+
     return (
       <div
         key={task.id}
-        className={`relative bg-surface border border-line border-l-[3px] ${accentClass} rounded-xl px-4 py-3 flex items-center gap-3 transition-shadow hover:shadow-sm`}
+        className={`relative bg-surface border border-line border-l-[3px] ${accentClass} rounded-xl px-3 sm:px-4 py-3 transition-shadow hover:shadow-sm`}
       >
-        <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
-          {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold text-ink truncate">{task.title}</div>
-          <div className="text-xs text-ink-muted mt-0.5 truncate">{task.description}</div>
-        </div>
-
-        <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
-          {MODULE_LABELS[task.module] ?? 'Hệ thống'}
-        </span>
-
-        <span className="text-[11px] text-ink-muted font-mono shrink-0 hidden sm:inline">{task.dueTime}</span>
-
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setOpenTaskMenu((prev) => (prev === task.id ? null : task.id))}
-            className="w-7 h-7 grid place-items-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink transition-colors cursor-pointer"
-            title="Tuỳ chọn khác"
-            aria-label={`Tuỳ chọn khác cho ${task.title}`}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-          {openTaskMenu === task.id && (
-            <div className="absolute right-0 top-8 z-20 w-44 bg-surface border border-line rounded-lg shadow-lg py-1">
-              {task.completable !== false && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenTaskMenu(null);
-                    handleCompletePersonalTask(task);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-canvas flex items-center gap-2 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Đánh dấu đã xong
-                </button>
-              )}
-              {!task.completable && (
-                <div className="px-3 py-2 text-[11px] text-ink-muted">
-                  Mục tổng hợp — tự cập nhật theo dữ liệu thật.
-                </div>
-              )}
+        {/* MOBILE: 2 dòng — nội dung trên, hành động dưới */}
+        <div className="sm:hidden">
+          <div className="flex items-start gap-3">
+            <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
+              {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
             </div>
-          )}
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-ink leading-snug">{task.title}</div>
+              <div className="text-xs text-ink-muted mt-1 leading-relaxed">{task.description}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
+              {MODULE_LABELS[task.module] ?? 'Hệ thống'}
+            </span>
+            <span className="text-[11px] text-ink-muted font-mono truncate min-w-0">{task.dueTime}</span>
+            <div className="ml-auto flex items-center gap-1.5 shrink-0">
+              {menuButton}
+              {actionButton}
+            </div>
+          </div>
         </div>
 
-        <Button variant="primary" size="sm" onClick={() => navigate(task.actionUrl)} className="shrink-0">
-          <span>{task.actionLabel}</span>
-          <ArrowRight className="w-3.5 h-3.5 ml-1" />
-        </Button>
+        {/* DESKTOP: 1 hàng ngang */}
+        <div className="hidden sm:flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
+            {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-ink truncate">{task.title}</div>
+            <div className="text-xs text-ink-muted mt-0.5 truncate">{task.description}</div>
+          </div>
+
+          <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
+            {MODULE_LABELS[task.module] ?? 'Hệ thống'}
+          </span>
+
+          <span className="text-[11px] text-ink-muted font-mono shrink-0">{task.dueTime}</span>
+
+          {menuButton}
+          {actionButton}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-4 max-w-[840px] mx-auto">
+    <div className="space-y-4 max-w-[840px] mx-auto px-3 sm:px-0 pb-10">
       {/* Page Header — đúng mockup S02: tiêu đề + ngày giờ + số đang chờ/đã xong */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-[19px] font-bold tracking-tight text-ink">Cần làm</h1>
             <Badge variant="accent">Trang Mặc Định</Badge>
           </div>
           <div className="text-xs text-ink-muted mt-0.5">{todayLabel}</div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {personalTasks.length > 0 && (
             <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-semibold">
               {personalTasks.length} đang chờ
@@ -476,19 +537,20 @@ export const TodoInboxPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Tabs (Việc Của Tôi vs Đơn Chờ Duyệt vs Lịch Sử) */}
-      <div className="flex border-b border-line gap-2 text-xs font-bold">
+      {/* Main Tabs (Việc Của Tôi vs Đơn Chờ Duyệt vs Lịch Sử) — cuộn ngang trên mobile */}
+      <div className="flex border-b border-line gap-2 text-xs font-bold overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('PERSONAL')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === 'PERSONAL'
               ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Clock className="w-4 h-4" />
-          Việc Cần Làm Của Tôi
+          <span className="hidden sm:inline">Việc Cần Làm Của Tôi</span>
+          <span className="sm:hidden">Việc Của Tôi</span>
           {personalTasks.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-accent-soft text-accent font-extrabold">
               {personalTasks.length}
@@ -500,14 +562,15 @@ export const TodoInboxPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('APPROVALS')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === 'APPROVALS'
               ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Inbox className="w-4 h-4" />
-          Đơn Cần Phê Duyệt
+          <span className="hidden sm:inline">Đơn Cần Phê Duyệt</span>
+          <span className="sm:hidden">Duyệt Đơn</span>
           {approvals.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-extrabold">
               {approvals.length}
@@ -519,14 +582,16 @@ export const TodoInboxPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('DONE')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer ${
+          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === 'DONE'
               ? 'border-accent text-accent font-bold'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <CheckCircle2 className="w-4 h-4" />
-          Đã Hoàn Tất ({completedList.length})
+          <span className="hidden sm:inline">Đã Hoàn Tất</span>
+          <span className="sm:hidden">Đã Xong</span>
+          <span className="font-mono">({completedList.length})</span>
         </button>
       </div>
 
@@ -634,7 +699,7 @@ export const TodoInboxPage: React.FC = () => {
             >
               <div className="text-[11px] font-medium text-ink-secondary">Tất cả nhiệm vụ</div>
               <div className="text-2xl font-bold text-ink mt-0.5">{approvals.length}</div>
-              <div className="text-[10px] text-ink-muted">Tổng việc đang chờ duyệt</div>
+              <div className="text-[10px] text-ink-muted leading-tight">Tổng việc đang chờ duyệt</div>
             </button>
 
             <button
@@ -646,11 +711,14 @@ export const TodoInboxPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-status-danger">Khẩn cấp (Red Bucket)</span>
+                <span className="text-[11px] font-semibold text-status-danger">
+                  <span className="hidden sm:inline">Khẩn cấp (Red Bucket)</span>
+                  <span className="sm:hidden">Khẩn cấp</span>
+                </span>
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               </div>
               <div className="text-2xl font-bold text-status-danger mt-0.5">{redCount}</div>
-              <div className="text-[10px] text-ink-muted">&lt; 24h hoặc ca hôm nay</div>
+              <div className="text-[10px] text-ink-muted leading-tight">&lt; 24h hoặc ca hôm nay</div>
             </button>
 
             <button
@@ -662,11 +730,14 @@ export const TodoInboxPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-status-warn">Cần làm sớm (Yellow)</span>
+                <span className="text-[11px] font-semibold text-status-warn">
+                  <span className="hidden sm:inline">Cần làm sớm (Yellow)</span>
+                  <span className="sm:hidden">Cần làm sớm</span>
+                </span>
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
               </div>
               <div className="text-2xl font-bold text-status-warn mt-0.5">{yellowCount}</div>
-              <div className="text-[10px] text-ink-muted">Hạn 1 - 3 ngày tới</div>
+              <div className="text-[10px] text-ink-muted leading-tight">Hạn 1 - 3 ngày tới</div>
             </button>
 
             <button
@@ -678,11 +749,14 @@ export const TodoInboxPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-accent">Theo lịch (Green)</span>
+                <span className="text-[11px] font-semibold text-accent">
+                  <span className="hidden sm:inline">Theo lịch (Green)</span>
+                  <span className="sm:hidden">Theo lịch</span>
+                </span>
                 <span className="w-2 h-2 rounded-full bg-accent" />
               </div>
               <div className="text-2xl font-bold text-accent mt-0.5">{greenCount}</div>
-              <div className="text-[10px] text-ink-muted">Kế hoạch dài hạn &gt; 3 ngày</div>
+              <div className="text-[10px] text-ink-muted leading-tight">Kế hoạch dài hạn &gt; 3 ngày</div>
             </button>
           </div>
 
@@ -707,7 +781,7 @@ export const TodoInboxPage: React.FC = () => {
                         {item.priority === 'green' && <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-xs font-bold text-ink">{item.title}</span>
                           <Badge variant={item.priority === 'red' ? 'danger' : item.priority === 'yellow' ? 'warn' : 'ok'}>
@@ -716,7 +790,7 @@ export const TodoInboxPage: React.FC = () => {
                           <span className="text-[10px] font-mono text-accent font-semibold">{item.id}</span>
                         </div>
                         <div className="text-xs text-ink-secondary mt-1">{item.subtitle}</div>
-                        <div className="flex items-center gap-3 text-[11px] text-ink-muted mt-1.5">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted mt-1.5">
                           <span>👤 <strong>{item.requester}</strong></span>
                           <span>🏢 {item.dept}</span>
                           <span>⏱️ {item.submittedAt}</span>
@@ -724,7 +798,7 @@ export const TodoInboxPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end md:self-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 self-stretch md:self-center" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="outline"
                         size="sm"
@@ -732,6 +806,7 @@ export const TodoInboxPage: React.FC = () => {
                           setSelectedApproval(item);
                           setActiveActionModal('reject');
                         }}
+                        className="flex-1 md:flex-none"
                       >
                         Từ chối
                       </Button>
@@ -742,6 +817,7 @@ export const TodoInboxPage: React.FC = () => {
                           setSelectedApproval(item);
                           setActiveActionModal('approve');
                         }}
+                        className="flex-1 md:flex-none"
                       >
                         Phê duyệt
                       </Button>
@@ -839,14 +915,14 @@ export const TodoInboxPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-line">
+        <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
           <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
             Xem Sổ Phép
           </Button>
           <Button variant="primary" size="sm" onClick={() => navigate('/attendance/requests')}>
             + Tạo Đơn Nghỉ Phép
           </Button>
-          <span className="text-[11px] text-ink-muted ml-auto">
+          <span className="text-[11px] text-ink-muted sm:ml-auto w-full sm:w-auto">
             Tổng còn lại: <strong className="text-ink">{leaveSummary.totalRemaining} ngày</strong>
           </span>
         </div>
