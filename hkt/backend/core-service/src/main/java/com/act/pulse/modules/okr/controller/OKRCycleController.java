@@ -226,9 +226,6 @@ public class OKRCycleController {
         }
         OKRCycle cycle = cycleRepository.findById(id).orElse(null);
         if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
-        if ("active".equalsIgnoreCase(cycle.getStatus())) {
-            throw OKRRuleException.conflict("Chu kỳ đang hoạt động — tạm ẩn hoặc chốt & khoá trước khi xoá");
-        }
         Integer year = cycle.getCycleYear();
         String name = cycle.getName();
         long reviews = reviewRepository.countByCycleYear(year);

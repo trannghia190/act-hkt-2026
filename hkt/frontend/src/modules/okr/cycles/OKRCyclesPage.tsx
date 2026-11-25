@@ -61,6 +61,9 @@ export const OKRCyclesPage: React.FC = () => {
     const ok = confirm(
       `Xoá vĩnh viễn chu kỳ "${cycle.name}" (năm ${cycle.year})?\n\n`
       + 'Toàn bộ mục tiêu OKR, check-in và hồ sơ đánh giá thuộc chu kỳ này sẽ bị xoá theo.\n'
+      + (cycle.status === 'active'
+        ? 'Đây là chu kỳ ĐANG HOẠT ĐỘNG — sau khi xoá, nhân viên sẽ không có chu kỳ OKR để làm việc cho tới khi tạo & kích hoạt chu kỳ mới.\n'
+        : '')
       + `Sau khi xoá, bạn có thể tạo lại chu kỳ cho năm ${cycle.year}.`,
     );
     if (!ok) return;
@@ -175,17 +178,15 @@ export const OKRCyclesPage: React.FC = () => {
                           {c.status === 'closed' && (
                             <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${c.id}`)}>Mở lại</Button>
                           )}
-                          {c.status !== 'active' && (
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => removeCycle(c)}
-                              disabled={deletingId === c.id}
-                              title={`Xoá chu kỳ và toàn bộ dữ liệu OKR của năm ${c.year} — sau đó có thể tạo lại chu kỳ cùng năm`}
-                            >
-                              {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => removeCycle(c)}
+                            disabled={deletingId === c.id}
+                            title={`Xoá chu kỳ và toàn bộ dữ liệu OKR của năm ${c.year} — sau đó có thể tạo lại chu kỳ cùng năm`}
+                          >
+                            {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -201,7 +202,7 @@ export const OKRCyclesPage: React.FC = () => {
         <b>Quy tắc</b>: mỗi năm chỉ có 1 chu kỳ OKR (không tạo trùng năm), và toàn hệ thống chỉ 1 chu kỳ hoạt động tại một thời điểm.
         <b> Kích hoạt</b>: chu kỳ nháp trở thành chu kỳ đang hoạt động.
         <b> Tạm ẩn</b>: đưa chu kỳ về nháp, giữ nguyên dữ liệu, dùng khi cấu hình nhầm hoặc chuẩn bị trước.
-        <b> Xoá</b>: xoá vĩnh viễn chu kỳ cùng toàn bộ OKR/hồ sơ của năm (chỉ với chu kỳ không hoạt động) — sau đó có thể tạo lại cùng năm.
+        <b> Xoá</b>: xoá vĩnh viễn chu kỳ cùng toàn bộ OKR/hồ sơ của năm — sau đó có thể tạo lại cùng năm.
         <b> Chốt &amp; khoá</b>: kết thúc chu kỳ, mọi màn chuyển sang chỉ đọc; chỉ HR mở lại được kèm lý do (ghi audit).
       </div>
     </div>
