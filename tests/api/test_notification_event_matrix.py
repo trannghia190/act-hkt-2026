@@ -26,7 +26,7 @@ import json
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 
 API = "http://localhost:8080/api/v1"
 EMPLOYEE = "136ACT"       # người nộp đơn
@@ -129,7 +129,10 @@ def next_request_day():
 
 def next_dispute_day():
     counters["dispute"] += 1
-    return f"2026-10-{counters['dispute'] + 1:02d}"
+    # Khiếu nại chỉ mở trong kỳ công hiện tại (kỳ trước đã khoá hoàn toàn sau
+    # cửa sổ khiếu nại), nên luôn lấy ngày trong tháng hiện tại.
+    today = date.today()
+    return f"{today.year}-{today.month:02d}-{(counters['dispute'] % 25) + 1:02d}"
 
 
 # ── Trigger thật, trả về id để dọn dẹp ─────────────────────────────────────

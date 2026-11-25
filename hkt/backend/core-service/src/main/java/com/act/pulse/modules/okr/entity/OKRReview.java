@@ -58,9 +58,11 @@ public class OKRReview extends BaseEntity {
     private String managerComment;
 
     /** Quản lý bật cho nhân viên cập nhật tiến độ trong cửa sổ review giữa năm / cuối năm. */
+    @Builder.Default
     @Column(name = "midyear_update_override")
     private Boolean midYearUpdateOverride = false;
 
+    @Builder.Default
     @Column(name = "final_update_override")
     private Boolean finalUpdateOverride = false;
 

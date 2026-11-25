@@ -8,23 +8,22 @@ import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.RequestEntity;
 import com.act.pulse.modules.attendance.entity.Shift;
 import com.act.pulse.modules.attendance.entity.TodoCompletion;
-import com.act.pulse.modules.attendance.entity.TodoCustomTask;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.TodoCompletionRepository;
-import com.act.pulse.modules.attendance.repository.TodoCustomTaskRepository;
+import com.act.pulse.modules.attendance.service.AttendancePendingService;
 import com.act.pulse.modules.attendance.service.LeaveBalanceService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.okr.service.OKRManagementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -32,6 +31,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,12 +47,16 @@ public class TodoController {
     private final RequestRepository requestRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final TodoCompletionRepository todoCompletionRepository;
-    private final TodoCustomTaskRepository todoCustomTaskRepository;
     private final AttendanceLogRepository attendanceLogRepository;
     private final HolidayRepository holidayRepository;
     private final ShiftResolver shiftResolver;
     private final RequestController requestController;
     private final LeaveBalanceService leaveBalanceService;
+    private final AttendancePendingService attendancePendingService;
+    private final OKRManagementService okrManagementService;
+
+    private static final DateTimeFormatter DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM");
+    private static final DateTimeFormatter HOUR_MINUTE = DateTimeFormatter.ofPattern("HH:mm");
 
     @Data
     @Builder
@@ -201,29 +207,136 @@ public class TodoController {
             }
         }
 
-        // 2. Việc sắp hạn: Check-in OKR chu kỳ hiện tại.
-        int quarter = (today.getMonthValue() - 1) / 3 + 1;
-        String okrId = "todo-okr-checkin-" + today.getYear() + "-Q" + quarter;
-        items.add(TodoItem.builder()
-                .id(okrId)
-                .priority("MEDIUM")
-                .urgency("soon")
-                .category("OKR")
-                .module("okr")
-                .kind("OKR_CHECKIN")
-                .title("Check-in tiến độ OKR Quý " + quarter + "/" + today.getYear())
-                .description("Cập nhật số liệu và tiến độ các mục tiêu OKR định kỳ.")
-                .actionLabel("Cập Nhật OKR")
-                .actionUrl("/okr/my-okr")
-                .dueDate("Còn 2 ngày")
-                .completable(true)
-                .deletable(false)
-                .isCompleted(done.contains(okrId))
-                .status(done.contains(okrId) ? "done" : "open")
-                .createdAt(now)
-                .build());
+        // 2. Ngày công thiếu chưa bổ sung — tách 2 nhóm vì hành động khác nhau:
+        //    ngày CÒN nộp được (bấm là mở form) và ngày ĐÃ quá hạn (chỉ liên hệ HR).
+        if (userId != null) {
+            List<AttendancePendingService.MissingPunch> missing = attendancePendingService
+                    .missingPunches(userId, today).stream()
+                    .filter(mp -> mp.workDate().isBefore(today))
+                    .toList();
+            List<AttendancePendingService.MissingPunch> open = missing.stream()
+                    .filter(mp -> mp.daysLeft(today) >= 0).toList();
+            List<AttendancePendingService.MissingPunch> overdue = missing.stream()
+                    .filter(mp -> mp.daysLeft(today) < 0).toList();
 
-        // 3. Số đơn đang chờ CHÍNH người này duyệt — quản lý trực tiếp hoặc HR/Admin toàn bộ.
+            if (!open.isEmpty()) {
+                AttendancePendingService.MissingPunch first = open.get(0); // đã sắp theo hạn
+                long minLeft = first.daysLeft(today);
+                String title = open.size() == 1
+                        ? "Bổ sung chấm công ngày " + first.workDate().format(DAY_MONTH)
+                        : "Bổ sung chấm công cho " + open.size() + " ngày còn thiếu";
+                String description = "Thiếu công ngày " + first.workDate().format(DAY_MONTH)
+                        + " chưa nộp đơn bổ sung (hạn " + first.deadline().format(DAY_MONTH) + ").";
+                items.add(TodoItem.builder()
+                        .id("todo-adjust-makeup")
+                        .priority(minLeft == 0 ? "HIGH" : "MEDIUM")
+                        .urgency(minLeft == 0 ? "today" : "soon")
+                        .category("ATTENDANCE")
+                        .module("timesheet")
+                        .kind("ADJUST_MAKEUP")
+                        .title(title)
+                        .description(description)
+                        .actionLabel("Bổ sung Công")
+                        .actionUrl("/attendance/requests?create=ADJUST&date=" + first.workDate())
+                        .dueDate(minLeft == 0 ? "Hạn hôm nay" : "Còn " + minLeft + " ngày")
+                        .completable(false)
+                        .deletable(false)
+                        .isCompleted(false)
+                        .status("open")
+                        .createdAt(now)
+                        .build());
+            }
+            if (!overdue.isEmpty()) {
+                AttendancePendingService.MissingPunch first = overdue.get(0);
+                long minLeft = first.daysLeft(today);
+                String title = overdue.size() == 1
+                        ? "Quá hạn bổ sung chấm công ngày " + first.workDate().format(DAY_MONTH)
+                        : "Quá hạn bổ sung chấm công " + overdue.size() + " ngày";
+                String description = "Ngày " + first.workDate().format(DAY_MONTH)
+                        + " đã quá hạn nộp đơn bổ sung — liên hệ HR để được hỗ trợ.";
+                items.add(TodoItem.builder()
+                        .id("todo-adjust-overdue")
+                        .priority("HIGH")
+                        .urgency("overdue")
+                        .category("ATTENDANCE")
+                        .module("timesheet")
+                        .kind("ADJUST_OVERDUE")
+                        .title(title)
+                        .description(description)
+                        .actionLabel("Liên Hệ HR")
+                        .actionUrl("/attendance/requests")
+                        .dueDate("Quá hạn " + (-minLeft) + " ngày")
+                        .completable(false)
+                        .deletable(false)
+                        .isCompleted(false)
+                        .status("open")
+                        .createdAt(now)
+                        .build());
+            }
+        }
+
+        // 3. Bảng công đã công bố mà còn hạn khiếu nại — nhắc kiểm tra trước khi hết hạn.
+        if (userId != null) {
+            List<AttendancePendingService.DisputeWindow> windows = attendancePendingService
+                    .openDisputeWindows(userId, today);
+            if (!windows.isEmpty()) {
+                AttendancePendingService.DisputeWindow w = windows.get(0); // hạn sớm nhất
+                long left = w.daysLeft(today);
+                String monthLabel = String.format("%02d/%d", w.period().getMonthValue(), w.period().getYear());
+                String id = "todo-timesheet-dispute-window";
+                items.add(TodoItem.builder()
+                        .id(id)
+                        .priority(left <= 1 ? "HIGH" : "MEDIUM")
+                        .urgency(left == 0 ? "today" : "soon")
+                        .category("ATTENDANCE")
+                        .module("timesheet")
+                        .kind("DISPUTE_WINDOW")
+                        .title("Bảng công kỳ " + monthLabel + " đã công bố — kiểm tra trước khi hết hạn khiếu nại")
+                        .description("Gửi khiếu nại nếu có ngày công sai lệch trước "
+                                + w.deadline().toLocalTime().format(HOUR_MINUTE) + " "
+                                + w.deadline().toLocalDate().format(DAY_MONTH) + ".")
+                        .actionLabel("Xem Bảng Công")
+                        .actionUrl("/attendance/my-timesheet?month=" + w.period())
+                        .dueDate(left == 0 ? "Hạn hôm nay" : "Còn " + left + " ngày")
+                        .completable(false)
+                        .deletable(false)
+                        .isCompleted(false)
+                        .status("open")
+                        .createdAt(now)
+                        .build());
+            }
+        }
+
+        // 4. Việc OKR — lấy từ cùng nguồn với panel "Việc cần làm" trên dashboard OKR
+        //    (tạo/gửi/sửa bộ mục tiêu, check-in tiến độ, tự chấm điểm, đề xuất kỳ sau).
+        if (userId != null) {
+            User okrUser = userRepository.findById(userId).orElse(null);
+            for (OKRManagementService.OkrTask task : okrManagementService.okrTasks(okrUser, today.getYear())) {
+                long left = task.deadline() == null ? 0 : ChronoUnit.DAYS.between(today, task.deadline());
+                items.add(TodoItem.builder()
+                        .id(task.id())
+                        .priority(task.priority())
+                        .urgency(left < 0 ? "overdue" : left == 0 ? "today" : "soon")
+                        .category("OKR")
+                        .module("okr")
+                        .kind(task.type())
+                        .title(task.title())
+                        .description("Việc OKR đang mở cho bạn trong chu kỳ " + today.getYear()
+                                + (task.deadline() == null ? "." : " — hạn " + task.deadline().format(DAY_MONTH) + "."))
+                        .actionLabel(task.actionText())
+                        .actionUrl(task.actionUrl())
+                        .dueDate(task.deadline() == null ? "Không hạn"
+                                : left <= 0 ? "Hạn hôm nay" : "Còn " + left + " ngày")
+                        .completable(true)
+                        .deletable(false)
+                        .isCompleted(done.contains(task.id()))
+                        .status(done.contains(task.id()) ? "done" : "open")
+                        .createdAt(now)
+                        .build());
+            }
+        }
+
+        // 5. Số đơn đang chờ CHÍNH người này duyệt — quản lý trực tiếp hoặc HR/Admin toàn bộ.
         if (userId != null) {
             long pendingCount = pendingApprovalsFor(userId).size();
             if (pendingCount > 0) {
@@ -249,7 +362,7 @@ public class TodoController {
             }
         }
 
-        // 4. Lưu ý thông tin: Số dư phép năm từ DB.
+        // 6. Lưu ý thông tin: Số dư phép năm từ DB.
         BigDecimal leaveBalance = leaveBalanceOf(userId);
         String leaveId = "todo-leave-balance-info";
         items.add(TodoItem.builder()
@@ -270,31 +383,6 @@ public class TodoController {
                 .status("open")
                 .createdAt(now)
                 .build());
-
-        // 5. Việc tự tạo — lưu DB, sống qua restart.
-        if (userId != null) {
-            for (TodoCustomTask ct : todoCustomTaskRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
-                items.add(TodoItem.builder()
-                        .id(ct.getId())
-                        .priority("overdue".equalsIgnoreCase(ct.getUrgency()) || "HIGH".equalsIgnoreCase(ct.getUrgency())
-                                ? "HIGH" : "MEDIUM")
-                        .urgency(ct.getUrgency())
-                        .category(ct.getModule() == null ? "SYSTEM" : ct.getModule().toUpperCase())
-                        .module(ct.getModule())
-                        .kind("CUSTOM_TASK")
-                        .title(ct.getTitle())
-                        .description(ct.getDescription())
-                        .actionLabel(ct.getActionLabel())
-                        .actionUrl(ct.getActionUrl())
-                        .dueDate(ct.getDueDate())
-                        .completable(true)
-                        .deletable(true)
-                        .isCompleted(done.contains(ct.getId()))
-                        .status(done.contains(ct.getId()) ? "done" : "open")
-                        .createdAt(ct.getCreatedAt() == null ? now : ct.getCreatedAt().toString())
-                        .build());
-            }
-        }
 
         if (!includeCompleted) {
             items.removeIf(i -> done.contains(i.getId()));
@@ -358,6 +446,13 @@ public class TodoController {
         summary.put("carryStatus", balance.get("carryStatus"));
         summary.put("carriedYear", balance.get("carriedYear"));
         summary.put("annualYear", balance.get("annualYear"));
+        // Thêm số đã cấp / đã dùng để vẽ thanh tiến trình (mockup S02).
+        summary.put("granted", balance.getOrDefault("granted", BigDecimal.ZERO));
+        summary.put("used", balance.getOrDefault("used", BigDecimal.ZERO));
+        summary.put("annualEntitlement", balance.getOrDefault("annualEntitlement", BigDecimal.ZERO));
+        summary.put("annualUsed", balance.getOrDefault("annualUsed", BigDecimal.ZERO));
+        summary.put("expiredCarry", balance.getOrDefault("expiredCarry", BigDecimal.ZERO));
+        summary.put("sickUsed", balance.getOrDefault("sickUsed", BigDecimal.ZERO));
         return ApiResponse.ok(summary, "Lấy thông tin số dư phép thành công");
     }
 
@@ -387,84 +482,6 @@ public class TodoController {
                     .userId(userId).todoId(id).completedAt(LocalDateTime.now()).build());
         }
         return ResponseEntity.ok(ApiResponse.ok(true, "Đã cập nhật trạng thái"));
-    }
-
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Xoá một việc tự tạo khỏi Todo Inbox")
-    @Transactional
-    public ResponseEntity<ApiResponse<Boolean>> deleteTodo(@PathVariable String id) {
-        UUID userId = CurrentUser.userId();
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Vui lòng đăng nhập để xoá công việc."));
-        }
-        long removed = todoCustomTaskRepository.deleteByIdAndUserId(id, userId);
-        if (removed == 0) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error("Chỉ xoá được việc do bạn tự tạo — việc do hệ thống sinh ra dựa trên dữ liệu thật."));
-        }
-        todoCompletionRepository.deleteById(new TodoCompletion.Key(userId, id));
-        return ResponseEntity.ok(ApiResponse.ok(true, "Đã xoá công việc khỏi danh sách"));
-    }
-
-    @PostMapping("/create-task")
-    @Operation(summary = "Tạo một mục việc cần làm mới")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> createCustomTask(@RequestBody(required = false) Map<String, Object> body) {
-        UUID uid = CurrentUser.userId();
-        if (uid == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Vui lòng đăng nhập để tạo công việc."));
-        }
-        String title = body != null && body.get("title") != null ? String.valueOf(body.get("title")).trim() : "";
-        if (title.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Tiêu đề công việc không được để trống."));
-        }
-        if (title.length() > 255) title = title.substring(0, 255);
-
-        String description = body != null && body.get("description") != null ? String.valueOf(body.get("description")) : "";
-        String urgency = normalizeChoice(body, "urgency", Set.of("overdue", "soon", "today", "info"), "today");
-        String module = normalizeChoice(body, "module", Set.of("timesheet", "okr", "leave", "requests", "system"), "system");
-        String actionUrl = body != null && body.get("actionUrl") != null ? String.valueOf(body.get("actionUrl")).trim() : "/attendance/checkin";
-        if (!actionUrl.startsWith("/") || actionUrl.startsWith("//") || actionUrl.contains("\\")) {
-            actionUrl = "/attendance/checkin"; // chặn URL tuyệt đối / javascript:
-        }
-        String actionLabel = body != null && body.get("actionLabel") != null ? String.valueOf(body.get("actionLabel")) : "Xử lý ngay";
-        String dueDate = body != null && body.get("dueDate") != null ? String.valueOf(body.get("dueDate")) : "Hôm nay";
-
-        String id = "todo-custom-" + UUID.randomUUID().toString().substring(0, 8);
-        TodoCustomTask entity = TodoCustomTask.builder()
-                .id(id)
-                .userId(uid)
-                .title(title)
-                .description(description)
-                .urgency(urgency)
-                .module(module)
-                .actionUrl(actionUrl)
-                .actionLabel(actionLabel)
-                .dueDate(dueDate)
-                .createdAt(LocalDateTime.now())
-                .build();
-        todoCustomTaskRepository.save(entity);
-
-        Map<String, Object> task = new LinkedHashMap<>();
-        task.put("id", id);
-        task.put("title", title);
-        task.put("description", description);
-        task.put("urgency", urgency);
-        task.put("module", module);
-        task.put("actionUrl", actionUrl);
-        task.put("actionLabel", actionLabel);
-        task.put("dueDate", dueDate);
-        task.put("completable", true);
-        task.put("deletable", true);
-        return ResponseEntity.ok(ApiResponse.ok(task, "Tạo công việc thành công"));
-    }
-
-    private static String normalizeChoice(Map<String, Object> body, String key, Set<String> allowed, String fallback) {
-        if (body == null || body.get(key) == null) return fallback;
-        String value = String.valueOf(body.get(key)).trim().toLowerCase(Locale.ROOT);
-        return allowed.contains(value) ? value : fallback;
     }
 
     @GetMapping("/completed")
@@ -503,6 +520,9 @@ public class TodoController {
         if (todoId.startsWith("todo-today-checkout")) return "Chấm công ra hôm nay";
         if (todoId.startsWith("todo-my-rejected-requests")) return "Đơn bị từ chối cần xử lý";
         if (todoId.startsWith("todo-okr-checkin")) return "Check-in tiến độ OKR";
+        if ("todo-adjust-makeup".equals(todoId)) return "Bổ sung chấm công";
+        if ("todo-adjust-overdue".equals(todoId)) return "Quá hạn bổ sung chấm công";
+        if ("todo-timesheet-dispute-window".equals(todoId)) return "Kiểm tra bảng công";
         if (todoId.startsWith("todo-custom-")) return "Việc tự tạo";
         if ("todo-pending-approvals".equals(todoId)) return "Đơn chờ bạn phê duyệt";
         if ("todo-leave-balance-info".equals(todoId)) return "Thông tin số dư phép năm";

@@ -64,6 +64,7 @@ public class LeaveBalanceService {
         BigDecimal carryGrant = BigDecimal.ZERO;
         BigDecimal seniorityGrant = BigDecimal.ZERO;
         BigDecimal used = BigDecimal.ZERO;
+        BigDecimal usedFromCarry = BigDecimal.ZERO;
         BigDecimal adjust = BigDecimal.ZERO;
         BigDecimal sickUsed = BigDecimal.ZERO;
 
@@ -107,6 +108,7 @@ public class LeaveBalanceService {
                                 ? carryRemaining.max(BigDecimal.ZERO).min(usedAmount)
                                 : BigDecimal.ZERO;
                         carryRemaining = carryRemaining.subtract(fromCarry);
+                        usedFromCarry = usedFromCarry.add(fromCarry);
                         annualRemaining = annualRemaining.subtract(usedAmount.subtract(fromCarry));
                     }
                 }
@@ -145,6 +147,13 @@ public class LeaveBalanceService {
         map.put("seniority", seniorityGrant);
         map.put("adjust", adjust);
         map.put("sickUsed", sickUsed);
+        // Quỹ phép năm đã cấp: tổng cấp + điều chỉnh, KHÔNG tính phép tồn và phép
+        // ốm (loại trừ riêng). Dùng để vẽ thanh tiến trình — nếu lấy cả "granted"
+        // thì phần phép tồn làm thanh tiến trình vượt 100%.
+        BigDecimal annualEntitlement = annualGrant.add(seniorityGrant).add(adjust);
+        map.put("annualEntitlement", annualEntitlement);
+        map.put("annualUsed", used.subtract(usedFromCarry).max(BigDecimal.ZERO));
+        map.put("usedFromCarry", usedFromCarry);
 
         // Phép chức vụ là một KHOẢN RIÊNG trong tổng phép năm đã cấp (không cộng thêm lần nữa):
         // quản lý hưởng manager_bonus_days, chức vụ khác hưởng position_bonus_days theo rule

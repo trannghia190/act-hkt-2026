@@ -94,8 +94,20 @@ def marker():
     return psql("select now()")
 
 
+def fresh_day(key, target_id):
+    """Xoá delivery của sự kiện để mỗi cấu hình kênh được coi là một ngày mới.
+
+    Job chặn trùng theo (user, event, dedupeKey) trong ngày THẬT để cron chạy
+    lặp không sinh trùng — nếu giữ delivery của lượt trước thì lượt sau bị chặn
+    dù đã đổi cấu hình kênh.
+    """
+    psql("delete from notification_deliveries where "
+         f"user_id='{target_id}' and event_key='{key}'")
+
+
 def verify_cycle(key, target_id, date, time, label):
     """3 cấu hình kênh cho cùng một sự kiện."""
+    fresh_day(key, target_id)
     set_pref(target_id, key, False, False, False)
     since = marker()
     counts = run(date, time)
@@ -104,6 +116,7 @@ def verify_cycle(key, target_id, date, time, label):
           notif(key, target_id, since) == 0 and delivery(key, target_id, None, since) == 0,
           (notif(key, target_id, since), delivery(key, target_id, None, since)))
 
+    fresh_day(key, target_id)
     set_pref(target_id, key, True, False, False)
     since = marker()
     run(date, time)
@@ -111,6 +124,7 @@ def verify_cycle(key, target_id, date, time, label):
           notif(key, target_id, since) >= 1 and delivery(key, target_id, "WEB", since) >= 1,
           (notif(key, target_id, since), delivery(key, target_id, "WEB", since)))
 
+    fresh_day(key, target_id)
     set_pref(target_id, key, False, True, False)
     since = marker()
     run(date, time)
@@ -187,10 +201,6 @@ try:
          "and id not in (select id from zz_ts_snapshot); drop table zz_ts_snapshot")
 
     # ── 4. OKR ───────────────────────────────────────────────────────────
-    # OKR_SELF_ASSESSMENT: chu kỳ 2026 đang mở kỳ FINAL (15/11–15/12).
-    verify_cycle("OKR_SELF_ASSESSMENT", EMP_ID, "2026-11-23", "10:30",
-                 "OKR_SELF_ASSESSMENT")
-
     cycle_id = psql("select id from okr_cycles where status='active' order by created_at desc limit 1")
     orig_phases = psql(f"select phases::text from okr_cycles where id='{cycle_id}'")
     phases = json.loads(orig_phases)
@@ -206,6 +216,16 @@ try:
         psql(f"update okr_cycles set phases='{raw}'::jsonb where id='{cycle_id}'")
 
     try:
+        # OKR_SELF_ASSESSMENT: mở kỳ FINAL; người có hồ sơ đã duyệt (locked) nhưng chưa tự chấm.
+        assessed_owner = psql(
+            "select user_id from okr_reviews r where r.status='locked' "
+            "and box2_self_score is null and box3_self_score is null "
+            "and exists (select 1 from users u where u.id=r.user_id and u.status='ACTIVE') limit 1")
+        check("Có hồ sơ OKR đã duyệt chưa tự đánh giá", bool(assessed_owner), assessed_owner)
+        patch_phase("final", "2026-11-15", "2026-12-15")
+        verify_cycle("OKR_SELF_ASSESSMENT", assessed_owner, "2026-11-23", "10:30",
+                     "OKR_SELF_ASSESSMENT (FINAL mở, đã duyệt chưa tự chấm)")
+
         # OKR_NOT_CREATED: mở kỳ SETUP; chọn người chưa có mục tiêu nào.
         no_goal = psql(
             "select u.id from users u left join okr_reviews r on r.user_id=u.id and r.cycle_year=2026 "

@@ -383,49 +383,12 @@ public class OKRController {
         selfProposal.put("editable", management.goalsLockReason(user, review, cycle) == null);
         selfProposal.put("viewUrl", "/okr/my-okr");
 
-        // Việc cần làm
+        // Việc cần làm — cùng nguồn với Todo Inbox (OKRManagementService.okrTasks)
+        // để màn "Cần làm" và dashboard OKR không lệch nhau.
         List<Map<String, Object>> todos = new ArrayList<>();
-        LocalDate setupDue = phaseService.dueDate(cycle, OKRPhaseService.SETUP);
-        String st = review == null ? "draft" : str(review.getStatus()).toLowerCase();
-        boolean goalsEditable = management.goalsLockReason(user, review, cycle) == null;
-        if (goalsEditable) {
-            switch (st) {
-                case "returned" -> todos.add(todo("todo-fix-okr", "FIX_OKR",
-                        "Sửa OKR theo góp ý của Quản lý và gửi lại", "PENDING", setupDue,
-                        "/okr/my-okr", "Sửa OKR", "HIGH"));
-                case "reopened" -> todos.add(todo("todo-reopened", "FIX_OKR",
-                        "Bổ sung OKR (Quản lý đã mở lại) và nộp lại", "PENDING", null,
-                        "/okr/my-okr", "Bổ sung ngay", "HIGH"));
-                default -> todos.add(items.isEmpty()
-                        ? todo("todo-create-okr", "CREATE_OKR", "Tạo bộ mục tiêu OKR 2 nhóm Business & People",
-                        "PENDING", setupDue, "/okr/my-okr", "Tạo OKR ngay", "HIGH")
-                        : todo("todo-submit-okr", "SUBMIT_OKR", "Gửi bộ mục tiêu OKR cho Quản lý duyệt",
-                        "PENDING", setupDue, "/okr/my-okr", "Gửi duyệt", "HIGH"));
-            }
-        }
-        if ("submitted".equals(st)) {
-            todos.add(todo("todo-approval", "APPROVAL", "Chờ Quản lý phê duyệt bộ mục tiêu OKR", "WAITING",
-                    null, "/okr/my-okr", "Xem chi tiết", "LOW"));
-        }
-        if (canCheckIn) {
-            todos.add(todo("todo-checkin", "CHECKIN",
-                    "Check-in tiến độ kỳ " + period + " (" + pendingCheckin + " đầu việc chưa cập nhật)",
-                    "PENDING", checkinDeadline, "/okr/my-okr?checkin=1", "Check-in ngay", "HIGH"));
-        }
-        String assessPhase = selfAssessPhase(review, cycle);
-        boolean needSelfScore = review != null && selfAssessLockReason(review, cycle) == null
-                && (!management.selfAssessed(review)
-                || OKRPhaseService.FINAL.equals(assessPhase) && review.getCurrentStep() != null && review.getCurrentStep() < 3);
-        if (needSelfScore) {
-            todos.add(todo("todo-self-assessment", "SELF_ASSESSMENT",
-                    "Tự chấm điểm cuối năm cho 2 nhóm Business & People",
-                    "PENDING", phaseService.dueDate(cycle, assessPhase),
-                    "/okr/my-okr?section=assessment", "Tự chấm điểm ngay", "HIGH"));
-        }
-        if (goalsEditable && !"SUBMITTED".equals(proposalStatus)) {
-            todos.add(todo("todo-proposal", "PROPOSAL", "Hoàn thiện định hướng & đề xuất kỳ " + y,
-                    proposalStatus, proposalDue, "/okr/my-okr",
-                    "NOT_STARTED".equals(proposalStatus) ? "Bắt đầu viết" : "Tiếp tục viết", "MEDIUM"));
+        for (OKRManagementService.OkrTask task : management.okrTasks(user, y)) {
+            todos.add(todo(task.id(), task.type(), task.title(), task.status(), task.deadline(),
+                    task.actionUrl(), task.actionText(), task.priority()));
         }
 
         // Mục tiêu công ty (20%) — HR cấu hình theo chu kỳ, không tính vào điểm TB

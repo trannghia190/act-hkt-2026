@@ -54,6 +54,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Lỗi cơ sở dữ liệu nội bộ. Vui lòng thử lại sau."));
     }
 
+    /** Đường dẫn không tồn tại → 404, không phải lỗi máy chủ 500. */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Không tìm thấy tài nguyên: " + ex.getResourcePath()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Object>> handleRuntime(RuntimeException ex) {
         log.error("Unhandled runtime exception caught: {}", ex.getMessage(), ex);

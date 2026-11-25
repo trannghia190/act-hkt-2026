@@ -1,5 +1,7 @@
+import subprocess
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 import sys
 
@@ -79,29 +81,28 @@ def test_all():
     print(f"PASS: GET /todos/leave-summary totalRemaining = {leave_summary['data']['totalRemaining']} "
           f"khớp /leaves/my-balance")
     
-    # 2. Create a custom task — dùng chính việc tự tạo này để kiểm tra hoàn tất
-    #    và dọn sạch, tránh tick vĩnh viễn một việc hệ thống của nhân viên.
-    status, created = api_post("/todos/create-task", {
-        "title": "Nhiệm vụ kiểm thử G1",
-        "urgency": "today",
-        "module": "timesheet",
-        "actionUrl": "/attendance/checkin",
-        "actionLabel": "Chấm công ngay"
-    }, emp_token)
-    assert status == 200
-    target_id = created["data"]["id"]
-    print(f"PASS: Created custom task via /todos/create-task: {created['data']['title']}")
-
-    # 3. Complete it, then remove it (xoá luôn bản ghi hoàn tất) để không để lại rác.
+    # 2. Việc "tự tạo tay" đã bị gỡ — Todo Inbox chỉ chứa việc suy ra từ dữ liệu thật.
     try:
+        st, body = api_post("/todos/create-task", {"title": "Nhiệm vụ kiểm thử G1"}, emp_token)
+        assert st in (404, 405), f"/todos/create-task vẫn còn? {st} {body}"
+    except urllib.error.HTTPError as exc:
+        assert exc.code in (404, 405), exc.code
+    print("PASS: /todos/create-task đã bị gỡ (không còn việc tạo tay)")
+
+    # 3. Hoàn tất một việc THẬT rồi dọn dấu hoàn tất qua psql để không để lại rác.
+    real = [i for i in items if i.get("completable")]
+    if real:
+        target_id = real[0]["id"]
         status, comp = api_post(f"/todos/{target_id}/complete", {}, emp_token)
         assert status == 200
-        print(f"PASS: Completed todo item {target_id}")
-    finally:
-        try:
-            api_delete(f"/todos/{target_id}", emp_token)
-        except Exception as exc:
-            print(f"WARN: Không dọn được todo kiểm thử {target_id}: {exc}")
+        _, after = api_get("/todos/my-inbox", emp_token)
+        assert all(i["id"] != target_id for i in after["data"]), "Việc đã hoàn tất vẫn nằm trong inbox"
+        print(f"PASS: Completed real todo {target_id} và nó rời khỏi inbox")
+        subprocess.run(
+            ["psql", "-h", "127.0.0.1", "-d", "pulse_db", "-tAc",
+             f"delete from todo_completions where user_id=(select id from users where employee_code='{emp_user['employeeCode']}') and todo_id='{target_id}'"],
+            capture_output=True, check=False,
+        )
 
     print("\n=== Testing G2: Command Palette Ctrl+K ===")
     # 1. Search 'phep' (unaccented)

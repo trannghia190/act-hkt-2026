@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
@@ -108,6 +109,142 @@ public class OKRManagementService {
     /** OKR đang ở trạng thái đã duyệt hiện hành (locked). Returned/reopened/submitted không tính. */
     public boolean isCurrentlyApproved(OKRReview review) {
         return review != null && "locked".equalsIgnoreCase(review.getStatus());
+    }
+
+    /** Kỳ check-in tiến độ đang thực sự cần nhân viên cập nhật (null = không có việc). */
+    public record CheckInDue(String period, LocalDate deadline, int pendingItems) {}
+
+    /**
+     * Điều kiện để sinh việc "Check-in tiến độ OKR" cho một nhân viên — phải khớp
+     * với panel việc cần làm trên OKR Dashboard: cửa sổ cập nhật đang mở, OKR đã
+     * được duyệt, còn đầu việc chưa cập nhật trong kỳ hiện tại.
+     */
+    public CheckInDue checkInDue(UUID userId, int year) {
+        if (userId == null) return null;
+        OKRCycle cycle = phaseService.cycle(year).orElse(null);
+        if (cycle == null) return null;
+        OKRReview review = reviewRepository.findByUserIdAndCycleYear(userId, year).orElse(null);
+        if (!isCurrentlyApproved(review)) return null;
+        if (phaseService.updateWindow(cycle, review) == null) return null;
+
+        List<OKRItem> items = activeItems(review.getId());
+        if (items.isEmpty()) return null;
+
+        String period = phaseService.currentPeriod(cycle);
+        Set<UUID> checked = new HashSet<>();
+        checkInRepository.findByReviewIdAndPeriodOrderByCreatedAtDesc(review.getId(), period)
+                .forEach(ci -> checked.add(ci.getItemId()));
+        int pending = (int) items.stream().filter(i -> !checked.contains(i.getId())).count();
+        if (pending == 0) return null;
+
+        return new CheckInDue(period, phaseService.currentPeriodDeadline(cycle, review), pending);
+    }
+
+    /** Một việc OKR cần làm — nguồn chung cho Todo Inbox và panel OKR Dashboard. */
+    public record OkrTask(String id, String type, String title, String status, LocalDate deadline,
+                          String actionUrl, String actionText, String priority) {}
+
+    /**
+     * Danh sách việc OKR của một nhân viên — dùng chung cho Todo Inbox và
+     * {@code GET /okr/dashboard} để hai màn hình không lệch nhau.
+     * <p>Chỉ trả về việc thật sự còn hành động được: tạo/gửi/sửa bộ mục tiêu,
+     * check-in tiến độ, tự chấm điểm và hoàn thiện đề xuất kỳ sau.</p>
+     */
+    public List<OkrTask> okrTasks(User user, int year) {
+        List<OkrTask> tasks = new ArrayList<>();
+        if (user == null) return tasks;
+        OKRCycle cycle = phaseService.cycle(year).orElse(null);
+        if (cycle == null) return tasks;
+        OKRReview review = reviewRepository.findByUserIdAndCycleYear(user.getId(), year).orElse(null);
+        List<OKRItem> items = review != null ? activeItems(review.getId()) : List.of();
+        LocalDate setupDue = phaseService.dueDate(cycle, OKRPhaseService.SETUP);
+        String st = review == null ? "draft" : String.valueOf(review.getStatus()).toLowerCase();
+
+        // 1. Bộ mục tiêu: tạo / gửi duyệt / sửa theo góp ý.
+        if (goalsLockReason(user, review, cycle) == null) {
+            switch (st) {
+                case "returned" -> tasks.add(new OkrTask("todo-fix-okr", "FIX_OKR",
+                        "Sửa OKR theo góp ý của Quản lý và gửi lại", "PENDING", setupDue,
+                        "/okr/my-okr", "Sửa OKR", "HIGH"));
+                case "reopened" -> tasks.add(new OkrTask("todo-reopened", "FIX_OKR",
+                        "Bổ sung OKR (Quản lý đã mở lại) và nộp lại", "PENDING", null,
+                        "/okr/my-okr", "Bổ sung ngay", "HIGH"));
+                default -> {
+                    if (items.isEmpty()) {
+                        tasks.add(new OkrTask("todo-create-okr", "CREATE_OKR",
+                                "Tạo bộ mục tiêu OKR 2 nhóm Business & People", "PENDING", setupDue,
+                                "/okr/my-okr", "Tạo OKR ngay", "HIGH"));
+                    } else {
+                        tasks.add(new OkrTask("todo-submit-okr", "SUBMIT_OKR",
+                                "Gửi bộ mục tiêu OKR cho Quản lý duyệt", "PENDING", setupDue,
+                                "/okr/my-okr", "Gửi duyệt", "HIGH"));
+                    }
+                }
+            }
+        }
+
+        // 1b. Đã gửi lên, đang chờ Quản lý duyệt — nhắc theo dõi (việc chờ, không phải hành động).
+        if ("submitted".equals(st)) {
+            tasks.add(new OkrTask("todo-approval", "APPROVAL",
+                    "Chờ Quản lý phê duyệt bộ mục tiêu OKR", "WAITING", null,
+                    "/okr/my-okr", "Xem chi tiết", "LOW"));
+        }
+
+        // 2. Check-in tiến độ — chỉ khi cửa sổ mở, OKR đã duyệt và còn đầu việc chưa cập nhật.
+        CheckInDue due = checkInDue(user.getId(), year);
+        if (due != null) {
+            tasks.add(new OkrTask("todo-okr-checkin-" + due.period(), "CHECKIN",
+                    "Check-in tiến độ kỳ " + due.period() + " (" + due.pendingItems() + " đầu việc chưa cập nhật)",
+                    "PENDING", due.deadline(), "/okr/my-okr?checkin=1", "Check-in ngay", "HIGH"));
+        }
+
+        // 3. Tự chấm điểm cuối năm — chỉ trong cửa sổ NV của phase Đánh giá cuối năm.
+        if (review != null && selfAssessLockReason(review, cycle) == null) {
+            boolean finalStepPending = OKRPhaseService.FINAL.equals(selfAssessPhase(review, cycle))
+                    && review.getCurrentStep() != null && review.getCurrentStep() < 3;
+            if (!selfAssessed(review) || finalStepPending) {
+                tasks.add(new OkrTask("todo-self-assessment", "SELF_ASSESSMENT",
+                        "Tự chấm điểm cuối năm cho 2 nhóm Business & People",
+                        "PENDING", phaseService.dueDate(cycle, OKRPhaseService.FINAL),
+                        "/okr/my-okr?section=assessment", "Tự chấm điểm ngay", "HIGH"));
+            }
+        }
+
+        // 4. Định hướng & đề xuất kỳ sau — chỉ khi còn sửa được mục tiêu.
+        if (goalsLockReason(user, review, cycle) == null) {
+            String proposal = review == null ? null : review.getBox4Proposal();
+            boolean submitted = review != null && ("submitted".equalsIgnoreCase(review.getStatus())
+                    || "locked".equalsIgnoreCase(review.getStatus()));
+            boolean started = proposal != null && !proposal.isBlank();
+            if (!submitted) {
+                tasks.add(new OkrTask("todo-proposal", "PROPOSAL",
+                        "Hoàn thiện định hướng & đề xuất kỳ " + year,
+                        started ? "DRAFT" : "NOT_STARTED", setupDue, "/okr/my-okr",
+                        started ? "Tiếp tục viết" : "Bắt đầu viết", "MEDIUM"));
+            }
+        }
+        return tasks;
+    }
+
+    /** Lý do NV không sửa được form tự đánh giá (null = sửa được) — cùng luật với controller OKR. */
+    public String selfAssessLockReason(OKRReview review, OKRCycle cycle) {
+        if (review == null) return "Chưa có OKR trong chu kỳ này";
+        if (cycle == null) return "Chưa có chu kỳ OKR";
+        if (phaseService.isCycleLocked(cycle)) return "Chu kỳ OKR đã được HR chốt & khoá";
+        if (!phaseService.employeeWindowOpen(cycle, OKRPhaseService.FINAL, review)) {
+            String reason = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.FINAL, review);
+            return reason != null ? reason : "Chỉ tự chấm điểm trong phase Đánh giá cuối năm";
+        }
+        if (!isCurrentlyApproved(review)) return "OKR chưa được duyệt hoặc đang mở sửa — cần Quản lý duyệt lại trước khi tự chấm";
+        if (managerAssessed(review)) return "Quản lý đã chấm điểm — không sửa tự đánh giá được nữa";
+        return null;
+    }
+
+    /** Phase Đánh giá cuối năm đang mở cho nhân viên (null = chưa mở). */
+    public String selfAssessPhase(OKRReview review, OKRCycle cycle) {
+        if (cycle == null || phaseService.isCycleLocked(cycle)) return null;
+        return phaseService.employeeWindowOpen(cycle, OKRPhaseService.FINAL, review)
+                ? OKRPhaseService.FINAL : null;
     }
 
     /** Người đang làm việc (trừ ADMIN/HR_ADMIN, trừ tài khoản chưa kích hoạt/nghỉ) chưa có OKR trong năm. */

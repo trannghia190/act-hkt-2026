@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -73,18 +73,28 @@ export const RequestsPage: React.FC = () => {
   });
 
   // Command Palette: mở sẵn form tạo đơn đúng loại (CORE-CMD-02).
+  // Todo Inbox: /attendance/requests?create=ADJUST&date=YYYY-MM-DD mở form bổ sung công đúng ngày.
   useEffect(() => {
-    const openCreate = (location.state as { openCreate?: string } | null)?.openCreate;
+    const fromState = (location.state as { openCreate?: string } | null)?.openCreate;
+    const params = new URLSearchParams(location.search);
+    const fromQuery = params.get('create');
+    const workDate = params.get('date');
+    const openCreate = fromState || (['LEAVE', 'WFH', 'LATE_EARLY', 'ADJUST'].includes(fromQuery || '') ? fromQuery : null);
     if (!openCreate) return;
     if (openCreate === 'LEAVE' || openCreate === 'WFH' || openCreate === 'LATE_EARLY' || openCreate === 'ADJUST') {
       setEditingId(null);
       setEditingAttachmentCount(0);
       setAttachments([]);
-      setNewReq(prev => ({ ...prev, type: openCreate }));
+      setNewReq(prev => ({
+        ...prev,
+        type: openCreate,
+        startDate: workDate || prev.startDate,
+        endDate: workDate || prev.endDate,
+      }));
       setIsCreateOpen(true);
     }
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
+  }, [location.state, location.pathname, location.search, navigate]);
 
   const authHeaders = (): Record<string, string> => {
     try { const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}'); return u?.accessToken ? { Authorization: `Bearer ${u.accessToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; } catch { return { 'Content-Type': 'application/json' }; }

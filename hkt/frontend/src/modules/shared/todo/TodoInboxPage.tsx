@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
@@ -18,8 +18,7 @@ import {
   Info,
   CalendarDays,
   Search,
-  Plus,
-  Trash2
+  MoreHorizontal
 } from 'lucide-react';
 
 export interface PersonalTask {
@@ -32,7 +31,6 @@ export interface PersonalTask {
   actionLabel: string;
   actionUrl: string;
   completable?: boolean;
-  deletable?: boolean;
 }
 
 export interface ApprovalRequest {
@@ -57,6 +55,12 @@ export interface LeaveSummary {
   carryStatus?: 'AVAILABLE' | 'CAPPED' | 'EXPIRED' | string;
   carriedYear?: number;
   annualYear?: number;
+  granted?: number;
+  used?: number;
+  annualEntitlement?: number;
+  annualUsed?: number;
+  expiredCarry?: number;
+  sickUsed?: number;
 }
 
 export interface CompletedLogItem {
@@ -64,6 +68,23 @@ export interface CompletedLogItem {
   title: string;
   completedAt: string | null;
 }
+
+/** Nhãn nguồn của việc — chip nhỏ theo mockup S02. */
+const MODULE_LABELS: Record<string, string> = {
+  timesheet: 'Chấm công',
+  okr: 'OKR',
+  leave: 'Phép năm',
+  requests: 'Đơn từ',
+  system: 'Hệ thống',
+};
+
+const MODULE_ICONS: Record<string, React.ReactNode> = {
+  timesheet: <Clock className="w-4 h-4" />,
+  okr: <Target className="w-4 h-4" />,
+  leave: <Sun className="w-4 h-4" />,
+  requests: <Inbox className="w-4 h-4" />,
+  system: <Calendar className="w-4 h-4" />,
+};
 
 /** Giờ hoàn tất theo giờ địa phương: 18:46 23/11/2026. */
 const formatCompletedAt = (raw: string | null): string => {
@@ -77,21 +98,17 @@ const formatCompletedAt = (raw: string | null): string => {
 export const TodoInboxPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  /** Chỉ người có quyền duyệt mới thấy tab phê duyệt (khớp ProtectedRoute của /attendance/approvals). */
+  const canApprove = !!user && ['ADMIN', 'HR_ADMIN', 'MANAGER'].includes(user.role);
 
   const [activeTab, setActiveTab] = useState<'PERSONAL' | 'APPROVALS' | 'DONE'>('PERSONAL');
   const [filterPriority, setFilterPriority] = useState<'all' | 'red' | 'yellow' | 'green'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDesc, setNewTaskDesc] = useState('');
-  const [newTaskUrgency, setNewTaskUrgency] = useState<'overdue' | 'soon' | 'today' | 'info'>('today');
-  const [newTaskModule, setNewTaskModule] = useState<'timesheet' | 'okr' | 'leave' | 'requests'>('timesheet');
-  const [newTaskActionUrl, setNewTaskActionUrl] = useState('/attendance/checkin');
-  const [newTaskActionLabel, setNewTaskActionLabel] = useState('Xử lý ngay');
-
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [activeActionModal, setActiveActionModal] = useState<'approve' | 'reject' | null>(null);
   const [actionReason, setActionReason] = useState('');
+  /** Menu "⋯" của một việc — chỉ mở khi bấm, để mỗi dòng chỉ có 1 nút hành động. */
+  const [openTaskMenu, setOpenTaskMenu] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Leave balance summary (Criteria G1-#4: Số phép còn lại hiện ngay trên trang này)
@@ -123,14 +140,13 @@ export const TodoInboxPage: React.FC = () => {
             actionLabel: item.actionLabel || 'Xử lý ngay',
             actionUrl: item.actionUrl || '/attendance/checkin',
             completable: item.completable !== false,
-            deletable: item.deletable === true,
           }));
           setPersonalTasks(mapped);
         }
       })
       .catch(() => {});
 
-    fetch('/api/v1/todos/approvals')
+    if (canApprove) fetch('/api/v1/todos/approvals')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
@@ -178,7 +194,7 @@ export const TodoInboxPage: React.FC = () => {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [canApprove]);
 
   useEffect(() => {
     // Luôn phát event đồng bộ số lượng việc cần làm thật cho badge trên Sidebar menu
@@ -218,71 +234,6 @@ export const TodoInboxPage: React.FC = () => {
       ...prev,
     ]);
     showToast(`Đã đánh dấu hoàn tất: ${task.title}`);
-  };
-
-  const handleDeletePersonalTask = async (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await fetch(`/api/v1/todos/${taskId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showToast(err?.message || 'Chỉ xoá được việc do bạn tự tạo.');
-        return;
-      }
-    } catch {
-      showToast('Không kết nối được máy chủ.');
-      return;
-    }
-    setPersonalTasks((prev) => prev.filter((t) => t.id !== taskId));
-    showToast('Đã xóa bỏ công việc khỏi danh sách');
-  };
-
-  const handleCreateNewTask = async () => {
-    if (!newTaskTitle.trim()) {
-      showToast('Vui lòng nhập tiêu đề việc cần làm');
-      return;
-    }
-    const payload = {
-      title: newTaskTitle,
-      description: newTaskDesc || 'Công việc được giao bổ sung',
-      urgency: newTaskUrgency,
-      module: newTaskModule,
-      actionUrl: newTaskActionUrl,
-      actionLabel: newTaskActionLabel,
-      dueDate: newTaskUrgency === 'overdue' ? 'Quá hạn' : newTaskUrgency === 'soon' ? 'Còn 2 ngày' : 'Hôm nay',
-    };
-
-    try {
-      const res = await fetch('/api/v1/todos/create-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        const created: PersonalTask = {
-          id: data.data.id,
-          module: (data.data.module || 'timesheet') as any,
-          urgency: (data.data.urgency || 'today') as any,
-          title: data.data.title,
-          description: data.data.description,
-          dueTime: data.data.dueDate || 'Hôm nay',
-          actionLabel: data.data.actionLabel || 'Xử lý ngay',
-          actionUrl: data.data.actionUrl || '/attendance/checkin',
-          completable: true,
-          deletable: true,
-        };
-        setPersonalTasks((prev) => [created, ...prev]);
-        showToast('Đã thêm việc cần làm thành công!');
-        setIsCreateTaskModalOpen(false);
-        setNewTaskTitle('');
-        setNewTaskDesc('');
-      } else {
-        showToast(data?.message || 'Không tạo được công việc — vui lòng thử lại.');
-      }
-    } catch {
-      showToast('Không kết nối được máy chủ.');
-    }
   };
 
   const handleApprovalAction = async (action: 'approve' | 'reject') => {
@@ -376,121 +327,136 @@ export const TodoInboxPage: React.FC = () => {
   const todayTasks = searchedTasks.filter((t) => t.urgency === 'today' || t.urgency === 'normal');
   const infoTasks = searchedTasks.filter((t) => t.urgency === 'info');
 
-  const renderTaskCard = (task: PersonalTask) => (
-    <div
-      key={task.id}
-      className={`p-4 rounded-xl border bg-surface shadow-2xs flex flex-col justify-between transition-all hover:shadow-md ${
-        task.urgency === 'overdue'
-          ? 'border-l-4 border-l-rose-500 border-rose-200 bg-gradient-to-r from-rose-50/70 via-surface to-surface'
-          : task.urgency === 'soon'
-            ? 'border-l-4 border-l-amber-500 border-amber-200 bg-gradient-to-r from-amber-50/70 via-surface to-surface'
-            : task.urgency === 'today' || task.urgency === 'normal'
-              ? 'border-l-4 border-l-sky-500 border-sky-200 bg-gradient-to-r from-sky-50/70 via-surface to-surface'
-              : 'border-l-4 border-l-emerald-500 border-emerald-200 bg-gradient-to-r from-emerald-50/70 via-surface to-surface'
-      }`}
-    >
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`p-1.5 rounded-lg flex items-center justify-center ${
-              task.module === 'timesheet'
-                ? 'bg-accent-soft text-accent'
-                : task.module === 'okr'
-                  ? 'bg-sky-100 text-sky-700'
-                  : task.module === 'leave'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-indigo-100 text-indigo-700'
-            }`}>
-              {task.module === 'timesheet' && <Clock className="w-4 h-4" />}
-              {task.module === 'okr' && <Target className="w-4 h-4" />}
-              {task.module === 'leave' && <Sun className="w-4 h-4" />}
-              {task.module !== 'timesheet' && task.module !== 'okr' && task.module !== 'leave' && (
-                <Calendar className="w-4 h-4" />
+  /** Ngày + giờ kiểu mockup: "Thứ Tư, 12/11/2026 · 9:41 sáng". */
+  const todayLabel = useMemo(() => {
+    const now = new Date();
+    const weekday = now.toLocaleDateString('vi-VN', { weekday: 'long' });
+    const day = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+    const hour = now.getHours();
+    const period = hour < 12 ? 'sáng' : hour < 18 ? 'chiều' : 'tối';
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `${weekday}, ${day} · ${h12}:${min} ${period}`;
+  }, []);
+
+  /** Số việc đã hoàn tất trong ngày — khớp badge "4 đã xong hôm nay" của mockup. */
+  const completedTodayCount = useMemo(() => {
+    const today = new Date().toDateString();
+    return completedList.filter((item) => {
+      if (!item.completedAt) return false;
+      const d = new Date(item.completedAt);
+      return !Number.isNaN(d.getTime()) && d.toDateString() === today;
+    }).length;
+  }, [completedList]);
+
+  /**
+   * Mỗi việc là MỘT hàng ngang (đúng mockup S02): icon · tiêu đề+mô tả ·
+   * chip nguồn · nút hành động. Việc phụ ("Đã xong", "Xoá") nằm trong menu ⋯.
+   */
+  const renderTaskCard = (task: PersonalTask) => {
+    const isOverdue = task.urgency === 'overdue';
+    const isSoon = task.urgency === 'soon';
+    const isToday = task.urgency === 'today' || task.urgency === 'normal';
+    const accentClass = isOverdue
+      ? 'border-l-status-danger'
+      : isSoon
+        ? 'border-l-status-warn'
+        : isToday
+          ? 'border-l-accent'
+          : 'border-l-emerald-500';
+    const iconClass = isOverdue
+      ? 'bg-rose-50 text-rose-600'
+      : isSoon
+        ? 'bg-amber-50 text-amber-600'
+        : isToday
+          ? 'bg-accent-soft text-accent'
+          : 'bg-emerald-50 text-emerald-600';
+
+    return (
+      <div
+        key={task.id}
+        className={`relative bg-surface border border-line border-l-[3px] ${accentClass} rounded-xl px-4 py-3 flex items-center gap-3 transition-shadow hover:shadow-sm`}
+      >
+        <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
+          {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-semibold text-ink truncate">{task.title}</div>
+          <div className="text-xs text-ink-muted mt-0.5 truncate">{task.description}</div>
+        </div>
+
+        <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
+          {MODULE_LABELS[task.module] ?? 'Hệ thống'}
+        </span>
+
+        <span className="text-[11px] text-ink-muted font-mono shrink-0 hidden sm:inline">{task.dueTime}</span>
+
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setOpenTaskMenu((prev) => (prev === task.id ? null : task.id))}
+            className="w-7 h-7 grid place-items-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink transition-colors cursor-pointer"
+            title="Tuỳ chọn khác"
+            aria-label={`Tuỳ chọn khác cho ${task.title}`}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          {openTaskMenu === task.id && (
+            <div className="absolute right-0 top-8 z-20 w-44 bg-surface border border-line rounded-lg shadow-lg py-1">
+              {task.completable !== false && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenTaskMenu(null);
+                    handleCompletePersonalTask(task);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-canvas flex items-center gap-2 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Đánh dấu đã xong
+                </button>
+              )}
+              {!task.completable && (
+                <div className="px-3 py-2 text-[11px] text-ink-muted">
+                  Mục tổng hợp — tự cập nhật theo dữ liệu thật.
+                </div>
               )}
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-ink-muted">
-              {task.module === 'timesheet'
-                ? 'Chấm Công'
-                : task.module === 'okr'
-                  ? 'OKR Mục Tiêu'
-                  : task.module === 'leave'
-                    ? 'Phép Năm'
-                    : task.module === 'requests'
-                      ? 'Đơn Từ'
-                      : 'Hệ Thống'}
-            </span>
-          </div>
-          <Badge
-            variant={
-              task.urgency === 'overdue'
-                ? 'danger'
-                : task.urgency === 'soon'
-                  ? 'warn'
-                  : task.urgency === 'today' || task.urgency === 'normal'
-                    ? 'ok'
-                    : 'info'
-            }
-          >
-            {task.dueTime}
-          </Badge>
-        </div>
-
-        <h3 className="font-bold text-sm text-ink">{task.title}</h3>
-        <p className="text-xs text-ink-secondary leading-relaxed">{task.description}</p>
-      </div>
-
-      <div className="pt-3 mt-3 border-t border-line/60 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {task.completable !== false && (
-            <button
-              type="button"
-              onClick={() => handleCompletePersonalTask(task)}
-              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              <span>Đã xong</span>
-            </button>
-          )}
-          {task.deletable === true && (
-            <button
-              type="button"
-              onClick={(e) => handleDeletePersonalTask(task.id, e)}
-              className="p-1 rounded-lg text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-              title="Xóa bỏ nhiệm vụ"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
           )}
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => navigate(task.actionUrl)}
-        >
+        <Button variant="primary" size="sm" onClick={() => navigate(task.actionUrl)} className="shrink-0">
           <span>{task.actionLabel}</span>
           <ArrowRight className="w-3.5 h-3.5 ml-1" />
         </Button>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 max-w-[840px] mx-auto">
+      {/* Page Header — đúng mockup S02: tiêu đề + ngày giờ + số đang chờ/đã xong */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Cần Làm (Todo Inbox)</h1>
+            <h1 className="text-[19px] font-bold tracking-tight text-ink">Cần làm</h1>
             <Badge variant="accent">Trang Mặc Định</Badge>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Trung tâm gom mọi việc đang chờ của CẢ 2 module: Chấm công ra vào, check-in OKR, đơn từ và các phê duyệt của quản lý
-          </p>
+          <div className="text-xs text-ink-muted mt-0.5">{todayLabel}</div>
         </div>
 
-        {/* Global Action Buttons */}
         <div className="flex items-center gap-2">
+          {personalTasks.length > 0 && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-semibold">
+              {personalTasks.length} đang chờ
+            </span>
+          )}
+          {completedTodayCount > 0 && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold">
+              {completedTodayCount} đã xong hôm nay
+            </span>
+          )}
           {activeTab === 'APPROVALS' && (
             <Button variant="primary" size="sm" onClick={handleBulkApproveGreen}>
               <CheckCheck className="w-3.5 h-3.5 mr-1" />
@@ -510,43 +476,7 @@ export const TodoInboxPage: React.FC = () => {
         </div>
       )}
 
-      {/* TOP CARD: Số Phép Còn Lại Hiện Ngay Trên Trang Này (Criteria G1-#4) */}
-      <div className="bg-gradient-to-r from-amber-500/10 via-surface to-surface border border-amber-300/60 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-            <Sun className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Số dư phép năm cá nhân</div>
-            <div className="text-base font-bold text-ink flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="text-accent text-2xl font-extrabold">{leaveSummary.totalRemaining} ngày</span>
-              {leaveSummary.carriedRemaining > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
-                  Tồn {leaveSummary.carriedYear ?? new Date().getFullYear() - 1}: {leaveSummary.carriedRemaining} ngày
-                </span>
-              )}
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
-                Phép {leaveSummary.annualYear ?? new Date().getFullYear()}: {leaveSummary.annualRemaining} ngày
-              </span>
-            </div>
-            {leaveSummary.policyNotice && (
-              <div className="text-[11px] text-ink-muted mt-1">
-                ℹ️ {leaveSummary.policyNotice}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 self-end sm:self-center">
-          <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
-            Xem Sổ Phép
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/attendance/requests')}>
-            + Tạo Đơn Nghỉ Phép
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Tabs (Việc Của Tôi vs Duyệt Đơn vs Lịch Sử) */}
+      {/* Main Tabs (Việc Của Tôi vs Đơn Chờ Duyệt vs Lịch Sử) */}
       <div className="flex border-b border-line gap-2 text-xs font-bold">
         <button
           type="button"
@@ -566,6 +496,7 @@ export const TodoInboxPage: React.FC = () => {
           )}
         </button>
 
+        {canApprove && (
         <button
           type="button"
           onClick={() => setActiveTab('APPROVALS')}
@@ -576,13 +507,14 @@ export const TodoInboxPage: React.FC = () => {
           }`}
         >
           <Inbox className="w-4 h-4" />
-          Hộp Thư Phê Duyệt Cấp Dưới
+          Đơn Cần Phê Duyệt
           {approvals.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-extrabold">
               {approvals.length}
             </span>
           )}
         </button>
+        )}
 
         <button
           type="button"
@@ -610,17 +542,11 @@ export const TodoInboxPage: React.FC = () => {
             className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
           />
         </div>
-        {activeTab === 'PERSONAL' && (
-          <Button variant="primary" size="sm" onClick={() => setIsCreateTaskModalOpen(true)}>
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            + Thêm Việc Cần Làm
-          </Button>
-        )}
       </div>
 
       {/* TAB 1: VIỆC CẦN LÀM CỦA TÔI (Gom cả 2 module: Chấm công + OKR) */}
       {activeTab === 'PERSONAL' && (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {personalTasks.length === 0 ? (
             /* Empty State có CTA (Criteria G1-#7) */
             <div className="p-12 text-center bg-surface rounded-xl border border-line space-y-3 shadow-2xs">
@@ -636,65 +562,57 @@ export const TodoInboxPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-2">
               {/* BUCKET 1: QUÁ HẠN (OVERDUE) */}
               {overdueTasks.length > 0 && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-status-danger" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-status-danger">
-                      ⚠ Quá Hạn ({overdueTasks.length})
-                    </h2>
+                <>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-status-danger" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-status-danger">
+                      Quá hạn ({overdueTasks.length})
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {overdueTasks.map(renderTaskCard)}
-                  </div>
-                </div>
+                  {overdueTasks.map(renderTaskCard)}
+                </>
               )}
 
               {/* BUCKET 2: SẮP ĐẾN HẠN (SOON) */}
               {soonTasks.length > 0 && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-status-warn" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-status-warn">
-                      ◷ Sắp Đến Hạn ({soonTasks.length})
-                    </h2>
+                <>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Clock className="w-3.5 h-3.5 text-status-warn" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-status-warn">
+                      Sắp đến hạn ({soonTasks.length})
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {soonTasks.map(renderTaskCard)}
-                  </div>
-                </div>
+                  {soonTasks.map(renderTaskCard)}
+                </>
               )}
 
               {/* BUCKET 3: HÔM NAY (TODAY) */}
               {todayTasks.length > 0 && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-accent" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-accent">
-                      ○ Hôm Nay ({todayTasks.length})
-                    </h2>
+                <>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <CalendarDays className="w-3.5 h-3.5 text-accent" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
+                      Hôm nay ({todayTasks.length})
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {todayTasks.map(renderTaskCard)}
-                  </div>
-                </div>
+                  {todayTasks.map(renderTaskCard)}
+                </>
               )}
 
               {/* BUCKET 4: LƯU Ý (INFO) */}
               {infoTasks.length > 0 && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <Info className="w-4 h-4 text-sky-700" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-sky-700">
-                      ℹ Lưu Ý ({infoTasks.length})
-                    </h2>
+                <>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Info className="w-3.5 h-3.5 text-sky-700" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700">
+                      Lưu ý ({infoTasks.length})
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {infoTasks.map(renderTaskCard)}
-                  </div>
-                </div>
+                  {infoTasks.map(renderTaskCard)}
+                </>
               )}
             </div>
           )}
@@ -772,7 +690,7 @@ export const TodoInboxPage: React.FC = () => {
           <Card title={`Danh Sách Đơn Cần Phê Duyệt (${filteredApprovals.length})`}>
             {filteredApprovals.length === 0 ? (
               <div className="py-12 text-center text-ink-muted text-xs">
-                🎉 Bạn đã xử lý hết mọi công việc trong hòm thư phê duyệt!
+                🎉 Không có đơn nào đang chờ bạn phê duyệt.
               </div>
             ) : (
               <div className="divide-y divide-line">
@@ -858,6 +776,81 @@ export const TodoInboxPage: React.FC = () => {
           )}
         </Card>
       )}
+
+      {/* Card "Phép còn lại" — đặt dưới danh sách theo mockup S02 */}
+      <Card
+        title="Phép còn lại"
+        subtitle="Số dư phép năm của bạn"
+        className="mt-2"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ink-secondary">
+                Phép năm {leaveSummary.annualYear ?? new Date().getFullYear()}
+              </span>
+              <span className="font-semibold text-ink font-mono">
+                {leaveSummary.annualRemaining} ngày
+              </span>
+            </div>
+            <div className="h-1.5 bg-canvas rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      ((leaveSummary.annualEntitlement ?? 0) - (leaveSummary.annualUsed ?? 0)) /
+                        Math.max(1, leaveSummary.annualEntitlement ?? 0) * 100
+                    )
+                  )}%`,
+                }}
+              />
+            </div>
+            <div className="text-[11px] text-ink-muted mt-1.5">
+              Cộng thêm 1 ngày vào ngày 15 hàng tháng
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ink-secondary">
+                Phép tồn {leaveSummary.carriedYear ?? new Date().getFullYear() - 1}
+              </span>
+              <span className="font-semibold text-ink font-mono">
+                {leaveSummary.carriedRemaining} ngày
+              </span>
+            </div>
+            <div className="h-1.5 bg-canvas rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-amber-500 rounded-full"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (leaveSummary.carriedRemaining / Math.max(1, leaveSummary.totalRemaining || 1)) * 100
+                  )}%`,
+                }}
+              />
+            </div>
+            <div className="text-[11px] text-ink-muted mt-1.5">
+              {leaveSummary.policyNotice ?? 'Phép tồn được bảo lưu theo quy chế'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-line">
+          <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
+            Xem Sổ Phép
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => navigate('/attendance/requests')}>
+            + Tạo Đơn Nghỉ Phép
+          </Button>
+          <span className="text-[11px] text-ink-muted ml-auto">
+            Tổng còn lại: <strong className="text-ink">{leaveSummary.totalRemaining} ngày</strong>
+          </span>
+        </div>
+      </Card>
 
       {/* Detail Modal */}
       {selectedApproval && !activeActionModal && (
@@ -953,98 +946,6 @@ export const TodoInboxPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Modal: Thêm Việc Cần Làm Mới */}
-      {isCreateTaskModalOpen && (
-        <Modal
-          isOpen={true}
-          onClose={() => setIsCreateTaskModalOpen(false)}
-          title="Thêm Việc Cần Làm Mới"
-        >
-          <div className="space-y-3.5 text-xs">
-            <div>
-              <label className="block text-ink font-semibold mb-1">Tiêu đề việc cần làm *</label>
-              <input
-                type="text"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Ví dụ: Bổ sung chứng từ nghỉ ốm, cập nhật KR..."
-                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-ink font-semibold mb-1">Mô tả chi tiết</label>
-              <textarea
-                rows={2}
-                value={newTaskDesc}
-                onChange={(e) => setNewTaskDesc(e.target.value)}
-                placeholder="Mô tả công việc cần xử lý..."
-                className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-ink font-semibold mb-1">Mức độ khẩn</label>
-                <select
-                  value={newTaskUrgency}
-                  onChange={(e) => setNewTaskUrgency(e.target.value as any)}
-                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
-                >
-                  <option value="today">Hôm nay (Today)</option>
-                  <option value="soon">Sắp hạn (Soon)</option>
-                  <option value="overdue">Quá hạn (Overdue)</option>
-                  <option value="info">Lưu ý (Info)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-ink font-semibold mb-1">Phân hệ (Module)</label>
-                <select
-                  value={newTaskModule}
-                  onChange={(e) => setNewTaskModule(e.target.value as any)}
-                  className="w-full p-2.5 rounded-lg border border-line bg-surface text-ink text-xs"
-                >
-                  <option value="timesheet">Chấm công (Timesheet)</option>
-                  <option value="okr">OKR Mục tiêu</option>
-                  <option value="leave">Nghỉ phép</option>
-                  <option value="requests">Đơn từ khác</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-ink font-semibold mb-1">Đường dẫn hành động (Deep-link)</label>
-                <input
-                  type="text"
-                  value={newTaskActionUrl}
-                  onChange={(e) => setNewTaskActionUrl(e.target.value)}
-                  className="w-full p-2 rounded-lg border border-line bg-surface text-ink text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-ink font-semibold mb-1">Nhãn nút hành động</label>
-                <input
-                  type="text"
-                  value={newTaskActionLabel}
-                  onChange={(e) => setNewTaskActionLabel(e.target.value)}
-                  className="w-full p-2 rounded-lg border border-line bg-surface text-ink text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-line">
-              <Button variant="outline" size="sm" onClick={() => setIsCreateTaskModalOpen(false)}>
-                Hủy bỏ
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleCreateNewTask}>
-                Tạo Việc Cần Làm
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

@@ -104,7 +104,7 @@ public class NotificationDispatcher {
                     .createdAt(LocalDateTime.now())
                     .build();
             notificationRepository.save(entity);
-            recordDelivery(userId, eventKey, CHANNEL_WEB, entity.getId(), null);
+            recordDelivery(userId, eventKey, CHANNEL_WEB, entity.getId(), dedupeKey);
         }
 
         // ── Kênh PUSH: bị chặn bởi quiet hours hoặc vượt hạn mức/ngày ───────
@@ -122,7 +122,7 @@ public class NotificationDispatcher {
                         dedupeKey == null ? eventKey : dedupeKey, title, content, actionUrl);
             } else {
                 pushDelivered = pushService.send(userId, title, content, actionUrl);
-                recordDelivery(userId, eventKey, CHANNEL_PUSH, entity == null ? null : entity.getId(), null);
+                recordDelivery(userId, eventKey, CHANNEL_PUSH, entity == null ? null : entity.getId(), dedupeKey);
             }
         }
 
@@ -131,7 +131,7 @@ public class NotificationDispatcher {
         if (wantEmail) {
             emailDelivered = emailService.sendEventEmail(recipientEmail(userId), recipientName(userId),
                     title, content, actionUrl);
-            recordDelivery(userId, eventKey, CHANNEL_EMAIL, entity == null ? null : entity.getId(), null);
+            recordDelivery(userId, eventKey, CHANNEL_EMAIL, entity == null ? null : entity.getId(), dedupeKey);
         }
 
         return new DispatchResult(eventKey, entity == null ? null : entity.getId().toString(),

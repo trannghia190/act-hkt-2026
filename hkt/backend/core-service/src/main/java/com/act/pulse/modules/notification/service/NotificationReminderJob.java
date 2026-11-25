@@ -13,10 +13,12 @@ import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetDisputeRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetRepository;
+import com.act.pulse.modules.attendance.service.AttendancePendingService;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
 import com.act.pulse.modules.auth.repository.UserRepository;
+import com.act.pulse.modules.notification.repository.NotificationDeliveryRepository;
 import com.act.pulse.modules.okr.entity.OKRCycle;
 import com.act.pulse.modules.okr.entity.OKRReview;
 import com.act.pulse.modules.okr.repository.OKRItemRepository;
@@ -60,14 +62,22 @@ public class NotificationReminderJob {
     private final RequestRepository requestRepository;
     private final LeaveLedgerRepository leaveLedgerRepository;
     private final RuleService ruleService;
+    private final AttendancePendingService attendancePending;
     private final NotificationDispatcher dispatcher;
     private final OKRPhaseService okrPhaseService;
     private final OKRManagementService okrManagement;
     private final OKRReviewRepository okrReviewRepository;
     private final OKRItemRepository okrItemRepository;
+    private final NotificationDeliveryRepository deliveryRepository;
 
-    /** Chạy hằng ngày 09:10 — sau các job chấm công/bảng công buổi sáng. */
-    @Scheduled(cron = "0 10 9 * * *")
+    /**
+     * Quét mỗi 30 phút trong ngày (06:05–22:35).
+     * <p>Trước đây chỉ chạy 09:10 một lần/ngày nên các mốc phụ thuộc giờ tan ca —
+     * {@code MISSING_CHECKOUT}, {@code WFH_MISSING_REPORT} — và nhân viên ca tối
+     * không bao giờ nhận được nhắc. Mỗi mục được chặn trùng theo ngày trong
+     * {@link #send}, nên chạy lặp không sinh thông báo lặp.</p>
+     */
+    @Scheduled(cron = "0 5,35 6-22 * * *")
     public void scheduledReminders() {
         try {
             runAll(LocalDate.now(), LocalTime.now());
@@ -113,6 +123,9 @@ public class NotificationReminderJob {
             boolean afterIn = now.isAfter(LocalDateTime.of(today, shift.getCheckInEnd()).plusMinutes(GRACE_MINUTES));
             boolean afterOut = now.isAfter(LocalDateTime.of(today, shift.getCheckOutEnd()).plusMinutes(GRACE_MINUTES));
 
+            // Không lọc theo Todo Inbox: việc chờ trong Todo là UI thụ động, còn đây là nhắc
+            // chủ động do người dùng tự bật trên trang Tuỳ chỉnh thông báo. Dedupe key theo
+            // ngày bảo đảm mỗi người chỉ bị nhắc 1 lần/ngày dù job chạy lại.
             if (afterIn && (log == null || log.getCheckInAt() == null)) {
                 send(counts, "MISSING_CHECKIN", u.getId(),
                         "Chưa check-in hôm nay",
@@ -152,19 +165,12 @@ public class NotificationReminderJob {
 
     private void scanAdjustDeadlines(LocalDate today, Set<LocalDate> holidays,
                                      List<User> workers, Map<String, Integer> counts) {
-        int deadlineDays = ruleService.getInt("makeup", "deadline_working_days", 3);
-        List<LocalDate> lookback = previousWorkingDaysInclusive(today, deadlineDays + 3, holidays);
+        // Dùng chung AttendancePendingService với Todo Inbox → việc chờ trong hộp thư và
+        // nhắc qua thông báo luôn cùng một danh sách ngày thiếu công / cùng hạn nộp.
         for (User u : workers) {
-            for (LocalDate day : lookback) {
-                if (exemptOn(day).contains(u.getId())) continue;
-                AttendanceLog log = attendanceLogRepository.findByUserIdAndWorkDate(u.getId(), day).orElse(null);
-                boolean incomplete = log == null || log.getCheckInAt() == null || log.getCheckOutAt() == null;
-                if (!incomplete) continue;
-                boolean filed = requestRepository.findByUserIdAndRequestTypeAndWorkDate(u.getId(), "ADJUST", day)
-                        .stream().anyMatch(r -> "PENDING_APPROVAL".equals(r.getStatus()) || "APPROVED".equals(r.getStatus()));
-                if (filed) continue;
-
-                LocalDate deadline = addWorkingDays(day, deadlineDays, holidays);
+            for (AttendancePendingService.MissingPunch missing : attendancePending.missingPunches(u.getId(), today, holidays)) {
+                LocalDate day = missing.workDate();
+                LocalDate deadline = missing.deadline();
                 long left = ChronoUnit.DAYS.between(today, deadline);
                 if (left == 1) {
                     send(counts, "ADJUST_DEADLINE_SOON", u.getId(),
@@ -204,6 +210,8 @@ public class NotificationReminderJob {
         int slaHours = ruleService.getInt("approval_flow", "sla_hours", 48);
         Map<UUID, User> users = new HashMap<>();
         userRepository.findAll().forEach(u -> users.put(u.getId(), u));
+        // Không lọc theo Todo Inbox — nhắc quá hạn là kênh chủ động người dùng tự bật;
+        // dedupe key gắn theo đơn + ngày nên không lặp.
         for (RequestEntity r : requestRepository.findByStatusAndCreatedAtBefore(
                 "PENDING_APPROVAL", now.minusHours(slaHours))) {
             User owner = users.get(r.getUserId());
@@ -350,6 +358,12 @@ public class NotificationReminderJob {
     private void send(Map<String, Integer> counts, String eventKey, UUID userId,
                       String title, String content, String actionUrl, String dedupeKey) {
         if (userId == null) return;
+        // Chặn trùng theo ngày ở tầng job: job quét lặp trong ngày, còn cửa sổ
+        // dedupe của người dùng có thể đặt 0 giờ nên không thể dựa vào đó.
+        if (dedupeKey != null && deliveryRepository.countByUserIdAndEventKeyAndDedupeKeyAndDeliveredAtAfter(
+                userId, eventKey, dedupeKey, LocalDate.now().atStartOfDay()) > 0) {
+            return;
+        }
         try {
             dispatcher.dispatch(eventKey, userId, title, content, eventKey, "MEDIUM", actionUrl, dedupeKey);
             counts.merge(eventKey, 1, Integer::sum);
@@ -395,24 +409,5 @@ public class NotificationReminderJob {
             if (isWorkingDay(d, holidays)) out.add(d);
         }
         return out;
-    }
-
-    private List<LocalDate> previousWorkingDaysInclusive(LocalDate today, int count, Set<LocalDate> holidays) {
-        List<LocalDate> out = new ArrayList<>();
-        LocalDate d = today;
-        for (int i = 0; i < 30 && out.size() < count; i++, d = d.minusDays(1)) {
-            if (isWorkingDay(d, holidays)) out.add(d);
-        }
-        return out;
-    }
-
-    private LocalDate addWorkingDays(LocalDate from, int days, Set<LocalDate> holidays) {
-        LocalDate d = from;
-        int added = 0;
-        while (added < days) {
-            d = d.plusDays(1);
-            if (isWorkingDay(d, holidays)) added++;
-        }
-        return d;
     }
 }

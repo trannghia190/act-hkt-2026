@@ -187,7 +187,7 @@ export const ApprovalsPage: React.FC = () => {
             <h1 className="text-xl font-bold tracking-tight text-ink">Phê Duyệt Đơn Nhóm (Manager Approvals)</h1>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Duyệt hàng loạt đơn xin nghỉ phép, làm từ xa (WFH), làm thêm giờ (OT) và giải trình vi phạm của nhân viên cấp dưới
+            Duyệt hàng loạt đơn xin nghỉ phép, làm từ xa (WFH), làm thêm giờ (OT) và giải trình vi phạm của nhân viên
           </p>
         </div>
         <div className="flex items-center gap-2">

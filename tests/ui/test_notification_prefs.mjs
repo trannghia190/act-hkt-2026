@@ -253,16 +253,27 @@ try {
   page.on('request', (r) => {
     if (r.url().includes('/api/v1/notifications?')) lastUrl = r.url();
   });
-  await categorySelect.selectOption({ label: categoryLabel('ATTENDANCE') });
-  await page.waitForSelector(`text=${attTitle}`, { timeout: 15000 });
-  if (!lastUrl.includes('category=ATTENDANCE')) fail('Chọn nhóm không gọi server với category: ' + lastUrl);
-  if (await page.locator(`text=${reqTitle}`).count()) fail('Lọc Chấm công vẫn hiện thông báo Đơn từ');
+  // Chọn nhóm → chờ đúng response lọc về rồi mới kiểm danh sách (tránh đọc
+  // danh sách cũ còn cả 2 thông báo trước khi server trả về).
+  const pickCategory = async (cat, expectTitle, absentTitle, failMsg) => {
+    const [resp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/api/v1/notifications?') && r.url().includes(`category=${cat}`),
+        { timeout: 15000 },
+      ),
+      categorySelect.selectOption({ label: categoryLabel(cat) }),
+    ]);
+    if (!resp.ok()) fail(`Lọc ${cat} lỗi HTTP ${resp.status()}`);
+    await page.waitForSelector(`text=${expectTitle}`, { timeout: 15000 });
+    if (!lastUrl.includes(`category=${cat}`)) fail('Chọn nhóm không gọi server với category: ' + lastUrl);
+    await page.locator(`text=${absentTitle}`).waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+    if (await page.locator(`text=${absentTitle}`).count()) fail(failMsg);
+  };
+
+  await pickCategory('ATTENDANCE', attTitle, reqTitle, 'Lọc Chấm công vẫn hiện thông báo Đơn từ');
   pass('Lọc nhóm Chấm công: chỉ trả đúng thông báo chấm công');
 
-  await categorySelect.selectOption({ label: categoryLabel('REQUEST') });
-  await page.waitForSelector(`text=${reqTitle}`, { timeout: 15000 });
-  if (!lastUrl.includes('category=REQUEST')) fail('Lọc Đơn từ không gọi server với category: ' + lastUrl);
-  if (await page.locator(`text=${attTitle}`).count()) fail('Lọc Đơn từ vẫn hiện thông báo Chấm công');
+  await pickCategory('REQUEST', reqTitle, attTitle, 'Lọc Đơn từ vẫn hiện thông báo Chấm công');
   pass('Lọc nhóm Đơn từ: chỉ trả đúng thông báo đơn từ');
 } finally {
   // Khôi phục nguyên trạng qua API dù test lỗi giữa chừng.

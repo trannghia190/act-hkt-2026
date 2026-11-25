@@ -97,19 +97,30 @@ public class OKRPhaseDeadlineReminderJob {
                 }
                 case OKRPhaseService.FINAL -> {
                     Map<UUID, Integer> pendingByManager = new HashMap<>();
+                    int pendingTotal = 0;
                     for (OKRReview r : reviews) {
                         // cùng điều kiện với API tự đánh giá / chấm điểm
                         if (!management.isCurrentlyApproved(r)) continue;
                         if (!management.selfAssessed(r) || (r.getCurrentStep() != null && r.getCurrentStep() < 3)) {
+                            pendingTotal++;
                             sent += send(r.getUserId(), type, daysLeft, "Sắp hết hạn tự đánh giá cuối năm",
                                     when + " để nộp đánh giá cuối năm (thành tựu công việc, thành tựu con người, định hướng năm sau).", "/okr/my-okr?section=assessment");
                         } else if (!management.managerAssessed(r) && r.getManagerId() != null) {
+                            pendingTotal++;
                             pendingByManager.merge(r.getManagerId(), 1, Integer::sum);
                         }
                     }
                     for (var e : pendingByManager.entrySet()) {
                         sent += send(e.getKey(), type, daysLeft, "Sắp hết hạn chấm điểm cuối năm",
                                 when + " — còn " + e.getValue() + " nhân viên đã tự đánh giá đang chờ bạn chấm.", "/okr/team-review");
+                    }
+                    // HR cần biết khối lượng còn tồn để kịp nghiệm thu/chốt chu kỳ.
+                    if (pendingTotal > 0) {
+                        for (User hr : userRepository.findByRoleIn(List.of("ADMIN", "HR_ADMIN"))) {
+                            if (!isWorking(hr)) continue;
+                            sent += send(hr.getId(), "OKR_DEADLINE_SUMMARY", daysLeft, "Sắp hết hạn tổng hợp OKR cuối năm",
+                                    when + " — còn " + pendingTotal + " hồ sơ chưa hoàn tất đánh giá cuối năm.", "/okr/cycles");
+                        }
                     }
                 }
                 default -> { }

@@ -87,7 +87,12 @@ try:
     st, js = call("PUT", "/notifications/preferences", mgr_token, body)
     check("Đặt giờ yên lặng + chỉ push", st == 200, js)
 
-    day = (date.today() + timedelta(days=90)).isoformat()
+    # Ngày trống: dữ liệu test khác có thể đã chiếm ngày +90 cố định.
+    day = psql(
+        "select d::date from generate_series(current_date + 90, current_date + 200, interval '1 day') d "
+        "where not exists (select 1 from requests r join users u on u.id=r.user_id "
+        "where u.employee_code='" + EMPLOYEE + "' and d::date between r.work_date and coalesce(r.end_date, r.work_date)) "
+        "limit 1")
     st, js = call("POST", "/requests", login(EMPLOYEE), {
         "type": "LEAVE", "leaveType": "AL", "workDate": day, "endDate": day,
         "reason": "ZZ digest test", "payload": "{}",
