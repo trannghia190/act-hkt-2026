@@ -87,7 +87,9 @@ def run_tests():
     )
     assert prop_res.status_code == 200, f"Lưu proposal thất bại: {prop_res.text}"
     okr_prop = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers).json()["data"]
-    assert "Solutions Architect" in okr_prop["box4ProposalNextYear"]
+    # Tên trường đã đổi theo mô hình hiện tại (commit 673bdd4): đề xuất gửi kèm
+    # bộ mục tiêu của KỲ HIỆN TẠI → "box4Proposal" (trước là "box4ProposalNextYear").
+    assert "Solutions Architect" in okr_prop["box4Proposal"]
     assert "thuyết trình" in okr_prop["box4ImprovementArea"]
     print("✓ Tiêu chí 7: POST /okr/self-proposal cập nhật Box 4 (đề xuất + điểm cần cải thiện) thành công trong DB")
 

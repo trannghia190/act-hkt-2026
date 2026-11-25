@@ -69,16 +69,16 @@ def test_dashboard():
     assert d1.get("companyObjectivesExcludedFromAverage") is True
     print(f"✓ 20% mục tiêu công ty ({len(comp_objs)} mục) tách riêng, KHÔNG tính vào TB cá nhân")
 
-    # 5. Card Self proposal năm sau
+    # 5. Card Self proposal (Box 4) — khai báo theo KỲ HIỆN TẠI, không phải năm sau
     sp = d1["selfProposal"]
     assert sp["status"] in ["NOT_STARTED", "DRAFT", "SUBMITTED"]
-    assert sp["year"] == d1["cycleYear"] + 1
+    assert sp["year"] == d1["cycleYear"], f"Self proposal phải theo kỳ hiện tại, got {sp['year']}"
     assert sp["viewUrl"] == "/okr/my-okr"
-    print(f"✓ Card Self proposal năm {sp['year']}: trạng thái={sp['statusText']} ({sp['status']}), link={sp['viewUrl']}")
+    print(f"✓ Card Self proposal kỳ {sp['year']}: trạng thái={sp['statusText']} ({sp['status']}), link={sp['viewUrl']}")
 
-    # 6. Phase hiện tại + đếm ngược hạn chót
+    # 6. Phase hiện tại + đếm ngược hạn chót — mô hình 3 phase setup → midyear → final
     phases = {p["key"]: p["effective_status"] for p in d1["phases"]}
-    assert set(phases) == {"setup", "checkin", "midyear", "final", "summary"}
+    assert set(phases) == {"setup", "midyear", "final"}, f"Phải đúng 3 phase, got {set(phases)}"
     assert d1["currentPhase"].lower() in phases
     assert d1["phaseStatus"] == phases[d1["currentPhase"].lower()]
     if d1["phaseStatus"] == "active":
@@ -89,10 +89,15 @@ def test_dashboard():
     todos = d1["todos"]
     assert isinstance(todos, list)
     assert isinstance(d1["canCheckIn"], bool)
-    # Nút check-in chỉ nổi khi phase check-in mở và còn đầu việc chưa check-in kỳ này
+    # Nút check-in chỉ nổi khi cửa sổ cập nhật đang mở và còn đầu việc chưa check-in kỳ này.
+    # Cập nhật tiến độ mở trong cửa sổ NV của midyear hoặc final.
     if d1["canCheckIn"]:
-        assert phases["checkin"] == "active" and d1["pendingCheckinCount"] > 0
+        assert d1["pendingCheckinCount"] > 0
+        assert phases["midyear"] == "active" or phases["final"] == "active"
         assert any(t["type"] == "CHECKIN" for t in todos)
+    # Không có mục check-in khi chưa tới hạn cập nhật (canCheckIn=False) thì todo cũng không có.
+    if not d1["canCheckIn"]:
+        assert not any(t["type"] == "CHECKIN" for t in todos)
     print(f"✓ Việc cần làm với OKR: {len(todos)} việc, Nút check-in={d1['canCheckIn']}")
 
     print("\n🎉 TẤT CẢ TIÊU CHÍ SERVICE F1 ĐÃ ĐẠT!")

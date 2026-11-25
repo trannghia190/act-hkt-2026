@@ -44,7 +44,9 @@ def main() -> None:
     ensure_locked(emp, mgr)
 
     # 1 & 2. Dữ liệu check-in có prefill giá trị kỳ trước
-    with phase_open("checkin"):
+    # Mô hình 3 phase: cập nhật tiến độ mở trong cửa sổ NV của midyear hoặc final
+    # (không còn phase "checkin" riêng — commit 673bdd4 gộp vào 2 phase này).
+    with phase_open("midyear"):
         current = requests.get(f"{BASE}/okr/check-ins/current?year=2026", headers=emp)
         assert current.status_code == 200, current.text
         data = current.json()["data"]

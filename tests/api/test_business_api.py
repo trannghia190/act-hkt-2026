@@ -177,6 +177,25 @@ if sheet.get("rows"):
     r0 = sheet["rows"][0]
     check("dòng công có standardDays/actualDays", "standardDays" in r0 and "actualDays" in r0)
 # C2c: hạn nộp 3 ngày — quá hạn bị chặn server-side (đi muộn/nghỉ/bổ sung)
+# Bổ sung công còn bị chặn bởi QUOTA 5 lần/tháng → nhân viên demo 136ACT có thể đã
+# dùng gần hết quota → lỗi trả về là "đã đủ 5 lần" chứ không phải "quá hạn 3 ngày".
+# Vì vậy phần này chạy bằng nhân viên test riêng (quota sạch), không đụng dữ liệu demo.
+ZZ_UID = "ff200000-0000-4000-8000-000000000001"
+ZZ_EMP = "ZZBIZ01"
+psql(f"delete from refresh_tokens where user_id='{ZZ_UID}'")
+psql(f"delete from requests where user_id='{ZZ_UID}'")
+psql(f"delete from users where id='{ZZ_UID}'")
+psql(f"""insert into users (id, employee_code, full_name, email, password_hash, role, team_id,
+          manager_id, shift_id, joined_date, status, position_name)
+          select '{ZZ_UID}','{ZZ_EMP}','Nguyễn Test Biz','zzbiz01@test.local', password_hash,
+                 'EMPLOYEE','b0000000-0000-0000-0000-000000000011',
+                 'd0000000-0000-0000-0000-000000000002','c0000000-0000-0000-0000-000000000001',
+                 '2024-01-01','ACTIVE','Kỹ sư Phần mềm'
+          from users where employee_code='05ACT'""")
+_, _zzlog = call("POST", "/auth/login", {"employeeCodeOrEmail": ZZ_EMP, "password": "123456"}, token=False)
+_zz_token = (_zzlog.get("data") or {}).get("accessToken")
+_prev_token = TOKEN
+TOKEN = _zz_token
 old_date = (date.today() - timedelta(days=10)).isoformat()
 status, data = call("POST", "/requests", {"type": "ADJUST", "workDate": old_date, "minutes": 30, "reason": "Quên chấm công", "payload": "{}"}, expect=400)
 check("bổ sung công quá hạn 3 ngày bị chặn", status == 400 and "3 ngày" in (data.get("message") or ""), str(data)[:120])
@@ -184,6 +203,13 @@ status, data = call("POST", "/requests", {"type": "LATE_EARLY", "workDate": old_
 check("đi muộn quá hạn 3 ngày bị chặn", status == 400)
 status, data = call("POST", "/requests", {"type": "LEAVE", "leaveType": "AL", "workDate": old_date, "reason": "Nghỉ phép", "payload": "{}"}, expect=400)
 check("nghỉ phép quá hạn gửi bị chặn", status == 400)
+# Dọn nhân viên test + trả token nhân viên demo.
+psql(f"delete from refresh_tokens where user_id='{ZZ_UID}'")
+psql(f"delete from requests where user_id='{ZZ_UID}'")
+psql(f"delete from notifications where user_id='{ZZ_UID}'")
+psql(f"delete from notification_deliveries where user_id='{ZZ_UID}'")
+psql(f"delete from users where id='{ZZ_UID}'")
+TOKEN = _prev_token
 
 # Chốt/khoá kỳ công chỉ dành cho ADMIN/HR_ADMIN → dùng token HR cho phần bảng công.
 _, _hlog = call("POST", "/auth/login", {"employeeCodeOrEmail": "01HR", "password": "123456"}, token=False)
@@ -205,8 +231,12 @@ check("sửa hàng loạt 1 audit", status == 200 and (data.get("data") or {}).g
 
 # Còn khiếu nại chưa xử lý → khoá bị chặn (dùng token HR để thấy & xử lý mọi khiếu nại)
 # Mỗi ngày tối đa 2 đơn khiếu nại (chặn khi còn PENDING) — dọn đơn còn sót của lần chạy trước.
+# Khiếu nại TIME_FIX phải có đủ CẢ giờ vào + giờ ra (commit ba2e9c2): thiếu một đầu
+# thì HR không sửa được ô công → server trả 400.
 psql("delete from timesheet_disputes where work_date='2020-01-05'")
-call("POST", "/disputes", {"workDate": "2020-01-05", "reason": "Đối chiếu log — test lock"})
+call("POST", "/disputes", {"workDate": "2020-01-05", "reason": "Đối chiếu log — test lock",
+                           "requestedKind": "TIME_FIX",
+                           "requestedCheckIn": "08:00", "requestedCheckOut": "17:00"})
 _, hlog = call("POST", "/auth/login", {"employeeCodeOrEmail": "01HR", "password": "123456"}, token=False)
 hr_early = (hlog.get("data") or {}).get("accessToken")
 _prev_token = TOKEN
@@ -216,7 +246,13 @@ check("khoá bị chặn khi còn khiếu nại", status == 400)
 _, dl = call("GET", "/disputes")
 for d in (dl.get("data") or []):
     if d.get("status") == "PENDING":
-        call("POST", f"/disputes/{d['id']}/resolve", {"action": "FIX", "symbol": "1.00", "reason": "Đã đối chiếu log"})
+        # Sửa giờ cần đủ CẢ giờ vào + giờ ra (nếu khiếu nại không có đề xuất thì HR
+        # phải tự nhập cặp giờ) → nếu thiếu thì server trả 400 và khoá vẫn bị chặn.
+        body = {"action": "FIX", "reason": "Đã đối chiếu log"}
+        if not (d.get("requestedCheckIn") and d.get("requestedCheckOut")):
+            body["requestedCheckIn"] = "08:00"
+            body["requestedCheckOut"] = "17:00"
+        call("POST", f"/disputes/{d['id']}/resolve", body)
 _, dl2 = call("GET", "/disputes")
 check("khiếu nại có hạn xử lý (daysLeft)", all(("daysLeft" in d) or d.get("status") != "PENDING" for d in (dl2.get("data") or [])))
 status, data = call("POST", "/timesheets/lock?month=2020-01")
