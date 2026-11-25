@@ -23,8 +23,37 @@ interface Employee {
   approvalChain?: string;
   hireDate?: string;
   joinDate?: string;
+  seniorityYears?: number;
+  seniorityMonths?: number;
+  seniorityDays?: string;
+  totalAnnualDays?: string;
   faceEnrolled: boolean;
   mustChangePassword?: boolean;
+}
+
+/** Ngày hôm nay theo giờ địa phương, dạng yyyy-MM-dd (không lệch múi giờ như toISOString). */
+const todayISO = (): string => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+/** "2026-11-26" → "26/11/2026" để hiển thị cho HR. */
+const formatDMY = (iso?: string): string => {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return y && m && d ? `${d}/${m}/${y}` : iso;
+};
+
+interface OnboardPreview {
+  joinedDate: string;
+  seniorityYears: number;
+  seniorityMonths: number;
+  seniorityIntervals: number;
+  seniorityDays: number;
+  baseAccruedDays: number;
+  totalAnnualDays: number;
+  nextSeniorityDate: string;
+  isFuture: boolean;
 }
 
 export const EmployeeManagementPage: React.FC = () => {
@@ -60,7 +89,10 @@ export const EmployeeManagementPage: React.FC = () => {
     positionName: 'Kỹ sư Phần mềm',
     role: 'EMPLOYEE' as const,
     password: '123456',
+    joinedDate: todayISO(),
   });
+  // Xem trước thâm niên & quỹ phép theo ngày onboard (tính ở backend, cùng rule với lúc tạo).
+  const [onboardPreview, setOnboardPreview] = useState<OnboardPreview | null>(null);
 
   interface CreatedResult {
     fullName: string;
@@ -148,6 +180,26 @@ export const EmployeeManagementPage: React.FC = () => {
   };
   useEffect(() => { fetchTeams(); }, []);
 
+  // Xem trước thâm niên/phép khi HR đổi ngày onboard hoặc vai trò — debounce nhẹ để
+  // không gọi API theo từng phím bấm của ô ngày.
+  useEffect(() => {
+    if (!isAddModalOpen || !newEmp.joinedDate) {
+      setOnboardPreview(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ joinedDate: newEmp.joinedDate, role: newEmp.role });
+      fetch(`/api/v1/admin/users/onboard-preview?${params.toString()}`, {
+        headers: getAuthHeaders(), signal: ctrl.signal,
+      })
+        .then((r) => r.json())
+        .then((j) => { if (j?.success && j.data) setOnboardPreview(j.data); })
+        .catch(() => { /* giữ preview cũ nếu lỗi mạng */ });
+    }, 250);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [isAddModalOpen, newEmp.joinedDate, newEmp.role]);
+
   // Nhóm đầu tiên trong DB làm giá trị mặc định cho form (không hard-code tên nhóm).
   useEffect(() => {
     if (teams.length === 0) return;
@@ -180,6 +232,7 @@ export const EmployeeManagementPage: React.FC = () => {
           positionName: newEmp.positionName,
           role: newEmp.role,
           password: newEmp.password || '123456',
+          joinedDate: newEmp.joinedDate,
         }),
       });
 
@@ -207,6 +260,7 @@ export const EmployeeManagementPage: React.FC = () => {
           positionName: 'Kỹ sư Phần mềm',
           role: 'EMPLOYEE' as const,
           password: '123456',
+          joinedDate: todayISO(),
         });
         fetchEmployees();
       } else {
@@ -969,6 +1023,54 @@ export const EmployeeManagementPage: React.FC = () => {
               </span>
             </div>
 
+            {/* Ngày onboard — căn cứ tính thâm niên, phép thâm niên & tổng phép năm */}
+            <div>
+              <label className="block font-semibold text-ink mb-1">Ngày Vào Làm (Onboard) *</label>
+              <input
+                type="date"
+                required
+                value={newEmp.joinedDate}
+                onChange={(e) => setNewEmp({ ...newEmp, joinedDate: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-medium"
+              />
+              <span className="text-[10px] text-ink-muted mt-1 block">
+                * Căn cứ xác định thâm niên, phép thâm niên và tổng phép năm được cấp. Nhập ngày trong quá khứ
+                thì hệ thống tự cộng bù phép đã tích lũy.
+              </span>
+            </div>
+
+            {onboardPreview && (
+              <div className="p-3 bg-accent-soft/40 border border-accent-line rounded-xl text-[11px] space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-ink">
+                  <Calendar className="w-4 h-4 text-accent" />
+                  <span>Quỹ phép dự kiến theo ngày vào làm</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-ink-muted">Thâm niên:</span>
+                    <strong className="text-ink">{onboardPreview.seniorityYears} năm {onboardPreview.seniorityMonths} tháng</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-ink-muted">Phép thâm niên:</span>
+                    <strong className="text-ink">+{onboardPreview.seniorityDays} ngày</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-ink-muted">Phép năm tích lũy:</span>
+                    <strong className="text-ink">{onboardPreview.baseAccruedDays} ngày</strong>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-ink-muted">Tổng phép năm:</span>
+                    <strong className="text-accent text-sm">{onboardPreview.totalAnnualDays} ngày</strong>
+                  </div>
+                </div>
+                <div className="text-[10px] text-ink-muted">
+                  {onboardPreview.isFuture
+                    ? 'Ngày vào làm ở tương lai — phép chỉ bắt đầu tích lũy từ tháng onboard.'
+                    : `Mốc thâm niên kế tiếp: ${formatDMY(onboardPreview.nextSeniorityDate)}.`}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-ink mb-1">Nhóm Làm Việc</label>
@@ -1181,8 +1283,8 @@ export const EmployeeManagementPage: React.FC = () => {
                     <span className="font-semibold text-ink">{viewDetailEmp.phone || '0901234567'}</span>
                   </div>
                   <div className="flex justify-between py-0.5 border-b border-line/40">
-                    <span className="text-ink-muted">Ngày gia nhập:</span>
-                    <span className="font-semibold text-ink">{viewDetailEmp.hireDate || viewDetailEmp.joinDate || '01/01/2023'}</span>
+                    <span className="text-ink-muted">Ngày vào làm (onboard):</span>
+                    <span className="font-semibold text-ink">{formatDMY(viewDetailEmp.hireDate || viewDetailEmp.joinDate)}</span>
                   </div>
                   <div className="flex justify-between py-0.5">
                     <span className="text-ink-muted">Bộ phận / Team:</span>
@@ -1213,6 +1315,28 @@ export const EmployeeManagementPage: React.FC = () => {
                   <div className="flex justify-between py-0.5">
                     <span className="text-ink-muted">Quyền hạn hệ thống:</span>
                     <Badge variant="accent">{viewDetailEmp.role}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box: Thâm niên & quỹ phép năm — suy ra từ ngày onboard */}
+              <div className="p-3 bg-surface rounded-xl border border-line space-y-2 md:col-span-2">
+                <div className="font-bold text-ink flex items-center gap-1.5 border-b border-line pb-1 text-[11px] uppercase tracking-wider text-ink-muted">
+                  <Calendar className="w-3.5 h-3.5 text-accent" />
+                  <span>Thâm Niên &amp; Quỹ Phép Năm</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-[11px]">
+                  <div className="p-2 bg-canvas rounded-lg border border-line">
+                    <span className="text-ink-muted block text-[10px]">Thâm niên</span>
+                    <strong className="text-ink">{viewDetailEmp.seniorityYears ?? 0} năm {viewDetailEmp.seniorityMonths ?? 0} tháng</strong>
+                  </div>
+                  <div className="p-2 bg-canvas rounded-lg border border-line">
+                    <span className="text-ink-muted block text-[10px]">Phép thâm niên</span>
+                    <strong className="text-ink">+{viewDetailEmp.seniorityDays ?? '0'} ngày</strong>
+                  </div>
+                  <div className="p-2 bg-canvas rounded-lg border border-line">
+                    <span className="text-ink-muted block text-[10px]">Tổng phép năm (tích lũy)</span>
+                    <strong className="text-accent">{viewDetailEmp.totalAnnualDays ?? '0'} ngày</strong>
                   </div>
                 </div>
               </div>

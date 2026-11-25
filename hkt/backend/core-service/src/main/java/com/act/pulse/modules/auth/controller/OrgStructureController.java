@@ -16,6 +16,7 @@ import com.act.pulse.modules.attendance.repository.NotificationRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.RuleRepository;
 import com.act.pulse.modules.attendance.repository.ShiftRepository;
+import com.act.pulse.modules.attendance.service.LeaveAccrualService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.entity.User;
@@ -61,6 +62,9 @@ public class OrgStructureController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private LeaveAccrualService leaveAccrualService;
 
     @Autowired
     private RequestRepository requestRepository;
@@ -133,6 +137,10 @@ public class OrgStructureController {
         private String approvalChain; // e.g. "Nguyễn Thanh Tùng (05ACT) → Quản Trị Viên (Admin)"
         private String hireDate;
         private String joinDate;
+        private Integer seniorityYears;
+        private Integer seniorityMonths;
+        private String seniorityDays;
+        private String totalAnnualDays;
         private boolean mustChangePassword;
         private boolean faceEnrolled;
         private String defaultPassword;
@@ -154,6 +162,8 @@ public class OrgStructureController {
         private String role;
         private String password;
         private boolean generateRandomPassword;
+        /** Ngày onboard — căn cứ tính thâm niên & cộng phép năm/thâm niên. Null = hôm nay. */
+        private LocalDate joinedDate;
     }
 
     @Data
@@ -306,6 +316,10 @@ public class OrgStructureController {
             managerName = "Ban Quản Trị";
         }
 
+        // Thâm niên & quỹ phép suy ra từ ngày onboard — cùng nguồn tính với lúc tạo nhân viên.
+        Map<String, Object> leave = leaveAccrualService.preview(
+                u.getHireDate() != null ? u.getHireDate() : u.getJoinedDate(), u.getRole());
+
         return EmployeeDto.builder()
                 .id(u.getId().toString())
                 .employeeCode(u.getEmployeeCode())
@@ -324,9 +338,24 @@ public class OrgStructureController {
                 .hireDate(u.getHireDate() != null ? u.getHireDate().toString()
                         : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
                 .joinDate(u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01")
+                .seniorityYears((Integer) leave.get("seniorityYears"))
+                .seniorityMonths((Integer) leave.get("seniorityMonths"))
+                .seniorityDays(fmtDays(leave.get("seniorityDays")))
+                .totalAnnualDays(fmtDays(leave.get("totalAnnualDays")))
                 .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
                 .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
                 .build();
+    }
+
+    /** Hiển thị số ngày gọn: 12.00 → "12", 1.50 → "1.5". */
+    private String fmtDays(Object value) {
+        if (value == null) return "0";
+        try {
+            return new java.math.BigDecimal(String.valueOf(value))
+                    .stripTrailingZeros().toPlainString();
+        } catch (Exception e) {
+            return String.valueOf(value);
+        }
     }
 
     private void saveAudit(String action, String entity, String details) {
@@ -531,6 +560,8 @@ public class OrgStructureController {
                 approvalChain = "⚠ Chưa có quản lý trực tiếp";
             }
 
+            Map<String, Object> leave = leaveAccrualService.preview(
+                    u.getHireDate() != null ? u.getHireDate() : u.getJoinedDate(), u.getRole());
             EmployeeDto dto = EmployeeDto.builder()
                     .id(u.getId().toString())
                     .employeeCode(u.getEmployeeCode())
@@ -549,6 +580,10 @@ public class OrgStructureController {
                     .hireDate(u.getHireDate() != null ? u.getHireDate().toString()
                             : (u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01"))
                     .joinDate(u.getJoinedDate() != null ? u.getJoinedDate().toString() : "2023-01-01")
+                    .seniorityYears((Integer) leave.get("seniorityYears"))
+                    .seniorityMonths((Integer) leave.get("seniorityMonths"))
+                    .seniorityDays(fmtDays(leave.get("seniorityDays")))
+                    .totalAnnualDays(fmtDays(leave.get("totalAnnualDays")))
                     .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
                     .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
                     .build();
@@ -602,6 +637,24 @@ public class OrgStructureController {
         res.put("currentPage", page);
 
         return ApiResponse.ok(res, "Lấy danh sách nhân viên thành công");
+    }
+
+    @GetMapping("/admin/users/onboard-preview")
+    @Operation(summary = "Xem trước thâm niên, phép thâm niên & tổng phép năm theo ngày onboard (S40)")
+    public ApiResponse<Map<String, Object>> onboardPreview(
+            @RequestParam(required = false) String joinedDate,
+            @RequestParam(required = false) String role) {
+        LocalDate joined;
+        try {
+            joined = joinedDate == null || joinedDate.isBlank() ? LocalDate.now() : LocalDate.parse(joinedDate);
+        } catch (Exception e) {
+            throw new RuntimeException("Ngày vào làm không hợp lệ (định dạng yyyy-MM-dd): " + joinedDate);
+        }
+        if (joined.isBefore(LocalDate.of(1950, 1, 1))) {
+            throw new RuntimeException("Ngày vào làm không hợp lệ: " + joined);
+        }
+        return ApiResponse.ok(leaveAccrualService.preview(joined, role),
+                "Xem trước phép theo ngày onboard");
     }
 
     @PostMapping("/admin/users")
@@ -666,6 +719,13 @@ public class OrgStructureController {
                         + " — mã " + byEmail.get().getEmployeeCode() + ") — vui lòng dùng email khác");
             }
         }
+        // Ngày onboard là căn cứ xác định thâm niên, phép thâm niên và tổng phép năm.
+        // Bắt buộc có ý nghĩa nghiệp vụ; nếu client cũ không gửi thì mặc định hôm nay.
+        LocalDate onboard = req.getJoinedDate() != null ? req.getJoinedDate() : LocalDate.now();
+        if (onboard.isBefore(LocalDate.of(1950, 1, 1))) {
+            throw new RuntimeException("Ngày vào làm không hợp lệ: " + onboard);
+        }
+
         User userToSave;
         String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
                 ? req.getPassword().trim()
@@ -688,11 +748,20 @@ public class OrgStructureController {
                 .status("ACTIVE")
                 .mustChangePassword(true)
                 .faceEnrolled(false)
-                .hireDate(LocalDate.now())
-                .joinedDate(LocalDate.now())
+                .hireDate(onboard)
+                .joinedDate(onboard)
                 .build();
 
         userRepository.save(userToSave);
+
+        // Cộng bù sổ phép theo ngày onboard (phép năm đã tích lũy + mốc thâm niên đã đạt).
+        // Lỗi cộng phép không được chặn việc tạo tài khoản — HR vẫn có thể điều chỉnh sau.
+        try {
+            leaveAccrualService.backfillForOnboarding(userToSave);
+        } catch (Exception ex) {
+            System.err.println("[createEmployee] Không cộng bù được phép cho "
+                    + userToSave.getEmployeeCode() + ": " + ex.getMessage());
+        }
 
         // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
         boolean emailSent = false;
@@ -745,6 +814,7 @@ public class OrgStructureController {
                 .build();
         auditLogRepository.save(audit);
 
+        Map<String, Object> createdLeave = leaveAccrualService.preview(onboard, userToSave.getRole());
         EmployeeDto dto = EmployeeDto.builder()
                 .id(userToSave.getId().toString())
                 .employeeCode(userToSave.getEmployeeCode())
@@ -766,8 +836,12 @@ public class OrgStructureController {
                 .defaultPassword(rawPassword)
                 .emailSent(emailSent)
                 .emailStatusMessage(emailStatusMessage)
-                .joinDate(LocalDate.now().toString())
-                .hireDate(LocalDate.now().toString())
+                .joinDate(onboard.toString())
+                .hireDate(onboard.toString())
+                .seniorityYears((Integer) createdLeave.get("seniorityYears"))
+                .seniorityMonths((Integer) createdLeave.get("seniorityMonths"))
+                .seniorityDays(fmtDays(createdLeave.get("seniorityDays")))
+                .totalAnnualDays(fmtDays(createdLeave.get("totalAnnualDays")))
                 .build();
 
         return ApiResponse.ok(dto, "Đã tạo nhân viên " + userToSave.getFullName() + " thành công! Mật khẩu mặc định: "

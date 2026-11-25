@@ -40,6 +40,7 @@ public class CronController {
     private final NotificationDigestJob digestJob;
     private final com.act.pulse.modules.notification.service.NotificationReminderJob reminderJob;
     private final com.act.pulse.modules.notification.service.NotificationCleanupJob cleanupJob;
+    private final com.act.pulse.modules.attendance.service.LeaveAccrualService leaveAccrualService;
 
     @PostMapping("/check-sla-escalation")
     @Operation(summary = "Kiểm tra SLA 48h và tự động chuyển cấp duyệt (CORE-TODO-05)")
@@ -297,34 +298,15 @@ public class CronController {
     @Operation(summary = "Cron cộng phép thâm niên theo Luật Lao động (ATT-LEAVE-03)")
     public ApiResponse<Map<String, Object>> cronYearlySeniority() {
         int granted = 0;
-        LocalDate today = LocalDate.now();
-        Map<String, Object> rule = ruleService.get("leave_seniority");
-        BigDecimal days;
-        try { days = new BigDecimal(String.valueOf(rule.getOrDefault("days_per_interval", 1))); }
-        catch (Exception e) { days = BigDecimal.ONE; }
         for (User user : userRepository.findAll()) {
-            if (!active(user) || user.getJoinedDate() == null) continue;
-            int years = today.getYear() - user.getJoinedDate().getYear();
-            if (today.getMonthValue() < user.getJoinedDate().getMonthValue()
-                    || (today.getMonthValue() == user.getJoinedDate().getMonthValue()
-                        && today.getDayOfMonth() < user.getJoinedDate().getDayOfMonth())) {
-                years--;
-            }
-            if (years < 2 || years % 2 != 0) continue;
-            if (today.getMonthValue() != user.getJoinedDate().getMonthValue()
-                    || today.getDayOfMonth() != user.getJoinedDate().getDayOfMonth()) continue;
-            String tag = "Cộng phép thâm niên " + years + " năm";
-            boolean already = leaveLedgerRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
-                    .anyMatch(e -> e.getReason() != null && e.getReason().contains(tag));
-            if (already) continue;
-            BigDecimal prev = sumAll(user.getId());
-            leaveLedgerRepository.save(LeaveLedgerEntry.builder()
-                    .userId(user.getId()).leaveType("AL").action("GRANT").amount(days)
-                    .balanceAfter(prev.add(days)).reason(tag)
-                    .performedBySystem(true).build());
-            granted++;
+            if (!active(user)) continue;
+            // Reconcile thay vì chỉ cấp đúng ngày kỷ niệm: bù các mốc thâm niên đã đạt
+            // nhưng chưa có trong sổ phép (nhân viên onboard quá khứ, hoặc cron lỡ chạy).
+            granted += leaveAccrualService.reconcileSeniority(user);
         }
-        return ApiResponse.ok(Map.of("eligibleEmployees", granted, "daysAdded", days), "Cộng phép thâm niên hoàn tất");
+        return ApiResponse.ok(Map.of("eligibleEmployees", granted,
+                "daysPerInterval", leaveAccrualService.daysPerInterval()),
+                "Cộng phép thâm niên hoàn tất");
     }
 
     /** Catch-up khi khởi động: cộng tháng hiện tại nếu đã qua ngày cộng, và áp cắt tồn theo ngày hiện tại. */
