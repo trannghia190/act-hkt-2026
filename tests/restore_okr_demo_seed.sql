@@ -7,6 +7,21 @@
 BEGIN;
 
 -- 1. Chu kỳ 2026 — cấu hình 5 phase như seed gốc.
+-- 0. Dọn chu kỳ 2026 tạm (job provisioning sinh ra sau khi chu kỳ bị xoá) để dựng
+--    lại đúng bản seed gốc. Nếu bản seed đã có thì giữ nguyên.
+DO $$
+DECLARE
+    seeded CONSTANT uuid := 'c0000000-0000-0000-0000-000000002026';
+BEGIN
+    IF EXISTS (SELECT 1 FROM okr_cycles WHERE cycle_year = 2026 AND id <> seeded) THEN
+        -- Xoá hồ sơ của các chu kỳ tạm trước (items/checkin/audit con cascade).
+        DELETE FROM okr_reviews
+        WHERE cycle_id IN (SELECT id FROM okr_cycles WHERE cycle_year = 2026 AND id <> seeded);
+        DELETE FROM okr_cycles WHERE cycle_year = 2026 AND id <> seeded;
+    END IF;
+END $$;
+
+-- 1. Chu kỳ 2026 — cấu hình 5 phase như seed gốc.
 INSERT INTO okr_cycles (id, name, cycle_year, phases, checkin_interval, scale_min, scale_max, score_categories, status)
 VALUES (
     'c0000000-0000-0000-0000-000000002026',
@@ -20,7 +35,14 @@ VALUES (
       {"key": "summary", "name": "Tổng hợp & Báo cáo", "months": "Dec", "start_date": "2026-12-16", "due_date": "2026-12-31", "status": "upcoming"}
     ]'::jsonb,
     'MONTHLY', 1, 5, 2, 'active'
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    phases = EXCLUDED.phases,
+    checkin_interval = EXCLUDED.checkin_interval,
+    scale_min = EXCLUDED.scale_min,
+    scale_max = EXCLUDED.scale_max,
+    score_categories = EXCLUDED.score_categories,
+    status = 'active';
 
 -- 2. Hồ sơ OKR của 136ACT (nhân viên demo) và 05ACT (quản lý demo — nguồn gợi ý C14).
 INSERT INTO okr_reviews (
