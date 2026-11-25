@@ -38,15 +38,15 @@ public class OKRCheckInReminderJob {
     @Scheduled(cron = "0 0 8 * * *")
     public void remindUpcomingCheckIn() {
         OKRCycle cycle = phaseService.cycle(null).orElse(null);
-        if (cycle == null || !phaseService.isOpen(cycle, OKRPhaseService.CHECKIN)) return;
+        if (cycle == null) return;
 
         LocalDate today = LocalDate.now();
-        LocalDate deadline = phaseService.currentPeriodDeadline(cycle);
-        long daysLeft = ChronoUnit.DAYS.between(today, deadline);
-        if (daysLeft < 0 || daysLeft > REMIND_DAYS_BEFORE) return;
-
         String period = phaseService.currentPeriod(cycle);
         for (OKRReview review : okrReviewRepository.findByCycleYear(cycle.getCycleYear())) {
+            if (phaseService.updateWindow(cycle, review) == null) continue; // cùng điều kiện với API check-in
+            LocalDate deadline = phaseService.currentPeriodDeadline(cycle, review);
+            long daysLeft = ChronoUnit.DAYS.between(today, deadline);
+            if (daysLeft < 0 || daysLeft > REMIND_DAYS_BEFORE) continue;
             if (!management.isCurrentlyApproved(review)) continue; // cùng điều kiện với API check-in
             var items = okrItemRepository.findByReviewIdAndDeletedAtIsNullOrderById(review.getId());
             if (items.isEmpty()) continue;

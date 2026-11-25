@@ -71,6 +71,8 @@ interface DetailData extends MidYearRow {
   auditTrail: AuditRow[];
   midYearWritable?: boolean;
   midYearLockReason?: string | null;
+  midYearUpdateOverride?: boolean;
+  midYearManagerWindowOpen?: boolean;
 }
 
 const statusLabel = (status: string) => {
@@ -169,6 +171,23 @@ export const MidYearReviewPage: React.FC = () => {
       showToast(err.message || 'Không lưu được biên bản');
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const toggleAllowUpdate = async (enabled: boolean) => {
+    if (!selectedId) return;
+    try {
+      const res = await fetch(`/api/v1/okr/reviews/${selectedId}/allow-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phase: 'MIDYEAR', enabled }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Không đổi được quyền cập nhật');
+      showToast(json?.message || 'Đã cập nhật quyền cập nhật cho nhân viên');
+      refresh();
+    } catch (err: any) {
+      showToast(err.message || 'Không đổi được quyền cập nhật');
     }
   };
 
@@ -391,6 +410,20 @@ export const MidYearReviewPage: React.FC = () => {
                     {detail.gap != null && <Badge variant={Math.abs(detail.gap) > 0.2 ? 'danger' : 'ok'}>Lệch: {detail.gap > 0 ? '+' : ''}{detail.gap}</Badge>}
                   </div>
                 </div>
+                {detail.midYearManagerWindowOpen && (
+                  <label className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={!!detail.midYearUpdateOverride}
+                      onChange={(e) => toggleAllowUpdate(e.target.checked)}
+                    />
+                    <span>
+                      Cho phép nhân viên cập nhật tiến độ trong lúc Quản lý review
+                      <span className="block text-[11px] text-ink-muted">Mặc định khoá khi đã sang cửa sổ Quản lý; bật để nhân viên bổ sung số liệu trong lúc chờ nhận xét.</span>
+                    </span>
+                  </label>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs">
                     <div className="text-ink-muted">Business</div>

@@ -67,7 +67,7 @@ public class OKRCycleController {
 
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
-    @Operation(summary = "Tạo/cập nhật chu kỳ OKR theo năm")
+    @Operation(summary = "Tạo chu kỳ OKR cho một năm (mỗi năm chỉ 1 chu kỳ)")
     public ResponseEntity<ApiResponse<Map<String, Object>>> save(@RequestBody Map<String, Object> body) {
         if (!CurrentUser.isHr()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Chỉ HR/Admin mới được cấu hình chu kỳ OKR"));
@@ -75,10 +75,15 @@ public class OKRCycleController {
         Integer year = intValue(body.get("year"));
         if (year == null) return ResponseEntity.badRequest().body(ApiResponse.error("Năm chu kỳ là bắt buộc"));
 
-        OKRCycle cycle = cycleRepository.findFirstByCycleYearAndStatusOrderByCreatedAtDesc(year, "active")
-                .or(() -> cycleRepository.findAllByOrderByCycleYearDesc().stream()
-                        .filter(c -> year.equals(c.getCycleYear())).findFirst())
-                .orElseGet(OKRCycle::new);
+        // Mỗi năm chỉ có đúng 1 chu kỳ OKR — tạo trùng năm phải sửa trên chu kỳ đã có (PUT).
+        OKRCycle existing = cycleRepository.findAllByOrderByCycleYearDesc().stream()
+                .filter(c -> year.equals(c.getCycleYear())).findFirst().orElse(null);
+        if (existing != null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Năm " + year + " đã có chu kỳ \"" + existing.getName()
+                            + "\" — mỗi năm chỉ có 1 chu kỳ OKR. Mở chu kỳ đó để cập nhật"));
+        }
+        OKRCycle cycle = new OKRCycle();
 
         entityManager.clear(); // detach để tránh Hibernate flush varchar vào cột jsonb
         String error = apply(cycle, body, year);
@@ -86,15 +91,9 @@ public class OKRCycleController {
 
         if (cycle.getId() == null) cycle.setId(UUID.randomUUID());
         if ("active".equalsIgnoreCase(cycle.getStatus())) {
-            for (OKRCycle other : cycleRepository.findAllByOrderByCycleYearDesc()) {
-                if (!cycle.getId().equals(other.getId()) && year.equals(other.getCycleYear())
-                        && "active".equalsIgnoreCase(other.getStatus())) {
-                    cycleRepository.updateStatusNative(other.getId(), "closed");
-                }
-            }
+            assertNoOtherActiveCycle(cycle.getId());
         }
-        boolean isNew = cycleRepository.findById(cycle.getId()).isEmpty();
-        persistCycle(cycle, isNew);
+        persistCycle(cycle, true);
         OKRCycle saved = cycleRepository.findById(cycle.getId()).orElse(cycle);
         management.audit(null, saved.getId(), null, "SAVE_CYCLE", "cycle", null,
                 saved.getName() + " / " + saved.getStatus(), "HR cấu hình chu kỳ OKR");
@@ -113,6 +112,15 @@ public class OKRCycleController {
         if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
         Integer year = intValue(body.get("year"));
         if (year == null) year = cycle.getCycleYear();
+        // Đổi năm sang năm đã có chu kỳ khác sẽ phá quy tắc "mỗi năm 1 chu kỳ".
+        final Integer targetYear = year;
+        OKRCycle sameYear = cycleRepository.findAllByOrderByCycleYearDesc().stream()
+                .filter(c -> !c.getId().equals(cycle.getId()) && targetYear.equals(c.getCycleYear()))
+                .findFirst().orElse(null);
+        if (sameYear != null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                    "Năm " + targetYear + " đã có chu kỳ \"" + sameYear.getName() + "\" — mỗi năm chỉ có 1 chu kỳ OKR"));
+        }
         entityManager.clear();
         String error = apply(cycle, body, year);
         if (error != null) return ResponseEntity.badRequest().body(ApiResponse.error(error));
@@ -163,6 +171,77 @@ public class OKRCycleController {
                 : reason + " (bỏ qua: " + String.join("; ", blockers) + ")";
         management.audit(null, cycle.getId(), null, "LOCK_CYCLE", "status", "active", "closed", auditReason);
         return ResponseEntity.ok(ApiResponse.ok(true, "Đã khoá chu kỳ OKR"));
+    }
+
+    @PostMapping("/{id}/activate")
+    @org.springframework.transaction.annotation.Transactional
+    @Operation(summary = "Kích hoạt chu kỳ nháp (draft → active)")
+    public ResponseEntity<ApiResponse<Boolean>> activate(@PathVariable UUID id) {
+        if (!CurrentUser.isHr()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Chỉ HR/Admin mới được kích hoạt chu kỳ"));
+        }
+        OKRCycle cycle = cycleRepository.findById(id).orElse(null);
+        if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
+        if ("active".equalsIgnoreCase(cycle.getStatus())) {
+            throw OKRRuleException.conflict("Chu kỳ đang hoạt động rồi");
+        }
+        if ("closed".equalsIgnoreCase(cycle.getStatus())) {
+            throw OKRRuleException.conflict("Chu kỳ đã chốt & khoá — dùng Mở lại kèm lý do nếu muốn tiếp tục");
+        }
+        assertNoOtherActiveCycle(cycle.getId());
+        entityManager.clear();
+        cycleRepository.updateStatusNative(cycle.getId(), "active");
+        management.audit(null, cycle.getId(), null, "ACTIVATE_CYCLE", "status", "draft", "active",
+                "HR kích hoạt chu kỳ OKR " + cycle.getCycleYear());
+        cycleRepository.findById(cycle.getId()).ifPresent(provisioning::provision);
+        return ResponseEntity.ok(ApiResponse.ok(true, "Đã kích hoạt chu kỳ OKR"));
+    }
+
+    @PostMapping("/{id}/deactivate")
+    @org.springframework.transaction.annotation.Transactional
+    @Operation(summary = "Tạm ẩn chu kỳ (active → draft), giữ nguyên dữ liệu")
+    public ResponseEntity<ApiResponse<Boolean>> deactivate(@PathVariable UUID id) {
+        if (!CurrentUser.isHr()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Chỉ HR/Admin mới được tạm ẩn chu kỳ"));
+        }
+        OKRCycle cycle = cycleRepository.findById(id).orElse(null);
+        if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
+        if (!"active".equalsIgnoreCase(cycle.getStatus())) {
+            throw OKRRuleException.conflict("Chỉ tạm ẩn được chu kỳ đang hoạt động");
+        }
+        // Tạm ẩn để trống trạng thái active là hợp lệ: Kích hoạt lại hoặc Chốt & khoá bất cứ lúc nào.
+        entityManager.clear();
+        cycleRepository.updateStatusNative(cycle.getId(), "draft");
+        management.audit(null, cycle.getId(), null, "DEACTIVATE_CYCLE", "status", "active", "draft",
+                "HR tạm ẩn chu kỳ OKR " + cycle.getCycleYear());
+        return ResponseEntity.ok(ApiResponse.ok(true, "Đã tạm ẩn chu kỳ OKR"));
+    }
+
+    @DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    @Operation(summary = "Xoá chu kỳ OKR — giải phóng năm để tạo lại")
+    public ResponseEntity<ApiResponse<Boolean>> delete(@PathVariable UUID id) {
+        if (!CurrentUser.isHr()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Chỉ HR/Admin mới được xoá chu kỳ"));
+        }
+        OKRCycle cycle = cycleRepository.findById(id).orElse(null);
+        if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
+        if ("active".equalsIgnoreCase(cycle.getStatus())) {
+            throw OKRRuleException.conflict("Chu kỳ đang hoạt động — tạm ẩn hoặc chốt & khoá trước khi xoá");
+        }
+        Integer year = cycle.getCycleYear();
+        String name = cycle.getName();
+        long reviews = reviewRepository.countByCycleYear(year);
+        entityManager.clear();
+        // Xoá mọi hồ sơ OKR của năm trước (items/checkin/midyear/audit con tự cascade),
+        // để tạo lại chu kỳ cùng năm không bị lẫn dữ liệu cũ.
+        cycleRepository.deleteReviewsByYear(year);
+        cycleRepository.deleteCycleNative(id);
+        management.audit(null, null, null, "DELETE_CYCLE", "cycle", name + " / " + year,
+                "đã xoá", "HR xoá chu kỳ OKR (kèm " + reviews + " hồ sơ) để giải phóng năm " + year);
+        return ResponseEntity.ok(ApiResponse.ok(true,
+                "Đã xoá chu kỳ OKR " + year + (reviews > 0 ? " cùng " + reviews + " hồ sơ OKR" : "")
+                        + " — năm " + year + " giờ có thể tạo chu kỳ mới"));
     }
 
     @PostMapping("/{id}/director-review")
@@ -227,6 +306,8 @@ public class OKRCycleController {
         boolean cycleClosed = "closed".equalsIgnoreCase(cycle.getStatus());
         if (phaseKey.isEmpty()) {
             if (!cycleClosed) throw OKRRuleException.badRequest("Chọn phase cần mở lại");
+            // Mở lại = đưa chu kỳ cũ về active, nên phải đảm bảo không còn chu kỳ nào đang active.
+            assertNoOtherActiveCycle(cycle.getId());
             cycle.setStatus("active");
             persistCycle(cycle, false);
             cycleRepository.clearDirectorReview(cycle.getId());
@@ -245,6 +326,8 @@ public class OKRCycleController {
         if (newDue == null && (currentDue == null || currentDue.isBefore(LocalDate.now()))) {
             throw OKRRuleException.badRequest("Phase đã quá hạn — cần nhập hạn chót mới khi mở lại");
         }
+        // Mở lại phase trên chu kỳ đã chốt cũng làm chu kỳ active lại → vẫn phải giữ quy tắc 1 chu kỳ active.
+        if (cycleClosed) assertNoOtherActiveCycle(cycle.getId());
         cycle.setStatus("active");
         cycle.setPhases(reopenPhase(cycle.getPhases(), phaseKey, payload.get("dueDate")));
         persistCycle(cycle, false);
@@ -277,6 +360,9 @@ public class OKRCycleController {
                 phase.put("name", str(p.get("name")));
                 phase.put("start_date", normalizeDate(p.get("startDate") != null ? p.get("startDate") : p.get("start_date")));
                 phase.put("due_date", normalizeDate(p.get("dueDate") != null ? p.get("dueDate") : p.get("due_date")));
+                // Cửa sổ Quản lý duyệt/nhận xét/chấm điểm (sau cửa sổ nhân viên).
+                phase.put("review_start", normalizeDate(p.get("reviewStart") != null ? p.get("reviewStart") : p.get("review_start")));
+                phase.put("review_due", normalizeDate(p.get("reviewDue") != null ? p.get("reviewDue") : p.get("review_due")));
                 // Trạng thái phase tính theo ngày; chỉ lưu "locked" khi phase bị khoá cứng.
                 String stored = str(p.get("status")).toLowerCase();
                 phase.put("status", "locked".equals(stored) || "closed".equals(stored) ? "locked" : "scheduled");
@@ -284,6 +370,7 @@ public class OKRCycleController {
             }
             Set<String> keys = new HashSet<>();
             Map<String, LocalDate> startByKey = new HashMap<>();
+            Map<String, LocalDate> endByKey = new HashMap<>();
             for (Map<String, Object> ph : normalized) {
                 String key = String.valueOf(ph.get("key")).toLowerCase();
                 if (!OKRPhaseService.REQUIRED_KEYS.contains(key)) return "Phase không hợp lệ: " + key + " (chỉ nhận " + OKRPhaseService.REQUIRED_KEYS + ")";
@@ -294,7 +381,24 @@ public class OKRCycleController {
                 if (start == null || due == null) return "Phase " + key + " phải có ngày bắt đầu và hạn chót";
                 if (start.isAfter(due)) return "Phase " + key + ": ngày bắt đầu phải trước hạn chót";
                 if (start.getYear() < year - 1 || due.getYear() > year + 1) return "Phase " + key + " nằm ngoài năm chu kỳ " + year;
+                LocalDate reviewStart = OKRPhaseService.parseDate(ph.get("review_start"));
+                LocalDate reviewDue = OKRPhaseService.parseDate(ph.get("review_due"));
+                if ((reviewStart == null) != (reviewDue == null)) {
+                    return "Phase " + key + ": cửa sổ Quản lý phải có đủ ngày bắt đầu và hạn chót";
+                }
+                if (reviewStart != null) {
+                    // Mỗi thời điểm chỉ 1 giai đoạn mở → cửa sổ QL phải bắt đầu SAU khi cửa sổ NV đóng.
+                    if (!reviewStart.isAfter(due)) {
+                        return "Phase " + key + ": cửa sổ Quản lý phải bắt đầu sau hạn chót nhân viên (" + due
+                                + ") — mỗi thời điểm chỉ được mở 1 giai đoạn OKR";
+                    }
+                    if (reviewStart.isAfter(reviewDue)) return "Phase " + key + ": cửa sổ Quản lý phải có ngày bắt đầu trước hạn chót";
+                    if (reviewStart.getYear() < year - 1 || reviewDue.getYear() > year + 1) {
+                        return "Phase " + key + ": cửa sổ Quản lý nằm ngoài năm chu kỳ " + year;
+                    }
+                }
                 startByKey.put(key, start);
+                endByKey.put(key, reviewDue != null ? reviewDue : due);
                 // Không lưu "months" — API tự sinh label từ start_date/due_date khi đọc.
             }
             if (!keys.containsAll(OKRPhaseService.REQUIRED_KEYS)) {
@@ -302,15 +406,16 @@ public class OKRCycleController {
                 missing.removeAll(keys);
                 return "Thiếu phase: " + missing;
             }
-            // Thứ tự bắt đầu phải đúng: setup → checkin → midyear → final → summary.
-            // Các phase được phép chồng khoảng thời gian, chỉ không được đảo thứ tự bắt đầu.
+            // Các phase phải nối tiếp nhau, không chồng lấn: setup → midyear → final.
+            // Một thời điểm chỉ được mở 1 phase (NV hoặc QL) nên phase trước phải kết thúc trước khi phase sau bắt đầu.
             for (int i = 1; i < OKRPhaseService.REQUIRED_KEYS.size(); i++) {
                 String prev = OKRPhaseService.REQUIRED_KEYS.get(i - 1);
                 String cur = OKRPhaseService.REQUIRED_KEYS.get(i);
-                LocalDate prevStart = startByKey.get(prev);
+                LocalDate prevEnd = endByKey.get(prev);
                 LocalDate curStart = startByKey.get(cur);
-                if (prevStart != null && curStart != null && prevStart.isAfter(curStart)) {
-                    return "Thứ tự phase không hợp lệ: " + prev + " phải bắt đầu trước " + cur;
+                if (prevEnd != null && curStart != null && !prevEnd.isBefore(curStart)) {
+                    return "Cửa sổ " + prev + " kết thúc " + prevEnd + " phải trước khi " + cur
+                            + " bắt đầu " + curStart + " — mỗi thời điểm chỉ được mở 1 giai đoạn OKR";
                 }
             }
             try {
@@ -368,19 +473,35 @@ public class OKRCycleController {
         cycle.setScaleMax(max);
         cycle.setScoreCategories(2);
         cycle.setAlignmentEnabled(Boolean.TRUE.equals(body.get("alignmentEnabled")));
-        String status = str(body.get("status")).isEmpty() ? "active" : str(body.get("status")).toLowerCase();
-        if (!"active".equals(status) && !"closed".equals(status)) return "Trạng thái chu kỳ chỉ nhận active/closed";
+        // Giữ nguyên trạng thái hiện tại nếu client không gửi — sửa cấu hình không được tự kích hoạt chu kỳ nháp.
+        String requested = str(body.get("status")).toLowerCase();
+        String status = requested.isEmpty()
+                ? (cycle.getStatus() == null ? "draft" : cycle.getStatus().toLowerCase())
+                : requested;
+        if (!"active".equals(status) && !"draft".equals(status) && !"closed".equals(status)) {
+            return "Trạng thái chu kỳ chỉ nhận active/draft/closed";
+        }
         if ("closed".equals(status) && !"closed".equalsIgnoreCase(cycle.getStatus())) {
             return "Khoá chu kỳ phải dùng nút Chốt & khoá";
         }
-        if ("active".equals(status) && "closed".equalsIgnoreCase(cycle.getStatus()) && cycle.getId() != null) {
-            return "Chu kỳ đã khoá — dùng chức năng Mở lại kèm lý do";
+        if (cycle.getId() != null && !status.equalsIgnoreCase(cycle.getStatus())) {
+            return "Đổi trạng thái chu kỳ phải dùng nút Kích hoạt / Tạm ẩn / Chốt & khoá";
         }
         String interval = str(body.get("checkinInterval")).isEmpty() ? "MONTHLY" : str(body.get("checkinInterval")).toUpperCase();
         if (!"MONTHLY".equals(interval) && !"QUARTERLY".equals(interval)) return "Tần suất check-in chỉ nhận MONTHLY/QUARTERLY";
         cycle.setCheckinInterval(interval);
         cycle.setStatus(status);
         return null;
+    }
+
+    /** Quy tắc hệ thống: tối đa 1 chu kỳ OKR ở trạng thái active tại một thời điểm (không giới hạn theo năm). */
+    private void assertNoOtherActiveCycle(UUID excludeId) {
+        OKRCycle active = cycleRepository.findFirstByStatusOrderByCreatedAtDesc("active").orElse(null);
+        if (active != null && !active.getId().equals(excludeId)) {
+            throw OKRRuleException.conflict("Đang có chu kỳ hoạt động: \"" + active.getName()
+                    + "\" (năm " + active.getCycleYear()
+                    + ") — chỉ 1 chu kỳ OKR được kích hoạt tại một thời điểm. Tạm ẩn chu kỳ đó trước");
+        }
     }
 
     private void persistCycle(OKRCycle cycle, boolean isNew) {

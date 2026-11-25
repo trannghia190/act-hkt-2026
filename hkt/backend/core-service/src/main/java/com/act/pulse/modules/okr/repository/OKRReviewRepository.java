@@ -12,5 +12,6 @@ public interface OKRReviewRepository extends JpaRepository<OKRReview, UUID> {
     Optional<OKRReview> findByUserIdAndCycleYear(UUID userId, Integer cycleYear);
     java.util.List<OKRReview> findByManagerIdAndCycleYear(UUID managerId, Integer cycleYear);
     java.util.List<OKRReview> findByCycleYear(Integer cycleYear);
+    long countByCycleYear(Integer cycleYear);
     java.util.List<OKRReview> findByManagerId(UUID managerId);
 }

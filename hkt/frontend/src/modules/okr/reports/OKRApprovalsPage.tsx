@@ -23,6 +23,7 @@ interface TeamApprovalItem {
   status: 'DRAFT' | 'SUBMITTED' | 'LOCKED' | 'REOPENED' | 'RETURNED';
   submittedDate: string | null;
   submittedAt?: string;
+  selfDirection?: string;
   selfProposal?: string;
   selfImprovementArea?: string;
   businessItems: OKRItem[];
@@ -341,13 +342,21 @@ export const OKRApprovalsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Self proposal */}
-            {(selectedItem.selfProposal || selectedItem.selfImprovementArea) && (
+            {/* Định hướng & đề xuất của kỳ */}
+            {(selectedItem.selfDirection || selectedItem.selfProposal || selectedItem.selfImprovementArea) && (
               <div className="p-3.5 bg-canvas rounded-xl border border-line text-xs space-y-2">
-                <div>
-                  <span className="font-bold text-purple-600">Self Proposal Năm Sau:</span>
-                  <p className="text-ink-secondary">{selectedItem.selfProposal || '—'}</p>
-                </div>
+                {selectedItem.selfDirection && (
+                  <div>
+                    <span className="font-bold text-purple-600">Định hướng phát triển:</span>
+                    <p className="text-ink-secondary">{selectedItem.selfDirection}</p>
+                  </div>
+                )}
+                {selectedItem.selfProposal && (
+                  <div>
+                    <span className="font-bold text-purple-600">Đề xuất:</span>
+                    <p className="text-ink-secondary">{selectedItem.selfProposal}</p>
+                  </div>
+                )}
                 {selectedItem.selfImprovementArea && (
                   <div>
                     <span className="font-bold text-purple-600">Điểm cần cải thiện:</span>

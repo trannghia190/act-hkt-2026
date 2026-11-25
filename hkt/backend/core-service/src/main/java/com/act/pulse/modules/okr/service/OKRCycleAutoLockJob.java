@@ -38,7 +38,11 @@ public class OKRCycleAutoLockJob {
                 for (Map<String, Object> phase : phases) {
                     String stored = String.valueOf(phase.get("status")).toLowerCase();
                     if (OKRPhaseService.LOCKED.equals(stored)) continue;
-                    LocalDate due = OKRPhaseService.parseDate(phase.get("due_date"));
+                    // Phase chỉ khoá cứng khi cả cửa sổ NV (due_date) và cửa sổ QL (review_due) đã hết.
+                    LocalDate employeeDue = OKRPhaseService.parseDate(phase.get("due_date"));
+                    LocalDate reviewDue = OKRPhaseService.parseDate(phase.get("review_due"));
+                    LocalDate due = reviewDue != null && (employeeDue == null || reviewDue.isAfter(employeeDue))
+                            ? reviewDue : employeeDue;
                     if (due != null && due.isBefore(today)) {
                         phase.put("status", OKRPhaseService.LOCKED);
                         changed = true;

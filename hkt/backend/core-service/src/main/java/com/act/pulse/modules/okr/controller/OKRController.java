@@ -57,7 +57,7 @@ public class OKRController {
     @AllArgsConstructor
     public static class OKRDashboardDto {
         private Integer cycleYear;
-        private String currentPhase; // SETUP | CHECKIN | MIDYEAR | FINAL | SUMMARY | NONE
+        private String currentPhase; // SETUP | MIDYEAR | FINAL | NONE
         private String phaseTitle;
         private String phaseStatus; // active | upcoming | locked
         private List<Map<String, Object>> phases;
@@ -114,6 +114,7 @@ public class OKRController {
         private String box1Achievements;
         private String box2BusinessComment;
         private String box3PeopleComment;
+        private String box4Direction;
         private String box4SelfProposal;
         private String box4ImprovementArea;
         private String evidenceAttachmentUrl;
@@ -228,36 +229,24 @@ public class OKRController {
         return m;
     }
 
-    /** Lý do không sửa được Self proposal (null = sửa được). */
-    private String proposalLockReason(OKRReview review, OKRCycle cycle) {
-        if (cycle == null) return "Chưa có chu kỳ OKR";
-        if (phaseService.isCycleLocked(cycle)) return "Chu kỳ OKR đã được HR chốt & khoá";
-        if (review != null && review.getBox4SubmittedAt() != null) return "Self proposal đã nộp";
-        String finalStatus = phaseService.phase(cycle, OKRPhaseService.FINAL)
-                .map(p -> String.valueOf(p.get("effective_status"))).orElse(OKRPhaseService.ACTIVE);
-        if (OKRPhaseService.LOCKED.equals(finalStatus)) return "Đã quá hạn đánh giá cuối năm";
-        return null;
-    }
-
-    /** Phase đang cho tự chấm điểm: FINAL (chính thức) ưu tiên hơn MIDYEAR (điểm tự chấm dự kiến). Null = không mở. */
-    private String selfAssessPhase(OKRCycle cycle) {
+    /** NV chỉ tự chấm điểm trong phase Đánh giá cuối năm (Review giữa năm chỉ cập nhật tiến độ). */
+    private String selfAssessPhase(OKRReview review, OKRCycle cycle) {
         if (cycle == null || phaseService.isCycleLocked(cycle)) return null;
-        if (phaseService.isOpen(cycle, OKRPhaseService.FINAL)) return OKRPhaseService.FINAL;
-        if (phaseService.isOpen(cycle, OKRPhaseService.MIDYEAR)) return OKRPhaseService.MIDYEAR;
-        return null;
+        return phaseService.employeeWindowOpen(cycle, OKRPhaseService.FINAL, review) ? OKRPhaseService.FINAL : null;
     }
 
     /**
      * Lý do nhân viên không sửa được form tự đánh giá (null = sửa được).
-     * Tự chấm mở ở 2 phase: Review giữa năm (điểm dự kiến, để đối chiếu với tiến độ — F5.7)
-     * và Đánh giá cuối năm (điểm chính thức). Dùng chung Box 2/3, cuối năm nhân viên cập nhật lại.
+     * Tự chấm chỉ mở trong cửa sổ NV của phase Đánh giá cuối năm.
      */
     private String selfAssessLockReason(OKRReview review, OKRCycle cycle) {
         if (review == null) return "Chưa có OKR trong chu kỳ này";
         if (cycle == null) return "Chưa có chu kỳ OKR";
         if (phaseService.isCycleLocked(cycle)) return "Chu kỳ OKR đã được HR chốt & khoá";
-        if (selfAssessPhase(cycle) == null) {
-            return "Chỉ tự chấm điểm trong phase Review giữa năm hoặc Đánh giá cuối năm";
+        if (selfAssessPhase(review, cycle) == null) {
+            return phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.FINAL, review) != null
+                    ? phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.FINAL, review)
+                    : "Chỉ tự chấm điểm trong phase Đánh giá cuối năm";
         }
         if (!management.isCurrentlyApproved(review)) return "OKR chưa được duyệt hoặc đang mở sửa — cần Quản lý duyệt lại trước khi tự chấm";
         if (management.managerAssessed(review)) return "Quản lý đã chấm điểm — không sửa tự đánh giá được nữa";
@@ -290,13 +279,26 @@ public class OKRController {
         String countdownText = "Liên hệ HR để cấu hình chu kỳ";
         if (primary != null) {
             currentPhase = str(primary.get("key")).toUpperCase();
-            phaseStatus = str(primary.get("effective_status"));
+            String employeeStatus = str(primary.get("effective_status"));
+            String managerStatus = str(primary.get("manager_status"));
+            boolean managerReviewing = !OKRPhaseService.ACTIVE.equals(employeeStatus)
+                    && OKRPhaseService.ACTIVE.equals(managerStatus);
+            phaseStatus = managerReviewing ? OKRPhaseService.ACTIVE : employeeStatus;
             String months = str(primary.get("months"));
-            phaseTitle = str(primary.get("name")) + (months.isEmpty() ? "" : " (" + months + ")");
-            deadline = str(primary.get("due_date"));
-            daysLeft = primary.get("days_left") == null ? null : ((Number) primary.get("days_left")).intValue();
+            phaseTitle = str(primary.get("name")) + (months.isEmpty() ? "" : " (" + months + ")")
+                    + (managerReviewing ? " · Quản lý đang review" : "");
+            if (managerReviewing) {
+                deadline = str(primary.get("review_due"));
+                LocalDate reviewDue = OKRPhaseService.parseDate(primary.get("review_due"));
+                daysLeft = reviewDue == null ? null : (int) Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), reviewDue));
+            } else {
+                deadline = str(primary.get("due_date"));
+                daysLeft = primary.get("days_left") == null ? null : ((Number) primary.get("days_left")).intValue();
+            }
             if (OKRPhaseService.ACTIVE.equals(phaseStatus)) {
-                countdownText = "Còn " + daysLeft + " ngày đến hạn (" + deadline + ")";
+                countdownText = managerReviewing
+                        ? "Quản lý đang review — còn " + daysLeft + " ngày (" + deadline + ")"
+                        : "Còn " + daysLeft + " ngày đến hạn (" + deadline + ")";
             } else if (OKRPhaseService.UPCOMING.equals(phaseStatus)) {
                 countdownText = "Bắt đầu từ " + primary.get("start_date");
             } else {
@@ -304,10 +306,11 @@ public class OKRController {
             }
         }
 
-        // Check-in kỳ hiện tại
-        boolean checkinOpen = phaseService.isOpen(cycle, OKRPhaseService.CHECKIN);
+        // Cập nhật tiến độ chỉ mở trong cửa sổ NV của Review giữa năm / Đánh giá cuối năm.
+        String updateWindow = cycle == null ? null : phaseService.updateWindow(cycle, review);
+        boolean checkinOpen = updateWindow != null;
         String period = phaseService.currentPeriod(cycle);
-        LocalDate checkinDeadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle);
+        LocalDate checkinDeadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle, review);
         int pendingCheckin = 0;
         // Cùng điều kiện với API check-in: chỉ check-in khi OKR đang ở trạng thái đã duyệt (locked)
         if (review != null && checkinOpen && management.isCurrentlyApproved(review)) {
@@ -321,7 +324,19 @@ public class OKRController {
         String checkinStateText;
         if (!checkinOpen) {
             checkinState = "CLOSED";
-            checkinStateText = "Ngoài đợt check-in";
+            String reason;
+            if (cycle == null) {
+                reason = "Chưa có chu kỳ OKR";
+            } else if (review != null && review.getBox2ManagerScore() != null && review.getBox3ManagerScore() != null) {
+                reason = "Quản lý đã hoàn tất chấm điểm cuối năm — không cập nhật được nữa";
+            } else {
+                String mid = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.MIDYEAR, review);
+                String fin = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.FINAL, review);
+                reason = mid != null && mid.contains("Quản lý đang review") ? mid
+                        : fin != null && fin.contains("Quản lý đang review") ? fin
+                        : "Ngoài kỳ cập nhật tiến độ (Review giữa năm / Đánh giá cuối năm)";
+            }
+            checkinStateText = reason;
         } else if (review == null || items.isEmpty()) {
             checkinState = "NO_ITEMS";
             checkinStateText = "Chưa có đầu việc OKR để check-in";
@@ -344,33 +359,28 @@ public class OKRController {
         Double peopleScore = scores[1] == null ? null : ((Integer) scores[1]).doubleValue();
         Double averageScore = businessScore != null && peopleScore != null ? (businessScore + peopleScore) / 2.0 : null;
 
-        // Self proposal năm sau
-        LocalDate finalDue = phaseService.dueDate(cycle, OKRPhaseService.FINAL);
-        String proposalText = review != null && review.getBox4ProposalNextYear() != null ? review.getBox4ProposalNextYear() : "";
+        // Định hướng & đề xuất của kỳ hiện tại — khai báo và gửi kèm bộ mục tiêu
+        LocalDate proposalDue = phaseService.dueDate(cycle, OKRPhaseService.SETUP);
+        String directionText = review != null && review.getBox4Direction() != null ? review.getBox4Direction() : "";
+        String proposalText = review != null && review.getBox4Proposal() != null ? review.getBox4Proposal() : "";
         String improvementArea = review != null && review.getBox4ImprovementArea() != null ? review.getBox4ImprovementArea() : "";
-        String proposalStatus;
-        String proposalStatusText;
-        if (review != null && review.getBox4SubmittedAt() != null) {
-            proposalStatus = "SUBMITTED";
-            proposalStatusText = "Đã nộp";
-        } else if (!proposalText.isBlank() || !improvementArea.isBlank()) {
-            proposalStatus = "DRAFT";
-            proposalStatusText = "Đang viết";
-        } else {
-            proposalStatus = "NOT_STARTED";
-            proposalStatusText = "Chưa viết";
-        }
-        String proposalLock = proposalLockReason(review, cycle);
+        String proposalReviewStatus = review == null ? "draft" : str(review.getStatus()).toLowerCase();
+        boolean proposalSubmitted = "submitted".equals(proposalReviewStatus) || "locked".equals(proposalReviewStatus);
+        boolean hasProposalContent = !directionText.isBlank() || !proposalText.isBlank() || !improvementArea.isBlank();
+        String proposalStatus = proposalSubmitted ? "SUBMITTED" : hasProposalContent ? "DRAFT" : "NOT_STARTED";
+        String proposalStatusText = "SUBMITTED".equals(proposalStatus) ? "Đã gửi kèm OKR"
+                : "DRAFT".equals(proposalStatus) ? "Đang viết" : "Chưa viết";
         Map<String, Object> selfProposal = new HashMap<>();
-        selfProposal.put("year", y + 1);
+        selfProposal.put("year", y);
         selfProposal.put("status", proposalStatus);
         selfProposal.put("statusText", proposalStatusText);
+        selfProposal.put("direction", directionText);
         selfProposal.put("content", proposalText);
         selfProposal.put("improvementArea", improvementArea);
-        selfProposal.put("submittedAt", review != null ? review.getBox4SubmittedAt() : null);
-        selfProposal.put("deadline", finalDue == null ? null : finalDue.toString());
-        selfProposal.put("daysLeft", finalDue == null ? null : (int) Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), finalDue)));
-        selfProposal.put("editable", proposalLock == null);
+        selfProposal.put("submittedAt", review != null ? review.getSubmittedAt() : null);
+        selfProposal.put("deadline", proposalDue == null ? null : proposalDue.toString());
+        selfProposal.put("daysLeft", proposalDue == null ? null : (int) Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), proposalDue)));
+        selfProposal.put("editable", management.goalsLockReason(user, review, cycle) == null);
         selfProposal.put("viewUrl", "/okr/my-okr");
 
         // Việc cần làm
@@ -402,22 +412,19 @@ public class OKRController {
                     "Check-in tiến độ kỳ " + period + " (" + pendingCheckin + " đầu việc chưa cập nhật)",
                     "PENDING", checkinDeadline, "/okr/my-okr?checkin=1", "Check-in ngay", "HIGH"));
         }
-        String assessPhase = selfAssessPhase(cycle);
+        String assessPhase = selfAssessPhase(review, cycle);
         boolean needSelfScore = review != null && selfAssessLockReason(review, cycle) == null
                 && (!management.selfAssessed(review)
-                // Điểm dự kiến giữa năm phải cập nhật lại thành điểm chính thức cuối năm
                 || OKRPhaseService.FINAL.equals(assessPhase) && review.getCurrentStep() != null && review.getCurrentStep() < 3);
         if (needSelfScore) {
-            boolean mid = OKRPhaseService.MIDYEAR.equals(assessPhase);
             todos.add(todo("todo-self-assessment", "SELF_ASSESSMENT",
-                    mid ? "Tự chấm điểm dự kiến giữa năm cho 2 nhóm Business & People"
-                        : "Tự chấm điểm cuối năm cho 2 nhóm Business & People",
+                    "Tự chấm điểm cuối năm cho 2 nhóm Business & People",
                     "PENDING", phaseService.dueDate(cycle, assessPhase),
-                    "/okr/assessment", "Tự chấm điểm ngay", "HIGH"));
+                    "/okr/my-okr?section=assessment", "Tự chấm điểm ngay", "HIGH"));
         }
-        if (proposalLock == null) {
-            todos.add(todo("todo-proposal", "PROPOSAL", "Hoàn thiện Self proposal mục tiêu năm " + (y + 1),
-                    proposalStatus, finalDue, "/okr/my-okr",
+        if (goalsEditable && !"SUBMITTED".equals(proposalStatus)) {
+            todos.add(todo("todo-proposal", "PROPOSAL", "Hoàn thiện định hướng & đề xuất kỳ " + y,
+                    proposalStatus, proposalDue, "/okr/my-okr",
                     "NOT_STARTED".equals(proposalStatus) ? "Bắt đầu viết" : "Tiếp tục viết", "MEDIUM"));
         }
 
@@ -484,9 +491,20 @@ public class OKRController {
 
         List<OKRItem> allItems = review == null ? List.of() : okrItemRepository.findByReviewIdOrderById(review.getId());
         String lockReason = management.goalsLockReason(user, review, cycle);
-        String proposalLock = proposalLockReason(review, cycle);
 
         Map<String, Object> data = new HashMap<>();
+        // Phase metadata: một workspace duy nhất cho nhân viên, giao diện đổi theo phase hiện tại.
+        Map<String, Object> primary = cycle == null ? null : phaseService.primaryPhase(cycle);
+        String employeePhaseStatus = primary == null ? null : str(primary.get("effective_status"));
+        String managerPhaseStatus = primary == null ? null : str(primary.get("manager_status"));
+        boolean managerReviewing = OKRPhaseService.ACTIVE.equals(managerPhaseStatus)
+                && !OKRPhaseService.ACTIVE.equals(employeePhaseStatus);
+        data.put("phases", cycle == null ? List.of() : phaseService.phases(cycle));
+        data.put("currentPhase", primary == null ? "NONE" : str(primary.get("key")).toUpperCase());
+        data.put("phaseName", primary == null ? null : primary.get("name"));
+        data.put("phaseStatus", managerReviewing ? OKRPhaseService.ACTIVE : employeePhaseStatus);
+        data.put("managerReviewing", managerReviewing);
+        data.put("updateWindow", cycle == null || review == null ? null : phaseService.updateWindow(cycle, review));
         data.put("reviewId", review != null ? review.getId().toString() : null);
         data.put("cycleYear", y);
         data.put("status", review != null ? review.getStatus() : "draft");
@@ -494,11 +512,10 @@ public class OKRController {
         data.put("lockReason", lockReason);
         data.put("submittedAt", review != null ? review.getSubmittedAt() : null);
         data.put("managerFeedback", review != null ? review.getManagerFeedback() : null);
-        data.put("box4ProposalNextYear", review != null && review.getBox4ProposalNextYear() != null ? review.getBox4ProposalNextYear() : "");
+        data.put("box4Direction", review != null && review.getBox4Direction() != null ? review.getBox4Direction() : "");
+        data.put("box4Proposal", review != null && review.getBox4Proposal() != null ? review.getBox4Proposal() : "");
         data.put("box4ImprovementArea", review != null && review.getBox4ImprovementArea() != null ? review.getBox4ImprovementArea() : "");
         data.put("box4SubmittedAt", review != null ? review.getBox4SubmittedAt() : null);
-        data.put("proposalLocked", proposalLock != null);
-        data.put("proposalLockReason", proposalLock);
         Object[] scores = management.currentScores(review);
         data.put("businessScore", scores[0]);
         data.put("peopleScore", scores[1]);
@@ -564,6 +581,14 @@ public class OKRController {
                     : (!hasBusiness ? "nhóm Business" : "nhóm People");
             throw OKRRuleException.badRequest("Chưa thể gửi OKR: " + missing + " phải có ít nhất 1 đầu việc.");
         }
+        // Định hướng & đề xuất của kỳ: gửi kèm bộ mục tiêu, không bắt buộc.
+        if (payload != null) {
+            if (payload.containsKey("direction")) review.setBox4Direction(str(payload.get("direction")));
+            if (payload.containsKey("proposal")) review.setBox4Proposal(str(payload.get("proposal")));
+            if (payload.containsKey("improvementArea")) review.setBox4ImprovementArea(str(payload.get("improvementArea")));
+        }
+        review.setBox4SubmittedAt(LocalDateTime.now());
+
         if (review.getManagerId() == null) review.setManagerId(user.getManagerId());
         if (review.getManagerId() == null) {
             throw OKRRuleException.conflict("Chưa xác định Quản lý trực tiếp để duyệt — liên hệ HR");
@@ -595,7 +620,7 @@ public class OKRController {
         }
         // Trạng thái trước khi gửi (draft / returned / reopened) lấy từ lần SUBMIT gần nhất trong audit
         String restored = management.statusBeforeLastSubmit(review);
-        if ("draft".equals(restored) && !phaseService.isOpen(management.cycleOf(review), OKRPhaseService.SETUP)) {
+        if ("draft".equals(restored) && !phaseService.employeeWindowOpen(management.cycleOf(review), OKRPhaseService.SETUP, review)) {
             throw OKRRuleException.conflict("Phase Thiết lập OKR đã đóng — rút về bản nháp sẽ không sửa được nữa. "
                     + "Nhờ Quản lý trả lại kèm góp ý để chỉnh sửa.");
         }
@@ -673,30 +698,25 @@ public class OKRController {
 
     @PostMapping("/self-proposal")
     @Transactional
-    @Operation(summary = "Lưu nháp / nộp Self proposal năm sau (Box 4) — độc lập với trạng thái duyệt OKR")
+    @Operation(summary = "Lưu nháp Định hướng & Đề xuất của kỳ — nội dung chính thức gửi kèm bộ mục tiêu khi nộp OKR")
     public ResponseEntity<ApiResponse<Map<String, Object>>> saveSelfProposal(@RequestBody Map<String, Object> payload) {
         User user = management.requireCurrentUser();
         int year = phaseService.resolveYear(yearOf(payload));
         OKRReview review = getOrCreateMyReview(user, year);
-        String lock = proposalLockReason(review, management.cycleOf(review));
-        if (lock != null) throw OKRRuleException.conflict(lock);
+        management.requireGoalsEditable(review);
 
-        String proposal = str(payload.get("proposal"));
-        String improvementArea = str(payload.get("improvementArea"));
-        boolean submit = Boolean.TRUE.equals(payload.get("submit")) || "true".equalsIgnoreCase(str(payload.get("submit")));
-        if (submit && proposal.isEmpty()) throw OKRRuleException.badRequest("Nội dung đề xuất năm sau là bắt buộc khi nộp");
-
-        review.setBox4ProposalNextYear(proposal);
-        review.setBox4ImprovementArea(improvementArea);
-        if (submit) review.setBox4SubmittedAt(LocalDateTime.now());
+        review.setBox4Direction(str(payload.get("direction")));
+        review.setBox4Proposal(str(payload.get("proposal")));
+        review.setBox4ImprovementArea(str(payload.get("improvementArea")));
         okrReviewRepository.save(review);
-        management.audit(review.getId(), review.getCycleId(), null, submit ? "SUBMIT_PROPOSAL" : "SAVE_PROPOSAL",
-                "box4", null, submit ? "submitted" : "draft", "Nhân viên cập nhật Self proposal năm sau");
+        management.audit(review.getId(), review.getCycleId(), null, "SAVE_SELF_PROPOSAL",
+                "box4", null, "draft", "Nhân viên lưu nháp định hướng & đề xuất của kỳ");
 
         Map<String, Object> res = new HashMap<>();
-        res.put("status", submit ? "SUBMITTED" : "DRAFT");
-        res.put("submittedAt", review.getBox4SubmittedAt());
-        return ResponseEntity.ok(ApiResponse.ok(res, submit ? "Đã nộp Self proposal năm sau" : "Đã lưu nháp Self proposal"));
+        res.put("direction", review.getBox4Direction());
+        res.put("proposal", review.getBox4Proposal());
+        res.put("improvementArea", review.getBox4ImprovementArea());
+        return ResponseEntity.ok(ApiResponse.ok(res, "Đã lưu nháp định hướng & đề xuất"));
     }
 
     @GetMapping("/manager-objectives")
@@ -759,7 +779,8 @@ public class OKRController {
             map.put("submittedDate", r.getSubmittedAt() != null ? r.getSubmittedAt().format(VN_DATE) : null);
             map.put("submittedAt", r.getSubmittedAt());
             map.put("managerFeedback", r.getManagerFeedback());
-            map.put("selfProposal", r.getBox4ProposalNextYear() != null ? r.getBox4ProposalNextYear() : "");
+            map.put("selfDirection", r.getBox4Direction() != null ? r.getBox4Direction() : "");
+            map.put("selfProposal", r.getBox4Proposal() != null ? r.getBox4Proposal() : "");
             map.put("selfImprovementArea", r.getBox4ImprovementArea() != null ? r.getBox4ImprovementArea() : "");
             map.put("businessItems", items.stream().filter(i -> "BUSINESS".equalsIgnoreCase(i.getGroupType())).toList());
             map.put("peopleItems", items.stream().filter(i -> "PEOPLE".equalsIgnoreCase(i.getGroupType())).toList());
@@ -790,7 +811,7 @@ public class OKRController {
 
         OKRReview review = management.requireReview(id);
         management.requireManager(review, management.requireCurrentUser());
-        phaseService.requireCycleOpen(management.cycleOf(review));
+        phaseService.requireManagerWindow(management.cycleOf(review), OKRPhaseService.SETUP);
         String oldStatus = review.getStatus() == null ? "draft" : review.getStatus().toLowerCase();
 
         switch (finalAction) {
@@ -942,7 +963,7 @@ public class OKRController {
         if (review == null) managerLock = "Nhân viên chưa có OKR";
         else {
             try {
-                phaseService.requireOpen(cycle, OKRPhaseService.FINAL);
+                phaseService.requireManagerWindow(cycle, OKRPhaseService.FINAL);
                 if (!management.selfAssessed(review)) managerLock = "Nhân viên chưa nộp tự đánh giá";
             } catch (OKRRuleException e) {
                 managerLock = e.getMessage();
@@ -988,7 +1009,8 @@ public class OKRController {
         }
         form.put("box2BusinessScore", review != null ? review.getBox2SelfScore() : null);
         form.put("box3PeopleScore", review != null ? review.getBox3SelfScore() : null);
-        form.put("box4SelfProposal", review != null ? review.getBox4ProposalNextYear() : null);
+        form.put("box4Direction", review != null ? review.getBox4Direction() : null);
+        form.put("box4SelfProposal", review != null ? review.getBox4Proposal() : null);
         form.put("box4ImprovementArea", review != null ? review.getBox4ImprovementArea() : null);
         form.put("managerBusinessScore", review != null ? review.getBox2ManagerScore() : null);
         form.put("managerPeopleScore", review != null ? review.getBox3ManagerScore() : null);
@@ -1003,11 +1025,14 @@ public class OKRController {
         int[] sc = management.scale(cycle);
         form.put("scaleMin", sc[0]);
         form.put("scaleMax", sc[1]);
-        form.put("selfAssessPhase", selfAssessPhase(cycle) == null ? null : selfAssessPhase(cycle).toUpperCase());
+        String assessPhase = selfAssessPhase(review, cycle);
+        form.put("selfAssessPhase", assessPhase == null ? null : assessPhase.toUpperCase());
         form.put("selfLockReason", selfLock);
         form.put("canManage", review != null && management.canManage(review, actor));
         form.put("canManagerAssess", review != null && management.canManage(review, actor) && !self && managerLock == null);
         form.put("managerLockReason", managerLock);
+        form.put("finalUpdateOverride", review != null && Boolean.TRUE.equals(review.getFinalUpdateOverride()));
+        form.put("finalManagerWindowOpen", cycle != null && phaseService.managerWindowOpen(cycle, OKRPhaseService.FINAL));
         return ApiResponse.ok(form, "Lấy dữ liệu đánh giá OKR thành công");
     }
 
@@ -1034,44 +1059,37 @@ public class OKRController {
         OKRCycle reviewCycle = management.cycleOf(review);
         String lock = selfAssessLockReason(review, reviewCycle);
         if (lock != null) throw OKRRuleException.conflict(lock);
-        boolean midYear = OKRPhaseService.MIDYEAR.equals(selfAssessPhase(reviewCycle));
 
         String oldScores = management.selfAssessed(review)
                 ? "Business=" + review.getBox2SelfScore() + ", People=" + review.getBox3SelfScore() : null;
         applyGroupItems(review, req);
-        // Bản chính thức cuối năm bắt buộc có "Kết quả" cho cả 2 nhóm; điểm dự kiến giữa năm chỉ cần điểm.
-        if (!midYear) {
-            if (review.getBox2Results() == null) throw OKRRuleException.badRequest("Thành tựu công việc: mục Kết quả là bắt buộc");
-            if (review.getBox3Results() == null) throw OKRRuleException.badRequest("Thành tựu con người: mục Kết quả là bắt buộc");
-        }
+        // Bản chính thức cuối năm bắt buộc có "Kết quả" cho cả 2 nhóm.
+        if (review.getBox2Results() == null) throw OKRRuleException.badRequest("Thành tựu công việc: mục Kết quả là bắt buộc");
+        if (review.getBox3Results() == null) throw OKRRuleException.badRequest("Thành tựu con người: mục Kết quả là bắt buộc");
         review.setBox2SelfScore(scoreB);
         review.setBox3SelfScore(scoreP);
         review.setBox2AttachmentUrl(req.getEvidenceAttachmentUrl());
-        // Box 4 đi kèm bản tự đánh giá cuối năm — nộp luôn nếu chưa nộp riêng trước đó
-        if (!midYear && review.getBox4SubmittedAt() == null) {
-            if (req.getBox4SelfProposal() != null) review.setBox4ProposalNextYear(req.getBox4SelfProposal());
-            if (req.getBox4ImprovementArea() != null) review.setBox4ImprovementArea(req.getBox4ImprovementArea());
-            if (review.getBox4ProposalNextYear() != null && !review.getBox4ProposalNextYear().isBlank()) {
-                review.setBox4SubmittedAt(LocalDateTime.now());
-            }
-        }
-        // current_step: 2 = đã duyệt, 3 = đã nộp tự đánh giá cuối năm (điểm dự kiến giữa năm giữ step 2)
-        if (!midYear) review.setCurrentStep(3);
+        // Box 4 dùng chung dữ liệu khai báo đầu kỳ — nhân viên được cập nhật trong cửa sổ tự đánh giá.
+        if (req.getBox4Direction() != null) review.setBox4Direction(req.getBox4Direction());
+        if (req.getBox4SelfProposal() != null) review.setBox4Proposal(req.getBox4SelfProposal());
+        if (req.getBox4ImprovementArea() != null) review.setBox4ImprovementArea(req.getBox4ImprovementArea());
+        // current_step: 2 = đã duyệt, 3 = đã nộp tự đánh giá cuối năm
+        review.setCurrentStep(3);
         okrReviewRepository.save(review);
 
         double avg = (scoreB + scoreP) / 2.0;
-        String label = midYear ? "điểm tự chấm dự kiến giữa năm" : "bản tự đánh giá cuối năm";
-        management.audit(review.getId(), review.getCycleId(), null, midYear ? "SELF_ASSESS_MIDYEAR" : "SELF_ASSESS",
+        String label = "bản tự đánh giá cuối năm";
+        management.audit(review.getId(), review.getCycleId(), null, "SELF_ASSESS",
                 "selfScores", oldScores, "Business=" + scoreB + ", People=" + scoreP, "Nhân viên nộp " + label);
         management.notify(review.getManagerId(), "Có " + label + " mới",
                 actor.getFullName() + " đã nộp " + label + " (TB " + avg + ").",
-                "OKR_SELF_ASSESSED", midYear ? "/okr/mid-year-review" : "/okr/assessment?employeeCode=" + actor.getEmployeeCode());
+                "OKR_SELF_ASSESSED", "/okr/assessment?employeeCode=" + actor.getEmployeeCode());
 
         Map<String, Object> res = new HashMap<>();
         res.put("reviewId", review.getId().toString());
         res.put("selfAverageScore", avg);
         res.put("status", management.assessmentStatus(review));
-        res.put("phase", midYear ? "MIDYEAR" : "FINAL");
+        res.put("phase", "FINAL");
         return ResponseEntity.ok(ApiResponse.ok(res, "Đã nộp " + label + ". Điểm TB: " + avg));
     }
 
@@ -1094,7 +1112,7 @@ public class OKRController {
         if (actor.getId().equals(review.getUserId())) throw OKRRuleException.forbidden("Không tự chấm điểm quản lý cho chính mình");
         int managerB = management.requireScore(req.getManagerBusinessScore(), "Điểm Business của Quản lý", review);
         int managerP = management.requireScore(req.getManagerPeopleScore(), "Điểm People của Quản lý", review);
-        phaseService.requireOpen(management.cycleOf(review), OKRPhaseService.FINAL);
+        phaseService.requireManagerWindow(management.cycleOf(review), OKRPhaseService.FINAL);
         if (!management.isCurrentlyApproved(review)) {
             throw OKRRuleException.conflict("OKR đang mở sửa/chưa được duyệt lại — chưa thể chấm điểm Quản lý");
         }
@@ -1118,7 +1136,7 @@ public class OKRController {
                 "Business=" + managerB + ", People=" + managerP, comment);
         management.notify(review.getUserId(), "Quản lý đã chấm điểm OKR cuối năm",
                 "Điểm quản lý: Business " + managerB + ", People " + managerP + " · TB " + managerAvg + ".",
-                "OKR_ASSESSED", "/okr/assessment");
+                "OKR_ASSESSED", "/okr/my-okr?section=assessment");
 
         Map<String, Object> res = new HashMap<>();
         res.put("reviewId", review.getId().toString());
@@ -1130,6 +1148,50 @@ public class OKRController {
         res.put("managerAverageScore", managerAvg);
         res.put("status", management.assessmentStatus(review));
         return ResponseEntity.ok(ApiResponse.ok(res, "Quản lý hoàn tất đánh giá. Điểm trung bình: " + managerAvg));
+    }
+
+    @PostMapping("/reviews/{id}/allow-update")
+    @Transactional
+    @Operation(summary = "Quản lý bật/tắt cho nhân viên cập nhật tiến độ trong cửa sổ review")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> allowEmployeeUpdate(@PathVariable String id,
+                                                                                @RequestBody Map<String, Object> body) {
+        OKRReview review;
+        try {
+            review = management.requireReview(UUID.fromString(id));
+        } catch (IllegalArgumentException e) {
+            throw OKRRuleException.notFound("Không tìm thấy hồ sơ đánh giá");
+        }
+        User actor = management.requireCurrentUser();
+        if (!management.canManage(review, actor)) {
+            throw OKRRuleException.forbidden("Bạn không có quyền mở cập nhật cho nhân viên này");
+        }
+        OKRCycle cycle = management.cycleOf(review);
+        phaseService.requireCycleOpen(cycle);
+        String phase = str(body.get("phase")).toUpperCase();
+        if (!OKRPhaseService.MIDYEAR.equals(phase) && !OKRPhaseService.FINAL.equals(phase)) {
+            throw OKRRuleException.badRequest("Phase chỉ nhận MIDYEAR hoặc FINAL");
+        }
+        boolean enabled = Boolean.parseBoolean(str(body.get("enabled")));
+        String oldValue = String.valueOf(OKRPhaseService.MIDYEAR.equals(phase)
+                ? review.getMidYearUpdateOverride() : review.getFinalUpdateOverride());
+        if (OKRPhaseService.MIDYEAR.equals(phase)) review.setMidYearUpdateOverride(enabled);
+        else review.setFinalUpdateOverride(enabled);
+        okrReviewRepository.save(review);
+
+        management.audit(review.getId(), review.getCycleId(), null, "ALLOW_UPDATE",
+                phase.toLowerCase() + "UpdateOverride", oldValue, String.valueOf(enabled),
+                enabled ? "Mở cho nhân viên cập nhật trong lúc review" : "Khoá cập nhật trong lúc review");
+        management.notify(review.getUserId(),
+                enabled ? "Quản lý mở cập nhật tiến độ trong lúc review" : "Quản lý tạm khoá cập nhật tiến độ",
+                enabled ? "Bạn có thể cập nhật tiến độ OKR trong cửa sổ Quản lý đang review."
+                        : "Cập nhật tiến độ tạm khoá cho tới khi Quản lý hoàn tất review.",
+                "OKR_UPDATE_OVERRIDE", "/okr/my-okr");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("phase", phase);
+        res.put("enabled", enabled);
+        return ResponseEntity.ok(ApiResponse.ok(res, enabled
+                ? "Đã mở cho nhân viên cập nhật tiến độ" : "Đã khoá cập nhật tiến độ của nhân viên"));
     }
 
     /** Hồ sơ của chính mình + đang trong phase đánh giá cuối năm + quản lý chưa chấm. */
@@ -1166,7 +1228,7 @@ public class OKRController {
 
     @PutMapping("/reviews/{id}/box4")
     @Transactional
-    @Operation(summary = "Cập nhật Box 4 — Self proposal năm sau (OKR-REV-04)")
+    @Operation(summary = "Cập nhật Box 4 — Định hướng & đề xuất của kỳ (OKR-REV-04)")
     public ApiResponse<Boolean> updateBox4(@PathVariable String id, @RequestBody Map<String, String> payload) {
         OKRReview review;
         try {
@@ -1175,13 +1237,14 @@ public class OKRController {
             throw OKRRuleException.notFound("Không tìm thấy hồ sơ đánh giá");
         }
         management.requireOwner(review, management.requireCurrentUser());
-        String lock = proposalLockReason(review, management.cycleOf(review));
+        String lock = selfAssessLockReason(review, management.cycleOf(review));
         if (lock != null) throw OKRRuleException.conflict(lock);
-        review.setBox4ProposalNextYear(payload.get("box4SelfProposal"));
+        review.setBox4Direction(payload.get("box4Direction"));
+        review.setBox4Proposal(payload.get("box4SelfProposal"));
         review.setBox4ImprovementArea(payload.get("box4ImprovementArea"));
         okrReviewRepository.save(review);
         management.audit(review.getId(), review.getCycleId(), null, "UPDATE_BOX4", "box4", null, "Đã cập nhật Box 4", "Nhân viên cập nhật Box 4");
-        return ApiResponse.ok(true, "Đã lưu định hướng năm sau");
+        return ApiResponse.ok(true, "Đã lưu định hướng & đề xuất");
     }
 
     // ======================================================================== F8 Báo cáo HR

@@ -49,10 +49,12 @@ public class OKRCheckInController {
         if (!management.isCurrentlyApproved(review)) {
             return "OKR chưa được duyệt hoặc đang mở sửa — chỉ check-in trên bộ mục tiêu đang ở trạng thái đã duyệt";
         }
-        try {
-            phaseService.requireOpen(cycle, OKRPhaseService.CHECKIN);
-        } catch (OKRRuleException e) {
-            return e.getMessage();
+        if (phaseService.updateWindow(cycle, review) == null) {
+            String mid = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.MIDYEAR, review);
+            String fin = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.FINAL, review);
+            if (mid != null && mid.contains("Quản lý đang review")) return mid;
+            if (fin != null && fin.contains("Quản lý đang review")) return fin;
+            return mid != null ? mid : fin;
         }
         return null;
     }
@@ -65,7 +67,7 @@ public class OKRCheckInController {
         OKRCycle cycle = phaseService.cycle(y).orElse(null);
         OKRReview review = reviewRepository.findByUserIdAndCycleYear(user.getId(), y).orElse(null);
         String period = phaseService.currentPeriod(cycle);
-        LocalDate deadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle);
+        LocalDate deadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle, review);
         long daysLeft = deadline == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), deadline));
         String blockReason = blockReason(review, cycle);
 

@@ -57,6 +57,13 @@ public class OKRReview extends BaseEntity {
     @Column(name = "manager_comment", columnDefinition = "TEXT")
     private String managerComment;
 
+    /** Quản lý bật cho nhân viên cập nhật tiến độ trong cửa sổ review giữa năm / cuối năm. */
+    @Column(name = "midyear_update_override")
+    private Boolean midYearUpdateOverride = false;
+
+    @Column(name = "final_update_override")
+    private Boolean finalUpdateOverride = false;
+
     // ---- Box 2 Business / Box 3 People: mỗi box 4 mục (kết quả · điều chỉnh · khó khăn · bài học) ----
     @Column(name = "box2_results", columnDefinition = "TEXT")
     private String box2Results;
@@ -107,13 +114,18 @@ public class OKRReview extends BaseEntity {
     @Column(name = "box3_manager_score")
     private Integer box3ManagerScore; // 1 to 5
 
-    @Column(name = "box4_proposal_next_year", columnDefinition = "TEXT")
-    private String box4ProposalNextYear;
+    /** Định hướng phát triển nhân viên khai báo cho kỳ hiện tại. */
+    @Column(name = "box4_direction", columnDefinition = "TEXT")
+    private String box4Direction;
+
+    /** Đề xuất của nhân viên cho kỳ hiện tại (gửi kèm bộ mục tiêu). */
+    @Column(name = "box4_proposal", columnDefinition = "TEXT")
+    private String box4Proposal;
 
     @Column(name = "box4_improvement_area", columnDefinition = "TEXT")
     private String box4ImprovementArea;
 
-    /** Thời điểm nhân viên nộp Self proposal năm sau (Box 4). Null = chưa nộp. */
+    /** Thời điểm nhân viên gửi kèm nội dung định hướng/đề xuất cùng bộ mục tiêu. */
     @Column(name = "box4_submitted_at")
     private LocalDateTime box4SubmittedAt;
 

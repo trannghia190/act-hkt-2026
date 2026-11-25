@@ -1,9 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import { OkrSelfAssessmentSection } from '../assessment/OkrSelfAssessmentSection';
+import { useForm4Box } from '../assessment/useForm4Box';
+import { OKRPhaseTimeline } from '../cycles/OKRPhaseTimeline';
 
 type GroupKey = 'BUSINESS' | 'PEOPLE';
 
@@ -77,19 +80,37 @@ interface CheckInHistoryRow {
   attachments: CheckInAttachment[];
 }
 
+interface PhaseInfo {
+  key: string;
+  name: string;
+  start_date?: string | null;
+  due_date?: string | null;
+  review_start?: string | null;
+  review_due?: string | null;
+  months?: string | null;
+  review_months?: string | null;
+  effective_status?: 'active' | 'upcoming' | 'locked' | null;
+  manager_status?: 'active' | 'upcoming' | 'locked' | null;
+}
+
 interface MyOKRData {
   reviewId: string | null;
   cycleYear: number;
   status: 'draft' | 'submitted' | 'locked' | 'reopened' | 'returned';
+  currentPhase?: 'SETUP' | 'MIDYEAR' | 'FINAL' | 'NONE';
+  phaseName?: string | null;
+  phaseStatus?: 'active' | 'upcoming' | 'locked' | null;
+  managerReviewing?: boolean;
+  updateWindow?: string | null;
+  phases?: PhaseInfo[];
   isLocked: boolean;
   lockReason?: string | null;
   box4SubmittedAt?: string | null;
-  proposalLocked?: boolean;
-  proposalLockReason?: string | null;
   scoreSource?: 'MANAGER' | 'SELF' | null;
   submittedAt?: string | null;
   managerFeedback?: string | null;
-  box4ProposalNextYear: string;
+  box4Direction?: string;
+  box4Proposal?: string;
   box4ImprovementArea?: string;
   businessScore?: number | null;
   peopleScore?: number | null;
@@ -118,7 +139,8 @@ export const MyOKRPage: React.FC = () => {
   const [editForm, setEditForm] = useState<{ title: string; detail: string }>({ title: '', detail: '' });
   const [editSaving, setEditSaving] = useState(false);
 
-  // Box 4 Proposal state
+  // Định hướng & đề xuất của kỳ (gửi kèm bộ mục tiêu)
+  const [directionText, setDirectionText] = useState('');
   const [proposalText, setProposalText] = useState('');
   const [improvementText, setImprovementText] = useState('');
   const [proposalSaving, setProposalSaving] = useState(false);
@@ -152,7 +174,8 @@ export const MyOKRPage: React.FC = () => {
       .then(([okrRes, mgrRes]) => {
         if (okrRes?.data) {
           setData(okrRes.data);
-          setProposalText(okrRes.data.box4ProposalNextYear || '');
+          setDirectionText(okrRes.data.box4Direction || '');
+          setProposalText(okrRes.data.box4Proposal || '');
           setImprovementText(okrRes.data.box4ImprovementArea || '');
         }
         if (mgrRes?.data) {
@@ -182,8 +205,32 @@ export const MyOKRPage: React.FC = () => {
   }, [data]);
 
   const isLocked = Boolean(data?.isLocked);
-  const proposalLocked = Boolean(data?.proposalLocked);
-  const proposalSubmitted = Boolean(data?.box4SubmittedAt);
+  const proposalSubmitted = data?.status === 'submitted' || data?.status === 'locked';
+  const hasProposalContent = Boolean(directionText.trim() || proposalText.trim() || improvementText.trim());
+
+  // ---- Workspace theo phase: một trang duy nhất cho nhân viên ----
+  const currentPhase = data?.currentPhase ?? 'NONE';
+  const sectionParam = searchParams.get('section');
+  const showAssessment = currentPhase === 'FINAL' || sectionParam === 'assessment';
+  const assessment = useForm4Box({ enabled: showAssessment, onToast: showToast });
+  const assessmentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (sectionParam !== 'assessment' || !showAssessment || assessment.loading || !data) return;
+    const t = setTimeout(() => assessmentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    return () => clearTimeout(t);
+  }, [sectionParam, showAssessment, assessment.loading, data]);
+
+  const phases = data?.phases ?? [];
+  const fmtDate = (v?: string | null) => (v ? `${v.slice(8, 10)}/${v.slice(5, 7)}` : '—');
+  const phaseStatusText = (s?: string | null) => (s === 'active' ? 'Đang mở' : s === 'upcoming' ? 'Sắp tới' : s === 'locked' ? 'Đã khoá' : '');
+  const phaseTitle = currentPhase === 'MIDYEAR'
+    ? `Cập nhật tiến độ OKR ${data?.cycleYear ?? ''} — Review giữa năm`
+    : currentPhase === 'FINAL'
+      ? `Đánh giá OKR cuối năm ${data?.cycleYear ?? ''}`
+      : currentPhase === 'SETUP'
+        ? `Thiết lập OKR ${data?.cycleYear ?? ''}`
+        : `OKR cá nhân ${data?.cycleYear ?? ''}`;
 
   // Thêm mục mới ngay trên danh sách của nhóm
   const handleAddItem = async (group: GroupKey) => {
@@ -307,28 +354,28 @@ export const MyOKRPage: React.FC = () => {
     }
   };
 
-  // Lưu Box 4 Proposal
-  const handleSaveProposal = async (submit = false) => {
-    if (submit && !proposalText.trim()) {
-      showToast('Nội dung đề xuất năm sau là bắt buộc khi nộp');
-      return;
-    }
-    if (submit && !window.confirm('Nộp Self proposal năm sau? Sau khi nộp sẽ không sửa được nữa.')) return;
+  // Lưu nháp định hướng & đề xuất (các đầu việc đã tự lưu khi thêm/sửa)
+  const handleSaveDraft = async () => {
     setProposalSaving(true);
     try {
       const res = await fetch('/api/v1/okr/self-proposal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year: data?.cycleYear, proposal: proposalText, improvementArea: improvementText, submit }),
+        body: JSON.stringify({
+          year: data?.cycleYear,
+          direction: directionText,
+          proposal: proposalText,
+          improvementArea: improvementText,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.message || 'Lỗi khi lưu đề xuất');
+        throw new Error(json?.message || 'Lỗi khi lưu nháp');
       }
-      showToast(submit ? 'Đã nộp Self proposal năm sau!' : 'Đã lưu nháp Self proposal năm sau');
+      showToast(json?.message || 'Đã lưu nháp định hướng & đề xuất');
       loadData(true);
     } catch (err: any) {
-      showToast(err.message || 'Lỗi khi lưu đề xuất');
+      showToast(err.message || 'Lỗi khi lưu nháp');
     } finally {
       setProposalSaving(false);
     }
@@ -374,7 +421,12 @@ export const MyOKRPage: React.FC = () => {
       const res = await fetch('/api/v1/okr/submit-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year: data?.cycleYear }),
+        body: JSON.stringify({
+          year: data?.cycleYear,
+          direction: directionText,
+          proposal: proposalText,
+          improvementArea: improvementText,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -856,8 +908,9 @@ export const MyOKRPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-ink">Thiết lập OKR & Đánh giá cá nhân {data?.cycleYear ?? ''}</h1>
+              <h1 className="text-xl font-bold text-ink">{phaseTitle}</h1>
               {getStatusBadge()}
+              {data?.managerReviewing && <Badge variant="warn">Quản lý đang chấm điểm</Badge>}
             </div>
             <p className="text-xs text-ink-muted mt-1">
               2 nhóm cố định Business & People · Điểm chấm 1–5 nguyên (không có điểm lẻ) · Không xếp loại A/B/C/D.
@@ -868,12 +921,57 @@ export const MyOKRPage: React.FC = () => {
               ✦ Check-in tiến độ
             </Button>
             {!isLocked && (
+              <Button size="sm" variant="outline" onClick={handleSaveDraft} disabled={proposalSaving}>
+                {proposalSaving ? 'Đang lưu...' : '💾 Lưu nháp'}
+              </Button>
+            )}
+            {!isLocked && (
               <Button size="sm" variant="primary" onClick={handleSubmitSetup}>
                 📤 Gửi Quản lý duyệt
               </Button>
             )}
           </div>
         </div>
+
+        {phases.length > 0 && (
+          <OKRPhaseTimeline
+            year={data?.cycleYear ?? new Date().getFullYear()}
+            phases={phases.map((p) => ({
+              key: p.key,
+              name: p.name,
+              start_date: p.start_date || undefined,
+              due_date: p.due_date || undefined,
+              review_start: p.review_start || undefined,
+              review_due: p.review_due || undefined,
+              status: 'scheduled',
+              effective_status: p.effective_status || undefined,
+              manager_status: p.manager_status || undefined,
+            }))}
+          />
+        )}
+
+        {phases.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {phases.map((p) => {
+              const active = p.key.toUpperCase() === currentPhase;
+              return (
+                <div
+                  key={p.key}
+                  className={`rounded-xl border p-2.5 text-xs ${active ? 'border-accent bg-accent-soft/30' : 'border-line bg-canvas'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-ink">{p.name}</span>
+                    <span className={`text-[11px] font-semibold ${p.effective_status === 'active' ? 'text-accent' : 'text-ink-muted'}`}>
+                      {phaseStatusText(p.effective_status)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-1">NV: {fmtDate(p.start_date)}–{fmtDate(p.due_date)}</div>
+                  <div className="text-[11px] text-ink-muted">QL: {fmtDate(p.review_start)}–{fmtDate(p.review_due)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Thông báo trạng thái khoá sửa */}
         {isLocked && (
@@ -932,6 +1030,27 @@ export const MyOKRPage: React.FC = () => {
         )}
       </Card>
 
+      {/* Tự đánh giá cuối năm — cùng một workspace, chỉ mở khi phase FINAL (hoặc deep-link ?section=assessment) */}
+      {showAssessment && (
+        <div ref={assessmentRef} id="self-assessment" className="space-y-5 scroll-mt-20">
+          <Card className="space-y-1 border-accent/40">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-ink">Tự đánh giá cuối năm (Form 4 Box)</h2>
+              <Badge variant="accent">{data?.phaseName || 'Đánh giá cuối năm'}</Badge>
+            </div>
+            <p className="text-xs text-ink-muted">
+              Thành tựu công việc &amp; con người, tự chấm {assessment.scaleText} cho từng nhóm và xem lại định hướng phát triển.
+              Điểm Quản lý chấm độc lập sau khi bạn nộp.
+            </p>
+          </Card>
+          {assessment.loading ? (
+            <Card><div className="p-6 text-center text-xs text-ink-muted">Đang tải form đánh giá...</div></Card>
+          ) : (
+            <OkrSelfAssessmentSection assessment={assessment} />
+          )}
+        </div>
+      )}
+
       {/* Nhóm Business */}
       {renderGroup(
         'BUSINESS',
@@ -948,59 +1067,65 @@ export const MyOKRPage: React.FC = () => {
         peopleItems
       )}
 
-      {/* Self proposal next year */}
-      <Card className="space-y-3">
-        <div className="flex items-center justify-between border-b border-line pb-2.5">
-          <div>
-            <h2 className="text-base font-bold text-ink flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-500" />
-              Self proposal năm sau (Đề xuất & định hướng phát triển)
-            </h2>
-            <p className="text-xs text-ink-muted mt-0.5">
-              Nhân viên tự đề xuất OKR năm tới và điểm cần cải thiện (tuỳ chọn)
-            </p>
+      {/* Định hướng & đề xuất của kỳ — gửi kèm bộ mục tiêu; ẩn khi Box 4 trong form tự đánh giá đã sẵn sàng */}
+      {!(showAssessment && (assessment.canEditSelf || proposalSubmitted)) && (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between border-b border-line pb-2.5">
+            <div>
+              <h2 className="text-base font-bold text-ink flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-purple-500" />
+                Định hướng &amp; đề xuất kỳ {data?.cycleYear ?? ''}
+              </h2>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Khai báo cùng bộ mục tiêu, gửi Quản lý duyệt khi bấm “Gửi Quản lý duyệt” (tuỳ chọn)
+              </p>
+            </div>
+            <Badge variant={proposalSubmitted ? 'ok' : hasProposalContent ? 'warn' : 'gray'}>
+              {proposalSubmitted ? 'Đã gửi kèm OKR' : hasProposalContent ? 'Đang viết' : 'Chưa viết'}
+            </Badge>
           </div>
-          <Badge variant={proposalSubmitted ? 'ok' : proposalText.trim() || improvementText.trim() ? 'warn' : 'gray'}>
-            {proposalSubmitted ? 'Đã nộp' : proposalText.trim() || improvementText.trim() ? 'Đang viết' : 'Chưa viết'}
-          </Badge>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-ink">Đề xuất OKR / định hướng năm sau</label>
-          <textarea
-            disabled={proposalLocked}
-            rows={4}
-            value={proposalText}
-            onChange={(e) => setProposalText(e.target.value)}
-            placeholder="Ví dụ: Định hướng nâng cao năng lực System Architecture, dẫn dắt 1 dự án trọng điểm, và kèm cặp 1 Junior Developer năm 2027..."
-            className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-ink">
-            Điểm cần cải thiện <span className="text-ink-muted font-normal">(tuỳ chọn)</span>
-          </label>
-          <textarea
-            disabled={proposalLocked}
-            rows={3}
-            value={improvementText}
-            onChange={(e) => setImprovementText(e.target.value)}
-            placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình, quản lý thời gian và chia sẻ kiến thức cho team..."
-            className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
-          />
-        </div>
-        {proposalLocked ? (
-          <div className="text-[11px] text-ink-muted">🔒 {data?.proposalLockReason}</div>
-        ) : (
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleSaveProposal(false)} disabled={proposalSaving}>
-              {proposalSaving ? 'Đang lưu...' : 'Lưu nháp'}
-            </Button>
-            <Button size="sm" variant="primary" onClick={() => handleSaveProposal(true)} disabled={proposalSaving}>
-              Nộp đề xuất
-            </Button>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink">Định hướng phát triển</label>
+            <textarea
+              disabled={isLocked}
+              rows={3}
+              value={directionText}
+              onChange={(e) => setDirectionText(e.target.value)}
+              placeholder="Ví dụ: Phát triển theo hướng Technical Lead, mở rộng năng lực kiến trúc hệ thống..."
+              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+            />
           </div>
-        )}
-      </Card>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink">Đề xuất</label>
+            <textarea
+              disabled={isLocked}
+              rows={3}
+              value={proposalText}
+              onChange={(e) => setProposalText(e.target.value)}
+              placeholder="Ví dụ: Đề xuất tham gia dự án trọng điểm, được kèm cặp bởi mentor, tham gia khoá đào tạo chuyên môn..."
+              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink">
+              Điểm cần cải thiện <span className="text-ink-muted font-normal">(tuỳ chọn)</span>
+            </label>
+            <textarea
+              disabled={isLocked}
+              rows={3}
+              value={improvementText}
+              onChange={(e) => setImprovementText(e.target.value)}
+              placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình, quản lý thời gian và chia sẻ kiến thức cho team..."
+              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div className="text-[11px] text-ink-muted">
+            {isLocked
+              ? '🔒 Nội dung đã gửi kèm bộ mục tiêu — Quản lý mở lại quyền sửa nếu cần thay đổi.'
+              : 'Nội dung được gửi kèm khi bạn bấm “Gửi Quản lý duyệt”.'}
+          </div>
+        </Card>
+      )}
 
       {/* Lịch sử các mục đã xoá (Lưu vết không mất vết — Tiêu chí 6) */}
       {deletedItems.length > 0 && (
