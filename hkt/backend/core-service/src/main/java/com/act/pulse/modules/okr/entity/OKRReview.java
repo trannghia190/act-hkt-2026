@@ -150,7 +150,7 @@ public class OKRReview extends BaseEntity {
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
-    /** Cột "Note" của bảng tổng hợp HR (Bước 3–5) — HR / Giám đốc ghi, khác nhận xét Quản lý. */
+    /** Cột "Note" của bảng tổng hợp HR (Bước 3) — HR ghi, khác nhận xét Quản lý. */
     @Column(name = "hr_note", columnDefinition = "TEXT")
     private String hrNote;
 

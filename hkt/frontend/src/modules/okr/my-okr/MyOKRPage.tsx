@@ -11,6 +11,12 @@ import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
 
 type GroupKey = 'BUSINESS' | 'PEOPLE';
 
+/** Kỳ chốt cuối năm được backend đánh dấu hậu tố -FINAL — hiển thị thân thiện hơn. */
+const periodLabel = (period?: string | null) => {
+  if (!period) return 'kỳ hiện tại';
+  return period.endsWith('-FINAL') ? `${period.slice(0, -'-FINAL'.length)} · chốt cuối năm` : period;
+};
+
 interface OKRItem {
   id: string;
   groupType: GroupKey;
@@ -48,6 +54,8 @@ interface CheckInRow {
 interface CheckInData {
   year: number;
   period: string;
+  periodLabel?: string | null;
+  finalWindow?: boolean;
   reviewStatus?: string | null;
   isLocked?: boolean;
   deadline?: string | null;
@@ -858,7 +866,7 @@ export const MyOKRPage: React.FC = () => {
                   <div className="text-xs font-semibold text-ink">{row.title}</div>
                   <div className="text-[11px] text-ink-muted mt-0.5">
                     Kỳ trước: <b className="text-ink">{row.previousValue}%</b>
-                    {row.lastPeriod ? ` (${row.lastPeriod})` : ' · chưa check-in'}
+                    {row.lastPeriod ? ` (${periodLabel(row.lastPeriod)})` : ' · chưa check-in'}
                     {row.checkedInThisPeriod && (
                       <span className="ml-1 text-emerald-700 font-semibold">· Đã check-in kỳ này</span>
                     )}
@@ -910,7 +918,7 @@ export const MyOKRPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-12">
       {toast && (
-        <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
+        <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
           {toast}
         </div>
       )}
@@ -1212,7 +1220,7 @@ export const MyOKRPage: React.FC = () => {
       <Modal
         isOpen={checkInOpen}
         onClose={() => { if (!checkInSubmitting) setCheckInOpen(false); }}
-        title={`Check-in tiến độ — ${checkInData?.period || 'kỳ hiện tại'}`}
+        title={`Check-in tiến độ — ${checkInData?.periodLabel || periodLabel(checkInData?.period)}`}
         maxWidth="4xl"
       >
         {checkInLoading ? (
@@ -1227,12 +1235,17 @@ export const MyOKRPage: React.FC = () => {
                 : 'bg-blue-50 border-blue-200 text-blue-800'
             }`}>
               <div className="font-bold">
-                Kỳ {checkInData.period} · Hạn check-in: {checkInData.deadline || '—'}
+                Kỳ {periodLabel(checkInData.period)} · Hạn check-in: {checkInData.deadline || '—'}
                 {typeof checkInData.daysLeft === 'number' ? ` · còn ${checkInData.daysLeft} ngày` : ''}
               </div>
               <div>
                 Giá trị kỳ trước <b>đã được điền sẵn</b>. Chỉ sửa con số thay đổi — tiến độ do hệ thống tự tính.
               </div>
+              {checkInData.finalWindow && (
+                <div className="font-semibold">
+                  Đây là kỳ chốt cuối năm — bạn có thể lưu nhiều lần để cập nhật kết quả cho tới khi quản lý chấm điểm.
+                </div>
+              )}
               {checkInData.reminder && (
                 <div className="font-semibold">⏰ {checkInData.reminderText}</div>
               )}
@@ -1304,7 +1317,7 @@ export const MyOKRPage: React.FC = () => {
                 disabled={checkInSubmitting || !checkInData.canCheckIn || checkInData.totalItems === 0}
                 onClick={handleSubmitCheckIn}
               >
-                {checkInSubmitting ? 'Đang gửi...' : 'Gửi check-in'}
+                {checkInSubmitting ? 'Đang gửi...' : (checkInData.finalWindow ? 'Lưu cập nhật cuối năm' : 'Gửi check-in')}
               </Button>
             </div>
           </div>
@@ -1327,7 +1340,7 @@ export const MyOKRPage: React.FC = () => {
             {historyRows.map((row) => (
               <div key={row.id} className="rounded-lg border border-line bg-surface p-3 text-xs space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Kỳ {row.period}</span>
+                  <span className="font-bold text-ink">Kỳ {periodLabel(row.period)}</span>
                   <span className="text-[11px] text-ink-muted">{formatDateTime(row.createdAt)}</span>
                 </div>
                 <div className="text-ink-secondary">

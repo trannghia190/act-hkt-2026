@@ -41,9 +41,9 @@ public class OKRCheckInReminderJob {
         if (cycle == null) return;
 
         LocalDate today = LocalDate.now();
-        String period = phaseService.currentPeriod(cycle);
         for (OKRReview review : okrReviewRepository.findByCycleYear(cycle.getCycleYear())) {
             if (phaseService.updateWindow(cycle, review) == null) continue; // cùng điều kiện với API check-in
+            String period = phaseService.currentPeriod(cycle, review);
             LocalDate deadline = phaseService.currentPeriodDeadline(cycle, review);
             long daysLeft = ChronoUnit.DAYS.between(today, deadline);
             if (daysLeft < 0 || daysLeft > REMIND_DAYS_BEFORE) continue;
@@ -63,8 +63,8 @@ public class OKRCheckInReminderJob {
             notificationDispatcher.dispatch(
                     "OKR_CHECKIN_DUE",
                     review.getUserId(),
-                    "Nhắc check-in OKR kỳ " + period,
-                    "Còn " + daysLeft + " ngày đến hạn check-in kỳ " + period + " (" + deadline
+                    "Nhắc check-in OKR kỳ " + phaseService.periodLabel(period),
+                    "Còn " + daysLeft + " ngày đến hạn check-in kỳ " + phaseService.periodLabel(period) + " (" + deadline
                             + "). Cập nhật giá trị mới cho " + items.size() + " đầu việc.",
                     "OKR_CHECKIN_REMINDER",
                     daysLeft <= 1 ? "HIGH" : "MEDIUM",

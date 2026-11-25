@@ -348,6 +348,9 @@ public class OKRPhaseService {
 
     // ---------------------------------------------------------------- check-in period
 
+    /** Đánh dấu kỳ chốt tiến độ cuối năm — tách khỏi kỳ tháng/quý thường để không đè snapshot giữa năm. */
+    public static final String FINAL_PERIOD_SUFFIX = "-FINAL";
+
     /** Kỳ check-in hiện tại theo tần suất cấu hình (MONTHLY → yyyy-MM, QUARTERLY → yyyy-Qn). */
     public String currentPeriod(OKRCycle cycle) {
         LocalDate today = LocalDate.now();
@@ -355,6 +358,27 @@ public class OKRPhaseService {
             return today.getYear() + "-Q" + ((today.getMonthValue() - 1) / 3 + 1);
         }
         return YearMonth.from(today).toString();
+    }
+
+    /**
+     * Kỳ check-in theo cửa sổ đang mở của nhân viên: trong phase Đánh giá cuối năm
+     * dùng kỳ riêng "yyyy-FINAL" (một snapshot chốt cuối năm, cập nhật được nhiều lần
+     * tới khi đóng cửa sổ) để không bị chặn bởi lần check-in tháng/quý của phase giữa năm.
+     */
+    public String currentPeriod(OKRCycle cycle, OKRReview review) {
+        if (cycle != null && review != null && employeeWindowOpen(cycle, FINAL, review)) {
+            return cycle.getCycleYear() + FINAL_PERIOD_SUFFIX;
+        }
+        return currentPeriod(cycle);
+    }
+
+    /** Nhãn hiển thị của kỳ check-in (kỳ chốt cuối năm thân thiện hơn với người dùng). */
+    public String periodLabel(String period) {
+        if (period == null) return "";
+        if (period.endsWith(FINAL_PERIOD_SUFFIX)) {
+            return period.substring(0, period.length() - FINAL_PERIOD_SUFFIX.length()) + " (chốt cuối năm)";
+        }
+        return period;
     }
 
     /** Hạn check-in của kỳ hiện tại = cuối kỳ (tháng/quý), không vượt quá hạn cửa sổ cập nhật đang mở. */

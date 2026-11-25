@@ -31,9 +31,6 @@ export interface Cycle {
   companyObjectives: CompanyObjective[];
   seniorityCutoffDate?: string | null;
   effectiveSeniorityCutoff?: string;
-  directorReviewedAt?: string | null;
-  directorReviewComment?: string | null;
-  directorReviewPending?: boolean;
 }
 
 export const PHASE_LABELS: Record<string, string> = {

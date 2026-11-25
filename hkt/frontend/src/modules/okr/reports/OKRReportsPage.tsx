@@ -3,6 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import { OkrAssessmentDetailModal } from './OkrAssessmentDetailModal';
 
 interface HRRecord {
   stt: number;
@@ -46,10 +47,6 @@ interface SummaryData {
   cycleId?: string | null;
   cycleStatus?: string | null;
   seniorityCutoff?: string;
-  directorReviewedAt?: string | null;
-  directorReviewComment?: string | null;
-  directorReviewPending?: boolean;
-  canDirectorReview?: boolean;
   pendingNoOkr?: number;
   pendingManagerAssessments?: number;
   records: HRRecord[];
@@ -92,11 +89,10 @@ export const OKRReportsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [toast, setToast] = useState<string | null>(null);
   const [locking, setLocking] = useState(false);
-  const [directorOpen, setDirectorOpen] = useState(false);
-  const [directorComment, setDirectorComment] = useState('');
-  const [savingDirector, setSavingDirector] = useState(false);
   const [lockOpen, setLockOpen] = useState(false);
   const [lockReason, setLockReason] = useState('');
+  // HR xem lại nội dung form đánh giá của 1 nhân viên (chỉ đọc).
+  const [detailRecord, setDetailRecord] = useState<HRRecord | null>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -167,7 +163,6 @@ export const OKRReportsPage: React.FC = () => {
     const list: string[] = [];
     if (data?.pendingManagerAssessments) list.push(`${data.pendingManagerAssessments} hồ sơ chưa được Quản lý chấm xong`);
     if (data?.pendingNoOkr) list.push(`${data.pendingNoOkr} nhân sự active chưa có OKR`);
-    if (data?.directorReviewPending) list.push('chưa có đánh giá chung của Giám đốc');
     return list;
   })();
 
@@ -202,29 +197,6 @@ export const OKRReportsPage: React.FC = () => {
     }
   };
 
-  const submitDirectorReview = async () => {
-    if (!data?.cycleId) return;
-    if (!directorComment.trim()) { showToast('Nhận xét đánh giá chung là bắt buộc'); return; }
-    setSavingDirector(true);
-    try {
-      const res = await fetch(`/api/v1/okr/cycles/${data.cycleId}/director-review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: directorComment.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Không lưu được đánh giá của Giám đốc');
-      showToast('Đã ghi nhận đánh giá chung của Giám đốc');
-      setDirectorOpen(false);
-      setDirectorComment('');
-      load();
-    } catch (err: any) {
-      showToast(err.message || 'Không lưu được đánh giá của Giám đốc');
-    } finally {
-      setSavingDirector(false);
-    }
-  };
-
   const records = data?.records || [];
   const filtered = records.filter((r) => {
     if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
@@ -237,7 +209,7 @@ export const OKRReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-12">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -254,9 +226,6 @@ export const OKRReportsPage: React.FC = () => {
               className="border border-line rounded-lg p-1.5 text-xs bg-surface text-ink"
             />
           </label>
-          {data?.canDirectorReview && data?.directorReviewPending && data?.cycleStatus !== 'closed' && (
-            <Button size="sm" variant="outline" onClick={() => setDirectorOpen(true)}>🧑‍⚖️ Giám đốc duyệt</Button>
-          )}
           <Button size="sm" variant="outline" onClick={exportExcel}>📥 Xuất Excel</Button>
           {data?.cycleStatus !== 'closed' && <Button size="sm" variant="outline" onClick={openLock} disabled={locking}>{locking ? 'Đang khoá...' : '🔒 Chốt & khoá chu kỳ'}</Button>}
         </div>
@@ -297,29 +266,6 @@ export const OKRReportsPage: React.FC = () => {
               <a href="#report-table" className="text-accent hover:underline">→ Bảng 9 trường</a>
               <a href="#risk-list" className="text-accent hover:underline">→ Danh sách rủi ro ({data.risks.length})</a>
             </div>
-          </Card>
-
-          <Card className="space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="text-sm font-bold text-ink">Bước 4 — Giám đốc đánh giá chung</div>
-                <div className="text-[11px] text-ink-muted">HR chỉ nên chốt &amp; khoá sau khi bước này hoàn tất.</div>
-              </div>
-              <Badge variant={data.directorReviewPending ? 'warn' : 'ok'}>
-                {data.directorReviewPending ? 'Chờ Giám đốc duyệt' : 'Đã duyệt'}
-              </Badge>
-            </div>
-            {data.directorReviewedAt ? (
-              <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink-secondary space-y-1">
-                <div>Thời điểm: <b>{new Date(data.directorReviewedAt).toLocaleString('vi-VN')}</b></div>
-                {data.directorReviewComment && <div>Nhận xét: {data.directorReviewComment}</div>}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800">
-                Chưa có đánh giá chung của Giám đốc.
-                {data.canDirectorReview ? ' Bấm “Giám đốc duyệt” ở góc trên để hoàn tất.' : ' Tài khoản Giám đốc (ADMIN) cần thực hiện bước này.'}
-              </div>
-            )}
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -416,11 +362,12 @@ export const OKRReportsPage: React.FC = () => {
                     <th className="py-3 px-3 text-center">Điểm TB</th>
                     <th className="py-3 px-3 min-w-[180px]">Note</th>
                     <th className="py-3 px-3 text-center">Trạng thái</th>
+                    <th className="py-3 px-3 text-center">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={12} className="py-8 text-center text-ink-muted">Không có dữ liệu phù hợp.</td></tr>
+                    <tr><td colSpan={13} className="py-8 text-center text-ink-muted">Không có dữ liệu phù hợp.</td></tr>
                   ) : filtered.map((r) => (
                     <tr key={r.employeeCode} className="hover:bg-canvas/40">
                       <td className="py-2.5 px-3 text-ink-muted">{r.stt}</td>
@@ -435,10 +382,9 @@ export const OKRReportsPage: React.FC = () => {
                       </td>
                       <td className="py-2.5 px-3 text-ink-secondary">{r.department || '—'}</td>
                       <td className="py-2.5 px-3 text-ink-secondary">{r.directManagerName || '—'}</td>
-                      {([['businessScore', 'selfBusinessScore'], ['peopleScore', 'selfPeopleScore']] as const).map(([k, selfK]) => (
+                      {(['businessScore', 'peopleScore'] as const).map((k) => (
                         <td key={k} className="py-2.5 px-3 text-center">
                           <div className="font-bold">{r[k] ?? '—'}</div>
-                          {r[selfK] != null && <div className="text-[10px] text-ink-muted">tự chấm {r[selfK]}</div>}
                         </td>
                       ))}
                       <td className="py-2.5 px-3 text-center font-black text-accent">{r.averageScore != null ? r.averageScore.toFixed(1) : '—'}</td>
@@ -449,7 +395,7 @@ export const OKRReportsPage: React.FC = () => {
                             onChange={(e) => setNoteDraft({ ...noteDraft, [r.employeeCode]: e.target.value })}
                             onBlur={() => saveNote(r)}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                            placeholder="Ghi chú HR / Giám đốc…"
+                            placeholder="Ghi chú HR…"
                             title={r.managerComment ? `Nhận xét QL: ${r.managerComment}` : undefined}
                             className="w-full border border-line rounded-md px-2 py-1 text-xs bg-canvas focus:outline-none focus:border-accent"
                           />
@@ -459,6 +405,17 @@ export const OKRReportsPage: React.FC = () => {
                         {r.managerComment && <div className="text-[10px] text-ink-muted mt-0.5 truncate max-w-[220px]">QL: {r.managerComment}</div>}
                       </td>
                       <td className="py-2.5 px-3 text-center"><Badge variant={statusVariant(r.status) as any}>{statusLabel(r.status)}</Badge></td>
+                      <td className="py-2.5 px-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!r.reviewId}
+                          title={r.reviewId ? 'Xem nội dung form đánh giá (chỉ đọc)' : 'Nhân viên chưa có hồ sơ đánh giá'}
+                          onClick={() => setDetailRecord(r)}
+                        >
+                          Xem chi tiết
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -478,35 +435,11 @@ export const OKRReportsPage: React.FC = () => {
         </>
       )}
 
-      <Modal isOpen={directorOpen} onClose={() => setDirectorOpen(false)} title="Giám đốc đánh giá chung chu kỳ OKR" maxWidth="md">
-        <div className="space-y-3">
-          <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
-            Bước 4/5 — đánh giá chung toàn công ty. Sau bước này HR mới nên chốt &amp; khoá chu kỳ.
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Nhận xét đánh giá chung <span className="text-danger">*</span></label>
-            <textarea
-              rows={4}
-              value={directorComment}
-              onChange={(e) => setDirectorComment(e.target.value)}
-              placeholder="Ví dụ: Chất lượng mục tiêu đồng đều, cần cải thiện nhóm X..."
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas focus:outline-none focus:border-accent"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button size="sm" variant="ghost" onClick={() => setDirectorOpen(false)}>Huỷ</Button>
-            <Button size="sm" variant="primary" onClick={submitDirectorReview} disabled={savingDirector || !directorComment.trim()}>
-              {savingDirector ? 'Đang lưu...' : 'Xác nhận đánh giá'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
       <Modal isOpen={lockOpen} onClose={() => setLockOpen(false)} title="Chốt & khoá chu kỳ OKR" maxWidth="md">
         <div className="space-y-3">
           {lockBlockers.length === 0 ? (
             <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-[11px] text-emerald-800">
-              Đã đủ điều kiện: Quản lý chấm xong, không còn nhân sự chưa có OKR, Giám đốc đã đánh giá chung.
+              Đã đủ điều kiện: Quản lý chấm xong, không còn nhân sự chưa có OKR.
             </div>
           ) : (
             <>
@@ -539,6 +472,14 @@ export const OKRReportsPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* HR xem lại form đánh giá của nhân viên — chỉ đọc */}
+      <OkrAssessmentDetailModal
+        employeeCode={detailRecord?.employeeCode ?? null}
+        employeeName={detailRecord?.fullName}
+        onClose={() => setDetailRecord(null)}
+        onToast={showToast}
+      />
     </div>
   );
 };

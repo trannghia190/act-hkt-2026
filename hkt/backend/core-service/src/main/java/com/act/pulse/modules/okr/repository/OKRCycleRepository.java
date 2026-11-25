@@ -71,23 +71,4 @@ public interface OKRCycleRepository extends JpaRepository<OKRCycle, UUID> {
     @Transactional
     @Query(value = "UPDATE okr_cycles SET phases = CAST(:phases AS jsonb), updated_at = NOW() WHERE id = :id", nativeQuery = true)
     int updatePhasesNative(@Param("id") UUID id, @Param("phases") String phases);
-
-    @Modifying(clearAutomatically = true)
-    @Transactional
-    @Query(value = """
-            UPDATE okr_cycles SET director_reviewed_at = NOW(), director_reviewed_by = :reviewer,
-                director_review_comment = :comment, updated_at = NOW()
-            WHERE id = :id
-            """, nativeQuery = true)
-    int markDirectorReviewed(@Param("id") UUID id, @Param("reviewer") UUID reviewer,
-                             @Param("comment") String comment);
-
-    @Modifying(clearAutomatically = true)
-    @Transactional
-    @Query(value = """
-            UPDATE okr_cycles SET director_reviewed_at = NULL, director_reviewed_by = NULL,
-                director_review_comment = NULL, updated_at = NOW()
-            WHERE id = :id
-            """, nativeQuery = true)
-    int clearDirectorReview(@Param("id") UUID id);
 }

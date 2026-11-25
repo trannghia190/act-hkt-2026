@@ -53,7 +53,7 @@ export const OKRAssessmentPage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto pb-12">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 

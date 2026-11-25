@@ -99,9 +99,6 @@ export const MidYearReviewPage: React.FC = () => {
   const [editForm, setEditForm] = useState({ title: '', detail: '', dueDate: '', reason: '' });
   const [savingItem, setSavingItem] = useState(false);
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ groupType: 'BUSINESS' as 'BUSINESS' | 'PEOPLE', title: '', detail: '', dueDate: '', reason: '' });
-
   const [deleteItem, setDeleteItem] = useState<ItemRow | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -252,29 +249,6 @@ export const MidYearReviewPage: React.FC = () => {
     }
   };
 
-  const addItem = async () => {
-    if (!selectedId) return;
-    if (!addForm.title.trim() || !addForm.reason.trim()) {
-      showToast('Tên mục tiêu và lý do là bắt buộc');
-      return;
-    }
-    try {
-      const res = await fetch(`/api/v1/okr/midyear/reviews/${selectedId}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...addForm, dueDate: addForm.dueDate || null }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Không thêm được mục tiêu');
-      showToast('Đã thêm mục tiêu giữa năm');
-      setAddOpen(false);
-      setAddForm({ groupType: 'BUSINESS', title: '', detail: '', dueDate: '', reason: '' });
-      refresh();
-    } catch (err: any) {
-      showToast(err.message || 'Không thêm được mục tiêu');
-    }
-  };
-
   const openReopen = () => {
     setReopenReason('Mở lại để bổ sung trong review giữa năm');
     setReopenOpen(true);
@@ -311,11 +285,6 @@ export const MidYearReviewPage: React.FC = () => {
           <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} />
           {title}
         </h3>
-        {canWrite && (
-          <Button size="sm" variant="outline" onClick={() => { setAddForm({ groupType: group, title: '', detail: '', dueDate: '', reason: '' }); setAddOpen(true); }}>
-            + Thêm mục tiêu
-          </Button>
-        )}
       </div>
       {items.length === 0 ? (
         <div className="text-xs text-ink-muted py-4 text-center bg-canvas rounded-lg border border-dashed border-line">Chưa có mục tiêu.</div>
@@ -360,7 +329,7 @@ export const MidYearReviewPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-12">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
@@ -518,38 +487,6 @@ export const MidYearReviewPage: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Thêm mục tiêu giữa năm" maxWidth="lg">
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Nhóm</label>
-            <select value={addForm.groupType} onChange={(e) => setAddForm({ ...addForm, groupType: e.target.value as 'BUSINESS' | 'PEOPLE' })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas">
-              <option value="BUSINESS">Business</option>
-              <option value="PEOPLE">People</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Tên mục tiêu <span className="text-danger">*</span></label>
-            <textarea rows={2} value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Chi tiết</label>
-            <textarea rows={2} value={addForm.detail} onChange={(e) => setAddForm({ ...addForm, detail: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Hạn chót</label>
-            <input type="date" value={addForm.dueDate} onChange={(e) => setAddForm({ ...addForm, dueDate: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Lý do thêm <span className="text-danger">*</span></label>
-            <textarea rows={2} value={addForm.reason} onChange={(e) => setAddForm({ ...addForm, reason: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-line">
-            <Button size="sm" variant="ghost" onClick={() => setAddOpen(false)}>Huỷ</Button>
-            <Button size="sm" variant="primary" onClick={addItem}>Thêm mục tiêu</Button>
-          </div>
-        </div>
-      </Modal>
-
       <Modal isOpen={Boolean(deleteItem)} onClose={() => setDeleteItem(null)} title="Bớt mục tiêu giữa năm" maxWidth="md">
         <div className="space-y-3">
           <div className="rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink-secondary">
@@ -570,7 +507,7 @@ export const MidYearReviewPage: React.FC = () => {
       <Modal isOpen={reopenOpen} onClose={() => setReopenOpen(false)} title="Mở cho nhân viên sửa bổ sung" maxWidth="md">
         <div className="space-y-3">
           <div className="rounded-lg border border-line bg-canvas p-2.5 text-[11px] text-ink-muted">
-            Nhân viên sẽ sửa/bổ sung OKR và nộp lại. Khi nộp lại, bộ mục tiêu sẽ khoá cho tới lần mở tiếp theo.
+            Nhân viên sẽ tự sửa/bổ sung mục tiêu của mình trên trang “OKR của tôi” rồi nộp lại — Quản lý không thêm mục tiêu thay nhân viên. Khi nộp lại, bộ mục tiêu sẽ khoá cho tới lần mở tiếp theo.
           </div>
           <div>
             <label className="block text-xs font-semibold text-ink mb-1">Lý do mở lại <span className="text-danger">*</span></label>

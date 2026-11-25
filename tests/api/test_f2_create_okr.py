@@ -1,11 +1,29 @@
 import requests
 import json
+import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import okr_test_data as T  # noqa: E402
+
 BASE_URL = "http://localhost:8080/api/v1"
+YEAR = T.TEST_YEAR
+
 
 def run_tests():
     print("🚀 Bắt đầu kiểm thử Service F2 (Tạo OKR & C14 Gợi ý kế thừa)...")
+
+    # OKR khởi động TRỐNG (V64) → tự dựng chu kỳ + OKR của cả quản lý lẫn nhân
+    # viên (cả hai ở trạng thái locked) rồi dọn sạch cuối test.
+    T.cleanup()
+    try:
+        _run()
+    finally:
+        T.cleanup()
+
+
+def _run():
+    T.setup_okr_env()
 
     # 1. Login lấy token
     login_res = requests.post(f"{BASE_URL}/auth/login", json={"employeeCodeOrEmail": "136ACT", "password": "123456"})
@@ -14,7 +32,7 @@ def run_tests():
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     # Lấy reviewId của nhân viên để Quản lý trực tiếp mở lại quyền sửa
-    review_id = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers).json()["data"]["reviewId"]
+    review_id = requests.get(f"{BASE_URL}/okr/my-okr?year={YEAR}", headers=headers).json()["data"]["reviewId"]
 
     mgr_login = requests.post(f"{BASE_URL}/auth/login", json={"employeeCodeOrEmail": "05ACT", "password": "123456"})
     assert mgr_login.status_code == 200, f"Login Quản lý thất bại: {mgr_login.text}"
@@ -26,7 +44,7 @@ def run_tests():
     assert reopen_res.status_code == 200, f"Quản lý mở lại quyền sửa thất bại: {reopen_res.text}"
 
     # Tiêu chí 1: 2 nhóm cố định Business/People từ /okr/my-okr
-    my_okr_res = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers)
+    my_okr_res = requests.get(f"{BASE_URL}/okr/my-okr?year={YEAR}", headers=headers)
     assert my_okr_res.status_code == 200, f"Lấy /okr/my-okr thất bại: {my_okr_res.text}"
     okr_data = my_okr_res.json()["data"]
     assert okr_data["status"] in ("draft", "reopened"), f"Trạng thái ban đầu phải mở sửa, nhận {okr_data['status']}"
@@ -70,7 +88,7 @@ def run_tests():
     del_ok_res = requests.delete(f"{BASE_URL}/okr/items/{item_id}?reason=Thay_doi_ke_hoach_ky_sau", headers=headers)
     assert del_ok_res.status_code == 200, f"Xoá có lý do thất bại: {del_ok_res.text}"
     # 6c. Kiểm tra lại lịch sử -> mục vẫn còn (deletedItems)
-    my_okr_after_del = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers).json()["data"]
+    my_okr_after_del = requests.get(f"{BASE_URL}/okr/my-okr?year={YEAR}", headers=headers).json()["data"]
     deleted_matches = [d for d in my_okr_after_del["deletedItems"] if d["id"] == item_id]
     assert len(deleted_matches) == 1, "Mục bị xoá phải nằm trong danh sách deletedItems để lưu vết"
     assert deleted_matches[0]["deleteReason"] == "Thay_doi_ke_hoach_ky_sau"
@@ -86,7 +104,7 @@ def run_tests():
         }
     )
     assert prop_res.status_code == 200, f"Lưu proposal thất bại: {prop_res.text}"
-    okr_prop = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers).json()["data"]
+    okr_prop = requests.get(f"{BASE_URL}/okr/my-okr?year={YEAR}", headers=headers).json()["data"]
     # Tên trường đã đổi theo mô hình hiện tại (commit 673bdd4): đề xuất gửi kèm
     # bộ mục tiêu của KỲ HIỆN TẠI → "box4Proposal" (trước là "box4ProposalNextYear").
     assert "Solutions Architect" in okr_prop["box4Proposal"]
@@ -96,7 +114,7 @@ def run_tests():
     # Tiêu chí 4 & 5: Gửi duyệt -> Khoá sửa, không sửa được nữa
     submit_res = requests.post(f"{BASE_URL}/okr/submit-setup", headers=headers)
     assert submit_res.status_code == 200, f"Submit setup thất bại: {submit_res.text}"
-    okr_locked = requests.get(f"{BASE_URL}/okr/my-okr?year=2026", headers=headers).json()["data"]
+    okr_locked = requests.get(f"{BASE_URL}/okr/my-okr?year={YEAR}", headers=headers).json()["data"]
     assert okr_locked["status"] == "submitted", f"Trạng thái phải là submitted, nhận {okr_locked['status']}"
     assert okr_locked["isLocked"] == True, "isLocked phải là True sau khi nộp"
 

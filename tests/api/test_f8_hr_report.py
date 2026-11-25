@@ -35,21 +35,8 @@ def main():
     assert "spreadsheetml" in excel.headers.get("content-type", "")
     assert len(excel.content) > 1000
 
-    # Bước 4 — chỉ Giám đốc (ADMIN) được đánh giá chung; HR gọi phải bị chặn
-    cycle_id = data.get("cycleId")
-    if cycle_id and not data.get("directorReviewedAt") and data.get("pendingManagerAssessments") == 0:
-        assert requests.post(f"{BASE}/okr/cycles/{cycle_id}/director-review", headers=H,
-                             json={"comment": "HR không được duyệt"}).status_code == 403
-        admin = requests.post(f"{BASE}/auth/login", json={"employeeCodeOrEmail": "Admin", "password": "Admin"})
-        assert admin.status_code == 200, admin.text
-        A = {"Authorization": f"Bearer {admin.json()['data']['accessToken']}", "Content-Type": "application/json"}
-        assert requests.post(f"{BASE}/okr/cycles/{cycle_id}/director-review", headers=A,
-                             json={"comment": ""}).status_code == 400
-        assert requests.post(f"{BASE}/okr/cycles/{cycle_id}/director-review", headers=A,
-                             json={"comment": "Đồng ý kết quả đánh giá toàn công ty"}).status_code == 200
-        after = requests.get(f"{BASE}/okr/admin/hr-summary?year=2026", headers=H).json()["data"]
-        assert after.get("directorReviewedAt")
-        print("✓ F8: Giám đốc (ADMIN) đánh giá chung trước khi HR chốt")
+    # Bước 4 (Giám đốc đánh giá chung) xử lý ngoài hệ thống — API/HR summary không còn bước này.
+    assert "directorReviewedAt" not in data
     print(f"✓ F8: {len(records)} hồ sơ 9 trường, widget + tóm tắt + {len(data['risks'])} rủi ro, Excel {len(excel.content)} bytes")
 
 

@@ -3,6 +3,12 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
 
+/** Kỳ chốt cuối năm có hậu tố -FINAL ở backend — hiển thị thân thiện hơn. */
+const displayPeriod = (period?: string | null) => {
+  if (!period) return '';
+  return period.endsWith('-FINAL') ? `${period.slice(0, -'-FINAL'.length)} · chốt cuối năm` : period;
+};
+
 interface OKRTodo {
   id: string;
   type: string;
@@ -179,7 +185,7 @@ export const OKRDashboardPage: React.FC = () => {
           <div className="text-sm font-bold text-ink">{data.phaseTitle}</div>
           {data.checkinPeriod && data.checkinDeadline && data.canCheckIn && (
             <div className="text-xs text-ink-muted">
-              Check-in kỳ <strong>{data.checkinPeriod}</strong>: hạn <strong>{data.checkinDeadline}</strong> ·{' '}
+              Check-in kỳ <strong>{displayPeriod(data.checkinPeriod)}</strong>: hạn <strong>{data.checkinDeadline}</strong> ·{' '}
               {data.pendingCheckinCount} đầu việc chưa cập nhật.
             </div>
           )}
@@ -193,7 +199,7 @@ export const OKRDashboardPage: React.FC = () => {
           >
             <span>🚀 Check-in Tiến Độ Ngay</span>
             <span className="text-[11px] font-medium opacity-90">
-              Kỳ {data.checkinPeriod} · còn {data.pendingCheckinCount} đầu việc
+              Kỳ {displayPeriod(data.checkinPeriod)} · còn {data.pendingCheckinCount} đầu việc
             </span>
           </a>
         ) : data.checkinState && data.checkinState !== 'CLOSED' ? (

@@ -40,7 +40,7 @@ public class OKRCheckInController {
     private final OKRCheckInRepository checkInRepository;
     private final OKRCheckInAttachmentRepository attachmentRepository;
 
-    private record CheckInInput(OKRItem item, double newValue, double previous) {}
+    private record CheckInInput(OKRItem item, double newValue, double previous, OKRCheckIn existing) {}
 
     /** Lý do không check-in được (null = được phép). */
     private String blockReason(OKRReview review, OKRCycle cycle) {
@@ -66,7 +66,9 @@ public class OKRCheckInController {
         int y = phaseService.resolveYear(year);
         OKRCycle cycle = phaseService.cycle(y).orElse(null);
         OKRReview review = reviewRepository.findByUserIdAndCycleYear(user.getId(), y).orElse(null);
-        String period = phaseService.currentPeriod(cycle);
+        String period = phaseService.currentPeriod(cycle, review);
+        // Phase Đánh giá cuối năm = chốt tiến độ cuối năm: cho cập nhật lại nhiều lần tới hết cửa sổ.
+        boolean finalWindow = cycle != null && OKRPhaseService.FINAL.equals(phaseService.updateWindow(cycle, review));
         LocalDate deadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle, review);
         long daysLeft = deadline == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), deadline));
         String blockReason = blockReason(review, cycle);
@@ -78,7 +80,7 @@ public class OKRCheckInController {
         for (OKRItem item : items) {
             OKRCheckIn last = checkInRepository.findFirstByItemIdOrderByCreatedAtDesc(item.getId()).orElse(null);
             double previous = last != null && last.getNewValue() != null ? last.getNewValue() : item.getProgress().doubleValue();
-            boolean doneThisPeriod = last != null && period.equals(last.getPeriod());
+            boolean doneThisPeriod = !finalWindow && last != null && period.equals(last.getPeriod());
             if (!doneThisPeriod) pending++;
 
             Map<String, Object> row = new HashMap<>();
@@ -102,6 +104,8 @@ public class OKRCheckInController {
         Map<String, Object> data = new HashMap<>();
         data.put("year", y);
         data.put("period", period);
+        data.put("periodLabel", phaseService.periodLabel(period));
+        data.put("finalWindow", finalWindow);
         data.put("reviewStatus", review != null ? review.getStatus() : null);
         data.put("isLocked", review != null && ("submitted".equalsIgnoreCase(review.getStatus())
                 || "locked".equalsIgnoreCase(review.getStatus())));
@@ -109,15 +113,15 @@ public class OKRCheckInController {
         data.put("daysLeft", daysLeft);
         data.put("canCheckIn", canCheckIn);
         data.put("blockReason", blockReason != null ? blockReason
-                : (pending == 0 && !items.isEmpty() ? "Đã check-in đủ các đầu việc trong kỳ " + period : null));
+                : (pending == 0 && !items.isEmpty() ? "Đã check-in đủ các đầu việc trong kỳ " + phaseService.periodLabel(period) : null));
         data.put("pendingCount", pending);
         data.put("reminder", blockReason == null && pending > 0 && daysLeft <= 3);
         data.put("reminderText", blockReason != null ? blockReason
-                : "Kỳ " + period + " — còn " + daysLeft + " ngày đến hạn (" + deadline + ")");
+                : "Kỳ " + phaseService.periodLabel(period) + " — còn " + daysLeft + " ngày đến hạn (" + deadline + ")");
         data.put("businessItems", business);
         data.put("peopleItems", people);
         data.put("totalItems", business.size() + people.size());
-        return ApiResponse.ok(data, "Dữ liệu check-in kỳ " + period);
+        return ApiResponse.ok(data, "Dữ liệu check-in kỳ " + phaseService.periodLabel(period));
     }
 
     @PostMapping
@@ -133,10 +137,12 @@ public class OKRCheckInController {
         if (reason != null) throw OKRRuleException.conflict(reason);
 
         // Kỳ do server quyết định — không cho check-in hộ kỳ khác.
-        String period = phaseService.currentPeriod(cycle);
+        String period = phaseService.currentPeriod(cycle, review);
+        // Phase Đánh giá cuối năm: check-in là cập nhật snapshot chốt cuối năm → được nộp nhiều lần.
+        boolean finalWindow = OKRPhaseService.FINAL.equals(phaseService.updateWindow(cycle, review));
         Object requested = body.get("period");
         if (requested != null && !requested.toString().isBlank() && !period.equals(requested.toString().trim())) {
-            throw OKRRuleException.badRequest("Chỉ được check-in cho kỳ hiện tại (" + period + ")");
+            throw OKRRuleException.badRequest("Chỉ được check-in cho kỳ hiện tại (" + phaseService.periodLabel(period) + ")");
         }
         String note = body.get("note") == null ? "" : body.get("note").toString().trim();
         if (!(body.get("items") instanceof List<?> entries) || entries.isEmpty()) {
@@ -170,55 +176,74 @@ public class OKRCheckInController {
                 throw OKRRuleException.badRequest("Đầu việc không thuộc OKR của bạn");
             }
             OKRCheckIn last = checkInRepository.findFirstByItemIdOrderByCreatedAtDesc(itemId).orElse(null);
-            if (last != null && period.equals(last.getPeriod())) {
-                throw OKRRuleException.conflict("Đầu việc \"" + item.getTitle() + "\" đã check-in kỳ " + period
-                        + " — mỗi kỳ chỉ check-in 1 lần");
+            OKRCheckIn samePeriod = last != null && period.equals(last.getPeriod()) ? last : null;
+            // Kỳ thường (tháng/quý giữa năm): 1 lần/kỳ. Kỳ chốt cuối năm: cho cập nhật lại tới khi đóng cửa sổ.
+            if (samePeriod != null && !finalWindow) {
+                throw OKRRuleException.conflict("Đầu việc \"" + item.getTitle() + "\" đã check-in kỳ "
+                        + phaseService.periodLabel(period) + " — mỗi kỳ chỉ check-in 1 lần");
             }
-            double previous = last != null ? last.getNewValue() : item.getProgress().doubleValue();
-            inputs.add(new CheckInInput(item, newValue, previous));
+            double previous = samePeriod != null
+                    ? (samePeriod.getPreviousValue() != null ? samePeriod.getPreviousValue() : samePeriod.getNewValue())
+                    : (last != null ? last.getNewValue() : item.getProgress().doubleValue());
+            inputs.add(new CheckInInput(item, newValue, previous, samePeriod));
         }
         if (inputs.isEmpty()) throw OKRRuleException.badRequest("Chưa có giá trị mới nào được nhập");
 
         UUID batchId = UUID.randomUUID();
+        UUID firstBatchId = null;
         List<Map<String, Object>> saved = new ArrayList<>();
         for (CheckInInput input : inputs) {
             OKRItem item = input.item();
             int progress = (int) Math.round(input.newValue());
-            OKRCheckIn checkin = checkInRepository.save(OKRCheckIn.builder()
-                    .batchId(batchId)
-                    .reviewId(review.getId())
-                    .itemId(item.getId())
-                    .userId(user.getId())
-                    .period(period)
-                    .previousValue(input.previous())
-                    .newValue(input.newValue())
-                    .progressSnapshot(progress)
-                    .note(note)
-                    .build());
+            OKRCheckIn checkin;
+            if (input.existing() != null) {
+                // Cập nhật snapshot chốt cuối năm: giữ nguyên batchId để file evidence cũ vẫn gắn đúng lần check-in.
+                checkin = input.existing();
+                checkin.setNewValue(input.newValue());
+                checkin.setProgressSnapshot(progress);
+                checkin.setNote(note);
+                checkin = checkInRepository.save(checkin);
+            } else {
+                checkin = checkInRepository.save(OKRCheckIn.builder()
+                        .batchId(batchId)
+                        .reviewId(review.getId())
+                        .itemId(item.getId())
+                        .userId(user.getId())
+                        .period(period)
+                        .previousValue(input.previous())
+                        .newValue(input.newValue())
+                        .progressSnapshot(progress)
+                        .note(note)
+                        .build());
+            }
+            if (firstBatchId == null) firstBatchId = checkin.getBatchId();
             item.setProgress(progress);
             itemRepository.save(item);
 
             Map<String, Object> row = new HashMap<>();
             row.put("checkinId", checkin.getId().toString());
+            row.put("batchId", checkin.getBatchId().toString());
             row.put("itemId", item.getId().toString());
             row.put("title", item.getTitle());
             row.put("groupType", item.getGroupType());
             row.put("previousValue", input.previous());
             row.put("newValue", input.newValue());
             row.put("progress", progress);
+            row.put("updated", input.existing() != null);
             saved.add(row);
         }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("batchId", batchId.toString());
+        data.put("batchId", firstBatchId.toString());
         data.put("period", period);
+        data.put("periodLabel", phaseService.periodLabel(period));
         data.put("note", note);
         data.put("savedCount", saved.size());
         data.put("checkins", saved);
         data.put("businessProgress", Math.round(management.groupProgress(review.getId(), "BUSINESS") * 10.0) / 10.0);
         data.put("peopleProgress", Math.round(management.groupProgress(review.getId(), "PEOPLE") * 10.0) / 10.0);
         data.put("attachmentCount", 0);
-        return ResponseEntity.ok(ApiResponse.ok(data, "Đã lưu check-in tiến độ kỳ " + period));
+        return ResponseEntity.ok(ApiResponse.ok(data, "Đã lưu check-in tiến độ kỳ " + phaseService.periodLabel(period)));
     }
 
     @GetMapping("/history")

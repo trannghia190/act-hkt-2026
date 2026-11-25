@@ -174,7 +174,7 @@ export const ApprovalsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Toast */}
       {successToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
+        <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
           <span>✓</span>
           <span>{successToast}</span>
         </div>

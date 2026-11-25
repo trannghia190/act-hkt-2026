@@ -87,19 +87,6 @@ public class OKRManagementService {
         return review != null && review.getLockedAt() != null && !"draft".equalsIgnoreCase(review.getStatus());
     }
 
-    /** Xoá dấu "Giám đốc đã đánh giá chung" khi số liệu chính thức thay đổi sau thời điểm đó. */
-    public void invalidateDirectorReview(OKRReview review, String reason) {
-        OKRCycle cycle = cycleOf(review);
-        if (cycle == null || cycle.getDirectorReviewedAt() == null) return;
-        cycleRepository.clearDirectorReview(cycle.getId());
-        audit(review.getId(), cycle.getId(), null, "DIRECTOR_REVIEW_RESET", "directorReview", "reviewed", null, reason);
-        for (User u : userRepository.findAll()) {
-            if ("ADMIN".equalsIgnoreCase(u.getRole()) || "HR_ADMIN".equalsIgnoreCase(u.getRole())) {
-                notify(u.getId(), "Cần Giám đốc đánh giá lại chu kỳ OKR " + cycle.getCycleYear(), reason, "OKR_DIRECTOR_RESET", "/okr/summary-report");
-            }
-        }
-    }
-
     /** Bộ OKR đã từng được gửi lên Quản lý (không phải bản nháp / hồ sơ tự tạo chưa gửi lần nào). */
     public boolean reachedManager(OKRReview review) {
         if (review == null || "draft".equalsIgnoreCase(review.getStatus())) return false;
@@ -130,7 +117,7 @@ public class OKRManagementService {
         List<OKRItem> items = activeItems(review.getId());
         if (items.isEmpty()) return null;
 
-        String period = phaseService.currentPeriod(cycle);
+        String period = phaseService.currentPeriod(cycle, review);
         Set<UUID> checked = new HashSet<>();
         checkInRepository.findByReviewIdAndPeriodOrderByCreatedAtDesc(review.getId(), period)
                 .forEach(ci -> checked.add(ci.getItemId()));
@@ -194,7 +181,8 @@ public class OKRManagementService {
         CheckInDue due = checkInDue(user.getId(), year);
         if (due != null) {
             tasks.add(new OkrTask("todo-okr-checkin-" + due.period(), "CHECKIN",
-                    "Check-in tiến độ kỳ " + due.period() + " (" + due.pendingItems() + " đầu việc chưa cập nhật)",
+                    "Check-in tiến độ kỳ " + phaseService.periodLabel(due.period())
+                            + " (" + due.pendingItems() + " đầu việc chưa cập nhật)",
                     "PENDING", due.deadline(), "/okr/my-okr?checkin=1", "Check-in ngay", "HIGH"));
         }
 
@@ -455,7 +443,11 @@ public class OKRManagementService {
             byPeriod.putIfAbsent(ci.getPeriod(), ci);
         }
         List<OKRCheckIn> list = new ArrayList<>(byPeriod.values());
-        list.sort(Comparator.comparing(OKRCheckIn::getPeriod).reversed());
+        // Sắp theo thời điểm ghi nhận: kỳ chốt cuối năm (yyyy-FINAL) có tên kỳ đứng trước "yyyy-11"
+        // theo thứ tự chuỗi nhưng luôn được ghi sau các kỳ tháng/quý.
+        list.sort(Comparator.comparing(
+                (OKRCheckIn ci) -> ci.getCreatedAt() == null ? LocalDateTime.MIN : ci.getCreatedAt()
+        ).reversed());
         return list;
     }
 
@@ -520,13 +512,13 @@ public class OKRManagementService {
         // Chưa check-in kỳ hiện tại — chỉ khi cửa sổ cập nhật tiến độ đang mở và OKR đã duyệt.
         OKRCycle cycle = cycleOf(review);
         if (!items.isEmpty() && isCurrentlyApproved(review) && phaseService.updateWindow(cycle, review) != null) {
-            String period = phaseService.currentPeriod(cycle);
+            String period = phaseService.currentPeriod(cycle, review);
             boolean checked = !checkInRepository.findByReviewIdAndPeriodOrderByCreatedAtDesc(review.getId(), period).isEmpty();
             if (!checked) {
                 warnings.add(Map.of(
                         "code", "NO_CHECKIN",
                         "level", "MEDIUM",
-                        "message", "Chưa check-in trong kỳ " + period
+                        "message", "Chưa check-in trong kỳ " + phaseService.periodLabel(period)
                 ));
             }
         }

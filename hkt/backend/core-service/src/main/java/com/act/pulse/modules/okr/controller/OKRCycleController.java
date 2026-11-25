@@ -2,8 +2,6 @@ package com.act.pulse.modules.okr.controller;
 
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
-import com.act.pulse.modules.auth.entity.User;
-import com.act.pulse.modules.auth.repository.UserRepository;
 import com.act.pulse.modules.okr.entity.OKRCycle;
 import com.act.pulse.modules.okr.repository.OKRCycleRepository;
 import com.act.pulse.modules.okr.entity.OKRReview;
@@ -36,7 +34,6 @@ public class OKRCycleController {
     private final OKRReviewRepository reviewRepository;
     private final com.act.pulse.modules.okr.repository.OKRCheckInAttachmentRepository attachmentRepository;
     private final com.act.pulse.modules.okr.service.OKRReviewProvisioningJob provisioning;
-    private final UserRepository userRepository;
     private final com.act.pulse.modules.okr.service.OKRPhaseDeadlineReminderJob deadlineReminderJob;
 
     @jakarta.persistence.PersistenceContext
@@ -148,15 +145,13 @@ public class OKRCycleController {
         boolean force = Boolean.TRUE.equals(payload.get("force"));
         String reason = str(payload.get("reason")).trim();
 
-        // Chốt khi: (1) mọi hồ sơ đã được Quản lý chấm, (2) không còn nhân sự active chưa có OKR,
-        // (3) Giám đốc đã đánh giá chung (Bước 4). Muốn chốt sớm phải force + lý do.
+        // Chốt khi: (1) mọi hồ sơ đã được Quản lý chấm, (2) không còn nhân sự active chưa có OKR.
+        // Bước Giám đốc đánh giá chung được xử lý ngoài hệ thống (HR export và trình duyệt).
         long pendingReviews = management.pendingManagerAssessmentCount(cycle.getCycleYear());
         long pendingNoOkr = management.pendingNoOkrCount(cycle.getCycleYear());
-        boolean directorDone = cycle.getDirectorReviewedAt() != null;
         List<String> blockers = new ArrayList<>();
         if (pendingReviews > 0) blockers.add(pendingReviews + " hồ sơ chưa được Quản lý chấm xong");
         if (pendingNoOkr > 0) blockers.add(pendingNoOkr + " nhân sự active chưa có OKR");
-        if (!directorDone) blockers.add("chưa có đánh giá chung của Giám đốc");
 
         if (!blockers.isEmpty() && !force) {
             throw OKRRuleException.conflict("Chưa thể chốt chu kỳ: " + String.join("; ", blockers)
@@ -278,37 +273,6 @@ public class OKRCycleController {
                         + " — năm " + year + " giờ có thể tạo chu kỳ mới"));
     }
 
-    @PostMapping("/{id}/director-review")
-    @org.springframework.transaction.annotation.Transactional
-    @Operation(summary = "Bước 4 — Giám đốc đánh giá chung trước khi HR chốt chu kỳ")
-    public ResponseEntity<ApiResponse<Boolean>> directorReview(@PathVariable UUID id,
-                                                               @RequestBody(required = false) Map<String, Object> body) {
-        if (!"ADMIN".equalsIgnoreCase(CurrentUser.role())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error("Chỉ Giám đốc (ADMIN) mới được đánh giá chung chu kỳ OKR"));
-        }
-        OKRCycle cycle = cycleRepository.findById(id).orElse(null);
-        if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
-        if ("closed".equalsIgnoreCase(cycle.getStatus())) {
-            throw OKRRuleException.conflict("Chu kỳ đã chốt & khoá — không thể đánh giá lại");
-        }
-        long pending = management.pendingManagerAssessmentCount(cycle.getCycleYear());
-        if (pending > 0) {
-            throw OKRRuleException.conflict("Còn " + pending + " hồ sơ chưa được Quản lý chấm xong — chưa thể đánh giá chung");
-        }
-        Map<String, Object> payload = body == null ? Map.of() : body;
-        String comment = str(payload.get("comment")).trim();
-        if (comment.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Nhận xét đánh giá chung của Giám đốc là bắt buộc"));
-        }
-        User actor = CurrentUser.get().flatMap(p -> userRepository.findById(p.userId())).orElse(null);
-        if (actor == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Chưa đăng nhập"));
-        cycleRepository.markDirectorReviewed(cycle.getId(), actor.getId(), comment);
-        management.audit(null, cycle.getId(), null, "DIRECTOR_REVIEW", "directorReview", null,
-                comment, "Giám đốc đánh giá chung chu kỳ OKR");
-        return ResponseEntity.ok(ApiResponse.ok(true, "Đã ghi nhận đánh giá chung của Giám đốc"));
-    }
-
     @PostMapping("/{id}/send-reminders")
     @Operation(summary = "HR gửi ngay nhắc hạn chót các phase đang mở (job tự chạy 8:05 hằng ngày)")
     public ResponseEntity<ApiResponse<Map<String, Object>>> sendReminders(@PathVariable UUID id) {
@@ -344,7 +308,6 @@ public class OKRCycleController {
             assertNoOtherActiveCycle(cycle.getId());
             cycle.setStatus("active");
             persistCycle(cycle, false);
-            cycleRepository.clearDirectorReview(cycle.getId());
             management.audit(null, cycle.getId(), null, "REOPEN_CYCLE", "status", "closed", "active", reason);
             cycleRepository.findById(cycle.getId()).ifPresent(provisioning::provision);
             return ResponseEntity.ok(ApiResponse.ok(true, "Đã mở lại chu kỳ OKR"));
@@ -365,8 +328,6 @@ public class OKRCycleController {
         cycle.setStatus("active");
         cycle.setPhases(reopenPhase(cycle.getPhases(), phaseKey, payload.get("dueDate")));
         persistCycle(cycle, false);
-        // Mở lại phase làm thay đổi dữ liệu sau thời điểm Giám đốc duyệt → cần duyệt lại.
-        cycleRepository.clearDirectorReview(cycle.getId());
         management.audit(null, cycle.getId(), null, "REOPEN_CYCLE", "phase", phaseKey, "active", reason);
         cycleRepository.findById(cycle.getId()).ifPresent(provisioning::provision);
             return ResponseEntity.ok(ApiResponse.ok(true, "Đã mở lại chu kỳ OKR"));
@@ -569,11 +530,6 @@ public class OKRCycleController {
         map.put("companyObjectives", phaseService.companyObjectives(cycle));
         map.put("seniorityCutoffDate", cycle.getSeniorityCutoffDate());
         map.put("effectiveSeniorityCutoff", phaseService.seniorityCutoff(cycle, cycle.getCycleYear()).toString());
-        map.put("directorReviewedAt", cycle.getDirectorReviewedAt());
-        map.put("directorReviewedBy", cycle.getDirectorReviewedBy());
-        map.put("directorReviewComment", cycle.getDirectorReviewComment());
-        map.put("directorReviewPending", cycle.getDirectorReviewedAt() == null);
-        map.put("canDirectorReview", "ADMIN".equalsIgnoreCase(CurrentUser.role()));
         return map;
     }
 

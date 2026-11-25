@@ -26,6 +26,9 @@ import requests
 
 BASE = os.environ.get("API_BASE", "http://localhost:8080/api/v1")
 
+# Năm test — lấy cùng nguồn với okr_test_data để tách khỏi năm vận hành.
+from okr_test_data import TEST_YEAR  # noqa: E402
+
 # 3 phase cố định của mô hình hiện tại (đúng thứ tự nghiệp vụ).
 REQUIRED_KEYS = ["setup", "midyear", "final"]
 
@@ -110,13 +113,13 @@ def _timeline_for(target_key: str, today: dt.date, days: int) -> list:
     return out
 
 
-def my_okr(emp_headers: dict, year: int = 2026) -> dict:
+def my_okr(emp_headers: dict, year: int = TEST_YEAR) -> dict:
     r = requests.get(f"{BASE}/okr/my-okr?year={year}", headers=emp_headers)
     assert r.status_code == 200, r.text
     return r.json()["data"]
 
 
-def ensure_locked(emp_headers: dict, mgr_headers: dict, year: int = 2026) -> dict:
+def ensure_locked(emp_headers: dict, mgr_headers: dict, year: int = TEST_YEAR) -> dict:
     """Đưa OKR về trạng thái locked (đã duyệt hiện hành) trước khi check-in / tự đánh giá / chấm cuối năm."""
     data = my_okr(emp_headers, year)
     status = data["status"]

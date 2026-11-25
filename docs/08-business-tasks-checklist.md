@@ -581,7 +581,8 @@
 - [ ] **Audit trail** — thay đổi gì, lúc nào, ai
 - [ ] Xem **tiến độ check-in từng người** theo 2 nhóm + lịch sử để thấy xu hướng
 - [ ] **Nhận xét riêng từng người** (coaching)
-- [ ] Điều chỉnh mục tiêu/thêm/bớt/kéo hạn → **bắt buộc lý do + audit trail**
+- [ ] Điều chỉnh/bớt/kéo hạn mục tiêu → **bắt buộc lý do + audit trail**
+- [ ] **Quản lý KHÔNG thêm mục tiêu thay nhân viên** — quản lý mở lại, **chính nhân viên tự bổ sung mục tiêu của mình** trên trang “OKR của tôi” rồi nộp lại
 - [ ] Nút **"Mở cho nhân viên sửa"** → NV sửa bổ sung, nộp lại thì khoá
 - [ ] Hiện **chênh lệch điểm tự chấm dự kiến vs tiến độ thực tế**
 **Phụ thuộc:** F2

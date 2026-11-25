@@ -11,13 +11,17 @@ Kiểm tra:
 import io
 import json
 import os
+import sys
 import urllib.request
 
 import requests
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import okr_test_data as T  # noqa: E402
 from okr_test_utils import ensure_locked, phase_open
 
 BASE = os.environ.get("API_BASE", "http://localhost:8080/api/v1")
+YEAR = T.TEST_YEAR
 
 
 def login(code: str) -> str:
@@ -32,12 +36,22 @@ def headers(token: str) -> dict:
 
 def main() -> None:
     print("🚀 Bắt đầu kiểm thử Service F3 (Check-in tiến độ S22)...")
+    # OKR khởi động TRỐNG (V64) → dựng chu kỳ + OKR đã duyệt rồi dọn sạch cuối test.
+    T.cleanup()
+    try:
+        _run()
+    finally:
+        T.cleanup()
+
+
+def _run() -> None:
+    T.setup_okr_env()
     emp_token = login("136ACT")
     mgr_token = login("05ACT")
     emp = headers(emp_token)
     mgr = headers(mgr_token)
 
-    my_okr = requests.get(f"{BASE}/okr/my-okr?year=2026", headers=emp).json()["data"]
+    my_okr = requests.get(f"{BASE}/okr/my-okr?year={YEAR}", headers=emp).json()["data"]
     review_id = my_okr["reviewId"]
 
     # Check-in chỉ hợp lệ trên OKR đang được duyệt hiện hành (locked)
@@ -47,7 +61,7 @@ def main() -> None:
     # Mô hình 3 phase: cập nhật tiến độ mở trong cửa sổ NV của midyear hoặc final
     # (không còn phase "checkin" riêng — commit 673bdd4 gộp vào 2 phase này).
     with phase_open("midyear"):
-        current = requests.get(f"{BASE}/okr/check-ins/current?year=2026", headers=emp)
+        current = requests.get(f"{BASE}/okr/check-ins/current?year={YEAR}", headers=emp)
         assert current.status_code == 200, current.text
         data = current.json()["data"]
         period = data["period"]
@@ -63,7 +77,7 @@ def main() -> None:
 
         # Không check-in hộ kỳ khác
         res = requests.post(f"{BASE}/okr/check-ins", headers=emp, json={
-            "year": 2026, "period": "2000-01", "items": [{"itemId": b["itemId"], "newValue": 50}]})
+            "year": YEAR, "period": "2000-01", "items": [{"itemId": b["itemId"], "newValue": 50}]})
         assert res.status_code == 400, res.text
         print("✓ Check-in kỳ khác kỳ hiện tại bị chặn")
 
@@ -74,7 +88,7 @@ def main() -> None:
             target = pending[0]
             new_val = min(100, target["previousValue"] + 5)
             res = requests.post(f"{BASE}/okr/check-ins", headers=emp, json={
-                "year": 2026, "period": period, "note": f"Check-in {period}",
+                "year": YEAR, "period": period, "note": f"Check-in {period}",
                 "items": [{"itemId": target["itemId"], "newValue": new_val}]})
             assert res.status_code == 200, res.text
             payload = res.json()["data"]
@@ -86,7 +100,7 @@ def main() -> None:
 
         # Check-in lần 2 cùng kỳ → 409
         dup = requests.post(f"{BASE}/okr/check-ins", headers=emp, json={
-            "year": 2026, "items": [{"itemId": target["itemId"], "newValue": 1}]})
+            "year": YEAR, "items": [{"itemId": target["itemId"], "newValue": 1}]})
         assert dup.status_code == 409, dup.text
         print("✓ Mỗi kỳ chỉ check-in 1 lần / đầu việc")
 
@@ -122,14 +136,14 @@ def main() -> None:
         json={"title": target["title"], "detail": "Bổ sung trong review giữa kỳ"},
     )
     assert edit.status_code == 200, edit.text
-    submit = requests.post(f"{BASE}/okr/submit-setup", headers=emp, json={"year": 2026})
+    submit = requests.post(f"{BASE}/okr/submit-setup", headers=emp, json={"year": YEAR})
     assert submit.status_code == 200, submit.text
-    locked = requests.get(f"{BASE}/okr/my-okr?year=2026", headers=emp).json()["data"]
+    locked = requests.get(f"{BASE}/okr/my-okr?year={YEAR}", headers=emp).json()["data"]
     assert locked["status"] == "submitted" and locked["isLocked"] is True
     approve = requests.post(f"{BASE}/okr/reviews/{review_id}/approve?action=APPROVE", headers=mgr,
                             json={"feedback": "Duyệt lại sau bổ sung giữa kỳ"})
     assert approve.status_code == 200, approve.text
-    locked = requests.get(f"{BASE}/okr/my-okr?year=2026", headers=emp).json()["data"]
+    locked = requests.get(f"{BASE}/okr/my-okr?year={YEAR}", headers=emp).json()["data"]
     assert locked["status"] == "locked" and locked["isLocked"] is True
     print("✓ Giữa kỳ: mở lại → sửa → nộp lại → duyệt → khoá sửa")
 

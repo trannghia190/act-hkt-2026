@@ -190,50 +190,12 @@ public class OKRMidYearController {
     }
 
     @PostMapping("/reviews/{id}/items")
-    @Operation(summary = "Thêm mục tiêu giữa năm — bắt buộc lý do, ghi audit")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> addItem(
-            @PathVariable UUID id,
-            @RequestBody Map<String, Object> body
-    ) {
-        OKRReview review = reviewRepository.findById(id).orElse(null);
-        if (review == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy hồ sơ OKR"));
-        User actor = management.currentUser();
-        if (!management.canManage(review, actor)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Bạn không có quyền điều chỉnh OKR này"));
-        }
-        requireMidYearWritable(review);
-        String reason = str(body.get("reason")).trim();
-        String title = str(body.get("title")).trim();
-        if (reason.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.error("Lý do thêm mục tiêu là bắt buộc"));
-        if (title.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.error("Tên mục tiêu không được để trống"));
-
-        LocalDate dueDate = null;
-        if (body.get("dueDate") != null && !body.get("dueDate").toString().isBlank()) {
-            dueDate = parseDate(body.get("dueDate"));
-            if (dueDate == null) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("Hạn chót mục tiêu không hợp lệ (yyyy-mm-dd)"));
-            }
-        }
-        String group = "PEOPLE".equalsIgnoreCase(str(body.get("groupType"))) ? "PEOPLE" : "BUSINESS";
-        OKRItem item = OKRItem.builder()
-                .reviewId(id)
-                .groupType(group)
-                .title(title)
-                .detail(str(body.get("detail")))
-                .dueDate(dueDate)
-                .progress(0)
-                .build();
-        itemRepository.save(item);
-
-        management.audit(id, review.getCycleId(), item.getId(), "ADD_ITEM", "title", null, title, reason);
-        management.notify(review.getUserId(), "OKR có mục tiêu mới",
-                "Quản lý đã thêm mục tiêu \"" + title + "\". Lý do: " + reason, "OKR_ADJUSTED", "/okr/my-okr");
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("id", item.getId().toString());
-        data.put("groupType", item.getGroupType());
-        data.put("title", item.getTitle());
-        return ResponseEntity.ok(ApiResponse.ok(data, "Đã thêm mục tiêu giữa năm"));
+    @Operation(summary = "Đã ngừng: Quản lý KHÔNG thêm mục tiêu thay nhân viên — nhân viên tự bổ sung khi được mở lại")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> addItem(@PathVariable UUID id) {
+        // Quy tắc nghiệp vụ: mục tiêu giữa năm do CHÍNH NHÂN VIÊN tự bổ sung trên trang “OKR của tôi”
+        // sau khi Quản lý mở lại (reopen). Quản lý chỉ được điều chỉnh/bớt mục tiêu có lý do (PUT/DELETE).
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(
+                "Quản lý không thêm mục tiêu thay nhân viên — hãy dùng “Mở cho nhân viên sửa bổ sung”, nhân viên sẽ tự thêm mục tiêu của mình"));
     }
 
     @DeleteMapping("/reviews/{id}/items/{itemId}")

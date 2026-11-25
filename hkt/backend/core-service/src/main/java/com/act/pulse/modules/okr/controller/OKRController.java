@@ -153,7 +153,7 @@ public class OKRController {
         private Integer businessScore;     // 7. Điểm OKR công việc — CHÍNH THỨC (quản lý chấm), chưa chấm = null
         private Integer peopleScore;       // 8. Điểm OKR con người — CHÍNH THỨC
         private Double averageScore;       // 9. Điểm trung bình OKR = (7 + 8) / 2
-        private String note;               // Note — HR / Giám đốc ghi trên bảng tổng hợp
+        private String note;               // Note — HR ghi trên bảng tổng hợp
         // ---- Thông tin theo dõi thêm ----
         private String reviewId;
         private java.time.LocalDate joinedDate;
@@ -313,7 +313,8 @@ public class OKRController {
         // Cập nhật tiến độ chỉ mở trong cửa sổ NV của Review giữa năm / Đánh giá cuối năm.
         String updateWindow = cycle == null ? null : phaseService.updateWindow(cycle, review);
         boolean checkinOpen = updateWindow != null;
-        String period = phaseService.currentPeriod(cycle);
+        String period = phaseService.currentPeriod(cycle, review);
+        String periodLabel = phaseService.periodLabel(period);
         LocalDate checkinDeadline = cycle == null ? null : phaseService.currentPeriodDeadline(cycle, review);
         int pendingCheckin = 0;
         // Cùng điều kiện với API check-in: chỉ check-in khi OKR đang ở trạng thái đã duyệt (locked)
@@ -351,10 +352,10 @@ public class OKRController {
                     : "OKR chưa được duyệt hoặc đang mở sửa — chưa check-in được";
         } else if (canCheckIn) {
             checkinState = "OPEN";
-            checkinStateText = "Đến kỳ check-in " + period + " — còn " + pendingCheckin + "/" + items.size() + " đầu việc chưa cập nhật";
+            checkinStateText = "Đến kỳ check-in " + periodLabel + " — còn " + pendingCheckin + "/" + items.size() + " đầu việc chưa cập nhật";
         } else {
             checkinState = "DONE";
-            checkinStateText = "Đã check-in đủ " + items.size() + " đầu việc kỳ " + period;
+            checkinStateText = "Đã check-in đủ " + items.size() + " đầu việc kỳ " + periodLabel;
         }
 
         // Điểm hiện hành theo cặp — không bịa điểm từ tiến độ
@@ -1098,8 +1099,6 @@ public class OKRController {
         review.setFinalAverageScore(java.math.BigDecimal.valueOf(managerAvg));
         review.setCurrentStep(5);
         okrReviewRepository.save(review);
-        // Điểm chính thức thay đổi sau khi Giám đốc đã đánh giá chung → phải đánh giá lại trước khi HR chốt
-        management.invalidateDirectorReview(review, "Quản lý chấm lại điểm sau khi Giám đốc đã đánh giá chung");
 
         management.audit(review.getId(), review.getCycleId(), null, "MANAGER_ASSESS", "managerScores", oldScores,
                 "Business=" + managerB + ", People=" + managerP, comment);
@@ -1243,7 +1242,7 @@ public class OKRController {
 
     @PutMapping("/admin/reviews/{id}/note")
     @Transactional
-    @Operation(summary = "HR / Giám đốc ghi Note trên bảng tổng hợp OKR (doc/OKR_doc.md Bước 3–5)")
+    @Operation(summary = "HR ghi Note trên bảng tổng hợp OKR (doc/OKR_doc.md Bước 3)")
     public ApiResponse<Boolean> updateHrNote(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
         requireHr();
         OKRReview review = management.requireReview(id);
@@ -1372,10 +1371,6 @@ public class OKRController {
         data.put("cycleId", cycle != null ? cycle.getId().toString() : null);
         data.put("cycleStatus", cycle != null ? cycle.getStatus() : null);
         data.put("seniorityCutoff", seniorityCutoff.toString());
-        data.put("directorReviewedAt", cycle != null ? cycle.getDirectorReviewedAt() : null);
-        data.put("directorReviewComment", cycle != null ? cycle.getDirectorReviewComment() : null);
-        data.put("directorReviewPending", cycle == null || cycle.getDirectorReviewedAt() == null);
-        data.put("canDirectorReview", "ADMIN".equalsIgnoreCase(CurrentUser.role()));
         data.put("pendingNoOkr", management.pendingNoOkrCount(y));
         data.put("pendingManagerAssessments", management.pendingManagerAssessmentCount(y));
         data.put("records", records);

@@ -50,16 +50,6 @@ public class OKRCycle extends BaseEntity {
     @Column(name = "seniority_cutoff_date")
     private java.time.LocalDate seniorityCutoffDate;
 
-    /** Bước 4: Giám đốc đánh giá chung trước khi HR chốt & khoá. */
-    @Column(name = "director_reviewed_at")
-    private java.time.LocalDateTime directorReviewedAt;
-
-    @Column(name = "director_reviewed_by")
-    private java.util.UUID directorReviewedBy;
-
-    @Column(name = "director_review_comment", columnDefinition = "TEXT")
-    private String directorReviewComment;
-
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private String status = "active";

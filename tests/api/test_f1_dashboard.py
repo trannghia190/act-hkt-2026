@@ -15,6 +15,9 @@ import os
 import sys
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import okr_test_data as T  # noqa: E402
+
 BASE = os.environ.get("API_BASE", "http://localhost:8080/api/v1")
 
 def get_token():
@@ -28,11 +31,23 @@ def get_token():
         return data["data"]["accessToken"]
 
 def test_dashboard():
+    # OKR khởi động TRỐNG (V64) → test tự dựng chu kỳ có mục tiêu công ty rồi dọn sạch.
+    T.cleanup()
+    try:
+        _run_dashboard()
+    finally:
+        T.cleanup()
+
+
+def _run_dashboard():
+    T.create_cycle()
+    year = T.TEST_YEAR
+
     token = get_token()
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     # 1. Test /okr/dashboard
-    req1 = urllib.request.Request(f"{BASE}/okr/dashboard?year=2026", headers=headers)
+    req1 = urllib.request.Request(f"{BASE}/okr/dashboard?year={year}", headers=headers)
     with urllib.request.urlopen(req1) as resp:
         assert resp.status == 200, f"Expected 200, got {resp.status}"
         res1 = json.loads(resp.read().decode())
@@ -41,7 +56,7 @@ def test_dashboard():
         print("✓ GET /okr/dashboard returned 200 OK")
 
     # 2. Test /okr/my-dashboard
-    req2 = urllib.request.Request(f"{BASE}/okr/my-dashboard?year=2026", headers=headers)
+    req2 = urllib.request.Request(f"{BASE}/okr/my-dashboard?year={year}", headers=headers)
     with urllib.request.urlopen(req2) as resp:
         assert resp.status == 200, f"Expected 200, got {resp.status}"
         res2 = json.loads(resp.read().decode())

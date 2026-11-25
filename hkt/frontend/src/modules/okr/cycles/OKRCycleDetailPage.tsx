@@ -291,7 +291,7 @@ export const OKRCycleDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -342,7 +342,6 @@ export const OKRCycleDetailPage: React.FC = () => {
               <h2 className="text-sm font-bold text-ink">{form.name}</h2>
               <div className="text-[11px] text-ink-muted">Năm {form.year} · Thang điểm {form.scaleMin}–{form.scaleMax} · Check-in {form.checkinInterval}</div>
             </div>
-            {form.directorReviewPending && <Badge variant="warn">Chờ Giám đốc đánh giá chung</Badge>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

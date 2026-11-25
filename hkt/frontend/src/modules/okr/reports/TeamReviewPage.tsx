@@ -142,14 +142,14 @@ export const TeamReviewPage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-12">
-      {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-ink">Review OKR Cả Nhóm</h1>
-          <p className="text-xs text-ink-muted mt-1">1 bảng thay vì mở từng objective · điểm đề xuất theo rule · cảnh báo rủi ro · chấm hàng loạt.</p>
+          <p className="text-xs text-ink-muted mt-1">1 bảng thay vì mở từng objective · điểm đề xuất theo rule · cảnh báo rủi ro · chấm hàng loạt. Sau khi chấm xong, cột điểm hiện thêm <b>QL</b> — điểm quản lý đã chấm.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={load}>↻ Tải lại</Button>
@@ -205,7 +205,7 @@ export const TeamReviewPage: React.FC = () => {
                   <th className="p-2.5 text-left">Nhân viên</th>
                   <th className="p-2.5 text-center">Business</th>
                   <th className="p-2.5 text-center">People</th>
-                  <th className="p-2.5 text-center">Tự chấm TB</th>
+                  <th className="p-2.5 text-center">TB tự chấm / QL</th>
                   <th className="p-2.5 text-center">Đề xuất</th>
                   <th className="p-2.5 text-center">Lệch</th>
                   <th className="p-2.5 text-left">Cảnh báo</th>
@@ -230,12 +230,23 @@ export const TeamReviewPage: React.FC = () => {
                     <td className="p-2.5 text-center">
                       <div className="font-bold text-ink">{r.selfBusiness ?? '—'}</div>
                       <div className="text-[10px] text-ink-muted">{r.businessProgress}%</div>
+                      {r.managerBusiness != null && (
+                        <div className="text-[10px] font-semibold text-accent mt-0.5">QL: {r.managerBusiness}</div>
+                      )}
                     </td>
                     <td className="p-2.5 text-center">
                       <div className="font-bold text-ink">{r.selfPeople ?? '—'}</div>
                       <div className="text-[10px] text-ink-muted">{r.peopleProgress}%</div>
+                      {r.managerPeople != null && (
+                        <div className="text-[10px] font-semibold text-accent mt-0.5">QL: {r.managerPeople}</div>
+                      )}
                     </td>
-                    <td className="p-2.5 text-center font-bold">{r.selfAverage ?? '—'}</td>
+                    <td className="p-2.5 text-center">
+                      <div className="font-bold text-ink">{r.selfAverage ?? '—'}</div>
+                      {r.managerAverage != null && (
+                        <div className="text-[10px] font-semibold text-accent mt-0.5">QL: {r.managerAverage.toFixed(1)}</div>
+                      )}
+                    </td>
                     <td className="p-2.5 text-center"><Badge variant="accent">{Number(r.proposedScore).toFixed(1)}</Badge></td>
                     <td className="p-2.5 text-center">
                       {r.gap == null ? '—' : <span className={Math.abs(r.gap) > 0.2 ? 'font-bold text-danger' : 'text-ink-secondary'}>{r.gap > 0 ? '+' : ''}{r.gap}</span>}

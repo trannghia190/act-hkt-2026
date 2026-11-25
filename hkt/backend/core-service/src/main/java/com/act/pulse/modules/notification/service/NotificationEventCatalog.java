@@ -82,8 +82,6 @@ public final class NotificationEventCatalog {
         def("OKR_ASSESSED", "Quản lý đã chấm điểm OKR", CATEGORY_OKR, true, false, true);
         def("OKR_ADJUSTED", "OKR được điều chỉnh giữa năm", CATEGORY_OKR, true, false, true);
         def("OKR_MIDYEAR", "Cập nhật biên bản coaching giữa năm", CATEGORY_OKR, true, false, true);
-        defFor(Set.of(ROLE_HR),
-                "OKR_DIRECTOR_RESET", "Giám đốc đặt lại OKR", CATEGORY_OKR, true, false, true);
         def("OKR_DEADLINE_SETUP", "Sắp hết hạn thiết lập OKR", CATEGORY_OKR, true, false, true);
         defFor(Set.of(ROLE_MANAGER),
                 "OKR_DEADLINE_MIDYEAR", "Sắp hết hạn coaching giữa năm", CATEGORY_OKR, true, false, true);

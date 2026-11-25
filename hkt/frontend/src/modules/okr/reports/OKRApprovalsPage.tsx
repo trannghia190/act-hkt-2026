@@ -44,6 +44,9 @@ export const OKRApprovalsPage: React.FC = () => {
   });
   const [managerComment, setManagerComment] = useState('');
   const [toast, setToast] = useState<string | null>(null);
+  // Lỗi hiển thị NGAY TRONG modal xác nhận — toast nằm sau lớp mờ của modal nên
+  // người dùng không đọc được khi thao tác duyệt/trả lại/mở sửa thất bại.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -76,11 +79,18 @@ export const OKRApprovalsPage: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Mỗi lần mở modal xác nhận (hoặc đổi thao tác) thì xoá lỗi của lần trước.
+  useEffect(() => {
+    if (feedbackModal.isOpen) setActionError(null);
+  }, [feedbackModal.isOpen, feedbackModal.action]);
+
   const handleAction = async (action: 'APPROVE' | 'RETURN' | 'REOPEN') => {
     if (!selectedItem) return;
 
+    setActionError(null);
+
     if (action === 'RETURN' && !managerComment.trim()) {
-      showToast('Góp ý / lý do là bắt buộc khi trả lại yêu cầu');
+      setActionError('Góp ý / lý do là bắt buộc khi trả lại yêu cầu');
       return;
     }
 
@@ -108,7 +118,7 @@ export const OKRApprovalsPage: React.FC = () => {
       setManagerComment('');
       loadData();
     } catch (err: any) {
-      showToast(err.message || 'Lỗi xử lý duyệt');
+      setActionError(err.message || 'Lỗi xử lý duyệt');
     }
   };
 
@@ -137,7 +147,7 @@ export const OKRApprovalsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {toast && (
-        <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
+        <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">
           {toast}
         </div>
       )}
@@ -467,6 +477,15 @@ export const OKRApprovalsPage: React.FC = () => {
               onChange={(e) => setManagerComment(e.target.value)}
             />
           </div>
+
+          {actionError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger"
+            >
+              {actionError}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-line">
             <Button

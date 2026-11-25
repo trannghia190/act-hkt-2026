@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """F6 — Đánh giá cuối năm: 4 box, điểm 1–5 nguyên, TB tự tính, lưu 2 loại điểm."""
 import os
+import sys
+
 import requests
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import okr_test_data as T  # noqa: E402
 from okr_test_utils import ensure_locked, phase_open
 
 BASE = os.environ.get("API_BASE", "http://localhost:8080/api/v1")
+YEAR = T.TEST_YEAR
 
 
 def login(code):
@@ -19,10 +24,20 @@ def h(t):
 
 
 def main():
+    # OKR khởi động TRỐNG (V64) → dựng chu kỳ + OKR đã duyệt rồi dọn sạch cuối test.
+    T.cleanup()
+    try:
+        _run()
+    finally:
+        T.cleanup()
+
+
+def _run():
+    T.setup_okr_env()
     emp, mgr = login("136ACT"), login("05ACT")
     E, M = h(emp), h(mgr)
     ensure_locked(E, M)
-    form = requests.get(f"{BASE}/okr/reviews/form-4box?employeeCode=136ACT&year=2026", headers=E).json()["data"]
+    form = requests.get(f"{BASE}/okr/reviews/form-4box?employeeCode=136ACT&year={YEAR}", headers=E).json()["data"]
     assert form["employeeCode"] == "136ACT"
     # Box 1 — thông tin cá nhân tự điền từ hồ sơ
     box1 = form["box1"]
@@ -36,11 +51,11 @@ def main():
         _assess(form, E, M)
 
     # Quản lý không ghi đè được điểm tự chấm
-    rid = requests.get(f"{BASE}/okr/my-okr?year=2026", headers=E).json()["data"]["reviewId"]
+    rid = requests.get(f"{BASE}/okr/my-okr?year={YEAR}", headers=E).json()["data"]["reviewId"]
     assert requests.put(f"{BASE}/okr/reviews/{rid}/box2-3", headers=M,
                         json={"box2BusinessScore": 1, "box3PeopleScore": 1}).status_code == 403
 
-    final = requests.get(f"{BASE}/okr/reviews/form-4box?employeeCode=136ACT&year=2026", headers=E).json()["data"]
+    final = requests.get(f"{BASE}/okr/reviews/form-4box?employeeCode=136ACT&year={YEAR}", headers=E).json()["data"]
     assert final["box2"]["results"] and final["box3"]["results"], "Mục Kết quả của Box 2/3 phải được lưu"
     assert final["box2BusinessScore"] and final["box3PeopleScore"], "Điểm tự chấm phải được giữ"
     assert final["managerPeopleScore"] == 4 and final["managerAverageScore"] == 4.0
@@ -49,16 +64,16 @@ def main():
 
 
 def _assess(form, E, M):
-    rid = requests.get(f"{BASE}/okr/my-okr?year=2026", headers=E).json()["data"]["reviewId"]
+    rid = requests.get(f"{BASE}/okr/my-okr?year={YEAR}", headers=E).json()["data"]["reviewId"]
     if form["status"] == "DA_HOAN_TAT":
         # Đã được quản lý chấm → nhân viên không sửa tự đánh giá được nữa
         r = requests.post(f"{BASE}/okr/reviews/submit-self-review", headers=E, json={
-            "year": 2026, "box2BusinessScore": 3, "box3PeopleScore": 3})
+            "year": YEAR, "box2BusinessScore": 3, "box3PeopleScore": 3})
         assert r.status_code == 409, r.text
         print("✓ Sau khi quản lý chấm → khoá tự đánh giá")
     else:
         r = requests.post(f"{BASE}/okr/reviews/submit-self-review", headers=E, json={
-            "employeeCode": "136ACT", "year": 2026,
+            "employeeCode": "136ACT", "year": YEAR,
             "box2Results": "Hoàn thành 4 nhóm mục tiêu",
             "box2Adjustments": "Điều chỉnh phạm vi Q3",
             "box2Difficulties": "Thiếu nguồn lực AI",
@@ -77,12 +92,12 @@ def _assess(form, E, M):
 
         # Thiếu mục Kết quả của Box 3 → chặn (bản cuối năm)
         assert requests.post(f"{BASE}/okr/reviews/submit-self-review", headers=E, json={
-            "year": 2026, "box2Results": "x", "box2BusinessScore": 4, "box3PeopleScore": 4,
+            "year": YEAR, "box2Results": "x", "box2BusinessScore": 4, "box3PeopleScore": 4,
         }).status_code in (400, 409)
 
         # Điểm lẻ / ngoài 1-5 bị chặn
         assert requests.post(f"{BASE}/okr/reviews/submit-self-review", headers=E, json={
-            "employeeCode": "136ACT", "year": 2026, "box2BusinessScore": 4.5, "box3PeopleScore": 4,
+            "employeeCode": "136ACT", "year": YEAR, "box2BusinessScore": 4.5, "box3PeopleScore": 4,
         }).status_code == 400
 
         r = requests.post(f"{BASE}/okr/reviews/{rid}/manager-assess", headers=M, json={
