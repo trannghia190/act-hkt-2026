@@ -162,10 +162,13 @@ public class OKRManagementService {
         switch (st) {
             case "returned", "reopened":
                 return null;
-            case "draft":
-                if (phaseService.isOpen(cycle, OKRPhaseService.SETUP) || isLateJoiner(owner, cycle)) return null;
-                return "Phase Thiết lập OKR đã đóng (hạn " + phaseService.dueDate(cycle, OKRPhaseService.SETUP)
+            case "draft": {
+                if (phaseService.employeeWindowOpen(cycle, OKRPhaseService.SETUP, review) || isLateJoiner(owner, cycle)) return null;
+                String setupReason = phaseService.employeeWindowBlockReason(cycle, OKRPhaseService.SETUP, review);
+                return setupReason != null ? setupReason
+                        : "Phase Thiết lập OKR đã đóng (hạn " + phaseService.dueDate(cycle, OKRPhaseService.SETUP)
                         + ") — liên hệ HR mở lại phase Thiết lập để tạo OKR";
+            }
             case "submitted":
                 return "Bộ mục tiêu đã gửi, đang chờ Quản lý duyệt";
             default:
@@ -377,9 +380,9 @@ public class OKRManagementService {
             }
         }
 
-        // Chưa check-in kỳ hiện tại — chỉ khi phase check-in đang mở và OKR đã duyệt.
+        // Chưa check-in kỳ hiện tại — chỉ khi cửa sổ cập nhật tiến độ đang mở và OKR đã duyệt.
         OKRCycle cycle = cycleOf(review);
-        if (!items.isEmpty() && isCurrentlyApproved(review) && phaseService.isOpen(cycle, OKRPhaseService.CHECKIN)) {
+        if (!items.isEmpty() && isCurrentlyApproved(review) && phaseService.updateWindow(cycle, review) != null) {
             String period = phaseService.currentPeriod(cycle);
             boolean checked = !checkInRepository.findByReviewIdAndPeriodOrderByCreatedAtDesc(review.getId(), period).isEmpty();
             if (!checked) {

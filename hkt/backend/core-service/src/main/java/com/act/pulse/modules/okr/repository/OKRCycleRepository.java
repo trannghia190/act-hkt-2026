@@ -19,6 +19,16 @@ public interface OKRCycleRepository extends JpaRepository<OKRCycle, UUID> {
 
     @Modifying(clearAutomatically = true)
     @Transactional
+    @Query(value = "DELETE FROM okr_reviews WHERE cycle_year = :year", nativeQuery = true)
+    int deleteReviewsByYear(@Param("year") Integer year);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(value = "DELETE FROM okr_cycles WHERE id = :id", nativeQuery = true)
+    int deleteCycleNative(@Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
     @Query(value = """
             UPDATE okr_cycles SET name = :name, cycle_year = :year,
                 phases = CAST(:phases AS jsonb), checkin_interval = :interval,

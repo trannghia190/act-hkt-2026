@@ -62,7 +62,7 @@ public class OKRPhaseDeadlineReminderJob {
         reviews.forEach(r -> byUser.put(r.getUserId(), r));
         int sent = 0;
 
-        for (String key : List.of(OKRPhaseService.SETUP, OKRPhaseService.MIDYEAR, OKRPhaseService.FINAL, OKRPhaseService.SUMMARY)) {
+        for (String key : List.of(OKRPhaseService.SETUP, OKRPhaseService.MIDYEAR, OKRPhaseService.FINAL)) {
             if (!phaseService.isOpen(cycle, key)) continue;
             LocalDate due = phaseService.dueDate(cycle, key);
             if (due == null) continue;
@@ -102,7 +102,7 @@ public class OKRPhaseDeadlineReminderJob {
                         if (!management.isCurrentlyApproved(r)) continue;
                         if (!management.selfAssessed(r) || (r.getCurrentStep() != null && r.getCurrentStep() < 3)) {
                             sent += send(r.getUserId(), type, daysLeft, "Sắp hết hạn tự đánh giá cuối năm",
-                                    when + " để nộp đánh giá cuối năm (thành tựu công việc, thành tựu con người, định hướng năm sau).", "/okr/assessment");
+                                    when + " để nộp đánh giá cuối năm (thành tựu công việc, thành tựu con người, định hướng năm sau).", "/okr/my-okr?section=assessment");
                         } else if (!management.managerAssessed(r) && r.getManagerId() != null) {
                             pendingByManager.merge(r.getManagerId(), 1, Integer::sum);
                         }
@@ -110,15 +110,6 @@ public class OKRPhaseDeadlineReminderJob {
                     for (var e : pendingByManager.entrySet()) {
                         sent += send(e.getKey(), type, daysLeft, "Sắp hết hạn chấm điểm cuối năm",
                                 when + " — còn " + e.getValue() + " nhân viên đã tự đánh giá đang chờ bạn chấm.", "/okr/team-review");
-                    }
-                }
-                case OKRPhaseService.SUMMARY -> {
-                    long notDone = reviews.stream().filter(r -> !"DA_HOAN_TAT".equals(management.assessmentStatus(r))).count();
-                    for (User hr : userRepository.findAll()) {
-                        if (!"HR_ADMIN".equalsIgnoreCase(hr.getRole()) || !isWorking(hr)) continue;
-                        sent += send(hr.getId(), type, daysLeft, "Sắp hết hạn chốt chu kỳ OKR " + cycle.getCycleYear(),
-                                when + " — còn " + notDone + " hồ sơ chưa chấm xong. Xuất Excel gửi Giám đốc rồi chốt & khoá chu kỳ.",
-                                "/okr/summary-report");
                     }
                 }
                 default -> { }

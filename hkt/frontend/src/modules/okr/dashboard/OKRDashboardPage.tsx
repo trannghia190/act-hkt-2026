@@ -76,7 +76,10 @@ export const OKRDashboardPage: React.FC = () => {
   useEffect(() => {
     fetch('/api/v1/okr/cycles')
       .then((r) => r.json())
-      .then((j) => setCycles((j?.data || []).map((c: any) => ({ year: c.year, status: c.status }))))
+      // Bỏ bản nháp (draft): chu kỳ chưa kích hoạt không phải năm làm việc.
+      .then((j) => setCycles((j?.data || [])
+        .filter((c: any) => String(c.status).toLowerCase() !== 'draft')
+        .map((c: any) => ({ year: c.year, status: c.status }))))
       .catch(() => setCycles([]));
   }, []);
 
@@ -202,19 +205,19 @@ export const OKRDashboardPage: React.FC = () => {
         ) : null}
       </div>
 
-      {/* Card Self proposal năm sau (trạng thái + nút xem) */}
+      {/* Card Định hướng & đề xuất của kỳ (trạng thái + nút xem) */}
       <div className="p-4 rounded-xl border border-line bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="text-sm font-bold text-ink">
-              Self Proposal Năm {data.selfProposal.year}
+              Định hướng &amp; đề xuất kỳ {data.selfProposal.year}
             </div>
             <Badge variant={proposalBadgeVariant}>
               {data.selfProposal.statusText}
             </Badge>
           </div>
           <div className="text-xs text-ink-secondary">
-            Tự đề xuất mục tiêu &amp; điểm cải thiện năm sau
+            Khai báo cùng bộ mục tiêu và gửi Quản lý duyệt
             {data.selfProposal.deadline && (
               <> · Hạn chót nộp: {data.selfProposal.deadline} (Còn {data.selfProposal.daysLeft} ngày)</>
             )}
@@ -225,10 +228,10 @@ export const OKRDashboardPage: React.FC = () => {
           className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-line hover:border-accent hover:text-accent bg-canvas text-ink self-start sm:self-center transition-colors"
         >
           {data.selfProposal.status === 'SUBMITTED' || !data.selfProposal.editable
-            ? 'Xem đề xuất'
+            ? 'Xem nội dung'
             : data.selfProposal.status === 'NOT_STARTED'
-            ? 'Bắt đầu viết đề xuất'
-            : 'Tiếp tục viết đề xuất'}{' '}
+            ? 'Viết ngay'
+            : 'Tiếp tục viết'}{' '}
           →
         </a>
       </div>

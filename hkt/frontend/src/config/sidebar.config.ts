@@ -56,10 +56,9 @@ export const COMMON_GROUPS: NavGroup[] = [
   {
     groupName: 'OKR',
     items: [
-      { id: 'myokr', label: 'OKR của tôi', path: '/okr/dashboard', icon: 'Target', screenId: 'S20' },
-      // Tạo OKR + Check-in tiến độ cùng nằm ở màn My OKR (S21/S22)
-      { id: 'newokr', label: 'Tạo OKR & Check-in', path: '/okr/my-okr', icon: 'Edit3', badgeKey: 'checkin', screenId: 'S21' },
-      { id: 'assess', label: 'Đánh giá cuối năm', path: '/okr/assessment', icon: 'Award', screenId: 'S23' },
+      { id: 'myokr', label: 'Tổng quan OKR', path: '/okr/dashboard', icon: 'Target', screenId: 'S20' },
+      // Một workspace duy nhất: thiết lập, check-in và tự đánh giá đổi theo phase (S21/S22/S23)
+      { id: 'newokr', label: 'OKR của tôi', path: '/okr/my-okr', icon: 'Edit3', badgeKey: 'checkin', screenId: 'S21' },
     ],
   },
   {

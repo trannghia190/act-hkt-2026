@@ -35,12 +35,13 @@ import { DisputeDetailPage } from '../modules/attendance/timesheet/DisputeDetail
 import { NotificationPrefsPage } from '../modules/shared/notifications/NotificationPrefsPage';
 import { MobileNotificationsPage } from '../modules/shared/notifications/MobileNotificationsPage';
 import { OKRCyclesPage } from '../modules/okr/cycles/OKRCyclesPage';
+import { OKRCycleDetailPage } from '../modules/okr/cycles/OKRCycleDetailPage';
 import { TeamReviewPage } from '../modules/okr/reports/TeamReviewPage';
 
 // 3. OKR & Performance Appraisal Pages
 import { OKRDashboardPage } from '../modules/okr/dashboard/OKRDashboardPage';
 import { MyOKRPage } from '../modules/okr/my-okr/MyOKRPage';
-import { OKRAssessmentPage } from '../modules/okr/assessment/OKRAssessmentPage';
+import { AssessmentPageRoute } from '../modules/okr/assessment/OKRAssessmentPage';
 import { MidYearReviewPage } from '../modules/okr/assessment/MidYearReviewPage';
 import { OKRApprovalsPage } from '../modules/okr/reports/OKRApprovalsPage';
 import { OKRReportsPage } from '../modules/okr/reports/OKRReportsPage';
@@ -194,8 +195,10 @@ export const AppRoutes: React.FC = () => {
       <Route path="/okr/dashboard" element={<OKRDashboardPage />} />
       <Route path="/okr/my-okr" element={<MyOKRPage />} />
       <Route path="/okr/cycles" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><OKRCyclesPage /></ProtectedRoute>} />
+      <Route path="/okr/cycles/new" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><OKRCycleDetailPage /></ProtectedRoute>} />
+      <Route path="/okr/cycles/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}><OKRCycleDetailPage /></ProtectedRoute>} />
       <Route path="/okr/team-review" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN', 'MANAGER']}><TeamReviewPage /></ProtectedRoute>} />
-      <Route path="/okr/assessment" element={<OKRAssessmentPage />} />
+      <Route path="/okr/assessment" element={<AssessmentPageRoute />} />
       <Route
         path="/okr/mid-year-review"
         element={

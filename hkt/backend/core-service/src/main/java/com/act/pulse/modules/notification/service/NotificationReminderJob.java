@@ -332,8 +332,7 @@ public class NotificationReminderJob {
             }
         }
 
-        boolean assessing = okrPhaseService.isOpen(cycle, OKRPhaseService.FINAL, today)
-                || okrPhaseService.isOpen(cycle, OKRPhaseService.SUMMARY, today);
+        boolean assessing = okrPhaseService.isOpen(cycle, OKRPhaseService.FINAL, today);
         if (assessing) {
             for (OKRReview r : okrReviewRepository.findByCycleYear(cycle.getCycleYear())) {
                 if (okrManagement.isCurrentlyApproved(r) && !okrManagement.selfAssessed(r)) {

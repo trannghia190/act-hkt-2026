@@ -35,7 +35,7 @@ public class OKRMidYearController {
 
     /** Thao tác ghi của review giữa năm: chỉ khi phase giữa năm đang mở và OKR đã được duyệt. */
     private void requireMidYearWritable(OKRReview review) {
-        phaseService.requireOpen(management.cycleOf(review), com.act.pulse.modules.okr.service.OKRPhaseService.MIDYEAR);
+        phaseService.requireManagerWindow(management.cycleOf(review), com.act.pulse.modules.okr.service.OKRPhaseService.MIDYEAR);
         if (!management.isApproved(review)) {
             throw com.act.pulse.modules.okr.service.OKRRuleException.conflict("OKR chưa được duyệt đầu năm — chưa review giữa năm được");
         }
@@ -80,6 +80,9 @@ public class OKRMidYearController {
         }
         detail.put("midYearWritable", lockReason == null);
         detail.put("midYearLockReason", lockReason);
+        detail.put("midYearUpdateOverride", Boolean.TRUE.equals(review.getMidYearUpdateOverride()));
+        detail.put("midYearManagerWindowOpen", phaseService.managerWindowOpen(
+                management.cycleOf(review), com.act.pulse.modules.okr.service.OKRPhaseService.MIDYEAR));
         return ApiResponse.ok(detail, "Chi tiết review giữa năm");
     }
 

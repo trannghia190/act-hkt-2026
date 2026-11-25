@@ -134,9 +134,9 @@ const BASE_CATALOG: CatalogItem[] = [
 
   // OKR
   { title: 'Dashboard OKR cá nhân', subtitle: 'Mục tiêu, Key Results, tiến độ', kind: 'page', url: '/okr/dashboard', keywords: 'okr dashboard muc tieu kr tien do s20', roles: ALL_ROLES },
-  { title: 'OKR của tôi', subtitle: 'Thiết lập mục tiêu & Key Results', kind: 'page', url: '/okr/my-okr', keywords: 'okr cua toi my okr muc tieu key results', roles: ALL_ROLES },
+  { title: 'OKR của tôi', subtitle: 'Thiết lập, cập nhật tiến độ & tự đánh giá theo phase', kind: 'page', url: '/okr/my-okr', keywords: 'okr cua toi my okr muc tieu key results checkin danh gia', roles: ALL_ROLES },
   { title: 'Check-in tiến độ OKR', subtitle: 'Cập nhật kết quả Key Results', kind: 'action', url: '/okr/my-okr', action: 'CHECKIN_OKR', keywords: 'check in checkin tien do okr key results cap nhat', roles: ALL_ROLES },
-  { title: 'Đánh giá OKR cuối năm', subtitle: 'Form đánh giá 4 box Business/People', kind: 'page', url: '/okr/assessment', keywords: 'okr assessment danh gia form 4 box business people s23', roles: ALL_ROLES },
+  { title: 'Tự đánh giá OKR cuối năm', subtitle: 'Form 4 box Business/People trong OKR của tôi', kind: 'page', url: '/okr/my-okr?section=assessment', keywords: 'okr assessment danh gia form 4 box business people s23 tu danh gia', roles: ALL_ROLES },
   { title: 'Duyệt mục tiêu OKR nhóm', subtitle: 'Phê duyệt OKR cấp dưới', kind: 'page', url: '/okr/team-approvals', keywords: 'duyet okr muc tieu nhom team approvals phe duyet', roles: MANAGER_ROLES },
   { title: 'Đánh giá giữa năm', subtitle: 'Mid-year review hiệu suất', kind: 'page', url: '/okr/mid-year-review', keywords: 'danh gia giua nam mid year review hieu suat', roles: MANAGER_ROLES },
   { title: 'Đánh giá nhóm', subtitle: 'Team review kết quả OKR', kind: 'page', url: '/okr/team-review', keywords: 'danh gia nhom team review okr ket qua', roles: MANAGER_ROLES },
