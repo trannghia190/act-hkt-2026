@@ -34,6 +34,7 @@ public class OKRCycleController {
     private final ObjectMapper objectMapper;
     private final OKRPhaseService phaseService;
     private final OKRReviewRepository reviewRepository;
+    private final com.act.pulse.modules.okr.repository.OKRCheckInAttachmentRepository attachmentRepository;
     private final com.act.pulse.modules.okr.service.OKRReviewProvisioningJob provisioning;
     private final UserRepository userRepository;
     private final com.act.pulse.modules.okr.service.OKRPhaseDeadlineReminderJob deadlineReminderJob;
@@ -54,8 +55,9 @@ public class OKRCycleController {
     @GetMapping("/current")
     @Operation(summary = "Chu kỳ OKR đang active (năm làm việc mặc định của mọi màn OKR)")
     public ApiResponse<Map<String, Object>> current() {
-        return phaseService.cycle(null).map(c -> ApiResponse.ok(toMap(c), "Chu kỳ hiện tại"))
-                .orElseGet(() -> ApiResponse.ok(null, "Chưa có chu kỳ OKR"));
+        // Chỉ chu kỳ ĐANG HOẠT ĐỘNG mới là "chu kỳ hiện tại" — không có thì màn NV/QL báo empty state.
+        return phaseService.activeCycle().map(c -> ApiResponse.ok(toMap(c), "Chu kỳ hiện tại"))
+                .orElseGet(() -> ApiResponse.ok(null, "Hiện tại không có kỳ OKR nào được thiết lập"));
     }
 
     @GetMapping("/{id}")
@@ -219,25 +221,60 @@ public class OKRCycleController {
 
     @DeleteMapping("/{id}")
     @org.springframework.transaction.annotation.Transactional
-    @Operation(summary = "Xoá chu kỳ OKR — giải phóng năm để tạo lại")
-    public ResponseEntity<ApiResponse<Boolean>> delete(@PathVariable UUID id) {
+    @Operation(summary = "Xoá chu kỳ OKR — giải phóng năm để tạo lại (force để xoá cả dữ liệu vướng)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> delete(@PathVariable UUID id,
+                                                                   @RequestBody(required = false) Map<String, Object> body) {
         if (!CurrentUser.isHr()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Chỉ HR/Admin mới được xoá chu kỳ"));
         }
         OKRCycle cycle = cycleRepository.findById(id).orElse(null);
         if (cycle == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Không tìm thấy chu kỳ"));
+        Map<String, Object> payload = body == null ? Map.of() : body;
+        boolean force = Boolean.TRUE.equals(payload.get("force"));
         Integer year = cycle.getCycleYear();
         String name = cycle.getName();
-        long reviews = reviewRepository.countByCycleYear(year);
+
+        // Hồ sơ gắn trực tiếp với chu kỳ này (FK okr_reviews.cycle_id) và tệp đính kèm là 2 nguồn vướng.
+        long linkedReviews = reviewRepository.countByCycleId(id);
+        long attachments = attachmentRepository.countByCycleIdAndYear(id, year);
+        if (!force && (linkedReviews > 0 || attachments > 0)) {
+            Map<String, Object> res = new HashMap<>();
+            res.put("requiresForce", true);
+            res.put("linkedReviews", linkedReviews);
+            res.put("attachments", attachments);
+            String detail = linkedReviews > 0
+                    ? linkedReviews + " hồ sơ OKR đang gắn với chu kỳ này"
+                    : attachments + " tệp đính kèm check-in";
+            // Trả kèm data.requiresForce để FE mở ô hỏi "xoá cứng" thay vì chỉ báo toast.
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.<Map<String, Object>>builder()
+                    .success(false)
+                    .message("Chưa xoá được: " + detail + ". Xoá tiếp sẽ mất vĩnh viễn dữ liệu OKR của năm " + year
+                            + " — bạn có xác nhận xoá cứng?")
+                    .data(res)
+                    .build());
+        }
+
         entityManager.clear();
-        // Xoá mọi hồ sơ OKR của năm trước (items/checkin/midyear/audit con tự cascade),
-        // để tạo lại chu kỳ cùng năm không bị lẫn dữ liệu cũ.
+        // Xoá tệp đính kèm trước (không có FK cascade), rồi tới hồ sơ (items/checkin/midyear/audit
+        // tự cascade theo review) và cuối cùng mới xoá chu kỳ — tránh vướng FK.
+        long totalReviews = reviewRepository.countByCycleYear(year);
+        if (attachments > 0) attachmentRepository.deleteAttachmentsByCycle(id, year);
+        reviewRepository.deleteReviewsByCycleId(id);
         cycleRepository.deleteReviewsByYear(year);
-        cycleRepository.deleteCycleNative(id);
+        int deleted = cycleRepository.deleteCycleNative(id);
+        if (deleted == 0) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                    "Không xoá được chu kỳ — dữ liệu đang vướng ràng buộc. Hãy thử lại hoặc liên hệ quản trị hệ thống."));
+        }
         management.audit(null, null, null, "DELETE_CYCLE", "cycle", name + " / " + year,
-                "đã xoá", "HR xoá chu kỳ OKR (kèm " + reviews + " hồ sơ) để giải phóng năm " + year);
-        return ResponseEntity.ok(ApiResponse.ok(true,
-                "Đã xoá chu kỳ OKR " + year + (reviews > 0 ? " cùng " + reviews + " hồ sơ OKR" : "")
+                "đã xoá", "HR xoá chu kỳ OKR (kèm " + totalReviews + " hồ sơ" + (force ? ", force" : "") + ") để giải phóng năm " + year);
+        Map<String, Object> res = new HashMap<>();
+        res.put("deleted", true);
+        res.put("cycleYear", year);
+        res.put("deletedReviews", totalReviews);
+        res.put("deletedAttachments", attachments);
+        return ResponseEntity.ok(ApiResponse.ok(res,
+                "Đã xoá chu kỳ OKR " + year + (totalReviews > 0 ? " cùng " + totalReviews + " hồ sơ OKR" : "")
                         + " — năm " + year + " giờ có thể tạo chu kỳ mới"));
     }
 

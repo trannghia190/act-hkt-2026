@@ -7,6 +7,7 @@ import { Modal } from '../../../components/common/Modal';
 import { OkrSelfAssessmentSection } from '../assessment/OkrSelfAssessmentSection';
 import { useForm4Box } from '../assessment/useForm4Box';
 import { OKRPhaseTimeline } from '../cycles/OKRPhaseTimeline';
+import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
 
 type GroupKey = 'BUSINESS' | 'PEOPLE';
 
@@ -101,6 +102,8 @@ interface MyOKRData {
   phaseName?: string | null;
   phaseStatus?: 'active' | 'upcoming' | 'locked' | null;
   managerReviewing?: boolean;
+  /** false = hệ thống chưa có chu kỳ OKR nào đang hoạt động. */
+  hasActiveCycle?: boolean;
   updateWindow?: string | null;
   phases?: PhaseInfo[];
   isLocked: boolean;
@@ -893,6 +896,15 @@ export const MyOKRPage: React.FC = () => {
 
   if (loading) {
     return <div className="p-8 text-center text-sm text-ink-muted">Đang tải biểu mẫu OKR...</div>;
+  }
+
+  // Chưa có chu kỳ OKR nào đang hoạt động → không có việc nào để làm.
+  if (data?.hasActiveCycle === false) {
+    return (
+      <div className="max-w-4xl mx-auto pb-12">
+        <NoActiveCycleNotice role="employee" />
+      </div>
+    );
   }
 
   return (

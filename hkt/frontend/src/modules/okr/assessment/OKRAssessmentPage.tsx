@@ -8,6 +8,8 @@ import { OkrSelfAssessmentSection } from './OkrSelfAssessmentSection';
 import { ScorePicker } from './ScorePicker';
 import { useForm4Box } from './useForm4Box';
 import { statusLabel, TeamRow } from './types';
+import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
+import { useActiveCycle } from '../../../hooks/useActiveCycle';
 
 /**
  * Màn Quản lý/HR chấm điểm nhân viên khác.
@@ -46,9 +48,14 @@ export const OKRAssessmentPage: React.FC = () => {
 
   useEffect(() => { loadTeam(); }, [loadTeam]);
 
+  // Chưa có chu kỳ OKR đang hoạt động → không có bản tự đánh giá để chấm điểm.
+  const { hasActiveCycle } = useActiveCycle();
+
   return (
     <div className="space-y-5 max-w-4xl mx-auto pb-12">
       {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+
+      {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

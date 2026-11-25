@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
+import { Modal } from '../../../components/common/Modal';
 import { Cycle, cycleStatusMeta, monthsLabel, PHASE_STATUS_LABEL } from './cycleTypes';
 
 export const OKRCyclesPage: React.FC = () => {
@@ -57,6 +58,45 @@ export const OKRCyclesPage: React.FC = () => {
   // Quy tắc hệ thống: tối đa 1 chu kỳ active — chu kỳ khác chỉ kích hoạt được sau khi tạm ẩn/chốt chu kỳ này.
   const activeCycle = cycles.find((c) => c.status === 'active') || null;
 
+  // Xoá bị vướng dữ liệu → hiện ô hỏi có muốn xoá cứng (force) không.
+  const [forceTarget, setForceTarget] = useState<Cycle | null>(null);
+  const [forceInfo, setForceInfo] = useState<{ message: string; linkedReviews?: number; attachments?: number } | null>(null);
+  const [forceBusy, setForceBusy] = useState(false);
+
+  const doDelete = async (cycle: Cycle, force: boolean) => {
+    setDeletingId(cycle.id);
+    try {
+      const res = await fetch(`/api/v1/okr/cycles/${cycle.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        // 409 + requiresForce → mở ô hỏi xoá cứng thay vì báo toast ngắn.
+        if (res.status === 409 && json?.data?.requiresForce) {
+          setForceTarget(cycle);
+          setForceInfo({
+            message: json.message || 'Dữ liệu đang vướng ràng buộc.',
+            linkedReviews: json.data.linkedReviews,
+            attachments: json.data.attachments,
+          });
+          return;
+        }
+        throw new Error(json?.message || 'Xoá thất bại');
+      }
+      showToast(json.message || 'Đã xoá chu kỳ');
+      setForceTarget(null);
+      setForceInfo(null);
+      load();
+    } catch (err: any) {
+      showToast(err.message || 'Xoá thất bại');
+    } finally {
+      setDeletingId(null);
+      setForceBusy(false);
+    }
+  };
+
   const removeCycle = async (cycle: Cycle) => {
     const ok = confirm(
       `Xoá vĩnh viễn chu kỳ "${cycle.name}" (năm ${cycle.year})?\n\n`
@@ -67,18 +107,7 @@ export const OKRCyclesPage: React.FC = () => {
       + `Sau khi xoá, bạn có thể tạo lại chu kỳ cho năm ${cycle.year}.`,
     );
     if (!ok) return;
-    setDeletingId(cycle.id);
-    try {
-      const res = await fetch(`/api/v1/okr/cycles/${cycle.id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Xoá thất bại');
-      showToast(json.message || 'Đã xoá chu kỳ');
-      load();
-    } catch (err: any) {
-      showToast(err.message || 'Xoá thất bại');
-    } finally {
-      setDeletingId(null);
-    }
+    await doDelete(cycle, false);
   };
 
   if (loading) {
@@ -205,6 +234,49 @@ export const OKRCyclesPage: React.FC = () => {
         <b> Xoá</b>: xoá vĩnh viễn chu kỳ cùng toàn bộ OKR/hồ sơ của năm — sau đó có thể tạo lại cùng năm.
         <b> Chốt &amp; khoá</b>: kết thúc chu kỳ, mọi màn chuyển sang chỉ đọc; chỉ HR mở lại được kèm lý do (ghi audit).
       </div>
+
+      {/* Ô hỏi xoá cứng: chu kỳ đang bị vướng dữ liệu nên cần HR xác nhận thêm */}
+      <Modal
+        isOpen={Boolean(forceTarget)}
+        onClose={() => { if (!forceBusy) { setForceTarget(null); setForceInfo(null); } }}
+        title="Xoá cứng chu kỳ OKR"
+        maxWidth="md"
+      >
+        <div className="space-y-3">
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+            <div className="font-bold">Chưa xoá được — dữ liệu đang vướng</div>
+            <div>{forceInfo?.message}</div>
+            {typeof forceInfo?.linkedReviews === 'number' && forceInfo.linkedReviews > 0 && (
+              <div>· {forceInfo.linkedReviews} hồ sơ OKR gắn trực tiếp với chu kỳ này</div>
+            )}
+            {typeof forceInfo?.attachments === 'number' && forceInfo.attachments > 0 && (
+              <div>· {forceInfo.attachments} tệp đính kèm check-in</div>
+            )}
+          </div>
+          <div className="text-xs text-ink-secondary space-y-1">
+            Xoá cứng sẽ xoá vĩnh viễn toàn bộ mục tiêu OKR, check-in, tệp đính kèm và hồ sơ đánh giá
+            {forceTarget ? ` của năm ${forceTarget.year}` : ''}. Sau khi xoá, năm đó có thể tạo chu kỳ mới.
+            Hành động này được ghi vào nhật ký kiểm toán.
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-line">
+            <Button size="sm" variant="ghost" onClick={() => { setForceTarget(null); setForceInfo(null); }} disabled={forceBusy}>
+              Huỷ
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={forceBusy}
+              onClick={async () => {
+                if (!forceTarget) return;
+                setForceBusy(true);
+                await doDelete(forceTarget, true);
+              }}
+            >
+              {forceBusy ? 'Đang xoá...' : 'Xoá cứng'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

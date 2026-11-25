@@ -50,6 +50,19 @@ public class OKRPhaseService {
 
     // ---------------------------------------------------------------- cycle
 
+    /**
+     * Chu kỳ ĐANG HOẠT ĐỘNG (chỉ 1 chu kỳ active toàn hệ thống).
+     * Dùng cho các màn nhân viên/quản lý: không có chu kỳ active → hiển thị empty state
+     * "Hiện tại không có kỳ OKR nào được thiết lập" thay vì rơi vào chu kỳ nháp/đã chốt.
+     */
+    public Optional<OKRCycle> activeCycle() {
+        return cycleRepository.findFirstByStatusOrderByCreatedAtDesc("active");
+    }
+
+    public boolean hasActiveCycle() {
+        return activeCycle().isPresent();
+    }
+
     /** Chu kỳ của năm (ưu tiên active). year = null → chu kỳ active mới nhất. Không lấy chéo năm. */
     public Optional<OKRCycle> cycle(Integer year) {
         if (year == null) {

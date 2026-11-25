@@ -3,6 +3,8 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
+import { useActiveCycle } from '../../../hooks/useActiveCycle';
 
 interface MidYearRow {
   reviewId: string;
@@ -111,6 +113,9 @@ export const MidYearReviewPage: React.FC = () => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Chưa có chu kỳ OKR đang hoạt động → không có hồ sơ giữa năm để coaching.
+  const { hasActiveCycle } = useActiveCycle();
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -356,6 +361,8 @@ export const MidYearReviewPage: React.FC = () => {
   return (
     <div className="space-y-5 pb-12">
       {toast && <div className="fixed top-16 right-6 z-50 bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
+
+      {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

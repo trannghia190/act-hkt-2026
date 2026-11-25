@@ -3,6 +3,8 @@ import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
+import { useActiveCycle } from '../../../hooks/useActiveCycle';
 
 interface OKRItem {
   id: string;
@@ -47,6 +49,9 @@ export const OKRApprovalsPage: React.FC = () => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Chưa có chu kỳ OKR đang hoạt động → không có bộ mục tiêu nào chờ duyệt.
+  const { hasActiveCycle } = useActiveCycle();
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -136,6 +141,8 @@ export const OKRApprovalsPage: React.FC = () => {
           {toast}
         </div>
       )}
+
+      {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

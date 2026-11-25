@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
+import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
 
 interface OKRTodo {
   id: string;
@@ -56,6 +57,8 @@ interface DashboardData {
   companyObjectivesWeight: number;
   companyObjectivesExcludedFromAverage: boolean;
   companyObjectives: CompanyObjective[];
+  /** false = hệ thống chưa có chu kỳ OKR nào đang hoạt động. */
+  hasActiveCycle?: boolean;
   selfProposal: SelfProposal;
   todos: OKRTodo[];
   todoCount: number;
@@ -106,6 +109,11 @@ export const OKRDashboardPage: React.FC = () => {
         {loading ? 'Đang tải Dashboard OKR…' : error || 'Chưa có dữ liệu OKR'}
       </div>
     );
+  }
+
+  // Chưa có chu kỳ OKR nào đang hoạt động → báo rõ cho nhân viên thay vì bảng số trống rỗng.
+  if (data.hasActiveCycle === false) {
+    return <NoActiveCycleNotice role="employee" />;
   }
 
   const proposalBadgeVariant: 'ok' | 'warn' | 'gray' =

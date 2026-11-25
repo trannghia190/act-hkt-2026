@@ -60,6 +60,8 @@ public class OKRController {
         private String currentPhase; // SETUP | MIDYEAR | FINAL | NONE
         private String phaseTitle;
         private String phaseStatus; // active | upcoming | locked
+        /** false = hiện tại chưa có chu kỳ OKR nào được thiết lập (HR chưa kích hoạt chu kỳ). */
+        private Boolean hasActiveCycle;
         private List<Map<String, Object>> phases;
         private String reviewStatus;
         private double businessProgress;
@@ -277,6 +279,8 @@ public class OKRController {
         String deadline = null;
         Integer daysLeft = null;
         String countdownText = "Liên hệ HR để cấu hình chu kỳ";
+        // Không có chu kỳ nào đang hoạt động → UI hiện empty state thống nhất cho NV và QL.
+        boolean hasActiveCycle = cycle != null && "active".equalsIgnoreCase(cycle.getStatus());
         if (primary != null) {
             currentPhase = str(primary.get("key")).toUpperCase();
             String employeeStatus = str(primary.get("effective_status"));
@@ -405,6 +409,7 @@ public class OKRController {
                 .currentPhase(currentPhase)
                 .phaseTitle(phaseTitle)
                 .phaseStatus(phaseStatus)
+                .hasActiveCycle(hasActiveCycle)
                 .phases(cycle == null ? List.of() : phaseService.phases(cycle))
                 .reviewStatus(review != null ? review.getStatus() : null)
                 .businessProgress(Math.round(businessProgress * 10.0) / 10.0)
@@ -467,6 +472,7 @@ public class OKRController {
         data.put("phaseName", primary == null ? null : primary.get("name"));
         data.put("phaseStatus", managerReviewing ? OKRPhaseService.ACTIVE : employeePhaseStatus);
         data.put("managerReviewing", managerReviewing);
+        data.put("hasActiveCycle", cycle != null && "active".equalsIgnoreCase(cycle.getStatus()));
         data.put("updateWindow", cycle == null || review == null ? null : phaseService.updateWindow(cycle, review));
         data.put("reviewId", review != null ? review.getId().toString() : null);
         data.put("cycleYear", y);
