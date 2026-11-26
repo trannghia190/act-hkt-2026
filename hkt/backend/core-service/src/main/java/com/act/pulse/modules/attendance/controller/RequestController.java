@@ -19,6 +19,7 @@ import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.attendance.repository.LeaveTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.act.pulse.modules.attendance.service.LeaveQuotaService;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
@@ -60,6 +61,7 @@ public class RequestController {
     private final HolidayRepository holidayRepository;
     private final AuditLogRepository auditLogRepository;
     private final ShiftResolver shiftResolver;
+    private final LeaveQuotaService leaveQuotaService;
     private final ObjectMapper objectMapper;
     private final com.act.pulse.modules.attendance.repository.TimesheetRepository timesheetRepository;
     private final com.act.pulse.modules.attendance.repository.TimesheetCellRepository timesheetCellRepository;
@@ -163,6 +165,10 @@ public class RequestController {
             int submitWithin = lt.getSubmitWithinDays() == null ? 3 : lt.getSubmitWithinDays();
             if (!Boolean.TRUE.equals(body.getDraft()) && workDate.isBefore(LocalDate.now().minusDays(submitWithin))) {
                 throw new RuntimeException("Loại nghỉ này chỉ được gửi trong vòng " + submitWithin + " ngày kể từ ngày nghỉ");
+            }
+            // Chỉ chặn khi GỬI quản lý: đơn nháp vẫn lưu được để bổ sung/điều chỉnh sau.
+            if (!Boolean.TRUE.equals(body.getDraft())) {
+                assertEnoughLeaveBalance(userId, lt, workDate, body.getEndDate(), body.getPayload(), null);
             }
         }
 
@@ -663,6 +669,8 @@ public class RequestController {
                 if (Boolean.TRUE.equals(lt.getRequiresAttachment()) && requestAttachmentRepository.countByRequestId(id) == 0) {
                     throw new RuntimeException("Loại nghỉ này bắt buộc có giấy tờ đính kèm");
                 }
+                // Sửa & gửi lại cũng là GỬI quản lý → phải kiểm tra lại quỹ phép.
+                assertEnoughLeaveBalance(r.getUserId(), lt, r.getWorkDate(), r.getEndDate(), r.getPayload(), r.getId());
             }
         }
         if ("LATE_EARLY".equals(r.getRequestType())) {
@@ -742,6 +750,10 @@ public class RequestController {
         if (!r.getUserId().equals(CurrentUser.userId())) throw new RuntimeException("Chỉ được gửi đơn của mình");
         if (!"DRAFT".equals(r.getStatus())) throw new RuntimeException("Chỉ gửi duyệt được đơn nháp");
         assertSubmitWindow(r);
+        if ("LEAVE".equals(r.getRequestType())) {
+            LeaveType lt = leaveTypeRepository.findByCode(r.getLeaveType() == null ? "AL" : r.getLeaveType()).orElse(null);
+            assertEnoughLeaveBalance(r.getUserId(), lt, r.getWorkDate(), r.getEndDate(), r.getPayload(), r.getId());
+        }
         r.setStatus("PENDING_APPROVAL");
         r.setUpdatedAt(LocalDateTime.now());
         return ApiResponse.ok(requestRepository.save(r), "Đã gửi đơn tới quản lý");
@@ -859,17 +871,37 @@ public class RequestController {
     }
 
     private double leaveDayCount(RequestEntity r) {
-        if (r.getPayload() != null && r.getPayload().contains("half_day_period")) return 0.5;
-        LocalDate start = r.getWorkDate();
-        LocalDate end = r.getEndDate() == null ? start : r.getEndDate();
-        if (start == null) return 0;
-        java.util.Set<LocalDate> holidays = new java.util.HashSet<>();
-        for (Holiday h : holidayRepository.findAll()) holidays.addAll(h.dates());
-        double days = 0;
-        for (LocalDate cur = start; !cur.isAfter(end); cur = cur.plusDays(1)) {
-            if (cur.getDayOfWeek().getValue() < 6 && !holidays.contains(cur)) days += 1;
+        return leaveQuotaService.dayCount(r.getWorkDate(), r.getEndDate(), r.getPayload());
+    }
+
+    /**
+     * Chặn GỬI đơn nghỉ phép năm khi không đủ quỹ phép.
+     * Chỉ loại nghỉ có cấu hình deducts_annual_leave mới bị chặn (ốm/thai sản...
+     * không trừ phép năm nên vẫn gửi được). Quỹ khả dụng = sổ phép còn lại
+     * − ngày của các đơn đang chờ duyệt (đơn chờ chưa bị trừ sổ).
+     */
+    private void assertEnoughLeaveBalance(UUID userId, LeaveType lt, LocalDate start, LocalDate end,
+                                          String payload, UUID excludeId) {
+        if (lt == null || !Boolean.TRUE.equals(lt.getDeductsAnnualLeave())) return;
+        double days = leaveQuotaService.dayCount(start, end, payload);
+        if (days <= 0) return;
+        BigDecimal need = BigDecimal.valueOf(days);
+        BigDecimal available = leaveQuotaService.availableForLeave(userId, excludeId);
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Đã hết ngày phép — không thể gửi đơn nghỉ phép năm. "
+                    + "Bạn có thể chọn loại nghỉ khác (nghỉ ốm, không lương…) hoặc liên hệ HR.");
         }
-        return days;
+        if (need.compareTo(available) > 0) {
+            BigDecimal pending = leaveQuotaService.pendingDeductDays(userId, excludeId);
+            String pendingNote = pending.compareTo(BigDecimal.ZERO) > 0
+                    ? " (đã trừ " + fmtDays(pending) + " ngày cho đơn đang chờ duyệt)" : "";
+            throw new RuntimeException("Không đủ ngày phép — đơn cần " + fmtDays(need)
+                    + " ngày, chỉ còn " + fmtDays(available) + " ngày phép khả dụng" + pendingNote + ".");
+        }
+    }
+
+    private static String fmtDays(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     /** Dùng chung cho luồng duyệt chuẩn và Todo Inbox để luồng duyệt/SLA không bị lệch. */

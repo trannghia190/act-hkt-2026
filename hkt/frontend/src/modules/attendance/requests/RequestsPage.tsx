@@ -221,6 +221,13 @@ export const RequestsPage: React.FC = () => {
   const leaveNeedsAttachment = newReq.type === 'LEAVE' && Boolean(selectedLeaveCfg?.requiresAttachment);
   const leaveSubmitDays = Number(selectedLeaveCfg?.submitWithinDays ?? rulesCfg?.leave_type_defaults?.submit_within_days ?? 3);
   const wfhBackfillDays = Number(rulesCfg?.wfh?.submit_within_days ?? 3);
+  // Quỹ phép năm: "remaining" là sổ phép; "availableForLeave" đã trừ ngày của đơn đang chờ duyệt.
+  const leaveDeductsAnnual = newReq.type === 'LEAVE' && Boolean(selectedLeaveCfg?.deductsAnnualLeave);
+  const leaveRemaining = leaveBalance ? Number(leaveBalance.remaining ?? 0) : null;
+  const leaveAvailable = leaveBalance ? Number(leaveBalance.availableForLeave ?? leaveBalance.remaining ?? 0) : null;
+  const pendingLeaveDays = leaveBalance ? Number(leaveBalance.pendingLeaveDays ?? 0) : 0;
+  const leaveShortfall = leaveDeductsAnnual && leaveAvailable !== null && leaveDays > leaveAvailable;
+  const leaveExhausted = leaveDeductsAnnual && leaveAvailable !== null && leaveAvailable <= 0;
   const minDateFor = (type: string) => {
     if (type === 'WFH') return isoDaysFromToday(-wfhBackfillDays);
     if (type === 'LATE_EARLY') return isoDaysFromToday(-lateSubmitDays);
@@ -273,6 +280,13 @@ export const RequestsPage: React.FC = () => {
     e.preventDefault();
     if (!newReq.reason.trim()) return;
     if (newReq.type === 'LATE_EARLY' && !lateEarlyValid) return;
+    if (!asDraft && leaveShortfall) {
+      showToast(leaveExhausted
+        ? 'Đã hết ngày phép — không thể gửi đơn nghỉ phép năm tới quản lý'
+        : `Không đủ ngày phép — đơn cần ${leaveDays} ngày, chỉ còn ${leaveAvailable} ngày khả dụng`,
+        'error');
+      return;
+    }
     if (leaveNeedsAttachment && attachments.length === 0 && !(editingId && editingAttachmentCount > 0)) {
       showToast('Loại nghỉ này bắt buộc đính kèm giấy tờ trước khi gửi', 'error');
       return;
@@ -457,6 +471,10 @@ export const RequestsPage: React.FC = () => {
           setTimeout(() => showToast('📨 Đã gửi thông báo tới quản lý trực tiếp', 'info'), 600);
         }
         loadRequests();
+        // Đơn mới đang chờ duyệt giữ chỗ phép → nạp lại để cảnh báo "khả dụng" đúng.
+        const balanceToken = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+        fetch('/api/v1/leaves/my-balance', { headers: balanceToken ? { Authorization: `Bearer ${balanceToken}` } : {} })
+          .then(r => r.json()).then(j => { if (j?.data) setLeaveBalance(j.data); }).catch(() => undefined);
         setIsCreateOpen(false);
         setEditingId(null);
         setEditingAttachmentCount(0);
@@ -840,10 +858,27 @@ export const RequestsPage: React.FC = () => {
                     {selectedLeaveCfg?.unit !== 'DAY' && <option value="HALF_DAY">Nửa ngày (0.5)</option>}
                   </select>
                 </label>
-                <div className="p-2 rounded-lg bg-accent-soft/40 border border-accent/30 text-accent-dark">
-                  Số dư phép còn lại: <b>{leaveBalance ? Number(leaveBalance.remaining || 0) : '—'} ngày</b>
+                <div className={`p-2 rounded-lg border ${leaveShortfall ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-accent-soft/40 border-accent/30 text-accent-dark'}`}>
+                  Số dư phép còn lại: <b>{leaveRemaining !== null ? leaveRemaining : '—'} ngày</b>
+                  {pendingLeaveDays > 0 && (
+                    <div className="text-[10px] mt-0.5">
+                      Đang chờ duyệt: <b>{pendingLeaveDays}</b> ngày · Khả dụng để gửi đơn: <b>{leaveAvailable}</b> ngày
+                    </div>
+                  )}
                   <div className="text-[10px] mt-0.5">Duyệt 1 cấp bởi quản lý trực tiếp</div>
                   <div className="text-[10px] mt-0.5">Số ngày trừ quỹ phép: <b>{leaveDays}</b> ngày</div>
+                  {newReq.type === 'LEAVE' && selectedLeaveCfg && !selectedLeaveCfg.deductsAnnualLeave && (
+                    <div className="text-[10px] mt-0.5">Loại nghỉ này không trừ quỹ phép năm.</div>
+                  )}
+                  {leaveExhausted ? (
+                    <div className="mt-1 pt-1 border-t border-rose-200 font-semibold">
+                      Đã hết ngày phép — không thể gửi đơn nghỉ phép năm. Chọn loại nghỉ khác (ốm, không lương…) hoặc liên hệ HR.
+                    </div>
+                  ) : leaveShortfall ? (
+                    <div className="mt-1 pt-1 border-t border-rose-200 font-semibold">
+                      Không đủ ngày phép — đơn cần {leaveDays} ngày, chỉ còn {leaveAvailable} ngày khả dụng.
+                    </div>
+                  ) : null}
                 </div>
                 {leaveUnit === 'HALF_DAY' && (
                   <label className="font-medium">Buổi nghỉ
@@ -1118,7 +1153,11 @@ export const RequestsPage: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={(ev) => handleCreate(ev as any, true)}>
               Lưu nháp
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || (leaveNeedsAttachment && attachments.length === 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}>
+            <Button variant="primary" size="sm" type="submit"
+              disabled={(newReq.type === 'LEAVE' && leaveDays <= 0) || leaveShortfall || (leaveNeedsAttachment && attachments.length === 0) || (newReq.type === 'WFH' && leaveUnit === 'DAY' && wfhDaysCount <= 0) || (newReq.type === 'LATE_EARLY' && !lateEarlyValid)}
+              title={leaveShortfall
+                ? (leaveExhausted ? 'Đã hết ngày phép — không thể gửi đơn nghỉ phép năm' : `Chỉ còn ${leaveAvailable} ngày phép khả dụng, đơn cần ${leaveDays} ngày`)
+                : undefined}>
               {editingId ? 'Cập nhật & Gửi Lại' : 'Gửi Đơn Phê Duyệt'}
             </Button>
           </div>

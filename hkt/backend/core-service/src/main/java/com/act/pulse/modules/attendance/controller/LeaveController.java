@@ -11,6 +11,7 @@ import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.TeamRepository;
 import com.act.pulse.modules.auth.repository.UserRepository;
 import com.act.pulse.modules.attendance.service.LeaveBalanceService;
+import com.act.pulse.modules.attendance.service.LeaveQuotaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class LeaveController {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final LeaveBalanceService leaveBalanceService;
+    private final LeaveQuotaService leaveQuotaService;
 
     @GetMapping("/leave-types")
     @Operation(summary = "Danh sách loại nghỉ đang áp dụng (S30/S32)")
@@ -114,7 +116,13 @@ public class LeaveController {
     @GetMapping("/leaves/my-balance")
     @Operation(summary = "Số dư phép của tôi (S09)")
     public ApiResponse<Map<String, Object>> myBalance() {
-        return ApiResponse.ok(balanceOf(CurrentUser.userId()), "Số dư phép");
+        UUID userId = CurrentUser.userId();
+        Map<String, Object> balance = new HashMap<>(balanceOf(userId));
+        // Số dư "khả dụng" để gửi đơn = sổ phép còn lại − ngày của đơn đang chờ duyệt.
+        // Tách khỏi "remaining" để các màn hình cũ vẫn hiển thị đúng sổ phép.
+        balance.put("pendingLeaveDays", leaveQuotaService.pendingDeductDays(userId, null));
+        balance.put("availableForLeave", leaveQuotaService.availableForLeave(userId, null));
+        return ApiResponse.ok(balance, "Số dư phép");
     }
 
     @GetMapping("/leaves/ledger/by-code/{code}")
