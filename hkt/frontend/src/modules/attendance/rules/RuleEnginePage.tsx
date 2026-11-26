@@ -193,7 +193,7 @@ export const RuleEnginePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
 
       <div className="bg-canvas border border-line rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -210,9 +210,9 @@ export const RuleEnginePage: React.FC = () => {
 
       {loading && <div className="text-sm text-ink-muted">Đang tải 19 quy định…</div>}
       {error && (
-        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-center justify-between gap-3">
+        <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button className="text-xs px-2.5 py-1 rounded border border-rose-300 bg-white" onClick={loadRules}>Thử lại</button>
+          <button className="text-xs px-2.5 py-1 rounded border border-status-danger-line bg-surface" onClick={loadRules}>Thử lại</button>
         </div>
       )}
 
@@ -246,7 +246,7 @@ export const RuleEnginePage: React.FC = () => {
                 <td className="p-3 text-center text-xs">v{r.versionCount}</td>
                 <td className="p-3 text-center text-xs">{r.effectiveFrom || '—'}</td>
                 <td className="p-3 text-right whitespace-nowrap">
-                  <button className="text-xs px-2 py-1 rounded bg-accent text-white" onClick={() => openEdit(r)}>Sửa</button>
+                  <button className="text-xs px-2 py-1 rounded bg-accent text-on-accent" onClick={() => openEdit(r)}>Sửa</button>
                   <button className="text-xs px-2 py-1 rounded border border-line ml-1" onClick={() => openHistory(r)}>Lịch sử thay đổi</button>
                 </td>
               </tr>
@@ -295,7 +295,7 @@ export const RuleEnginePage: React.FC = () => {
             </div>
             <div className="flex justify-end gap-2">
               <button className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setEditing(null)}>Huỷ</button>
-              <button className="text-xs px-3 py-1.5 rounded bg-accent text-white disabled:opacity-50" disabled={saving} onClick={saveRule}>
+              <button className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent disabled:opacity-50" disabled={saving} onClick={saveRule}>
                 {saving ? 'Đang lưu…' : 'Lưu phiên bản mới'}
               </button>
             </div>

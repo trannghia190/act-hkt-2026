@@ -213,7 +213,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                   <td className="py-2.5 px-3 font-mono text-ink-muted text-[11px]">{item.id}</td>
                   <td className="py-2.5 px-3">
                     <span className="font-semibold text-ink">{item.employeeName}</span>
-                    <span className="font-mono text-emerald-400 block text-[10px]">{item.employeeCode}</span>
+                    <span className="font-mono text-status-ok block text-[10px]">{item.employeeCode}</span>
                   </td>
                   <td className="py-2.5 px-3 text-ink-secondary text-[11px]">{item.department}</td>
                   <td className="py-2.5 px-3 font-mono text-ink-secondary">{item.date}</td>
@@ -229,7 +229,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
                   </td>
                   <td
                     className={`py-2.5 px-3 text-center font-bold ${
-                      item.amount > 0 ? 'text-emerald-400' : 'text-rose-400'
+                      item.amount > 0 ? 'text-status-ok' : 'text-status-danger'
                     }`}
                   >
                     {item.amount > 0 ? `+${item.amount}` : item.amount}
@@ -257,7 +257,7 @@ export const AdminLeaveLedgerPage: React.FC = () => {
         title="Điều Chỉnh Số Dư Phép Năm (HR Admin)"
       >
         <form onSubmit={handleAdjustLeave} className="space-y-4 text-xs">
-          {adjustError && <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">{adjustError}</div>}
+          {adjustError && <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-2">{adjustError}</div>}
           <div>
             <label className="block text-ink font-semibold mb-1">Mã nhân viên cần điều chỉnh</label>
             <input

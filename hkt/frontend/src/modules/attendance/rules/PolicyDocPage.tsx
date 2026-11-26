@@ -72,12 +72,12 @@ export const PolicyDocPage: React.FC = () => {
           placeholder="Tìm quy định (VD: phép, WFH, đi muộn)…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
 
       <div className="flex flex-wrap gap-2">
         {['ALL', ...categories].map((c) => (
           <button key={c} onClick={() => setCategory(c)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${category === c ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`text-xs px-3 py-1.5 rounded-full border ${category === c ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {c === 'ALL' ? 'Tất cả nhóm' : c}
           </button>
         ))}
@@ -93,7 +93,7 @@ export const PolicyDocPage: React.FC = () => {
               <span className="text-[11px] font-normal text-ink-muted">v{r.versionCount} · hiệu lực {r.effectiveFrom || '—'}</span>
             </summary>
             <div className="mt-2 text-xs text-ink-secondary">{r.description}</div>
-            {dynamicExample(r) && <div className="mt-1 text-xs text-emerald-700">Ví dụ: {dynamicExample(r)}</div>}
+            {dynamicExample(r) && <div className="mt-1 text-xs text-status-ok">Ví dụ: {dynamicExample(r)}</div>}
             <div className="mt-2 bg-canvas rounded-lg p-3">
               <RuleValueSummary ruleKey={r.ruleKey} value={r.currentValue} />
             </div>

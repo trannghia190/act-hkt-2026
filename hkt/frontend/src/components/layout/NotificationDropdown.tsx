@@ -93,7 +93,7 @@ export const NotificationDropdown: React.FC = () => {
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
+          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-status-danger text-[10px] font-bold text-on-danger flex items-center justify-center animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -112,7 +112,7 @@ export const NotificationDropdown: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-xs text-ink">Trung Tâm Thông Báo</span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded font-bold">
+                  <span className="text-[10px] bg-status-danger-soft text-status-danger px-1.5 py-0.5 rounded font-bold">
                     {unreadCount > 99 ? '99+' : unreadCount} mới
                   </span>
                 )}
@@ -168,14 +168,14 @@ export const NotificationDropdown: React.FC = () => {
                     onClick={() => handleClickItem(item)}
                     className={`p-3 text-xs flex items-start gap-2.5 transition-colors cursor-pointer ${
                       !item.read
-                        ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                        ? 'bg-status-ok-soft/40 hover:bg-status-ok-soft'
                         : 'hover:bg-canvas/60 opacity-80'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
-                      {item.level === 'urgent' && <AlertTriangle className="w-4 h-4 text-rose-500" />}
-                      {item.level === 'warning' && <Clock className="w-4 h-4 text-amber-500" />}
-                      {item.level === 'info' && <Info className="w-4 h-4 text-sky-500" />}
+                      {item.level === 'urgent' && <AlertTriangle className="w-4 h-4 text-status-danger" />}
+                      {item.level === 'warning' && <Clock className="w-4 h-4 text-status-warn" />}
+                      {item.level === 'info' && <Info className="w-4 h-4 text-status-info" />}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -183,13 +183,13 @@ export const NotificationDropdown: React.FC = () => {
                         <span className={`font-semibold truncate ${!item.read ? 'text-ink' : 'text-ink-secondary'}`}>
                           {item.title}
                         </span>
-                        {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
+                        {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-status-ok shrink-0" />}
                       </div>
                       <p className="text-[11px] text-ink-secondary mt-0.5 line-clamp-2">{item.message}</p>
                       <span className="text-[10px] text-ink-muted mt-1 block">{item.timestamp}</span>
                     </div>
 
-                    {item.read && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />}
+                    {item.read && <CheckCircle2 className="w-3.5 h-3.5 text-status-ok shrink-0 mt-0.5" />}
                   </div>
                 ))
               )}
@@ -213,7 +213,7 @@ export const NotificationDropdown: React.FC = () => {
                   setIsOpen(false);
                   navigate('/account/notifications');
                 }}
-                className="text-[11px] text-emerald-400 hover:underline font-medium cursor-pointer"
+                className="text-[11px] text-status-ok hover:underline font-medium cursor-pointer"
               >
                 Cài đặt
               </button>

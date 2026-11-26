@@ -63,6 +63,19 @@ export default {
           'wfh-soft': 'rgb(var(--wfh-soft) / <alpha-value>)',
           'wfh-line': 'rgb(var(--wfh-line) / <alpha-value>)',
         },
+        // Màu chữ ĐẶT trên nền màu đậm (badge, nút). Mỗi theme tự khai báo
+        // vì nền sáng và nền tối cần màu chữ khác nhau.
+        'on-accent': 'rgb(var(--on-accent) / <alpha-value>)',
+        'on-ok': 'rgb(var(--on-ok) / <alpha-value>)',
+        'on-warn': 'rgb(var(--on-warn) / <alpha-value>)',
+        'on-danger': 'rgb(var(--on-danger) / <alpha-value>)',
+        'on-info': 'rgb(var(--on-info) / <alpha-value>)',
+        'on-wfh': 'rgb(var(--on-wfh) / <alpha-value>)',
+        // Nút secondary — mỗi theme tự chọn nền để nổi trên nền của mình.
+        'btn-secondary': 'rgb(var(--btn-secondary-bg) / <alpha-value>)',
+        'btn-secondary-ink': 'rgb(var(--btn-secondary-ink) / <alpha-value>)',
+        'btn-secondary-hover': 'rgb(var(--btn-secondary-hover) / <alpha-value>)',
+        'danger-hover': 'rgb(var(--danger-hover) / <alpha-value>)',
         // Rail điều hướng — tách riêng vì Midnight Rail có rail tối,
         // Ascend Clean có rail trắng, Bento Studio có rail tối đậm.
         rail: {
@@ -74,6 +87,8 @@ export default {
           hover: 'rgb(var(--rail-hover) / <alpha-value>)',
           active: 'rgb(var(--rail-active) / <alpha-value>)',
           'active-bg': 'rgb(var(--rail-active-bg) / <alpha-value>)',
+          'badge-bg': 'rgb(var(--rail-badge-bg) / <alpha-value>)',
+          'badge-ink': 'rgb(var(--rail-badge-ink) / <alpha-value>)',
         },
       },
       boxShadow: {

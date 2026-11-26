@@ -11,7 +11,7 @@ export const ScorePicker: React.FC<{ value?: number | null; onChange?: (v: numbe
         onClick={() => onChange?.(score)}
         className={`w-10 h-9 rounded-lg font-bold border transition-all disabled:cursor-not-allowed ${
           value === score
-            ? 'bg-accent text-white border-accent shadow-xs'
+            ? 'bg-accent text-on-accent border-accent shadow-xs'
             : 'bg-canvas text-ink-secondary border-line hover:border-line-focus'
         }`}
       >

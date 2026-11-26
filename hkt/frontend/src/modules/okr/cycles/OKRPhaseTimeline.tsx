@@ -2,9 +2,9 @@ import React from 'react';
 import { Phase, PHASE_ACTIONS, phaseWindowConflicts } from './cycleTypes';
 
 const PHASE_COLOR: Record<string, { dot: string; soft: string; text: string }> = {
-  setup: { dot: '#4f46e5', soft: '#eef2ff', text: '#3730a3' },
-  midyear: { dot: '#d97706', soft: '#fffbeb', text: '#92400e' },
-  final: { dot: '#059669', soft: '#ecfdf5', text: '#065f46' },
+  setup: { dot: 'rgb(var(--info))', soft: 'rgb(var(--info) / 0.15)', text: 'rgb(var(--info))' },
+  midyear: { dot: 'rgb(var(--warn))', soft: 'rgb(var(--warn) / 0.15)', text: 'rgb(var(--warn))' },
+  final: { dot: 'rgb(var(--ok))', soft: 'rgb(var(--ok) / 0.15)', text: 'rgb(var(--ok))' },
 };
 
 const colorOf = (key: string) => PHASE_COLOR[key] || PHASE_COLOR.setup;
@@ -71,7 +71,7 @@ export const OKRPhaseTimeline: React.FC<Props> = ({ year, phases }) => {
         </div>
       )}
 
-      <div className="rounded-xl border border-line bg-white p-4 space-y-3">
+      <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs font-bold text-ink">Lộ trình OKR {year}</div>
           <div className="text-[11px] font-semibold text-ink-muted">
@@ -94,9 +94,10 @@ export const OKRPhaseTimeline: React.FC<Props> = ({ year, phases }) => {
             return (
               <div key={p.key} className="flex items-start gap-2.5">
                 <span
-                  className="w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold shrink-0 text-white"
+                  className="w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold shrink-0"
                   style={{
-                    background: st === 'upcoming' ? '#c7cad1' : c.dot,
+                    background: st === 'upcoming' ? 'rgb(var(--line-soft))' : c.soft,
+                    color: st === 'upcoming' ? 'rgb(var(--ink-muted))' : c.text,
                     boxShadow: st === 'active' ? `0 0 0 3px ${c.soft}` : undefined,
                   }}
                 >
@@ -107,7 +108,7 @@ export const OKRPhaseTimeline: React.FC<Props> = ({ year, phases }) => {
                     <span className="text-xs font-bold text-ink truncate">{p.name}</span>
                     <span
                       className={`text-[10px] font-semibold px-1.5 py-px rounded-full ${
-                        st === 'active' ? 'bg-accent-soft text-accent'
+                        st === 'active' ? 'bg-accent-soft text-accent-dark'
                           : st === 'done' ? 'bg-line/40 text-ink-muted'
                             : 'bg-canvas text-ink-muted border border-line'
                       }`}

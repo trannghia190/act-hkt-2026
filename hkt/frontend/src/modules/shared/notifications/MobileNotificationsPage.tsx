@@ -234,8 +234,8 @@ export const MobileNotificationsPage: React.FC = () => {
 
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
-          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+        <div className="p-3 bg-status-ok-soft border border-status-ok-line rounded-xl text-status-ok text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-status-ok" />
           {toastMsg}
         </div>
       )}
@@ -273,7 +273,7 @@ export const MobileNotificationsPage: React.FC = () => {
             onClick={() => setActiveFilter('ALL')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
               activeFilter === 'ALL'
-                ? 'bg-accent-soft text-accent border border-accent-line font-bold'
+                ? 'bg-accent-soft text-accent-dark border border-accent-line font-bold'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -284,7 +284,7 @@ export const MobileNotificationsPage: React.FC = () => {
             onClick={() => setActiveFilter('UNREAD')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
               activeFilter === 'UNREAD'
-                ? 'bg-accent-soft text-accent border border-accent-line font-bold'
+                ? 'bg-accent-soft text-accent-dark border border-accent-line font-bold'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -323,9 +323,9 @@ export const MobileNotificationsPage: React.FC = () => {
               className={`p-4 rounded-xl border bg-surface transition-all cursor-pointer shadow-2xs hover:border-line-focus space-y-2.5 ${
                 !item.read
                   ? item.kind === 'urgent'
-                    ? 'border-rose-300 bg-rose-50/50'
+                    ? 'border-status-danger-line bg-status-danger-soft/50'
                     : item.kind === 'warn'
-                      ? 'border-amber-300 bg-amber-50/50'
+                      ? 'border-status-warn-line bg-status-warn-soft/50'
                       : 'border-accent-line bg-accent-soft/30'
                   : 'border-line opacity-75'
               }`}
@@ -335,9 +335,9 @@ export const MobileNotificationsPage: React.FC = () => {
                   <span
                     className={`w-2 h-2 rounded-full shrink-0 ${
                       item.kind === 'urgent'
-                        ? 'bg-rose-500 animate-pulse'
+                        ? 'bg-status-danger animate-pulse'
                         : item.kind === 'warn'
-                          ? 'bg-amber-500'
+                          ? 'bg-status-warn'
                           : 'bg-accent'
                     }`}
                   />
@@ -356,7 +356,7 @@ export const MobileNotificationsPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleDeleteNotification(item.id, e)}
-                    className="p-1 text-ink-muted hover:text-rose-400 transition-colors cursor-pointer"
+                    className="p-1 text-ink-muted hover:text-status-danger transition-colors cursor-pointer"
                     title="Xóa thông báo"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

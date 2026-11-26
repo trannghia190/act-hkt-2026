@@ -67,7 +67,7 @@ export const RequestDetailPage: React.FC = () => {
         <h1 className="text-xl font-bold text-ink mt-1">Đơn {req?.id || id}</h1>
         <p className="text-xs text-ink-muted mt-1">Timeline đầy đủ + ảnh hưởng tới bảng công.</p>
       </div>
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
       {req && (
         <div className="bg-surface border border-line rounded-xl p-4 space-y-2.5">
           {(() => {
@@ -96,13 +96,13 @@ export const RequestDetailPage: React.FC = () => {
                 </div>
                 <div className="text-xs"><span className="text-ink-muted">Lý do:</span> {req.reason || '—'}</div>
                 {req.decisionComment && (
-                  <div className="text-xs text-accent bg-accent-soft/40 border border-accent-line rounded p-2">
+                  <div className="text-xs text-accent-dark bg-accent-soft/40 border border-accent-line rounded p-2">
                     <b>Ý kiến của quản lý:</b> {req.decisionComment}
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2 text-[11px]">
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Trong quota</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">✅ Nộp đúng hạn</span>
+                  <span className="px-2 py-0.5 rounded bg-status-ok-soft text-status-ok border border-status-ok-line">✅ Trong quota</span>
+                  <span className="px-2 py-0.5 rounded bg-status-ok-soft text-status-ok border border-status-ok-line">✅ Nộp đúng hạn</span>
                   <span className="px-2 py-0.5 rounded bg-canvas text-ink-muted border border-line">Ảnh hưởng: {data.impact}</span>
                 </div>
               </>

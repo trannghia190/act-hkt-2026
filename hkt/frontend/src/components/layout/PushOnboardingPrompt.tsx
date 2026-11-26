@@ -81,7 +81,7 @@ export const PushOnboardingPrompt: React.FC = () => {
     <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 w-[calc(100%-2rem)] max-w-sm">
       <div className="bg-surface border border-line rounded-2xl shadow-lg p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-accent-soft border border-accent-line flex items-center justify-center text-accent">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-accent-soft border border-accent-line flex items-center justify-center text-accent-dark">
             <Bell className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
@@ -100,7 +100,7 @@ export const PushOnboardingPrompt: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
-        {error && <div className="text-[11px] text-red-600">{error}</div>}
+        {error && <div className="text-[11px] text-status-danger">{error}</div>}
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
@@ -113,7 +113,7 @@ export const PushOnboardingPrompt: React.FC = () => {
             type="button"
             onClick={handleEnable}
             disabled={busy}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-accent hover:opacity-90 rounded-lg disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-semibold text-on-accent bg-accent hover:opacity-90 rounded-lg disabled:opacity-50"
           >
             {busy ? 'Đang bật…' : 'Bật ngay'}
           </button>

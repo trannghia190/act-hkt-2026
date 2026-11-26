@@ -129,7 +129,7 @@ const CsvPicker: React.FC<{
           {selected.map(v => (
             <span key={v} className="inline-flex items-center gap-1 rounded bg-canvas border border-line px-1.5 py-0.5 text-[10px]">
               {labelOf(v)}
-              <button type="button" disabled={disabled} className="text-ink-muted hover:text-red-600" onClick={() => toggle(v)}>×</button>
+              <button type="button" disabled={disabled} className="text-ink-muted hover:text-status-danger" onClick={() => toggle(v)}>×</button>
             </span>
           ))}
         </div>
@@ -304,19 +304,19 @@ export const ShiftHolidayPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Ca làm việc & lịch nghỉ lễ</h1>
         <p className="text-xs text-ink-muted mt-1">Ca chuẩn (SHIFT_STANDARD) là <b className="text-ink">base mặc định cho toàn công ty</b> — sửa được, không tắt/xóa được, không cần áp ca. Ca khác là <b className="text-ink">ca ngoại lệ</b>: áp theo <b className="text-ink">nhóm / chức danh / mã nhân viên</b>, có thể <b className="text-ink">loại trừ</b> thành viên và xếp thứ tự ưu tiên (ca dưới cùng thắng). Ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · geofence + dải IP · ngày lễ theo năm.</p>
         <div className="flex gap-2 mt-3">
           {(['shifts', 'holidays'] as const).map(x => (
-            <button key={x} onClick={() => setTab(x)} className={`text-xs px-3 py-1.5 rounded-full border ${tab === x ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            <button key={x} onClick={() => setTab(x)} className={`text-xs px-3 py-1.5 rounded-full border ${tab === x ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
               {x === 'shifts' ? 'Ca làm việc' : 'Lịch nghỉ lễ'}
             </button>
           ))}
         </div>
       </div>
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
 
       {tab === 'shifts' ? (
         <div className="bg-surface border border-line rounded-xl p-4">
@@ -326,7 +326,7 @@ export const ShiftHolidayPage: React.FC = () => {
               Ca ngoại lệ xếp từ trên xuống: <b className="text-ink">ca càng ở dưới càng ưu tiên cao</b> — một người khớp
               nhiều ca sẽ nhận ca ở dưới cùng. Dùng <b className="text-ink">↑/↓</b> để đổi thứ tự ghi đè.
             </p>
-            <button className="text-xs px-3 py-1.5 rounded bg-accent text-white shrink-0" onClick={openAdd}>+ Thêm ca</button>
+            <button className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent shrink-0" onClick={openAdd}>+ Thêm ca</button>
           </div>
           {orderedShifts.map(s => {
             const ruleShifts = orderedShifts.filter(x => !isBaseShift(x));
@@ -338,17 +338,17 @@ export const ShiftHolidayPage: React.FC = () => {
                   <div className="flex items-center flex-wrap gap-y-1">
                     <span className="font-mono text-xs text-accent mr-2">{s.code}</span><span className="font-semibold">{s.name}</span>
                     {isBaseShift(s)
-                      ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent text-white">Mặc định toàn công ty</span>
+                      ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent text-on-accent">Mặc định toàn công ty</span>
                       : <>
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ca ngoại lệ</span>
-                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${s.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn">ca ngoại lệ</span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${s.isActive ? 'bg-status-ok-soft text-status-ok' : 'bg-line text-ink'}`}>
                             {s.isActive ? `ưu tiên #${ruleIndex + 1}/${ruleCount}` : 'đang tắt'}
                           </span>
                           {s.isActive && ruleIndex === ruleCount - 1 && (
-                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">ưu tiên cao nhất</span>
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-danger-soft text-status-danger">ưu tiên cao nhất</span>
                           )}
                         </>}
-                    {s.isFlexible && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">linh hoạt</span>}
+                    {s.isFlexible && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-ok-soft text-status-ok">linh hoạt</span>}
                   </div>
                   <div className="flex gap-1.5 shrink-0">
                     {!isBaseShift(s) && (
@@ -363,14 +363,14 @@ export const ShiftHolidayPage: React.FC = () => {
                     )}
                     <button className="text-xs px-2 py-1 rounded border border-line" title={isBaseShift(s) ? 'Sửa khung giờ ca chuẩn — áp dụng ngay cho toàn công ty' : undefined} onClick={() => openEdit(s)}>Sửa</button>
                     {!isBaseShift(s) && (
-                      <button className="text-xs px-2 py-1 rounded border border-rose-200 text-rose-700" title="Xóa ca — nhân sự đang dùng về ca chuẩn" onClick={() => deleteShift(s)}>Xóa</button>
+                      <button className="text-xs px-2 py-1 rounded border border-status-danger-line text-status-danger" title="Xóa ca — nhân sự đang dùng về ca chuẩn" onClick={() => deleteShift(s)}>Xóa</button>
                     )}
                   </div>
                 </div>
                 <div className="text-xs text-ink-muted mt-1">
                   {s.checkInStart?.slice(0,5)}–{s.checkInEnd?.slice(0,5)} / {s.checkOutStart?.slice(0,5)}–{s.checkOutEnd?.slice(0,5)} · nghỉ trưa {s.lunchBreakStart?.slice(0,5)}–{s.lunchBreakEnd?.slice(0,5)} · {s.requiredWorkHours}h
                 </div>
-                {s.isFlexible && <div className="text-xs text-emerald-700 mt-1">Khung linh hoạt: vào {s.flexibleCheckinFrom?.slice(0,5)}–{s.flexibleCheckinTo?.slice(0,5)} · ra {s.flexibleCheckoutFrom?.slice(0,5)}–{s.flexibleCheckoutTo?.slice(0,5)} — đủ {s.requiredWorkHours}h trong khung = 1 công</div>}
+                {s.isFlexible && <div className="text-xs text-status-ok mt-1">Khung linh hoạt: vào {s.flexibleCheckinFrom?.slice(0,5)}–{s.flexibleCheckinTo?.slice(0,5)} · ra {s.flexibleCheckoutFrom?.slice(0,5)}–{s.flexibleCheckoutTo?.slice(0,5)} — đủ {s.requiredWorkHours}h trong khung = 1 công</div>}
                 <div className="text-xs text-ink-muted mt-1">
                   {isBaseShift(s)
                     ? 'Áp dụng mặc định cho mọi nhân sự không khớp ca ngoại lệ nào · geofence ' + s.geofenceRadiusM + 'm · IP ' + (s.ipRanges || '—')
@@ -386,7 +386,7 @@ export const ShiftHolidayPage: React.FC = () => {
             <div className="text-xs text-ink-muted">
               <span className="font-semibold text-ink">Ngày lễ đã cấu hình</span> · {holidays.length} kỳ nghỉ
             </div>
-            <button onClick={() => openHolidayModal()} className="text-xs px-3 py-1.5 rounded bg-accent text-white font-semibold">+ Thêm ngày lễ</button>
+            <button onClick={() => openHolidayModal()} className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent font-semibold">+ Thêm ngày lễ</button>
           </div>
           {!holidays.length && (
             <div className="text-sm text-ink-muted border border-dashed border-line rounded-lg p-4 text-center">
@@ -405,7 +405,7 @@ export const ShiftHolidayPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openHolidayModal(h)} className="text-xs px-2 py-1 rounded border border-line">Sửa</button>
-                  <button onClick={() => deleteHoliday(h)} className="text-xs px-2 py-1 rounded border border-rose-200 text-rose-700">Xóa</button>
+                  <button onClick={() => deleteHoliday(h)} className="text-xs px-2 py-1 rounded border border-status-danger-line text-status-danger">Xóa</button>
                 </div>
               </div>
             );
@@ -430,10 +430,10 @@ export const ShiftHolidayPage: React.FC = () => {
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={holidayForm.isPaid} onChange={e => setHolidayForm({ ...holidayForm, isPaid: e.target.checked })} /> Hưởng lương</label>
             <div className="text-[11px] text-ink-muted">Để trống “Đến ngày” nếu lễ chỉ diễn ra 1 ngày.</div>
-            {error && <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">{error}</div>}
+            {error && <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-2">{error}</div>}
             <div className="flex justify-end gap-2">
               <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setIsHolidayOpen(false)}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu ngày lễ</button>
+              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent">Lưu ngày lễ</button>
             </div>
           </form>
         </div>
@@ -507,7 +507,7 @@ export const ShiftHolidayPage: React.FC = () => {
             )}
             <div className="flex justify-end gap-2">
               <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu ca</button>
+              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent">Lưu ca</button>
             </div>
           </form>
         </div>

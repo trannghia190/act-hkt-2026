@@ -81,17 +81,17 @@ export const LeaveTypesPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Quản lý loại nghỉ</h1>
         <p className="text-xs text-ink-muted mt-1">Thêm/sửa loại nghỉ không cần sửa code — rule chung → loại nghỉ → đơn.</p>
       </div>
 
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
 
       <div className="bg-surface border border-line rounded-xl p-4">
         <div className="flex justify-end mb-2">
-          <button className="text-xs px-3 py-1.5 rounded bg-accent text-white" onClick={openAdd}>+ Thêm loại nghỉ</button>
+          <button className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent" onClick={openAdd}>+ Thêm loại nghỉ</button>
         </div>
         {types.map((t) => (
           <div key={t.code} className="flex items-center justify-between border border-line rounded-lg px-3 py-2 mb-2 text-sm">
@@ -104,9 +104,9 @@ export const LeaveTypesPage: React.FC = () => {
               <span>{t.defaultDays != null ? `${t.defaultDays} ngày/năm` : 'Theo BHXH'} · {t.unit === 'HALF_DAY' ? 'nửa ngày' : 'ngày'} · {t.isPaid ? 'hưởng lương' : 'không lương'} · {t.requiresAttachment ? 'cần giấy tờ' : 'không cần giấy tờ'}</span>
               <button className="px-2 py-1 rounded border border-line text-ink" onClick={() => openEdit(t)}>Sửa</button>
               {t.isSystem ? (
-                <span className="px-2 py-1 rounded bg-slate-100 text-slate-500" title="Danh mục khởi tạo sẵn — chỉ được tắt, không xóa">hệ thống</span>
+                <span className="px-2 py-1 rounded bg-surface-secondary text-ink-muted" title="Danh mục khởi tạo sẵn — chỉ được tắt, không xóa">hệ thống</span>
               ) : (
-                <button className="px-2 py-1 rounded border border-rose-200 text-rose-700" onClick={() => remove(t)}>Xóa</button>
+                <button className="px-2 py-1 rounded border border-status-danger-line text-status-danger" onClick={() => remove(t)}>Xóa</button>
               )}
             </div>
           </div>
@@ -153,7 +153,7 @@ export const LeaveTypesPage: React.FC = () => {
             </label>
             <div className="flex justify-end gap-2">
               <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(undefined as any); setForm(emptyForm); setIsOpen(false); }}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-white">Lưu</button>
+              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent">Lưu</button>
             </div>
           </form>
         </div>

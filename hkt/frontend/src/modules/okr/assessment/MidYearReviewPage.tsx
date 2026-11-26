@@ -282,7 +282,7 @@ export const MidYearReviewPage: React.FC = () => {
     <Card className="space-y-3">
       <div className="flex items-center justify-between border-b border-line pb-2">
         <h3 className="text-sm font-bold text-ink flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} />
+          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
           {title}
         </h3>
       </div>
@@ -309,7 +309,7 @@ export const MidYearReviewPage: React.FC = () => {
                 )}
               </div>
               <div className="h-1.5 bg-line rounded-full overflow-hidden">
-                <div className={`h-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, item.progress)}%` }} />
+                <div className={`h-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} style={{ width: `${Math.min(100, item.progress)}%` }} />
               </div>
               {item.checkInTrend.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
@@ -370,7 +370,7 @@ export const MidYearReviewPage: React.FC = () => {
           ) : (
             <>
               {detail.midYearWritable === false && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+                <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-3 text-xs text-status-warn">
                   🔒 Chỉ xem: {detail.midYearLockReason}
                 </div>
               )}
@@ -413,7 +413,7 @@ export const MidYearReviewPage: React.FC = () => {
                 {detail.warnings.length > 0 && (
                   <div className="space-y-1">
                     {detail.warnings.map((w, idx) => (
-                      <div key={idx} className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800">
+                      <div key={idx} className="rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 py-1.5 text-[11px] text-status-warn">
                         ⚠️ {w.message}
                       </div>
                     ))}
@@ -463,7 +463,7 @@ export const MidYearReviewPage: React.FC = () => {
 
       <Modal isOpen={Boolean(editItem)} onClose={() => setEditItem(null)} title="Điều chỉnh mục tiêu giữa năm" maxWidth="lg">
         <div className="space-y-3">
-          <div className="rounded-lg bg-amber-50 border border-amber-300 p-2.5 text-[11px] text-amber-800">Mọi thay đổi bắt buộc nhập lý do và sẽ ghi vào audit trail.</div>
+          <div className="rounded-lg bg-status-warn-soft border border-status-warn-line p-2.5 text-[11px] text-status-warn">Mọi thay đổi bắt buộc nhập lý do và sẽ ghi vào audit trail.</div>
           <div>
             <label className="block text-xs font-semibold text-ink mb-1">Tên mục tiêu</label>
             <textarea rows={2} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />

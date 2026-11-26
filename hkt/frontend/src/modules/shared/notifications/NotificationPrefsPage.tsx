@@ -245,7 +245,7 @@ export const NotificationPrefsPage: React.FC = () => {
         <div className="text-xs font-semibold text-ink flex flex-wrap items-center gap-1.5">
           {item.label}
           {roleHint(item.roles) && (
-            <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent-soft text-accent border border-accent-line">
+            <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent-soft text-accent-dark border border-accent-line">
               {roleHint(item.roles)}
             </span>
           )}
@@ -276,7 +276,7 @@ export const NotificationPrefsPage: React.FC = () => {
             className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
           />
           <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Mail className="w-3 h-3 text-sky-600" /> Email
+            <Mail className="w-3 h-3 text-status-info" /> Email
           </span>
         </label>
 
@@ -289,7 +289,7 @@ export const NotificationPrefsPage: React.FC = () => {
             className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
           />
           <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Smartphone className="w-3 h-3 text-amber-600" /> Push
+            <Smartphone className="w-3 h-3 text-status-warn" /> Push
           </span>
         </label>
       </div>
@@ -317,7 +317,7 @@ export const NotificationPrefsPage: React.FC = () => {
             title="Mở Todo Inbox"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-accent-soft border border-accent-line flex items-center justify-center text-accent">
+              <div className="w-8 h-8 rounded-lg bg-accent-soft border border-accent-line flex items-center justify-center text-accent-dark">
                 <Inbox className="w-4 h-4" />
               </div>
               <div>
@@ -330,11 +330,11 @@ export const NotificationPrefsPage: React.FC = () => {
 
           <Link
             to="/attendance/approvals"
-            className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors group"
+            className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs hover:border-status-info-line hover:bg-status-info-soft/40 transition-colors group"
             title="Mở trang Duyệt đơn"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+              <div className="w-8 h-8 rounded-lg bg-status-info-soft border border-status-info-line flex items-center justify-center text-status-info">
                 <UserCheck className="w-4 h-4" />
               </div>
               <div>
@@ -349,16 +349,16 @@ export const NotificationPrefsPage: React.FC = () => {
 
       {/* TOAST WITH 1-CLICK UNDO (Criteria G4-#7) */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="p-3.5 bg-status-ok-soft border border-status-ok-line rounded-xl text-status-ok text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-status-ok shrink-0" />
             <span>{toastMessage}</span>
           </div>
           {previousStateRef.current && (
             <button
               type="button"
               onClick={handleUndo}
-              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              className="px-2.5 py-1 bg-status-ok hover:bg-status-ok text-on-ok rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
             >
               <RotateCcw className="w-3 h-3" />
               Hoàn tác (Undo)
@@ -373,7 +373,7 @@ export const NotificationPrefsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-canvas rounded-xl border border-line">
             <div className="space-y-1">
               <div className="font-bold text-sm text-ink flex items-center gap-2">
-                <Moon className="w-4 h-4 text-amber-400" />
+                <Moon className="w-4 h-4 text-status-warn" />
                 Bật chế độ Giờ Yên Lặng ({prefs.quietHoursStart} – {prefs.quietHoursEnd})
               </div>
               <p className="text-ink-muted text-xs leading-relaxed max-w-xl">
@@ -387,7 +387,7 @@ export const NotificationPrefsPage: React.FC = () => {
                 onChange={handleToggleQuietHours}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+              <div className="w-11 h-6 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-line-hover after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-status-ok" />
             </label>
           </div>
 
@@ -456,7 +456,7 @@ export const NotificationPrefsPage: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-canvas rounded-xl border border-line">
             <div className="flex items-center gap-2.5">
-              <Smartphone className="w-4 h-4 text-amber-600" />
+              <Smartphone className="w-4 h-4 text-status-warn" />
               <div>
                 <div className="font-semibold text-ink">
                   {pushOnThisDevice ? 'Thiết bị này đang nhận thông báo đẩy' : 'Thiết bị này chưa bật thông báo đẩy'}
@@ -476,7 +476,7 @@ export const NotificationPrefsPage: React.FC = () => {
             </Button>
           </div>
           {!pushSupported && (
-            <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            <div className="text-[11px] text-status-warn bg-status-warn-soft border border-status-warn-line rounded-lg p-2">
               Trình duyệt này không hỗ trợ Web Push — thông báo trong ứng dụng và email vẫn hoạt động.
             </div>
           )}
@@ -489,7 +489,7 @@ export const NotificationPrefsPage: React.FC = () => {
       {/* CARD 2: BẬT/TẮT THEO TỪNG LOẠI SỰ KIỆN × KÊNH (Criteria G4-#1 & G4-#2) */}
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Bell className="w-4 h-4 text-emerald-400" />
+          <Bell className="w-4 h-4 text-status-ok" />
           Ma Trận {Object.keys(prefs.events).length} Sự Kiện × 3 Kênh Thông Báo
         </h2>
         <p className="text-[11px] text-ink-muted">

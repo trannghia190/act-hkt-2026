@@ -11,10 +11,10 @@ interface DayRow {
 }
 
 const KIND_LABEL: Record<string, { text: string; cls: string }> = {
-  PRESENT: { text: 'Có mặt', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  WFH: { text: 'WFH', cls: 'bg-violet-50 text-violet-700 border-violet-200' },
-  LEAVE: { text: 'Nghỉ phép', cls: 'bg-sky-50 text-sky-700 border-sky-200' },
-  LATE: { text: 'Đi muộn', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  PRESENT: { text: 'Có mặt', cls: 'bg-status-ok-soft text-status-ok border-status-ok-line' },
+  WFH: { text: 'WFH', cls: 'bg-status-info-soft text-status-info border-status-info-line' },
+  LEAVE: { text: 'Nghỉ phép', cls: 'bg-status-info-soft text-status-info border-status-info-line' },
+  LATE: { text: 'Đi muộn', cls: 'bg-status-warn-soft text-status-warn border-status-warn-line' },
 };
 
 export const TeamSchedulePage: React.FC = () => {
@@ -53,8 +53,8 @@ export const TeamSchedulePage: React.FC = () => {
           {data?.scope || 'Đang tải…'} · {data?.teamSize ?? 0} người · cảnh báo khi ≥{data?.conflictThresholdPercent ?? 60}% nhóm vắng
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          <button onClick={() => setView('week')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'week' ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tuần</button>
-          <button onClick={() => setView('month')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'month' ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tháng</button>
+          <button onClick={() => setView('week')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'week' ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tuần</button>
+          <button onClick={() => setView('month')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'month' ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tháng</button>
           {view === 'week' && (
             <>
               <button onClick={() => setWeekOffset(o => o - 1)} className="text-xs px-2 py-1.5 rounded border border-line">← Tuần trước</button>
@@ -65,10 +65,10 @@ export const TeamSchedulePage: React.FC = () => {
         </div>
       </div>
 
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
 
       {(data?.conflicts || []).length > 0 && (
-        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+        <div className="bg-status-warn-soft border border-status-warn-line rounded-xl p-3 text-xs text-status-warn space-y-1">
           <div className="font-bold">⚠️ Cảnh báo xung đột lịch</div>
           {data.conflicts.map((c: any) => <div key={c.date}>• {c.message}</div>)}
         </div>
@@ -81,12 +81,12 @@ export const TeamSchedulePage: React.FC = () => {
             const conflict = d.teamSize >= 3 && absent * 100 >= d.teamSize * (data?.conflictThresholdPercent ?? 60);
             return (
               <button key={d.date} onClick={() => setSelectedDay(d.date)}
-                className={`w-[86px] rounded-lg border p-2 text-left text-[11px] ${conflict ? 'border-amber-400 bg-amber-50' : 'border-line bg-canvas hover:border-accent'} ${selectedDay === d.date ? 'ring-1 ring-accent' : ''}`}>
+                className={`w-[86px] rounded-lg border p-2 text-left text-[11px] ${conflict ? 'border-status-warn bg-status-warn-soft' : 'border-line bg-canvas hover:border-accent'} ${selectedDay === d.date ? 'ring-1 ring-accent' : ''}`}>
                 <div className="font-bold text-ink">{d.date.slice(8)}/{d.date.slice(5, 7)}</div>
-                <div className="text-emerald-700">Có mặt: {d.present}</div>
-                {d.wfh > 0 && <div className="text-violet-700">WFH: {d.wfh}</div>}
-                {d.leave > 0 && <div className="text-sky-700">Nghỉ: {d.leave}</div>}
-                {d.late > 0 && <div className="text-amber-700">Muộn: {d.late}</div>}
+                <div className="text-status-ok">Có mặt: {d.present}</div>
+                {d.wfh > 0 && <div className="text-status-info">WFH: {d.wfh}</div>}
+                {d.leave > 0 && <div className="text-status-info">Nghỉ: {d.leave}</div>}
+                {d.late > 0 && <div className="text-status-warn">Muộn: {d.late}</div>}
               </button>
             );
           })}
@@ -102,7 +102,7 @@ export const TeamSchedulePage: React.FC = () => {
                 <span>
                   {e.fullName} <span className="text-xs text-ink-muted">({e.employeeCode})</span>
                   {e.halfDay && (
-                    <span className="block text-[11px] text-sky-700 mt-0.5">
+                    <span className="block text-[11px] text-status-info mt-0.5">
                       {e.kind === 'WFH' ? 'WFH buổi' : 'Nghỉ buổi'} {e.halfDayPeriod === 'MORNING' ? 'sáng' : 'chiều'}
                       {e.workWindowStart && e.workWindowEnd ? ` · làm việc ${e.workWindowStart}–${e.workWindowEnd}` : ''}
                     </span>

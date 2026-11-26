@@ -114,8 +114,8 @@ export const DisputeDetailPage: React.FC = () => {
           Trạng thái: {statusText[data.status] || data.status}{data?.deadline ? ` · hạn xử lý ${fmt(data.deadline)}` : ''}
         </div>}
       </div>
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
-      {msg && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{msg}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
+      {msg && <div className="text-sm text-status-ok bg-status-ok-soft border border-status-ok-line rounded-lg p-3">{msg}</div>}
 
       <div className="grid md:grid-cols-3 gap-3">
         <div className="bg-surface border border-line rounded-xl p-4">
@@ -132,19 +132,19 @@ export const DisputeDetailPage: React.FC = () => {
           <div className="text-sm mt-2">
             <div className="text-ink">{data?.reason || '—'}</div>
             {data?.requestedKind === 'WFH' && (
-              <div className="text-[11px] mt-1 text-emerald-700">
+              <div className="text-[11px] mt-1 text-status-ok">
                 NV đề xuất: công nhận làm việc từ xa (WFH)
                 {data?.requestedHalfDay ? (data.requestedHalfDay === 'MORNING' ? ' — nửa ngày buổi sáng' : ' — nửa ngày buổi chiều') : ''}
               </div>
             )}
             {data?.requestedKind === 'LEAVE' && (
-              <div className="text-[11px] mt-1 text-emerald-700">
+              <div className="text-[11px] mt-1 text-status-ok">
                 NV đề xuất: chuyển thành nghỉ — {data?.requestedLeaveTypeName || data?.requestedLeaveType || '—'}
                 {data?.requestedHalfDay ? (data.requestedHalfDay === 'MORNING' ? ' (nửa ngày buổi sáng)' : ' (nửa ngày buổi chiều)') : ''}
               </div>
             )}
             {(!data?.requestedKind || data?.requestedKind === 'TIME_FIX') && (data?.requestedCheckIn || data?.requestedCheckOut) && (
-              <div className="text-[11px] mt-1 text-emerald-700 font-mono">
+              <div className="text-[11px] mt-1 text-status-ok font-mono">
                 NV đề xuất giờ: {data?.requestedCheckIn || '—'} → {data?.requestedCheckOut || '—'}
               </div>
             )}
@@ -178,7 +178,7 @@ export const DisputeDetailPage: React.FC = () => {
               </div>
             ) : (
               data?.requestedKind === 'LEAVE' && leaveNeedsDoc[data?.requestedLeaveType] && (
-                <div className="mt-2 text-[11px] text-rose-600">
+                <div className="mt-2 text-[11px] text-status-danger">
                   ⚠ Loại nghỉ {data?.requestedLeaveTypeName || data?.requestedLeaveType} bắt buộc có giấy tờ — khiếu nại này chưa có, chưa duyệt thành nghỉ được.
                 </div>
               )
@@ -194,7 +194,7 @@ export const DisputeDetailPage: React.FC = () => {
       </div>
 
       {data?.ruleHint && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+        <div className="bg-status-warn-soft border border-status-warn-line rounded-xl p-3 text-xs text-status-warn">
           💡 Gợi ý theo rule: {data.ruleHint}
         </div>
       )}
@@ -232,12 +232,12 @@ export const DisputeDetailPage: React.FC = () => {
             <>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Giờ vào <span className="text-rose-500">*</span></span>
+              <span className="block text-ink-muted mb-1">Giờ vào <span className="text-status-danger">*</span></span>
               <input type="time" required value={fixIn} onChange={(e) => setFixIn(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink" />
             </label>
             <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Giờ ra <span className="text-rose-500">*</span></span>
+              <span className="block text-ink-muted mb-1">Giờ ra <span className="text-status-danger">*</span></span>
               <input type="time" required value={fixOut} onChange={(e) => setFixOut(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 font-mono text-xs text-ink" />
             </label>
@@ -267,7 +267,7 @@ export const DisputeDetailPage: React.FC = () => {
                   ? `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" đã duyệt và trừ 1 ngày quỹ phép.`
                   : `Duyệt sẽ tạo đơn nghỉ "${leaveTypes[fixLeaveType] || fixLeaveType}" ${fixHalf === 'MORNING' ? 'buổi sáng' : 'buổi chiều'} — ô công hiện ${(fixLeaveType || 'AL')}/0.50, quỹ phép trừ 0.5 ngày.`)}
               {fixKind === 'LEAVE' && leaveNeedsDoc[fixLeaveType] && (
-                <span className="block text-rose-600 mt-1">
+                <span className="block text-status-danger mt-1">
                   ⚠ Loại nghỉ này bắt buộc có giấy tờ đính kèm
                   {(data?.attachments || []).length ? ' — đã có giấy tờ nhân viên gửi kèm.' : ' — khiếu nại này chưa có giấy tờ, chưa duyệt được.'}
                 </span>
@@ -277,18 +277,18 @@ export const DisputeDetailPage: React.FC = () => {
           )}
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block text-xs">
-              <span className="block text-ink-muted mb-1">Lý do xử lý <span className="text-rose-500">*</span></span>
+              <span className="block text-ink-muted mb-1">Lý do xử lý <span className="text-status-danger">*</span></span>
               <input value={fixReason} onChange={(e) => setFixReason(e.target.value)}
                 className="w-full border border-line rounded-lg p-2 text-xs text-ink" />
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={applyFix} className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white">Duyệt &amp; cập nhật bảng công</button>
+            <button onClick={applyFix} className="text-xs px-3 py-1.5 rounded bg-status-ok text-on-ok">Duyệt &amp; cập nhật bảng công</button>
             <button onClick={() => act('MAKEUP')} className="text-xs px-3 py-1.5 rounded border border-line"
               title="KHÔNG sửa bảng công ngay: tạo đơn điều chỉnh công (ADJUST) ở trạng thái chờ duyệt — chỉ khi đơn đó được duyệt thì ngày công mới thay đổi.">
               Tạo đơn bổ sung công (chờ duyệt)
             </button>
-            <button onClick={() => act('REJECT')} className="text-xs px-3 py-1.5 rounded bg-rose-600 text-white"
+            <button onClick={() => act('REJECT')} className="text-xs px-3 py-1.5 rounded bg-status-danger text-on-danger"
               title="Đóng khiếu nại, không đổi bảng công. Bắt buộc nhập lý do; nhân viên nhận thông báo.">
               Từ chối (bắt buộc lý do)
             </button>

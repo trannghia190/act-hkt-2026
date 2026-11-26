@@ -591,8 +591,8 @@ export const RequestsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-16 right-6 z-[100] text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
-          toast.type === 'error' ? 'bg-rose-600' : toast.type === 'info' ? 'bg-slate-700' : 'bg-emerald-700'}`}>
+        <div className={`fixed top-16 right-6 z-[100] px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
+          toast.type === 'error' ? 'bg-status-danger text-on-danger' : toast.type === 'info' ? 'bg-status-info text-on-info' : 'bg-status-ok text-on-ok'}`}>
           <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? 'ℹ️' : '✓'}</span>
           <span className="whitespace-pre-wrap">{toast.msg}</span>
           <button type="button" className="ml-2 opacity-80 hover:opacity-100" onClick={() => setToast(null)}>✕</button>
@@ -617,14 +617,14 @@ export const RequestsPage: React.FC = () => {
       </div>
 
       {anomalyCount > 0 && (
-        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-3.5 bg-status-warn-soft border border-status-warn-line rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-start sm:items-center gap-2.5">
             <span className="text-lg">⚡</span>
             <div>
-              <div className="font-semibold text-amber-900">
+              <div className="font-semibold text-status-warn">
                 Có {anomalyCount} ngày chấm công cần bổ sung đơn
               </div>
-              <p className="text-[11px] text-amber-800 mt-0.5">
+              <p className="text-[11px] text-status-warn mt-0.5">
                 Hệ thống đã đọc log chấm công của bạn và điền sẵn ngày, số phút — bạn chỉ cần kiểm tra lại rồi gửi.
               </p>
             </div>
@@ -634,7 +634,7 @@ export const RequestsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleAutoFillPunch('OUT', missingCheckoutLog)}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-status-ok hover:bg-status-ok text-on-ok font-semibold text-[11px] transition-colors cursor-pointer"
               >
                 + Giờ ra {fmtDay(missingCheckoutLog.workDate)}
               </button>
@@ -643,7 +643,7 @@ export const RequestsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleAutoFillPunch('LATE', lateLog)}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-status-warn hover:bg-status-warn text-on-warn font-semibold text-[11px] transition-colors cursor-pointer"
               >
                 + Đi muộn {lateMinutesOf(lateLog)}p {fmtDay(lateLog.workDate)}
               </button>
@@ -760,7 +760,7 @@ export const RequestsPage: React.FC = () => {
                     {req.status === 'WITHDRAWN' && <Badge variant="gray">Đã hủy</Badge>}
                   </td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <Link to={`/attendance/requests/${req.id}`} className="inline-block mr-2 text-[11px] px-2 py-1 rounded border border-line text-accent hover:bg-accent-soft">
+                    <Link to={`/attendance/requests/${req.id}`} className="inline-block mr-2 text-[11px] px-2 py-1 rounded border border-line text-accent-dark hover:bg-accent-soft">
                       Xem chi tiết
                     </Link>
                     {req.status === 'DRAFT' ? (
@@ -841,7 +841,7 @@ export const RequestsPage: React.FC = () => {
                 {(() => {
                   const lt: any = leaveTypes.find((x: any) => x.code === newReq.leaveType);
                   if (!lt?.requiresAttachment) return null;
-                  return <div className="mt-1 text-[10px] text-amber-700">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>;
+                  return <div className="mt-1 text-[10px] text-status-warn">Loại nghỉ này cần giấy tờ đính kèm khi gửi.</div>;
                 })()}
               </div>
             )}
@@ -858,7 +858,7 @@ export const RequestsPage: React.FC = () => {
                     {selectedLeaveCfg?.unit !== 'DAY' && <option value="HALF_DAY">Nửa ngày (0.5)</option>}
                   </select>
                 </label>
-                <div className={`p-2 rounded-lg border ${leaveShortfall ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-accent-soft/40 border-accent/30 text-accent-dark'}`}>
+                <div className={`p-2 rounded-lg border ${leaveShortfall ? 'bg-status-danger-soft border-status-danger-line text-status-danger' : 'bg-accent-soft/40 border-accent/30 text-accent-dark'}`}>
                   Số dư phép còn lại: <b>{leaveRemaining !== null ? leaveRemaining : '—'} ngày</b>
                   {pendingLeaveDays > 0 && (
                     <div className="text-[10px] mt-0.5">
@@ -871,11 +871,11 @@ export const RequestsPage: React.FC = () => {
                     <div className="text-[10px] mt-0.5">Loại nghỉ này không trừ quỹ phép năm.</div>
                   )}
                   {leaveExhausted ? (
-                    <div className="mt-1 pt-1 border-t border-rose-200 font-semibold">
+                    <div className="mt-1 pt-1 border-t border-status-danger-line font-semibold">
                       Đã hết ngày phép — không thể gửi đơn nghỉ phép năm. Chọn loại nghỉ khác (ốm, không lương…) hoặc liên hệ HR.
                     </div>
                   ) : leaveShortfall ? (
-                    <div className="mt-1 pt-1 border-t border-rose-200 font-semibold">
+                    <div className="mt-1 pt-1 border-t border-status-danger-line font-semibold">
                       Không đủ ngày phép — đơn cần {leaveDays} ngày, chỉ còn {leaveAvailable} ngày khả dụng.
                     </div>
                   ) : null}
@@ -898,7 +898,7 @@ export const RequestsPage: React.FC = () => {
               </div>
             )}
             {leaveNeedsAttachment && (
-              <div className={`mt-2 p-2 rounded-lg border text-[11px] ${attachments.length ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+              <div className={`mt-2 p-2 rounded-lg border text-[11px] ${attachments.length ? 'bg-status-ok-soft border-status-ok-line text-status-ok' : 'bg-status-warn-soft border-status-warn-line text-status-warn'}`}>
                 <div className="font-semibold">Bắt buộc đính kèm giấy tờ cho loại nghỉ này</div>
                 <div className="text-[10px] text-ink-secondary mt-0.5">Có thể chọn nhiều file một lần, hoặc bấm lại để thêm từng file.</div>
                 <input type="file" multiple accept="image/*,application/pdf" className="mt-1 block w-full text-[11px]"
@@ -918,22 +918,22 @@ export const RequestsPage: React.FC = () => {
                     {attachments.map((f, i) => (
                       <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
                         <span>📎 {f.name} ({Math.round(f.size / 1024)} KB)</span>
-                        <button type="button" className="text-rose-700" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>Bỏ</button>
+                        <button type="button" className="text-status-danger" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>Bỏ</button>
                       </li>
                     ))}
                   </ul>
                 )}
-                {attachments.length === 0 && <div className="mt-0.5 text-rose-700">Chưa có file — chưa thể gửi đơn.</div>}
+                {attachments.length === 0 && <div className="mt-0.5 text-status-danger">Chưa có file — chưa thể gửi đơn.</div>}
               </div>
             )}
           </div>
 
           {newReq.type === 'WFH' && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 text-[11px] leading-relaxed space-y-2">
+            <div className="p-3 bg-status-info-soft border border-status-info-line rounded-lg text-status-info text-[11px] leading-relaxed space-y-2">
               <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; cho phép đăng ký lùi tối đa <strong>{wfhBackfillDays} ngày</strong> (ngày sớm nhất <strong>{minDateForSelected}</strong>) và ngày tương lai. Không giới hạn địa điểm.</div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-[11px]">Đơn vị
-                  <select className="mt-1 w-full border border-blue-200 rounded p-1" value={leaveUnit}
+                  <select className="mt-1 w-full border border-status-info-line rounded p-1" value={leaveUnit}
                     onChange={e => {
                       const unit = e.target.value as 'DAY' | 'HALF_DAY';
                       setLeaveUnit(unit);
@@ -945,7 +945,7 @@ export const RequestsPage: React.FC = () => {
                 </label>
                 {leaveUnit === 'HALF_DAY' && (
                   <label className="block text-[11px]">Buổi
-                    <select className="mt-1 w-full border border-blue-200 rounded p-1" value={halfDayPeriod}
+                    <select className="mt-1 w-full border border-status-info-line rounded p-1" value={halfDayPeriod}
                       onChange={e => setHalfDayPeriod(e.target.value as 'MORNING' | 'AFTERNOON')}>
                       <option value="MORNING">Buổi sáng</option>
                       <option value="AFTERNOON">Buổi chiều</option>
@@ -1041,14 +1041,14 @@ export const RequestsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className={`p-2 rounded-lg border text-[11px] ${
-                  lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-rose-50 border-rose-200 text-rose-700'
+                  lateEarlyValid ? 'bg-accent-soft/40 border-accent/30 text-accent-dark' : 'bg-status-danger-soft border-status-danger-line text-status-danger'
                 }`}>
                   {myShift?.name || 'Ca chuẩn'}
                   <div className="mt-0.5">
                     Vào <b>{shiftStartLabel}–{shiftInEnd}</b> · ra <b>{shiftOutStart}–{shiftOutEnd}</b> · {shiftHours}h/ngày
                   </div>
                   {!(lateEarlyMinutes > 0 && lateEarlyMinutes <= lateMinutesMax) && (
-                    <div className="mt-0.5 text-rose-700">
+                    <div className="mt-0.5 text-status-danger">
                       Giờ đã chọn không hợp lệ (tối đa {lateMinutesMax} phút).
                     </div>
                   )}
@@ -1131,7 +1131,7 @@ export const RequestsPage: React.FC = () => {
                 : ['Việc cá nhân', 'Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình']
               ).map((r) => (
                 <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
-                  className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+                  className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
                   {r}
                 </button>
               ))}

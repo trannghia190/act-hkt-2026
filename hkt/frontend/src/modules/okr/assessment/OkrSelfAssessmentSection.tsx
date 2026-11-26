@@ -38,7 +38,7 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
               ))}
             </div>
             {form.box1?.newJoiner && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800">
+              <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn">
                 👋 {form.box1.seniorityNote || `Nhân viên mới — đánh giá theo ${form.box1.monthsWorked ?? '—'} tháng thực tế.`}
               </div>
             )}

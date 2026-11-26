@@ -8,12 +8,12 @@ interface BadgeProps {
 
 export const Badge: React.FC<BadgeProps> = ({ variant = 'gray', children, className = '' }) => {
   const variantStyles = {
-    ok: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    warn: 'bg-amber-50 text-amber-800 border-amber-200',
-    danger: 'bg-rose-50 text-rose-800 border-rose-200',
-    info: 'bg-blue-50 text-blue-800 border-blue-200',
-    gray: 'bg-gray-100 text-gray-700 border-gray-200',
-    accent: 'bg-accent-soft text-accent border-accent-line',
+    ok: 'bg-status-ok-soft text-status-ok border-status-ok-line',
+    warn: 'bg-status-warn-soft text-status-warn border-status-warn-line',
+    danger: 'bg-status-danger-soft text-status-danger border-status-danger-line',
+    info: 'bg-status-info-soft text-status-info border-status-info-line',
+    gray: 'bg-surface-secondary text-ink-secondary border-line',
+    accent: 'bg-accent-soft text-accent-dark border-accent-line',
   };
 
   return (

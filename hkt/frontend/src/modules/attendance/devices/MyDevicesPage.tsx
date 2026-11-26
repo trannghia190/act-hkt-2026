@@ -94,7 +94,7 @@ export const MyDevicesPage: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Header Card */}
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-2">
           <span>🔒</span> Quản Lý Thiết Bị Cá Nhân
         </div>
         <h1 className="text-xl font-bold text-ink">Thiết bị đăng ký & Hồ sơ nhận diện</h1>
@@ -106,7 +106,7 @@ export const MyDevicesPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+        <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-xl p-3">
           {error}
         </div>
       )}
@@ -134,7 +134,7 @@ export const MyDevicesPage: React.FC = () => {
           ) : (
             <Link
               to="/attendance/devices/add"
-              className="text-xs px-3.5 py-1.5 rounded-lg bg-accent text-white font-semibold hover:bg-accent-hover transition-colors shadow-xs"
+              className="text-xs px-3.5 py-1.5 rounded-lg bg-accent text-on-accent font-semibold hover:bg-accent-hover transition-colors shadow-xs"
             >
               + Đăng ký thiết bị này
             </Link>
@@ -156,7 +156,7 @@ export const MyDevicesPage: React.FC = () => {
                   d.status === 'ACTIVE'
                     ? 'border-line bg-surface hover:border-accent/40'
                     : d.status === 'PENDING'
-                      ? 'border-amber-200 bg-amber-50/40'
+                      ? 'border-status-warn-line bg-status-warn-soft/40'
                       : 'border-line bg-canvas'
                 }`}
               >
@@ -178,7 +178,7 @@ export const MyDevicesPage: React.FC = () => {
 
                 <div className="text-right flex items-center gap-2">
                   {d.status === 'ACTIVE' && (
-                    <span className="text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                    <span className="text-[11px] text-status-ok font-medium bg-status-ok-soft px-2.5 py-1 rounded-md border border-status-ok-line">
                       ✓ Đã kích hoạt
                     </span>
                   )}
@@ -191,8 +191,8 @@ export const MyDevicesPage: React.FC = () => {
                       : undefined}
                     className={`text-[11px] px-3 py-1.5 rounded-lg border font-semibold disabled:opacity-50 transition-colors ${
                       d.status === 'PENDING'
-                        ? 'border-amber-300 bg-white text-amber-800 hover:bg-amber-100'
-                        : 'border-rose-300 bg-white text-rose-700 hover:bg-rose-50'
+                        ? 'border-status-warn-line bg-surface text-status-warn hover:bg-status-warn-soft'
+                        : 'border-status-danger-line bg-surface text-status-danger hover:bg-status-danger-soft'
                     }`}
                   >
                     {deletingId === d.id

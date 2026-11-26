@@ -174,7 +174,7 @@ export const ApprovalsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Toast */}
       {successToast && (
-        <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
+        <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
           <span>✓</span>
           <span>{successToast}</span>
         </div>
@@ -212,12 +212,12 @@ export const ApprovalsPage: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'PENDING'
-                ? 'bg-amber-100/70 text-amber-900 border border-amber-300'
+                ? 'bg-status-warn-soft/70 text-status-warn border border-status-warn-line'
                 : 'text-ink-secondary hover:text-ink'
             }`}
           >
             <span>⏳ Chờ Phê Duyệt</span>
-            <span className="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded-full text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 bg-status-warn-line text-status-warn rounded-full text-[10px] font-bold">
               {pendingCount}
             </span>
           </button>
@@ -229,12 +229,12 @@ export const ApprovalsPage: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'APPROVED'
-                ? 'bg-emerald-100/70 text-emerald-900 border border-emerald-300'
+                ? 'bg-status-ok-soft/70 text-status-ok border border-status-ok-line'
                 : 'text-ink-secondary hover:text-ink'
             }`}
           >
             <span>✓ Đã Phê Duyệt</span>
-            <span className="px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded-full text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 bg-status-ok-line text-status-ok rounded-full text-[10px] font-bold">
               {approvedCount}
             </span>
           </button>
@@ -246,12 +246,12 @@ export const ApprovalsPage: React.FC = () => {
             }}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'REJECTED'
-                ? 'bg-rose-100/70 text-rose-900 border border-rose-300'
+                ? 'bg-status-danger-soft/70 text-status-danger border border-status-danger-line'
                 : 'text-ink-secondary hover:text-ink'
             }`}
           >
             <span>✕ Bị Từ Chối</span>
-            <span className="px-1.5 py-0.2 bg-rose-200 text-rose-900 rounded-full text-[10px] font-bold">
+            <span className="px-1.5 py-0.2 bg-status-danger-line text-status-danger rounded-full text-[10px] font-bold">
               {rejectedCount}
             </span>
           </button>
@@ -329,14 +329,14 @@ export const ApprovalsPage: React.FC = () => {
                       {item.id}
                     </Link>
                     {item.status === 'PENDING' && item.createdAt && Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) >= 2 && (
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">⏰ Quá hạn</span>
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-danger-soft text-status-danger">⏰ Quá hạn</span>
                     )}
                   </td>
                   <td className="py-3 px-4">
                     <div className="font-semibold text-ink">
                       {item.requesterName}
                       {item.selfRequest && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium align-middle">
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn font-medium align-middle">
                           Đơn của tôi — tự duyệt
                         </span>
                       )}
@@ -352,8 +352,8 @@ export const ApprovalsPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex flex-col gap-1 text-[10px]">
-                      <span className="text-emerald-700">✅ Trong quota</span>
-                      <span className="text-emerald-700">✅ Nộp đúng hạn</span>
+                      <span className="text-status-ok">✅ Trong quota</span>
+                      <span className="text-status-ok">✅ Nộp đúng hạn</span>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-ink-secondary max-w-xs">
@@ -372,7 +372,7 @@ export const ApprovalsPage: React.FC = () => {
                   <td className="py-3 px-4 text-ink-muted font-mono">{item.createdAt}</td>
                   <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
                     <Link to={`/attendance/requests/${item.id}`}
-                      className="inline-block text-[11px] px-2 py-1 rounded border border-line text-accent hover:bg-accent-soft">
+                      className="inline-block text-[11px] px-2 py-1 rounded border border-line text-accent-dark hover:bg-accent-soft">
                       Chi tiết
                     </Link>
                     {item.status === 'PENDING' ? (

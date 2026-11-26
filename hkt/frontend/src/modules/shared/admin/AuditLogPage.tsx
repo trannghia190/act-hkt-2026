@@ -162,7 +162,7 @@ export const AuditLogPage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-24">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
+        <div className="fixed bottom-6 right-6 z-50 bg-status-ok text-on-ok px-5 py-3 rounded-xl shadow-xl flex items-center gap-3">
           <ShieldCheck className="w-5 h-5" />
           <span className="font-medium text-sm">{toastMessage}</span>
         </div>
@@ -172,7 +172,7 @@ export const AuditLogPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs uppercase tracking-wider text-accent font-semibold px-2 py-0.5 rounded bg-accent-soft border border-accent-line">
+            <span className="text-xs uppercase tracking-wider text-accent-dark font-semibold px-2 py-0.5 rounded bg-accent-soft border border-accent-line">
               Nền tảng dùng chung · HR · P0
             </span>
           </div>
@@ -197,11 +197,11 @@ export const AuditLogPage: React.FC = () => {
       </div>
 
       {/* Alert Banner: Append-only explanation (Mockup S35) */}
-      <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 text-sm text-sky-950 flex items-start gap-3 shadow-2xs">
-        <ShieldCheck className="w-5 h-5 text-sky-700 shrink-0 mt-0.5" />
+      <div className="bg-status-info-soft border border-status-info-line rounded-xl p-4 text-sm text-status-info flex items-start gap-3 shadow-2xs">
+        <ShieldCheck className="w-5 h-5 text-status-info shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold text-sky-900">Đây là sổ kiểm toán bằng chứng, không phải log kỹ thuật.</p>
-          <p className="text-sky-800 text-xs mt-1 leading-relaxed">
+          <p className="font-semibold text-status-info">Đây là sổ kiểm toán bằng chứng, không phải log kỹ thuật.</p>
+          <p className="text-status-info text-xs mt-1 leading-relaxed">
             Mục 3: <i className="text-accent font-semibold">"Ghi lại ai sửa gì, lúc nào — bắt buộc với dữ liệu công và điểm OKR vì liên quan đến lương và đánh giá."</i> Khi nhân viên khiếu nại "công tháng 11 của tôi bị sửa lúc nào?", HR lọc theo tên nhân viên và thấy ngay dòng sửa, giá trị cũ → mới, và lý do trong 5 giây.
           </p>
         </div>
@@ -210,7 +210,7 @@ export const AuditLogPage: React.FC = () => {
       {/* Metrics Summary Strip (A5) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
             <FileText className="w-5 h-5" />
           </div>
           <div>
@@ -220,36 +220,36 @@ export const AuditLogPage: React.FC = () => {
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-ok-soft text-status-ok flex items-center justify-center font-bold">
             <Clock className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Sửa công &amp; phép</div>
-            <div className="text-lg font-bold text-emerald-700">
+            <div className="text-lg font-bold text-status-ok">
               {logs.filter(l => l.action?.includes('TIMESHEET') || l.action?.includes('LEAVE')).length} sự kiện
             </div>
           </div>
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Quy định &amp; Nhóm</div>
-            <div className="text-lg font-bold text-sky-700">
+            <div className="text-lg font-bold text-status-info">
               {logs.filter(l => l.action?.includes('RULE') || l.action?.includes('TEAM')).length} sự kiện
             </div>
           </div>
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-warn-soft text-status-warn flex items-center justify-center font-bold">
             <GitPullRequest className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Đổi sếp &amp; Nhân sự</div>
-            <div className="text-lg font-bold text-amber-700">
+            <div className="text-lg font-bold text-status-warn">
               {logs.filter(l => l.action?.includes('MANAGER') || l.action?.includes('PASSWORD') || l.action?.includes('USER')).length} sự kiện
             </div>
           </div>
@@ -272,7 +272,7 @@ export const AuditLogPage: React.FC = () => {
             onClick={() => setCategoryFilter(tab.id)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               categoryFilter === tab.id
-                ? 'bg-accent text-white shadow-xs'
+                ? 'bg-accent text-on-accent shadow-xs'
                 : 'bg-surface text-ink-secondary hover:bg-canvas border border-line shadow-2xs'
             }`}
           >
@@ -281,9 +281,9 @@ export const AuditLogPage: React.FC = () => {
         ))}
 
         {affectedEmployee && (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-full text-xs font-semibold shadow-2xs">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-status-warn-soft text-status-warn border border-status-warn-line rounded-full text-xs font-semibold shadow-2xs">
             <span>Nhân viên: {affectedEmployee}</span>
-            <button onClick={() => setAffectedEmployee('')} className="hover:text-amber-950 cursor-pointer">
+            <button onClick={() => setAffectedEmployee('')} className="hover:text-status-warn cursor-pointer">
               <XCircle className="w-3.5 h-3.5" />
             </button>
           </span>
@@ -411,7 +411,7 @@ export const AuditLogPage: React.FC = () => {
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 flex-wrap text-xs">
                             {log.oldValue && (
-                              <span className="text-rose-700 line-through bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 font-mono text-[11px]">
+                              <span className="text-status-danger line-through bg-status-danger-soft px-1.5 py-0.5 rounded border border-status-danger-line font-mono text-[11px]">
                                 {log.oldValue}
                               </span>
                             )}
@@ -419,7 +419,7 @@ export const AuditLogPage: React.FC = () => {
                               <ArrowRight className="w-3 h-3 text-ink-muted shrink-0" />
                             )}
                             {log.newValue && (
-                              <span className="text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-mono text-[11px]">
+                              <span className="text-status-ok font-bold bg-status-ok-soft px-1.5 py-0.5 rounded border border-status-ok-line font-mono text-[11px]">
                                 {log.newValue}
                               </span>
                             )}
@@ -445,7 +445,7 @@ export const AuditLogPage: React.FC = () => {
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => testAppendOnlyBlock(log.id)}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 border border-rose-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+                        className="px-2.5 py-1 rounded-lg bg-status-danger-soft hover:bg-status-danger hover:text-on-danger text-status-danger border border-status-danger-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
                         title="Bấm để kiểm tra tính append-only (hệ thống sẽ từ chối xóa theo tiêu chuẩn A5)"
                       >
                         Thử xóa

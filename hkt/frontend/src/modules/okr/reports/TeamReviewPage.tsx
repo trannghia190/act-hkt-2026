@@ -255,7 +255,7 @@ export const TeamReviewPage: React.FC = () => {
                       {r.warningCount === 0 ? <span className="text-ink-muted">—</span> : (
                         <div className="space-y-0.5">
                           {r.warnings.slice(0, 2).map((w, idx) => (
-                            <div key={idx} className="text-[10px] text-amber-700" title={w.message}>⚠️ {w.message}</div>
+                            <div key={idx} className="text-[10px] text-status-warn" title={w.message}>⚠️ {w.message}</div>
                           ))}
                           {r.warningCount > 2 && <div className="text-[10px] text-ink-muted">+{r.warningCount - 2} cảnh báo khác</div>}
                         </div>

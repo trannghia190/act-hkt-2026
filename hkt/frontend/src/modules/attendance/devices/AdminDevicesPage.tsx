@@ -48,12 +48,12 @@ export const AdminDevicesPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Quản lý thiết bị — duyệt & thu hồi</h1>
         <p className="text-xs text-ink-muted mt-1">Mặc định2 thiết bị/người; máy thứ3 trở đi cần lý do. Mọi thao tác ghi nhật ký thay đổi.</p>
       </div>
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
 
       <div className="bg-surface border border-line rounded-xl p-4">
         <h2 className="text-sm font-bold mb-2">Chờ duyệt ({pending.length})</h2>
@@ -63,7 +63,7 @@ export const AdminDevicesPage: React.FC = () => {
             <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
               <div className="text-xs text-ink-muted">{d.deviceFingerprint}</div></div>
             <div className="flex gap-2">
-              <button className="text-xs px-3 py-1 rounded bg-emerald-600 text-white" onClick={() => act(d, true)}>Duyệt</button>
+              <button className="text-xs px-3 py-1 rounded bg-status-ok text-on-ok" onClick={() => act(d, true)}>Duyệt</button>
               <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => act(d, false)}>Từ chối</button>
             </div>
           </div>

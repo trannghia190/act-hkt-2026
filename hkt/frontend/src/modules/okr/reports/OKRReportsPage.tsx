@@ -325,7 +325,7 @@ export const OKRReportsPage: React.FC = () => {
               <div id="widget-not-submitted" className="text-sm font-bold text-ink border-b border-line pb-2">Chưa tự đánh giá ({data.widgets.notSubmitted.length})</div>
               <div className="flex flex-wrap gap-1.5">
                 {data.widgets.notSubmitted.map((e) => (
-                  <span key={e.employeeCode} className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">{e.fullName} ({e.employeeCode})</span>
+                  <span key={e.employeeCode} className="rounded-full border border-status-warn-line bg-status-warn-soft px-2 py-0.5 text-[11px] text-status-warn">{e.fullName} ({e.employeeCode})</span>
                 ))}
               </div>
             </Card>
@@ -426,7 +426,7 @@ export const OKRReportsPage: React.FC = () => {
           <Card className="space-y-2" >
             <div id="risk-list" className="text-sm font-bold text-ink border-b border-line pb-2">Danh sách OKR rủi ro theo rule ({data.risks.length})</div>
             {data.risks.length === 0 ? <div className="text-xs text-ink-muted py-2">Không có cảnh báo.</div> : data.risks.map((r) => (
-              <div key={r.reviewId} className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800 space-y-0.5">
+              <div key={r.reviewId} className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn space-y-0.5">
                 <div className="font-semibold">{r.fullName} ({r.employeeCode})</div>
                 {r.warnings.map((w, idx) => <div key={idx}>⚠️ {w.message}</div>)}
               </div>
@@ -438,12 +438,12 @@ export const OKRReportsPage: React.FC = () => {
       <Modal isOpen={lockOpen} onClose={() => setLockOpen(false)} title="Chốt & khoá chu kỳ OKR" maxWidth="md">
         <div className="space-y-3">
           {lockBlockers.length === 0 ? (
-            <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-[11px] text-emerald-800">
+            <div className="rounded-lg border border-status-ok-line bg-status-ok-soft p-2.5 text-[11px] text-status-ok">
               Đã đủ điều kiện: Quản lý chấm xong, không còn nhân sự chưa có OKR.
             </div>
           ) : (
             <>
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-800 space-y-0.5">
+              <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn space-y-0.5">
                 <div className="font-semibold">Còn điều kiện chưa đạt:</div>
                 {lockBlockers.map((b, i) => <div key={i}>• {b}</div>)}
               </div>

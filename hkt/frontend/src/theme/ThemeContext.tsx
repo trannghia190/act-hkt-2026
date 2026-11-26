@@ -142,7 +142,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSynced(true);
       return;
     }
-    fetch('/api/v1/profile', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/v1/auth/profile', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (cancelled) return;
@@ -176,7 +176,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     })();
     if (!token) return;
-    fetch('/api/v1/profile', {
+    fetch('/api/v1/auth/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ theme: id }),

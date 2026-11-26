@@ -146,33 +146,65 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-canvas flex flex-col justify-center items-center p-4 select-none">
-      <div className="w-full max-w-md space-y-6">
-        {/* Brand Banner */}
-        <div className="text-center space-y-2 flex flex-col items-center">
-          <ActHktLogo size="lg" />
-          <p className="text-xs text-ink-muted mt-2">
-            Hệ Thống Quản Trị Nhân Sự &amp; Hiệu Suất Toàn Diện (ACT-HKT 2026)
-          </p>
-        </div>
+    <>
+      <div className="min-h-screen bg-canvas select-none lg:grid lg:grid-cols-2">
+        {/* ── Panel thương hiệu (desktop) ────────────────────────────────── */}
+        <aside className="relative hidden lg:flex flex-col overflow-hidden bg-[#101114] p-10 xl:p-12">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-60"
+            style={{
+              background:
+                'radial-gradient(600px 300px at 15% 12%, rgba(227,29,26,.34), transparent 65%), radial-gradient(500px 320px at 85% 88%, rgba(227,29,26,.16), transparent 62%)',
+            }}
+          />
+          <img
+            src="/brand/ascend_logo_2_white.png"
+            alt="Ascend Technology"
+            className="relative h-10 w-auto self-start"
+          />
+          <div className="relative mt-auto">
+            <h2 className="font-display text-[31px] font-extrabold leading-[1.16] tracking-tight text-white">
+              Quản trị nhân sự<br />chuẩn doanh nghiệp.
+            </h2>
+            <p className="mt-3.5 max-w-[38ch] text-sm leading-relaxed text-[#A0A0A8]">
+              Chấm công, quản lý phép, đánh giá OKR và giải quyết khiếu nại — trong một hệ thống duy nhất.
+            </p>
+            <div className="mt-7 flex gap-6 border-t border-[#212127] pt-6">
+              {[['58', 'nhân viên'], ['5', 'phòng ban'], ['3.1k', 'dòng công/tháng']].map(([v, l]) => (
+                <div key={l}>
+                  <b className="block font-display text-[21px] font-extrabold text-white">{v}</b>
+                  <span className="text-[11.5px] text-[#7C7C88]">{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
 
-        {/* Login Form Card */}
-        <div className="bg-surface rounded-2xl border border-line shadow-sm p-6 sm:p-8 space-y-5">
+        {/* ── Cột form ───────────────────────────────────────────────────── */}
+        <div className="flex min-h-screen items-center justify-center bg-surface p-5 sm:p-8 lg:min-h-0">
+          <div className="w-full max-w-md space-y-5">
+            {/* Logo chỉ hiện trên mobile — desktop đã có panel thương hiệu */}
+            <div className="flex justify-center pb-1 lg:hidden">
+              <ActHktLogo size="md" />
+            </div>
+
+            <div className="space-y-5">
           <div>
-            <h2 className="text-base font-bold text-ink">Đăng nhập tài khoản</h2>
-            <p className="text-xs text-ink-secondary mt-0.5">
+            <h2 className="text-[22px] font-extrabold tracking-tight text-ink">Đăng nhập tài khoản</h2>
+            <p className="text-[13px] text-ink-muted mt-1.5">
               Dùng tài khoản công ty do HR cấp · demo: <code className="font-mono font-bold text-accent">01HR</code> (HR), <code className="font-mono font-bold text-accent">05ACT</code> (Manager), <code className="font-mono font-bold text-accent">136ACT</code> (Nhân viên) — mật khẩu <code className="font-mono font-bold text-accent">123456</code>
             </p>
           </div>
 
           {sessionExpired && !error && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-lg bg-status-warn-soft border border-status-warn-line text-status-warn text-xs flex items-center gap-2">
               <span>⏳</span>
               <span>Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</span>
             </div>
           )}
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-lg bg-status-danger-soft border border-status-danger-line text-status-danger text-xs flex items-center gap-2">
               <span>⚠️</span>
               <span>{error}</span>
             </div>
@@ -180,7 +212,7 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-ink mb-1.5">
+              <label className="block text-[12.5px] font-semibold text-ink mb-1.5">
                 Mã nhân viên hoặc Email
               </label>
               <input
@@ -189,13 +221,13 @@ export const LoginPage: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Mã nhân viên hoặc email"
-                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas focus:outline-none focus:border-accent font-medium text-ink"
+                className="w-full h-11 px-3.5 text-sm rounded-[11px] border border-line bg-surface focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/20 font-medium text-ink transition"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-ink">Mật khẩu</label>
+                <label className="text-[12.5px] font-semibold text-ink">Mật khẩu</label>
                 <button
                   type="button"
                   onClick={() => setIsForgotPasswordOpen(true)}
@@ -210,7 +242,7 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu..."
-                className="w-full text-xs p-2.5 rounded-lg border border-line bg-canvas focus:outline-none focus:border-accent font-medium text-ink"
+                className="w-full h-11 px-3.5 text-sm rounded-[11px] border border-line bg-surface focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/20 font-medium text-ink transition"
               />
             </div>
 
@@ -235,7 +267,7 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={handlePasskeyLogin}
                   disabled={passkeyLoading}
-                  className="w-full py-2.5 rounded-lg border border-line bg-white text-xs font-bold text-ink hover:border-accent hover:text-accent transition disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-lg border border-line bg-surface text-xs font-bold text-ink hover:border-accent hover:text-accent transition disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   <span aria-hidden>🔐</span>
                   {passkeyLoading ? 'Đang xác thực vân tay/Face ID...' : 'Đăng nhập bằng Passkey (Vân tay / Face ID)'}
@@ -251,6 +283,8 @@ export const LoginPage: React.FC = () => {
           <p>
             Xem hộp thư giả lập SMTP tại: <a href="http://localhost:8025" target="_blank" rel="noreferrer" className="text-accent underline">http://localhost:8025</a>
           </p>
+        </div>
+          </div>
         </div>
       </div>
 
@@ -286,7 +320,7 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {resetError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs leading-relaxed">
+                <div className="p-3 bg-status-danger-soft border border-status-danger-line text-status-danger rounded-lg text-xs leading-relaxed">
                   ⚠️ {resetError}
                 </div>
               )}
@@ -303,19 +337,19 @@ export const LoginPage: React.FC = () => {
           ) : (
             <form onSubmit={handleConfirmReset} className="space-y-4 text-xs">
               {forgotMessage && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs leading-relaxed">
+                <div className="p-3 bg-status-ok-soft border border-status-ok-line text-status-ok rounded-lg text-xs leading-relaxed">
                   ✉️ {forgotMessage}
                 </div>
               )}
 
               {resetSuccess && (
-                <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-bold text-center leading-relaxed">
+                <div className="p-4 bg-status-ok-soft border border-status-ok-line text-status-ok rounded-lg text-xs font-bold text-center leading-relaxed">
                   🎉 Đặt lại mật khẩu thành công! Mật khẩu mới đã có hiệu lực ngay lập tức. Đang chuyển về màn hình đăng nhập...
                 </div>
               )}
 
               {resetError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs leading-relaxed">
+                <div className="p-3 bg-status-danger-soft border border-status-danger-line text-status-danger rounded-lg text-xs leading-relaxed">
                   ⚠️ {resetError}
                 </div>
               )}
@@ -381,6 +415,6 @@ export const LoginPage: React.FC = () => {
           )}
         </Modal>
       )}
-    </div>
+    </>
   );
 };

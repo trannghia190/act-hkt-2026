@@ -25,7 +25,7 @@ export const RuleValueSummary: React.FC<{ ruleKey: string; value: unknown; showR
             return (
               <div key={key} className="flex items-baseline justify-between gap-2 border-b border-line/60 py-1">
                 <dt className="text-xs text-ink-secondary">{meta.label}</dt>
-                <dd className={`text-xs text-right ${typeof val === 'boolean' ? (val ? 'text-emerald-700' : 'text-ink-muted') : 'font-semibold text-ink'}`}>
+                <dd className={`text-xs text-right ${typeof val === 'boolean' ? (val ? 'text-status-ok' : 'text-ink-muted') : 'font-semibold text-ink'}`}>
                   {formatFieldValue(meta, val)}
                 </dd>
               </div>

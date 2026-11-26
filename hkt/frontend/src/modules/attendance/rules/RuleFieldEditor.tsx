@@ -160,7 +160,7 @@ const TagsField: React.FC<Props> = ({ field, meta, value, onChange }) => {
         {list.map((v) => (
           <span key={v} className="inline-flex items-center gap-1 text-xs bg-accent-soft/40 text-ink border border-line rounded-full px-2 py-0.5">
             {labelOf(v)}
-            <button type="button" className="text-ink-muted hover:text-rose-700" onClick={() => onChange(list.filter((x) => x !== v))}>×</button>
+            <button type="button" className="text-ink-muted hover:text-status-danger" onClick={() => onChange(list.filter((x) => x !== v))}>×</button>
           </span>
         ))}
         <input
@@ -207,7 +207,7 @@ const StepsField: React.FC<Props> = ({ field, meta, value, onChange }) => {
                 <option value={String(s?.approver)}>{approverLabel(String(s?.approver))}</option>
               )}
             </select>
-            <button type="button" className="text-xs text-rose-700 px-1.5" onClick={() => remove(i)} title="Xoá bước">Xoá</button>
+            <button type="button" className="text-xs text-status-danger px-1.5" onClick={() => remove(i)} title="Xoá bước">Xoá</button>
           </div>
         ))}
         {steps.length === 0 && <div className="text-[11px] text-ink-muted">Chưa có bước duyệt nào.</div>}
@@ -233,7 +233,7 @@ const JsonField: React.FC<Props> = ({ field, meta, value, onChange }) => {
           try { onChange(JSON.parse(e.target.value)); setErr(null); } catch { setErr('Cú pháp JSON chưa đúng'); }
         }}
       />
-      {err && <span className="text-[11px] text-rose-700">{err}</span>}
+      {err && <span className="text-[11px] text-status-danger">{err}</span>}
     </label>
   );
 };

@@ -128,10 +128,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Render Sidebar inner content
   const renderSidebarContent = (collapsed: boolean, isMobile: boolean = false) => {
     return (
-      <div className="w-full h-full flex flex-col bg-[#141c1a] text-[#c3d0cc] select-none border-r border-[#1f2b28] overflow-hidden">
+      <div className="w-full h-full flex flex-col bg-rail text-rail-ink select-none border-r border-rail-line overflow-hidden">
         {/* Brand Header */}
         <div
-          className={`border-b border-[#23312e] flex items-center justify-between shrink-0 ${
+          className={`border-b border-rail-line flex items-center justify-between shrink-0 ${
             collapsed ? 'p-2.5 flex-col gap-2' : 'p-4'
           }`}
         >
@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2 cursor-pointer min-w-0"
             title="ACT-HKT 2026 Home (Cần làm)"
           >
-            <ActHktLogo size="md" showText={!collapsed} />
+            <ActHktLogo size="md" showText={!collapsed} className="on-rail" />
           </NavLink>
 
           {/* Desktop Collapse Toggle Button */}
@@ -149,11 +149,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={toggleCollapse}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-rail-muted hover:text-rail-ink hover:bg-rail-hover transition-colors cursor-pointer"
               title={collapsed ? 'Mở rộng thanh menu (Ctrl+B)' : 'Thu gọn thanh menu (Icon only)'}
             >
               {collapsed ? (
-                <PanelLeft className="w-4 h-4 text-emerald-400" />
+                <PanelLeft className="w-4 h-4 text-accent" />
               ) : (
                 <PanelLeftClose className="w-4 h-4" />
               )}
@@ -165,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onCloseMobile}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-rail-muted hover:text-rail-ink hover:bg-rail-hover transition-colors cursor-pointer"
               title="Đóng menu"
             >
               <X className="w-5 h-5" />
@@ -174,15 +174,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Menu Items List — Cuộn mượt mà trên cả Desktop & Mobile */}
-        <div className="flex-1 overflow-y-auto py-3 px-2 scrollbar-thin scrollbar-thumb-zinc-700 min-h-0 space-y-4">
+        <div className="flex-1 overflow-y-auto py-3 px-2 scrollbar-thin scrollbar-thumb-rail-line min-h-0 space-y-4">
           {navGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-1">
               {!collapsed ? (
-                <div className="px-3 pb-1 text-[10px] font-bold tracking-wider uppercase text-[#61756f] truncate">
+                <div className="px-3 pb-1 text-[10px] font-bold tracking-wider uppercase text-rail-muted truncate">
                   {group.groupName}
                 </div>
               ) : (
-                <div className="my-1.5 border-t border-[#1f2b28]" />
+                <div className="my-1.5 border-t border-rail-line" />
               )}
 
               <div className="space-y-0.5">
@@ -200,12 +200,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={onCloseMobile}
                         title={`${item.label} (${item.screenId})`}
                         className={({ isActive }) =>
-                          `flex items-center rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
-                            collapsed ? 'justify-center p-2.5 relative' : 'gap-2.5 px-3 py-2'
+                          `flex items-center rounded-[9px] text-[13px] font-medium transition-colors cursor-pointer group border-l-[3px] border-transparent ${
+                            collapsed ? 'justify-center p-2.5 relative' : 'gap-2.5 px-2.5 py-[7px]'
                           } ${
                             isActive
-                              ? 'bg-[#1b3830] text-white font-semibold shadow-2xs border-l-3 border-emerald-400'
-                              : 'text-[#a3b8b2] hover:bg-[#1a2422] hover:text-white'
+                              ? 'bg-rail-active-bg text-rail-active font-semibold border-rail-active'
+                              : 'text-rail-ink-2 hover:bg-rail-hover hover:text-rail-ink'
                           }`
                         }
                       >
@@ -215,25 +215,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <>
                             <span className="flex-1 truncate">{item.label}</span>
 
-                            {/* Badge số việc chờ */}
-                            {showBadge && (
-                              <span
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 ${
-                                  item.badgeColor === 'danger'
-                                    ? 'bg-rose-600 text-white'
-                                    : 'bg-emerald-600 text-white'
-                                }`}
-                              >
-                                {badgeValue}
-                              </span>
-                            )}
+                            {/* Cột phải: badge số việc chờ, và mã màn hình (S02…) chỉ
+                                hiện khi hover — tránh rối mắt mà vẫn tra được mã khi demo. */}
+                            <span className="relative shrink-0 flex items-center justify-end min-w-[18px]">
+                              {showBadge && (
+                                <span
+                                  className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md leading-none transition-opacity ${
+                                    item.badgeColor === 'danger'
+                                      ? 'bg-status-danger text-on-danger'
+                                      : item.badgeColor === 'warning'
+                                        ? 'bg-status-warn text-on-warn'
+                                        : item.badgeColor === 'gray'
+                                          ? 'bg-rail-hover text-rail-muted'
+                                          : 'bg-rail-badge-bg text-rail-badge-ink'
+                                  } ${item.screenId ? 'group-hover:opacity-0' : ''}`}
+                                >
+                                  {badgeValue}
+                                </span>
+                              )}
+                              {item.screenId && (
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute right-0 text-[9px] font-mono text-rail-muted opacity-0 group-hover:opacity-70 group-focus-visible:opacity-70 transition-opacity pointer-events-none"
+                                >
+                                  {item.screenId}
+                                </span>
+                              )}
+                            </span>
 
                             {/* Chevron for items with children */}
                             {hasChildren && (
                               <button
                                 type="button"
                                 onClick={(e) => toggleSubmenu(item.id, e)}
-                                className="p-0.5 hover:text-white text-[#7c918b]"
+                                className="p-0.5 hover:text-rail-ink text-rail-muted"
                               >
                                 {isSubExpanded ? (
                                   <ChevronDown className="w-3.5 h-3.5" />
@@ -242,12 +257,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 )}
                               </button>
                             )}
-
-                            <span className="text-[9px] font-mono opacity-40 shrink-0">{item.screenId}</span>
                           </>
                         ) : (
                           showBadge && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-status-danger animate-pulse" />
                           )
                         )}
                       </NavLink>
@@ -263,8 +276,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               className={({ isActive }) =>
                                 `block px-2.5 py-1.5 rounded-md text-[11px] transition-colors truncate ${
                                   isActive
-                                    ? 'text-emerald-400 font-semibold bg-[#1a2b26]'
-                                    : 'text-[#7e968f] hover:text-white hover:bg-[#16201e]'
+                                    ? 'text-accent font-semibold bg-rail-active-bg'
+                                    : 'text-rail-muted hover:text-rail-ink hover:bg-rail-hover'
                                 }`
                               }
                             >
@@ -283,12 +296,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* User Profile Footer */}
         <div
-          className={`border-t border-[#1f2b28] bg-[#111716] flex items-center shrink-0 ${
+          className={`border-t border-rail-line bg-rail flex items-center shrink-0 ${
             collapsed ? 'p-2 justify-center' : 'p-3 gap-3'
           }`}
         >
           <div
-            className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30 flex items-center justify-center font-bold text-xs shrink-0 uppercase cursor-pointer"
+            className="w-8 h-8 rounded-full bg-accent-soft text-accent-dark ring-1 ring-accent-line flex items-center justify-center font-bold text-xs shrink-0 uppercase cursor-pointer"
             title={`${user?.fullName || 'User'} (${user?.employeeCode || 'ADMIN'}) · Vai trò: ${user?.role || 'ADMIN'}`}
           >
             {user ? user.fullName.substring(0, 2) : 'AD'}
@@ -296,8 +309,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate">{user?.fullName || 'Admin User'}</p>
-              <p className="text-[10px] text-[#7c918b] truncate">
+              <p className="text-xs font-semibold text-rail-ink truncate">{user?.fullName || 'Admin User'}</p>
+              <p className="text-[10px] text-rail-muted truncate">
                 {user?.employeeCode || 'ADMIN'} · {user?.role || 'ADMIN'}
               </p>
             </div>

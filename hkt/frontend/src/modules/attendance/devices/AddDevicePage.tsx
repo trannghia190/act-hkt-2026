@@ -112,15 +112,15 @@ export const AddDevicePage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
+        <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">
           ⚠️ {error}
         </div>
       )}
 
       {sent ? (
-        <div className="bg-surface border border-emerald-200 rounded-xl p-6 text-center space-y-3">
-          <div className="text-3xl text-emerald-600">✓</div>
-          <h2 className="text-sm font-bold text-emerald-800">
+        <div className="bg-surface border border-status-ok-line rounded-xl p-6 text-center space-y-3">
+          <div className="text-3xl text-status-ok">✓</div>
+          <h2 className="text-sm font-bold text-status-ok">
             {activeNow ? 'Thiết bị đã được kích hoạt' : 'Yêu cầu đã được gửi thành công'}
           </h2>
           <p className="text-xs text-ink-muted">
@@ -161,14 +161,14 @@ export const AddDevicePage: React.FC = () => {
           </div>
 
           {withinQuota === true ? (
-            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] text-emerald-800">
+            <div className="p-3 bg-status-ok-soft rounded-lg border border-status-ok-line text-[11px] text-status-ok">
               Bạn còn hạn mức thiết bị — bấm đăng ký là dùng được ngay, không cần lý do hay chờ HR duyệt.
             </div>
           ) : withinQuota === false ? (
             <>
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">
-                  Lý do cần thêm thiết bị <span className="text-rose-500">* (Bắt buộc)</span>
+                  Lý do cần thêm thiết bị <span className="text-status-danger">* (Bắt buộc)</span>
                 </label>
                 <textarea
                   className="w-full border border-line rounded-lg p-2.5 text-xs bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent"
@@ -197,7 +197,7 @@ export const AddDevicePage: React.FC = () => {
             <button
               type="submit"
               disabled={withinQuota === null || (!withinQuota && !reason.trim()) || loading}
-              className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-hover transition-colors"
+              className="px-4 py-2 rounded-lg bg-accent text-on-accent text-xs font-semibold shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-hover transition-colors"
             >
               {withinQuota === null
                 ? 'Đang kiểm tra hạn mức...'

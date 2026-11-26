@@ -20,10 +20,10 @@ const MAKEUP_TITLE = 'KHÔNG sửa bảng công ngay: tạo đơn điều chỉn
 const REJECT_TITLE = 'Đóng khiếu nại (không đổi bảng công). Bắt buộc nhập lý do; nhân viên nhận thông báo.';
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
-  PENDING: { text: 'Đang mở', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  RESOLVED: { text: 'Đã xử lý', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  REJECTED: { text: 'Đã từ chối', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
-  EXPIRED: { text: 'Quá hạn — tự đóng', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  PENDING: { text: 'Đang mở', cls: 'bg-status-warn-soft text-status-warn border-status-warn-line' },
+  RESOLVED: { text: 'Đã xử lý', cls: 'bg-status-ok-soft text-status-ok border-status-ok-line' },
+  REJECTED: { text: 'Đã từ chối', cls: 'bg-status-danger-soft text-status-danger border-status-danger-line' },
+  EXPIRED: { text: 'Quá hạn — tự đóng', cls: 'bg-surface-secondary text-ink-secondary border-line' },
 };
 const fmtDate = (iso?: string) => { if (!iso) return '—'; const [y, m, d] = iso.slice(0, 10).split('-'); return d ? `${d}/${m}/${y}` : iso; };
 
@@ -166,7 +166,7 @@ export const DisputesPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-emerald-700 text-white px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
+      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
       <div className="bg-canvas border border-line rounded-xl p-6">
         <h1 className="text-xl font-bold text-ink mt-1">Danh sách khiếu nại bảng công</h1>
         <p className="text-xs text-ink-muted mt-1">Hạn gần nhất lên đầu. Xử lý nhanh ngay trên bảng; click vào dòng để xem chi tiết 3 cột.</p>
@@ -177,11 +177,11 @@ export const DisputesPage: React.FC = () => {
           Tick nhiều đơn đang chờ để <b className="text-ink">Duyệt &amp; sửa ô hàng loạt</b> hoặc từ chối hàng loạt.
         </p>
       </div>
-      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>}
+      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
       <div className="flex flex-wrap items-center gap-1.5">
         {([['PENDING', 'Cần xử lý'], ['RESOLVED', 'Đã xử lý'], ['REJECTED', 'Bị từ chối'], ['EXPIRED', 'Quá hạn'], ['ALL', 'Tất cả']] as const).map(([k, label]) => (
           <button key={k} onClick={() => { setFilter(k); setSelected([]); }}
-            className={`text-xs px-3 py-1.5 rounded-full border ${filter === k ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`text-xs px-3 py-1.5 rounded-full border ${filter === k ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {label} ({k === 'ALL' ? items.length : items.filter(d => d.status === k).length})
           </button>
         ))}
@@ -197,12 +197,12 @@ export const DisputesPage: React.FC = () => {
           {selected.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-ink-muted">Đã chọn {selected.length}</span>
-              <button className="px-2.5 py-1 rounded bg-emerald-600 text-white font-semibold"
+              <button className="px-2.5 py-1 rounded bg-status-ok text-on-ok font-semibold"
                 title="Duyệt và áp NGAY lên bảng công cho tất cả đơn đang chọn: sửa giờ theo giờ nhân viên đề xuất (hoặc ký hiệu công chung), duyệt WFH, duyệt nghỉ (trừ quỹ phép). Đơn không xử lý được sẽ bị bỏ qua và liệt kê."
                 onClick={bulkFix}>
                 Duyệt &amp; sửa ô hàng loạt
               </button>
-              <button className="px-2.5 py-1 rounded bg-rose-600 text-white font-semibold" onClick={bulkReject}>
+              <button className="px-2.5 py-1 rounded bg-status-danger text-on-danger font-semibold" onClick={bulkReject}>
                 Từ chối hàng loạt
               </button>
               <button className="px-2 py-1 rounded border border-line" onClick={() => setSelected([])}>Bỏ chọn</button>
@@ -224,24 +224,24 @@ export const DisputesPage: React.FC = () => {
                 <Link to={`/attendance/disputes/${d.id}`} className="font-semibold hover:underline">{d.employee} · {d.date}</Link>
                 <div className="text-xs text-ink-muted">{d.reason}</div>
                 {kindOf(d) === 'WFH' && (
-                  <div className="text-[11px] text-emerald-700">
+                  <div className="text-[11px] text-status-ok">
                     NV xin: công nhận làm việc từ xa (WFH)
                     {d.requestedHalfDay ? (d.requestedHalfDay === 'MORNING' ? ' — nửa ngày sáng' : ' — nửa ngày chiều') : ''}
                   </div>
                 )}
                 {kindOf(d) === 'LEAVE' && (
-                  <div className="text-[11px] text-emerald-700">
+                  <div className="text-[11px] text-status-ok">
                     NV xin: chuyển thành nghỉ — {d.requestedLeaveTypeName || d.requestedLeaveType || '—'}
                     {d.requestedHalfDay ? (d.requestedHalfDay === 'MORNING' ? ' (nửa ngày sáng)' : ' (nửa ngày chiều)') : ''}
                   </div>
                 )}
                 {kindOf(d) === 'TIME_FIX' && (d.requestedCheckIn || d.requestedCheckOut) && (
-                  <div className="text-[11px] text-emerald-700 font-mono">
+                  <div className="text-[11px] text-status-ok font-mono">
                     NV xin giờ: {d.requestedCheckIn || '—'} → {d.requestedCheckOut || '—'}
                   </div>
                 )}
                 {kindOf(d) === 'TIME_FIX' && !d.requestedCheckIn && !d.requestedCheckOut && (
-                  <div className="text-[11px] text-rose-600">
+                  <div className="text-[11px] text-status-danger">
                     NV chưa đề xuất giờ vào/ra — khi duyệt phải nhập đủ cả hai mới tính được công
                   </div>
                 )}
@@ -249,9 +249,9 @@ export const DisputesPage: React.FC = () => {
                   <div className="text-[11px] text-ink-muted">📎 {d.attachmentCount} giấy tờ đính kèm</div>
                 )}
                 {d.status === 'PENDING' && d.daysLeft !== undefined && d.daysLeft >= 0 && (
-                  <div className="text-[11px] text-amber-700">⏳ Còn {d.daysLeft} ngày (hạn {fmtDate(d.deadline)})</div>
+                  <div className="text-[11px] text-status-warn">⏳ Còn {d.daysLeft} ngày (hạn {fmtDate(d.deadline)})</div>
                 )}
-                {d.status === 'EXPIRED' && <div className="text-[11px] text-slate-600">⏰ Quá hạn 2 ngày — tự đóng</div>}
+                {d.status === 'EXPIRED' && <div className="text-[11px] text-ink-secondary">⏰ Quá hạn 2 ngày — tự đóng</div>}
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -260,11 +260,11 @@ export const DisputesPage: React.FC = () => {
               </span>
               {d.status === 'PENDING' && (
                 <>
-                  <button className="text-xs px-2 py-1 rounded bg-emerald-600 text-white"
+                  <button className="text-xs px-2 py-1 rounded bg-status-ok text-on-ok"
                     title={fixTitle(d)} onClick={() => resolve(d, 'FIX')}>{fixLabel(d)}</button>
                   <button className="text-xs px-2 py-1 rounded border border-line"
                     title={MAKEUP_TITLE} onClick={() => resolve(d, 'MAKEUP')}>Bổ sung công</button>
-                  <button className="text-xs px-2 py-1 rounded bg-rose-600 text-white"
+                  <button className="text-xs px-2 py-1 rounded bg-status-danger text-on-danger"
                     title={REJECT_TITLE} onClick={() => resolve(d, 'REJECT')}>Từ chối</button>
                 </>
               )}

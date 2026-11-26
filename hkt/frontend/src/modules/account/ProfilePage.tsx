@@ -174,7 +174,7 @@ export const ProfilePage: React.FC = () => {
                 className="w-20 h-20 rounded-2xl object-cover border border-line shadow-2xs"
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-accent text-white flex items-center justify-center text-3xl font-bold shadow-2xs">
+              <div className="w-20 h-20 rounded-2xl bg-accent text-on-accent flex items-center justify-center text-3xl font-bold shadow-2xs">
                 {initial}
               </div>
             )}
@@ -246,10 +246,10 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{error}</div>
+        <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-xl p-3">{error}</div>
       )}
       {message && (
-        <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">{message}</div>
+        <div className="text-sm text-status-ok bg-status-ok-soft border border-status-ok-line rounded-xl p-3">{message}</div>
       )}
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -351,7 +351,7 @@ export const ProfilePage: React.FC = () => {
       <Card title="Thông báo" subtitle="Chọn kênh nhận và khung giờ không làm phiền">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-accent-soft text-accent-dark flex items-center justify-center shrink-0">
               <Bell className="w-4 h-4" />
             </div>
             <div>

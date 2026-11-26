@@ -551,14 +551,14 @@ export const CheckInPage: React.FC = () => {
 
       {/* Yesterday Missing Checkout Banner (Criterion B2 #2) */}
       {yesterdayMissingCheckout && (
-        <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+        <div className="p-3.5 bg-status-warn-soft border border-status-warn-line rounded-xl text-xs text-status-warn flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2">
             <span className="text-base">⚠️</span>
             <div>
-              <strong className="font-semibold text-amber-950">
+              <strong className="font-semibold text-status-warn">
                 Bạn chưa chấm công ra ngày hôm qua ({yesterdayDate})
               </strong>
-              <p className="text-[11px] text-amber-800 mt-0.5">
+              <p className="text-[11px] text-status-warn mt-0.5">
                 Hãy tạo đơn bổ sung công để phòng HR xác nhận và không bị trừ ngày công.
               </p>
             </div>
@@ -566,7 +566,7 @@ export const CheckInPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/attendance/requests')}
-            className="px-3.5 py-1.5 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 transition-colors shadow-2xs whitespace-nowrap"
+            className="px-3.5 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn transition-colors shadow-2xs whitespace-nowrap"
           >
             Bổ sung công (1 chạm)
           </button>
@@ -578,7 +578,7 @@ export const CheckInPage: React.FC = () => {
         <div className="text-center">
           <button
             onClick={() => navigate('/auth/enroll-face')}
-            className="inline-flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs cursor-pointer animate-pulse"
+            className="inline-flex items-center gap-1.5 text-xs text-status-danger bg-status-danger-soft hover:bg-status-danger-soft font-bold px-3.5 py-1.5 rounded-full border border-status-danger-line shadow-2xs cursor-pointer animate-pulse"
           >
             <span>📸</span>
             <span>⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để đăng ký (B0)</span>
@@ -613,11 +613,11 @@ export const CheckInPage: React.FC = () => {
 
           {/* Oval guideline overlay */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-36 h-44 sm:w-40 sm:h-52 lg:w-44 lg:h-56 rounded-[50%] border-2 border-dashed border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex flex-col items-center justify-between py-2.5 sm:py-3">
-              <div className="text-[10px] text-emerald-300 font-semibold bg-zinc-900/60 px-2 py-0.5 rounded-full backdrop-blur-2xs">
+            <div className="w-36 h-44 sm:w-40 sm:h-52 lg:w-44 lg:h-56 rounded-[50%] border-2 border-dashed border-status-ok/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex flex-col items-center justify-between py-2.5 sm:py-3">
+              <div className="text-[10px] text-status-ok-line font-semibold bg-zinc-900/60 px-2 py-0.5 rounded-full backdrop-blur-2xs">
                 Khung oval hướng dẫn
               </div>
-              <div className="text-[9px] text-emerald-200/80 bg-zinc-900/60 px-1.5 py-0.5 rounded-full">
+              <div className="text-[9px] text-status-ok-line/80 bg-zinc-900/60 px-1.5 py-0.5 rounded-full">
                 Nhìn thẳng vào camera
               </div>
             </div>
@@ -637,7 +637,7 @@ export const CheckInPage: React.FC = () => {
           {isScanning && checkInStep !== 'success' && checkInStep !== 'error' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/80 text-white backdrop-blur-xs z-20">
               <div className="w-40 h-40 rounded-full border-3 border-accent border-t-transparent animate-spin" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-center px-4 font-semibold text-emerald-300">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-center px-4 font-semibold text-status-ok-line">
                 Đang xác thực 5 tầng song song...
               </div>
             </div>
@@ -645,21 +645,21 @@ export const CheckInPage: React.FC = () => {
 
           {/* Success Overlay with Match Percentage (Criterion B1 #5) */}
           {checkInStep === 'success' && checkResult && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center text-white p-4 z-20 animate-in fade-in ${
-              checkResult.status.startsWith('GHI NHẬN') ? 'bg-amber-950/90' : 'bg-emerald-950/90'
+            <div className={`absolute inset-0 flex flex-col items-center justify-center p-4 z-20 animate-in fade-in ${
+              checkResult.status.startsWith('GHI NHẬN') ? 'bg-status-warn text-on-warn' : 'bg-status-ok text-on-ok'
             }`}>
-              <div className={`text-4xl mb-1 ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <div className="text-4xl mb-1">
                 {checkResult.status.startsWith('GHI NHẬN') ? '!' : '✓'}
               </div>
-              <div className={`text-sm font-extrabold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-300' : 'text-emerald-300'}`}>
+              <div className="text-sm font-extrabold">
                 {checkResult.status.startsWith('GHI NHẬN')
                   ? 'Đã ghi nhận RA — thiếu giờ vào'
                   : `✓ Khớp ${(checkResult.similarity * 100).toFixed(0)}%`}
               </div>
-              <div className="text-xs font-semibold text-emerald-100 mt-0.5">
+              <div className="text-xs font-semibold opacity-90 mt-0.5">
                 {checkResult.fullName} ({checkResult.employeeCode})
               </div>
-              <div className={`text-[10px] mt-1 ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-200' : 'text-emerald-300'}`}>
+              <div className="text-[10px] mt-1 opacity-90">
                 Liveness: 100% · Vị trí: Hợp lệ
               </div>
             </div>
@@ -667,9 +667,9 @@ export const CheckInPage: React.FC = () => {
 
           {/* Error Overlay */}
           {checkInStep === 'error' && (
-            <div className="absolute inset-0 bg-rose-950/90 flex flex-col items-center justify-center text-white p-4 z-20 animate-in fade-in">
-              <div className="text-4xl text-rose-400 mb-1">✕</div>
-              <div className="text-xs font-bold text-rose-300 uppercase">BỊ CHẶN XÁC THỰC</div>
+            <div className="absolute inset-0 bg-status-danger/90 flex flex-col items-center justify-center text-on-danger p-4 z-20 animate-in fade-in">
+              <div className="text-4xl mb-1">✕</div>
+              <div className="text-xs font-bold uppercase opacity-90">BỊ CHẶN XÁC THỰC</div>
             </div>
           )}
         </div>
@@ -681,8 +681,8 @@ export const CheckInPage: React.FC = () => {
             onClick={toggleRealCamera}
             className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs border cursor-pointer ${
               useRealCamera && cameraStream
-                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
-                : 'bg-accent text-white border-transparent hover:bg-accent-hover'
+                ? 'bg-status-ok/15 text-status-ok border-status-ok/30'
+                : 'bg-accent text-on-accent border-transparent hover:bg-accent-hover'
             }`}
           >
             <span>{useRealCamera && cameraStream ? '🟢' : '📹'}</span>
@@ -719,14 +719,14 @@ export const CheckInPage: React.FC = () => {
                   ))}
                 </div>
               ) : !myShift ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
-                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-status-warn-soft border border-status-warn-line p-2.5">
+                  <p className="text-[11px] text-status-warn leading-relaxed">
                     Chưa tải được cấu hình ca áp dụng cho bạn. Kiểm tra kết nối hoặc liên hệ HR.
                   </p>
                   <button
                     type="button"
                     onClick={() => setShiftReload((v) => v + 1)}
-                    className="shrink-0 text-[11px] font-semibold text-amber-900 underline"
+                    className="shrink-0 text-[11px] font-semibold text-status-warn underline"
                   >
                     Thử lại
                   </button>
@@ -772,9 +772,9 @@ export const CheckInPage: React.FC = () => {
               <div key={s.name} className="flex items-center justify-between text-[11px]">
                 <span className="text-ink-secondary">{s.label}</span>
                 <span>
-                  {s.status === 'passed' && <span className="text-emerald-600 font-bold">✓ Đạt</span>}
+                  {s.status === 'passed' && <span className="text-status-ok font-bold">✓ Đạt</span>}
                   {s.status === 'checking' && <span className="text-accent animate-spin">⠙</span>}
-                  {s.status === 'failed' && <span className="text-rose-600 font-bold">✕ Chặn</span>}
+                  {s.status === 'failed' && <span className="text-status-danger font-bold">✕ Chặn</span>}
                   {s.status === 'pending' && <span className="text-ink-muted">···</span>}
                 </span>
               </div>
@@ -784,8 +784,8 @@ export const CheckInPage: React.FC = () => {
 
         {/* Error Alert Display with Specific Remedies (Criteria B1 #6, #8, #9, #10) */}
         {errorMessage && (
-          <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-left text-xs text-rose-900 space-y-2 animate-in fade-in">
-            <div className="font-bold flex items-center gap-1.5 text-rose-800">
+          <div className="p-3.5 bg-status-danger-soft border border-status-danger-line rounded-xl text-left text-xs text-status-danger space-y-2 animate-in fade-in">
+            <div className="font-bold flex items-center gap-1.5 text-status-danger">
               <span>⚠️</span>
               <span>Lý Do Bị Chặn:</span>
             </div>
@@ -793,11 +793,11 @@ export const CheckInPage: React.FC = () => {
 
             {/* Criterion B1 #9: Outside GPS Geofence Remedies */}
             {errorType === 'GPS_GEOFENCE' && (
-              <div className="pt-2 border-t border-rose-200 flex flex-wrap gap-2 items-center">
+              <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
                 <button
                   type="button"
                   onClick={() => navigate('/attendance/requests')}
-                  className="px-3 py-1.5 rounded-lg bg-accent text-white font-semibold text-xs shadow-xs hover:bg-accent-hover"
+                  className="px-3 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
                 >
                   Tạo đơn WFH
                 </button>
@@ -816,9 +816,9 @@ export const CheckInPage: React.FC = () => {
 
             {/* Outside Network Remedies */}
             {errorType === 'NETWORK' && (
-              <div className="pt-2 border-t border-rose-200 flex flex-wrap gap-2 items-center">
+              <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
                 {networkDetail && (
-                  <div className="basis-full text-[11px] text-rose-700 font-mono bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                  <div className="basis-full text-[11px] text-status-danger font-mono bg-status-danger-soft border border-status-danger-line rounded-lg px-2.5 py-1.5">
                     {networkDetail}
                   </div>
                 )}
@@ -837,7 +837,7 @@ export const CheckInPage: React.FC = () => {
 
             {/* Criterion B1 #10: Poor GPS Accuracy */}
             {errorType === 'GPS_ACCURACY' && (
-              <div className="pt-2 border-t border-rose-200">
+              <div className="pt-2 border-t border-status-danger-line">
                 <Button variant="outline" size="sm" onClick={handleReset}>
                   Thử lại ở gần cửa sổ
                 </Button>
@@ -846,11 +846,11 @@ export const CheckInPage: React.FC = () => {
 
             {/* Criterion B1 #7: Face not enrolled */}
             {errorType === 'FACE_NOT_ENROLLED' && (
-              <div className="pt-2 border-t border-rose-200">
+              <div className="pt-2 border-t border-status-danger-line">
                 <button
                   type="button"
                   onClick={() => navigate('/auth/enroll-face')}
-                  className="px-3.5 py-1.5 rounded-lg bg-accent text-white font-semibold text-xs shadow-xs hover:bg-accent-hover"
+                  className="px-3.5 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
                 >
                   Đăng ký khuôn mặt ngay (B0)
                 </button>
@@ -859,7 +859,7 @@ export const CheckInPage: React.FC = () => {
 
             {/* General retry */}
             {errorType !== 'GPS_GEOFENCE' && errorType !== 'FACE_NOT_ENROLLED' && !isLockedByAttempts && (
-              <div className="pt-2 border-t border-rose-200">
+              <div className="pt-2 border-t border-status-danger-line">
                 <Button variant="outline" size="sm" onClick={handleReset}>
                   Thử lại lượt khác
                 </Button>
@@ -881,12 +881,12 @@ export const CheckInPage: React.FC = () => {
 
         {/* Thiếu đầu chấm — chỉ ghi nhận phần có thật, phần còn lại phải bổ sung công có duyệt */}
         {(todayMissingCheckIn || (checkInStep !== 'success' && missingCheckInPunch)) && (
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-3 rounded-xl bg-status-warn-soft border border-status-warn-line text-[11px] text-status-warn flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <strong className="font-semibold">
                 {todayMissingCheckIn ? 'Hôm nay thiếu giờ vào' : 'Bạn chưa chấm công vào hôm nay'}
               </strong>
-              <p className="mt-0.5 text-amber-800">
+              <p className="mt-0.5 text-status-warn">
                 {todayMissingCheckIn
                   ? 'Giờ RA đã được ghi nhận. Ngày công chỉ được tính sau khi đơn bổ sung giờ vào được duyệt.'
                   : 'Lần chấm này chỉ ghi nhận giờ RA — ngày công sẽ Thiếu giờ vào. Hãy chọn “Vào ca” nếu bạn đi muộn.'}
@@ -896,7 +896,7 @@ export const CheckInPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/attendance/requests')}
-                className="px-3.5 py-1.5 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 whitespace-nowrap"
+                className="px-3.5 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
               >
                 Bổ sung công
               </button>
@@ -905,7 +905,7 @@ export const CheckInPage: React.FC = () => {
         )}
 
         {ambiguousNoPunch && checkInStep !== 'success' && (
-          <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
+          <div className="p-2.5 rounded-xl bg-status-info-soft border border-status-info-line text-[11px] text-status-info">
             Hiện không nằm trong khung vào hay khung ra của ca — hãy chọn đúng <strong>Vào ca</strong> hoặc <strong>Ra ca</strong> bên dưới.
           </div>
         )}
@@ -919,8 +919,8 @@ export const CheckInPage: React.FC = () => {
                 onClick={() => setCheckType('IN')}
                 disabled={isScanning || hasCheckInToday || todayMissingCheckIn}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'IN'
-                  ? 'bg-emerald-700 text-white border-emerald-700'
-                  : 'bg-canvas text-ink border-line hover:border-emerald-400'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                  ? 'bg-status-ok text-on-ok border-status-ok'
+                  : 'bg-canvas text-ink border-line hover:border-status-ok'} disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca'}
               </button>
@@ -929,14 +929,14 @@ export const CheckInPage: React.FC = () => {
                 onClick={() => setCheckType('OUT')}
                 disabled={isScanning}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'OUT'
-                  ? 'bg-zinc-800 text-white border-zinc-800'
-                  : 'bg-canvas text-ink border-line hover:border-zinc-500'} disabled:opacity-40`}
+                  ? 'bg-ink text-canvas border-ink'
+                  : 'bg-canvas text-ink border-line hover:border-line-hover'} disabled:opacity-40`}
               >
                 {alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca'}
               </button>
             </div>
             {lateCheckIn && checkType === 'IN' && (
-              <p className="text-[10px] text-amber-700">
+              <p className="text-[10px] text-status-warn">
                 Đã qua khung vào {shiftCheckInText} — lần chấm VÀO này có thể bị tính đi muộn.
               </p>
             )}
@@ -950,14 +950,14 @@ export const CheckInPage: React.FC = () => {
               type="button"
               disabled={isScanning || isLockedByAttempts || !faceEnrolled}
               onClick={handleStartCheckIn}
-              className={`w-36 h-36 sm:w-40 sm:h-40 rounded-full font-black text-2xl tracking-wider text-white shadow-lg flex flex-col items-center justify-center transition-all cursor-pointer ${
+              className={`w-36 h-36 sm:w-40 sm:h-40 rounded-full font-black text-2xl tracking-wider shadow-lg flex flex-col items-center justify-center transition-all cursor-pointer ${
                 isLockedByAttempts
-                  ? 'bg-rose-800 opacity-60 cursor-not-allowed'
+                  ? 'bg-status-danger text-on-danger opacity-60 cursor-not-allowed'
                   : isScanning
-                  ? 'bg-accent/80 opacity-60 cursor-wait'
+                  ? 'bg-accent/80 text-on-accent opacity-60 cursor-wait'
                   : checkType === 'IN'
-                  ? 'bg-emerald-700 hover:bg-emerald-800 active:scale-95 shadow-emerald-900/30 ring-4 ring-emerald-500/30'
-                  : 'bg-zinc-800 hover:bg-zinc-900 active:scale-95 shadow-zinc-900/30 ring-4 ring-zinc-500/30'
+                  ? 'bg-status-ok text-on-ok hover:opacity-90 active:scale-95 ring-4 ring-status-ok/30'
+                  : 'bg-ink text-canvas hover:opacity-90 active:scale-95 ring-4 ring-ink/20'
               }`}
             >
               <span>{isScanning ? '...' : checkType === 'IN' ? 'VÀO' : 'RA'}</span>
@@ -978,23 +978,23 @@ export const CheckInPage: React.FC = () => {
         {checkInStep === 'success' && checkResult && (
           <div className={`p-4 rounded-xl text-left text-xs space-y-2 animate-in fade-in border ${
             checkResult.status.startsWith('GHI NHẬN')
-              ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'
+              ? 'bg-status-warn-soft border-status-warn-line' : 'bg-status-ok-soft border-status-ok-line'
           }`}>
             <div className={`flex items-center justify-between pb-2 border-b ${
-              checkResult.status.startsWith('GHI NHẬN') ? 'border-amber-200' : 'border-emerald-200'
+              checkResult.status.startsWith('GHI NHẬN') ? 'border-status-warn-line' : 'border-status-ok-line'
             }`}>
-              <span className={`font-bold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-amber-900' : 'text-emerald-900'}`}>
+              <span className={`font-bold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-status-warn' : 'text-status-ok'}`}>
                 {checkResult.status.startsWith('GHI NHẬN') ? 'Đã Ghi Nhận Giờ Ra — Thiếu Giờ Vào' : 'Ghi Nhận Chấm Công Thành Công'}
               </span>
               <Badge variant={checkResult.status.startsWith('GHI NHẬN') ? 'warn' : 'accent'}>{checkResult.status}</Badge>
             </div>
             {punchNotice && (
-              <div className="text-[11px] text-amber-900 bg-amber-100 border border-amber-200 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="text-[11px] text-status-warn bg-status-warn-soft border border-status-warn-line rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span>{punchNotice}</span>
                 <button
                   type="button"
                   onClick={() => navigate('/attendance/requests')}
-                  className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 whitespace-nowrap"
+                  className="px-3 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
                 >
                   Bổ sung công
                 </button>
@@ -1002,20 +1002,20 @@ export const CheckInPage: React.FC = () => {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
               <div>
-                <span className="text-emerald-800">Nhân viên:</span>{' '}
-                <strong className="text-emerald-950">{checkResult.fullName} ({checkResult.employeeCode})</strong>
+                <span className="text-status-ok">Nhân viên:</span>{' '}
+                <strong className="text-status-ok">{checkResult.fullName} ({checkResult.employeeCode})</strong>
               </div>
               <div>
-                <span className="text-emerald-800">Giờ ghi nhận:</span>{' '}
-                <strong className="font-mono text-emerald-950">{checkResult.timestamp}</strong>
+                <span className="text-status-ok">Giờ ghi nhận:</span>{' '}
+                <strong className="font-mono text-status-ok">{checkResult.timestamp}</strong>
               </div>
               <div>
-                <span className="text-emerald-800">Loại:</span>{' '}
-                <strong className="text-emerald-950">{checkResult.type === 'IN' ? 'Check-In Vào' : 'Check-Out Ra'}</strong>
+                <span className="text-status-ok">Loại:</span>{' '}
+                <strong className="text-status-ok">{checkResult.type === 'IN' ? 'Check-In Vào' : 'Check-Out Ra'}</strong>
               </div>
               <div>
-                <span className="text-emerald-800">Độ khớp khuôn mặt:</span>{' '}
-                <strong className="text-emerald-950">{(checkResult.similarity * 100).toFixed(1)}% (✓ Khớp)</strong>
+                <span className="text-status-ok">Độ khớp khuôn mặt:</span>{' '}
+                <strong className="text-status-ok">{(checkResult.similarity * 100).toFixed(1)}% (✓ Khớp)</strong>
               </div>
             </div>
             <div className="pt-2 flex justify-end">

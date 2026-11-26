@@ -141,7 +141,7 @@ export const OKRDashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="p-3 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">{error}</div>
+        <div className="p-3 rounded-lg border border-status-danger-line bg-status-danger-soft text-xs text-status-danger">{error}</div>
       )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -175,10 +175,10 @@ export const OKRDashboardPage: React.FC = () => {
       <div className="p-4 rounded-xl border border-accent/40 bg-gradient-to-r from-accent-soft/40 via-surface to-accent-soft/20 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-accent text-white">
+            <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-accent text-on-accent">
               Phase Hiện Tại: {data.currentPhase}
             </span>
-            <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full animate-pulse">
+            <span className="text-xs font-bold text-status-danger bg-status-danger-soft border border-status-danger-line px-2 py-0.5 rounded-full animate-pulse">
               ⏱ {data.countdownText}
             </span>
           </div>
@@ -195,7 +195,7 @@ export const OKRDashboardPage: React.FC = () => {
         {data.checkinState === 'OPEN' ? (
           <a
             href="/okr/my-okr?checkin=1"
-            className="inline-flex flex-col items-center justify-center px-5 py-3 rounded-xl bg-accent hover:bg-accent-dark text-white font-bold text-sm shadow-md transition-all transform hover:-translate-y-0.5 text-center shrink-0 animate-pulse"
+            className="inline-flex flex-col items-center justify-center px-5 py-3 rounded-xl bg-accent hover:bg-accent-dark text-on-accent font-bold text-sm shadow-md transition-all transform hover:-translate-y-0.5 text-center shrink-0 animate-pulse"
           >
             <span>🚀 Check-in Tiến Độ Ngay</span>
             <span className="text-[11px] font-medium opacity-90">
@@ -206,8 +206,8 @@ export const OKRDashboardPage: React.FC = () => {
           <div
             className={`shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold text-center ${
               data.checkinState === 'DONE'
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : 'border-amber-300 bg-amber-50 text-amber-800'
+                ? 'border-status-ok-line bg-status-ok-soft text-status-ok'
+                : 'border-status-warn-line bg-status-warn-soft text-status-warn'
             }`}
           >
             {data.checkinState === 'DONE' ? '✓ ' : '⏳ '}
@@ -263,10 +263,10 @@ export const OKRDashboardPage: React.FC = () => {
                   <span
                     className={`w-2 h-2 rounded-full ${
                       todo.priority === 'HIGH'
-                        ? 'bg-rose-500'
+                        ? 'bg-status-danger'
                         : todo.priority === 'MEDIUM'
-                        ? 'bg-amber-500'
-                        : 'bg-blue-500'
+                        ? 'bg-status-warn'
+                        : 'bg-status-info'
                     }`}
                   />
                   <span className="text-xs font-bold text-ink">{todo.title}</span>
@@ -286,7 +286,7 @@ export const OKRDashboardPage: React.FC = () => {
               </div>
               <a
                 href={todo.actionUrl}
-                className="self-start sm:self-center text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent hover:text-white transition-colors"
+                className="self-start sm:self-center text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent hover:text-on-accent transition-colors"
               >
                 {todo.actionText}
               </a>
@@ -334,7 +334,7 @@ export const OKRDashboardPage: React.FC = () => {
           </div>
           <div className="w-full bg-line rounded-full h-2">
             <div
-              className="bg-emerald-600 h-2 rounded-full"
+              className="bg-status-ok h-2 rounded-full"
               style={{ width: `${data.peopleProgress}%` }}
             />
           </div>

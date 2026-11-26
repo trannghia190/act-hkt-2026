@@ -144,10 +144,10 @@ export const TimesheetPage: React.FC = () => {
   const dayTint = (day: number, part: 'head' | 'body') => {
     if (day > daysInSelectedMonth) return '';
     if (holidayDaySet.has(day)) {
-      return part === 'head' ? 'bg-amber-100 text-amber-800' : 'bg-amber-50/80';
+      return part === 'head' ? 'bg-status-warn-soft text-status-warn' : 'bg-status-warn-soft/80';
     }
     if (isWeekendDay(day)) {
-      return part === 'head' ? 'bg-slate-200/80 text-slate-600' : 'bg-slate-100/80';
+      return part === 'head' ? 'bg-line/80 text-ink-secondary' : 'bg-surface-secondary/80';
     }
     return '';
   };
@@ -414,18 +414,18 @@ export const TimesheetPage: React.FC = () => {
         </div>
       </div>
 
-      {conflictMsg && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">{conflictMsg}</div>}
+      {conflictMsg && <div className="p-3 bg-status-danger-soft border border-status-danger-line rounded-xl text-xs text-status-danger">{conflictMsg}</div>}
 
       {/* Toast Alert */}
       {toastMsg && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in">
+        <div className="p-3 bg-status-ok/10 border border-status-ok/30 rounded-xl text-status-ok text-xs font-bold animate-in fade-in">
           ✓ {toastMsg}
         </div>
       )}
 
       {/* Floating Bulk Action Bar (Feature C4) */}
       {selectedIds.length > 0 && (
-        <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-300 shadow-lg animate-in slide-in-from-top duration-200">
+        <div className="p-3 bg-status-ok-soft border border-status-ok-line rounded-xl flex items-center justify-between text-xs text-status-ok shadow-lg animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-2 font-bold">
             <span>⚡ Đã chọn <strong>{selectedIds.length}</strong> nhân sự</span>
           </div>
@@ -486,7 +486,7 @@ export const TimesheetPage: React.FC = () => {
               type="button"
               onClick={() => setQuickFilter('ALL')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'ALL' ? 'bg-accent text-white' : 'bg-canvas text-ink-muted hover:text-ink'
+                quickFilter === 'ALL' ? 'bg-accent text-on-accent' : 'bg-canvas text-ink-muted hover:text-ink'
               }`}
             >
               Tất cả ({rows.length})
@@ -495,7 +495,7 @@ export const TimesheetPage: React.FC = () => {
               type="button"
               onClick={() => setQuickFilter('LATE')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'LATE' ? 'bg-amber-600 text-white' : 'bg-canvas text-amber-500 hover:text-amber-400'
+                quickFilter === 'LATE' ? 'bg-status-warn text-on-warn' : 'bg-canvas text-status-warn hover:text-status-warn'
               }`}
             >
               ⚠️ Đi muộn
@@ -504,7 +504,7 @@ export const TimesheetPage: React.FC = () => {
               type="button"
               onClick={() => setQuickFilter('OT')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'OT' ? 'bg-sky-600 text-white' : 'bg-canvas text-sky-500 hover:text-sky-400'
+                quickFilter === 'OT' ? 'bg-status-info text-on-info' : 'bg-canvas text-status-info hover:text-status-info'
               }`}
             >
               ⚡ Có OT
@@ -513,7 +513,7 @@ export const TimesheetPage: React.FC = () => {
               type="button"
               onClick={() => setQuickFilter('DEFICIT')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'DEFICIT' ? 'bg-rose-600 text-white' : 'bg-canvas text-rose-500 hover:text-rose-400'
+                quickFilter === 'DEFICIT' ? 'bg-status-danger text-on-danger' : 'bg-canvas text-status-danger hover:text-status-danger'
               }`}
             >
               🔻 Thiếu công
@@ -521,9 +521,9 @@ export const TimesheetPage: React.FC = () => {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-            {searchQuery && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Từ khoá: {searchQuery} <button onClick={() => setSearchQuery('')}>✕</button></span>}
-            {filterDept !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Nhóm: {filterDept} <button onClick={() => setFilterDept('ALL')}>✕</button></span>}
-            {quickFilter !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent border border-accent-line">Lọc: {quickFilter} <button onClick={() => setQuickFilter('ALL')}>✕</button></span>}
+            {searchQuery && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Từ khoá: {searchQuery} <button onClick={() => setSearchQuery('')}>✕</button></span>}
+            {filterDept !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Nhóm: {filterDept} <button onClick={() => setFilterDept('ALL')}>✕</button></span>}
+            {quickFilter !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Lọc: {quickFilter} <button onClick={() => setQuickFilter('ALL')}>✕</button></span>}
             <button onClick={saveView} className="px-2 py-1 rounded-full border border-line">💾 Lưu view</button>
             <button onClick={shareView} className="px-2 py-1 rounded-full border border-line">🔗 Chia sẻ</button>
             <select onChange={e => { const v = savedViews.find(x => x.name === e.target.value); if (v) applyView(v.f); }}
@@ -554,11 +554,11 @@ export const TimesheetPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 border-b border-line text-[11px] text-ink-muted">
           <span className="font-semibold text-ink-secondary">Màu cột ngày:</span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-slate-300/70 bg-slate-200/80" />
+            <span className="h-3 w-3 rounded-sm border border-line-hover/70 bg-line/80" />
             Cuối tuần
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-amber-200 bg-amber-100" />
+            <span className="h-3 w-3 rounded-sm border border-status-warn-line bg-status-warn-soft" />
             Ngày lễ
           </span>
           <span className="ml-auto hidden sm:inline">Nhấp đúp ô để sửa ký hiệu</span>
@@ -584,17 +584,17 @@ export const TimesheetPage: React.FC = () => {
                   <th
                     key={d}
                     title={`Ngày ${d}/${calendarMonth}${dayHint(d)}`}
-                    className={`py-3 px-1.5 text-center border-r border-line ${dayTint(d, 'head') || 'bg-gray-50/60'}`}
+                    className={`py-3 px-1.5 text-center border-r border-line ${dayTint(d, 'head') || 'bg-surface-secondary/60'}`}
                   >
                     {d}
                   </th>
                 ))}
-                <th className="py-3 px-2 text-center bg-gray-50 border-x border-line">Công chuẩn</th>
+                <th className="py-3 px-2 text-center bg-surface-secondary border-x border-line">Công chuẩn</th>
                 <th className="py-3 px-2 text-center">Công thực tế</th>
                 <th className="py-3 px-2 text-center">Nghỉ phép (AL)</th>
                 <th className="py-3 px-2 text-center">WFH (R)</th>
                 <th className="py-3 px-2 text-center">Đi muộn</th>
-                <th className="py-3 px-2 text-center text-rose-700">Trừ đi muộn</th>
+                <th className="py-3 px-2 text-center text-status-danger">Trừ đi muộn</th>
                 <th className="py-3 px-2 text-center">OT ngày thường</th>
                 <th className="py-3 px-2 text-center">OT cuối tuần</th>
                 <th className="py-3 px-2 text-center">Tổng công QĐ lương</th>
@@ -637,19 +637,19 @@ export const TimesheetPage: React.FC = () => {
                         title={`Ngày ${d}/${calendarMonth}${dayHint(d)} — nhấp đúp để sửa`}
                         onDoubleClick={() => editDayCell(r, d)}
                         className={`py-2 px-1.5 text-center font-mono border-r border-line cursor-pointer hover:bg-accent-soft/60 ${dayTint(d, 'body')} ${
-                          edited ? 'text-rose-700 font-bold' : ''
+                          edited ? 'text-status-danger font-bold' : ''
                         }`}
                       >
                         {symbol}
                       </td>
                     );
                   })}
-                  <td className="py-2 px-2 text-center font-bold text-ink bg-gray-50/50 border-x border-line">{r.standardDays}</td>
+                  <td className="py-2 px-2 text-center font-bold text-ink bg-surface-secondary/50 border-x border-line">{r.standardDays}</td>
                   <td className="py-2 px-2 text-center font-medium">{r.actualWorkDays}</td>
                   <td className="py-2 px-2 text-center">{r.paidLeaveDays}</td>
                   <td className="py-2 px-2 text-center">{r.wfhDays}</td>
                   <td className="py-2 px-2 text-center font-mono">{r.lateCount}</td>
-                  <td className="py-2 px-2 text-center text-rose-700">{r.penaltyLatePercent}%</td>
+                  <td className="py-2 px-2 text-center text-status-danger">{r.penaltyLatePercent}%</td>
                   <td className="py-2 px-2 text-center">{r.otWeekdayHours}</td>
                   <td className="py-2 px-2 text-center">{r.otWeekendHours}</td>
                   <td className="py-2 px-2 text-center font-bold text-accent-dark bg-accent-soft/30 border-l border-line">{r.totalPayrollDays}</td>
@@ -776,7 +776,7 @@ export const TimesheetPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log) <span className="text-rose-600">*</span></label>
+              <label className="block text-ink mb-1 font-medium">Lý do điều chỉnh (Bắt buộc lưu vết Audit Log) <span className="text-status-danger">*</span></label>
               <textarea
                 rows={3}
                 placeholder="Ví dụ: Bổ sung công 0.5 ngày theo xác nhận trực tiếp của Trưởng phòng..."

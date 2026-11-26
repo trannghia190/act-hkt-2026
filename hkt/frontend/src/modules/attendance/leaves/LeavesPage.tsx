@@ -124,11 +124,11 @@ export const LeavesPage: React.FC = () => {
       </div>
 
       {/* Expiration Alert */}
-      <div className="p-4 bg-amber-50 rounded-xl border border-amber-300 text-xs flex items-start gap-3 text-amber-900 shadow-xs">
+      <div className="p-4 bg-status-warn-soft rounded-xl border border-status-warn-line text-xs flex items-start gap-3 text-status-warn shadow-xs">
         <span className="text-lg">⚠️</span>
         <div>
           <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
-          <p className="mt-0.5 text-amber-800 leading-relaxed">
+          <p className="mt-0.5 text-status-warn leading-relaxed">
             {balance.carryStatus === 'EXPIRED' || balance.expiringOnMarch31 <= 0
               ? <>Phép tồn năm trước đã <strong>hết hiệu lực từ 01/07</strong> theo quy chế (01/04 giữ tối đa 5 ngày · 01/07 về 0). Số dư hiện tại không còn phép tồn.</>
               : balance.carryStatus === 'CAPPED'
@@ -142,8 +142,8 @@ export const LeavesPage: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép tồn năm cũ</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{balance.carriedGrant} ngày</div>
-          <div className="text-[11px] text-amber-600 mt-1">
+          <div className="text-2xl font-bold text-status-warn mt-1">{balance.carriedGrant} ngày</div>
+          <div className="text-[11px] text-status-warn mt-1">
             Đã cấp {balance.carriedGrant} · còn {balance.carriedRemaining} sau luật tồn
             {balance.expiredCarry ? ` · ${balance.expiredCarry} hết hạn` : ''}
           </div>
@@ -171,8 +171,8 @@ export const LeavesPage: React.FC = () => {
 
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép đã sử dụng</div>
-          <div className="text-2xl font-bold text-rose-700 mt-1">{balance.used} ngày</div>
-          <div className="text-[11px] text-rose-600 mt-1">{ledger.filter(e => e.type === 'USED' && e.amount < 0).length} đợt nghỉ đã được duyệt</div>
+          <div className="text-2xl font-bold text-status-danger mt-1">{balance.used} ngày</div>
+          <div className="text-[11px] text-status-danger mt-1">{ledger.filter(e => e.type === 'USED' && e.amount < 0).length} đợt nghỉ đã được duyệt</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20">
@@ -192,8 +192,8 @@ export const LeavesPage: React.FC = () => {
 
         <div className="p-4 bg-surface rounded-xl border border-line">
           <div className="text-xs text-ink-muted">Phép tồn còn lại (hạn 01/07)</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{balance.carriedRemaining} ngày</div>
-          <div className="text-[11px] text-amber-600 mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
+          <div className="text-2xl font-bold text-status-warn mt-1">{balance.carriedRemaining} ngày</div>
+          <div className="text-[11px] text-status-warn mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
         </div>
 
         <div className="p-4 bg-surface rounded-xl border border-line">
@@ -207,7 +207,7 @@ export const LeavesPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-2">
         {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
           <button key={f} onClick={() => setFilterType(f)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-white border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
             {f}
           </button>
         ))}
@@ -246,10 +246,10 @@ export const LeavesPage: React.FC = () => {
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3 font-medium text-ink">{entry.description}</td>
-                  <td className={`py-2.5 px-3 text-center font-bold ${entry.amount > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  <td className={`py-2.5 px-3 text-center font-bold ${entry.amount > 0 ? 'text-status-ok' : 'text-status-danger'}`}>
                     {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
                   </td>
-                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-rose-700' : 'text-ink'}`}>
+                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-status-danger' : 'text-ink'}`}>
                     {hasGrantFor(entry.leaveType)
                       ? `${entry.balanceAfter} ngày`
                       : `Đã dùng ${Math.abs(entry.balanceAfter)} ngày`}

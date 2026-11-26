@@ -102,13 +102,13 @@ export const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose, onChange
         </div>
 
         {success ? (
-          <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+          <div className="text-sm text-status-ok bg-status-ok-soft border border-status-ok-line rounded-xl p-3">
             Đã đổi mật khẩu. Đang đăng xuất để đăng nhập lại…
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             {error && (
-              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+              <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-2.5">
                 {error}
               </div>
             )}
@@ -159,7 +159,7 @@ export const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose, onChange
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50"
+                className="px-5 py-2 text-xs font-semibold bg-accent text-on-accent rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50"
               >
                 {submitting ? 'Đang cập nhật…' : 'Đổi mật khẩu'}
               </button>

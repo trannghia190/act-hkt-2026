@@ -22,10 +22,10 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles = {
-    primary: 'bg-accent text-white hover:bg-accent-hover shadow-sm',
-    secondary: 'bg-[#141c1a] text-white hover:bg-[#1f2b28] shadow-sm',
+    primary: 'bg-accent text-on-accent hover:bg-accent-hover shadow-sm',
+    secondary: 'bg-btn-secondary text-btn-secondary-ink hover:bg-btn-secondary-hover shadow-sm',
     outline: 'border border-line bg-surface text-ink hover:bg-canvas',
-    danger: 'bg-status-danger text-white hover:bg-[#991b1b] shadow-sm',
+    danger: 'bg-status-danger text-on-danger hover:bg-danger-hover shadow-sm',
     ghost: 'text-ink-secondary hover:bg-canvas hover:text-ink',
   };
 

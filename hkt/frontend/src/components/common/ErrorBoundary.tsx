@@ -27,17 +27,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="max-w-xl mx-auto mt-10 bg-surface border border-rose-200 rounded-xl p-6 text-sm">
-          <div className="text-base font-bold text-rose-700">Màn hình đang gặp lỗi</div>
+        <div className="max-w-xl mx-auto mt-10 bg-surface border border-status-danger-line rounded-xl p-6 text-sm">
+          <div className="text-base font-bold text-status-danger">Màn hình đang gặp lỗi</div>
           <p className="text-xs text-ink-muted mt-2">
             Dữ liệu hoặc giao diện của màn này chưa tải được. Bạn thử tải lại; nếu vẫn lỗi, gửi thông tin dưới đây cho HR/IT.
           </p>
-          <pre className="mt-3 bg-canvas border border-line rounded-lg p-3 text-[11px] overflow-auto text-rose-700">
+          <pre className="mt-3 bg-canvas border border-line rounded-lg p-3 text-[11px] overflow-auto text-status-danger">
             {this.state.error.message}
           </pre>
           <div className="mt-4 flex gap-2">
             <button
-              className="text-xs px-3 py-1.5 rounded bg-accent text-white"
+              className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent"
               onClick={() => this.setState({ error: null })}
             >
               Thử lại

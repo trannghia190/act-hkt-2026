@@ -483,12 +483,12 @@ export const EmployeeManagementPage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="p-3.5 bg-status-ok/15 border border-status-ok/30 text-status-ok-line rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-status-ok" />
             <span className="font-semibold">{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-emerald-400 hover:text-white font-bold ml-2">✕</button>
+          <button onClick={() => setToastMessage(null)} className="text-status-ok hover:text-ink font-bold ml-2">✕</button>
         </div>
       )}
 
@@ -507,14 +507,14 @@ export const EmployeeManagementPage: React.FC = () => {
           {noTeamCount > 0 && (
             <button
               onClick={() => setFilterTeam('NO_TEAM')}
-              className="px-2.5 py-1 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold flex items-center gap-1.5 hover:bg-amber-500/20 transition-colors"
+              className="px-2.5 py-1 text-xs rounded-lg bg-status-warn/10 border border-status-warn/30 text-status-warn font-bold flex items-center gap-1.5 hover:bg-status-warn/20 transition-colors"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               ⚠ {noTeamCount} người chưa có nhóm
             </button>
           )}
           {noManagerCount > 0 && (
-            <span className="px-2.5 py-1 text-xs rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold flex items-center gap-1.5">
+            <span className="px-2.5 py-1 text-xs rounded-lg bg-status-danger/10 border border-status-danger/30 text-status-danger font-bold flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               {noManagerCount} người chưa có sếp
             </span>
@@ -529,7 +529,7 @@ export const EmployeeManagementPage: React.FC = () => {
       {/* Metrics Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
             <Users className="w-5 h-5" />
           </div>
           <div>
@@ -539,34 +539,34 @@ export const EmployeeManagementPage: React.FC = () => {
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-ok-soft text-status-ok flex items-center justify-center font-bold">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Đang hoạt động</div>
-            <div className="text-lg font-bold text-emerald-700">
+            <div className="text-lg font-bold text-status-ok">
               {employees.filter((e) => e.status === 'ACTIVE').length} nhân sự
             </div>
           </div>
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-warn-soft text-status-warn flex items-center justify-center font-bold">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Chưa có nhóm</div>
-            <div className="text-lg font-bold text-amber-700">{noTeamCount} người</div>
+            <div className="text-lg font-bold text-status-warn">{noTeamCount} người</div>
           </div>
         </div>
 
         <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-danger-soft text-status-danger flex items-center justify-center font-bold">
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] text-ink-muted font-medium">Chưa có quản lý</div>
-            <div className="text-lg font-bold text-rose-700">{noManagerCount} người</div>
+            <div className="text-lg font-bold text-status-danger">{noManagerCount} người</div>
           </div>
         </div>
       </div>
@@ -584,7 +584,7 @@ export const EmployeeManagementPage: React.FC = () => {
             onClick={() => setFilterTeam(chip.val)}
             className={`px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
               filterTeam === chip.val
-                ? 'bg-accent text-white shadow-xs font-bold'
+                ? 'bg-accent text-on-accent shadow-xs font-bold'
                 : 'bg-surface text-ink-secondary hover:bg-canvas hover:text-ink border border-line shadow-2xs'
             }`}
           >
@@ -682,7 +682,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   <tr key={emp.id} className="hover:bg-canvas/50 transition-colors">
                     <td className="py-3 px-4 font-medium text-ink">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-accent-soft text-accent font-bold text-xs flex items-center justify-center shrink-0 uppercase ring-1 ring-accent-line">
+                        <div className="w-7 h-7 rounded-full bg-accent-soft text-accent-dark font-bold text-xs flex items-center justify-center shrink-0 uppercase ring-1 ring-accent-line">
                           {emp.fullName.substring(0, 2)}
                         </div>
                         <div className="min-w-0">
@@ -705,11 +705,11 @@ export const EmployeeManagementPage: React.FC = () => {
 
                     <td className="py-3 px-3">
                       {emp.team && emp.team !== 'Chưa có nhóm' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-status-ok-soft text-status-ok border border-status-ok-line">
                           {emp.team}
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-status-danger-soft text-status-danger border border-status-danger-line">
                           ⚠ Chưa có nhóm
                         </span>
                       )}
@@ -720,12 +720,12 @@ export const EmployeeManagementPage: React.FC = () => {
                       {emp.approvalChain ? (
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
                           <GitPullRequest className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className={emp.approvalChain.includes('Chưa có') ? 'text-rose-700 font-bold' : ''}>
+                          <span className={emp.approvalChain.includes('Chưa có') ? 'text-status-danger font-bold' : ''}>
                             {emp.approvalChain}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[11px] text-rose-700 font-bold">⚠ Chưa có quản lý</span>
+                        <span className="text-[11px] text-status-danger font-bold">⚠ Chưa có quản lý</span>
                       )}
                     </td>
 
@@ -740,7 +740,7 @@ export const EmployeeManagementPage: React.FC = () => {
                         {emp.status === 'LOCKED' && <Badge variant="danger">Đang khoá</Badge>}
                         {emp.status === 'INACTIVE' && <Badge variant="gray">Ngừng</Badge>}
                         {emp.mustChangePassword && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30 whitespace-nowrap" title="Bắt buộc đổi mật khẩu lần đầu">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-warn/15 text-status-warn border border-status-warn/30 whitespace-nowrap" title="Bắt buộc đổi mật khẩu lần đầu">
                             🔑 Đổi pass lần đầu
                           </span>
                         )}
@@ -753,56 +753,56 @@ export const EmployeeManagementPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenViewDetail(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-600 hover:text-white text-sky-700 border border-sky-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-status-info-soft hover:bg-status-info hover:text-on-info text-status-info border border-status-info-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Xem chi tiết hồ sơ nhân sự"
                         >
-                          <Eye className="w-3 h-3 text-sky-600 group-hover:text-white" />
+                          <Eye className="w-3 h-3 text-status-info group-hover:text-canvas" />
                           <span>Xem</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-status-ok-soft hover:bg-status-ok hover:text-on-ok text-status-ok border border-status-ok-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chỉnh sửa thông tin nhân viên"
                         >
-                          <Edit2 className="w-3 h-3 text-emerald-600 group-hover:text-white" />
+                          <Edit2 className="w-3 h-3 text-status-ok group-hover:text-canvas" />
                           <span>Sửa</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeManager(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-status-info-soft hover:bg-status-info hover:text-on-info text-status-info border border-status-info-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Đổi người duyệt trực tiếp"
                         >
-                          <GitPullRequest className="w-3 h-3 text-purple-600 group-hover:text-white" />
+                          <GitPullRequest className="w-3 h-3 text-status-info group-hover:text-canvas" />
                           <span>Đổi sếp</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenChangeTeam(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-status-info-soft hover:bg-status-info hover:text-on-info text-status-info border border-status-info-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chuyển nhóm làm việc"
                         >
-                          <Building2 className="w-3 h-3 text-indigo-600 group-hover:text-white" />
+                          <Building2 className="w-3 h-3 text-status-info group-hover:text-canvas" />
                           <span>Chuyển nhóm</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleAdminResetPassword(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 border border-amber-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-status-warn-soft hover:bg-status-warn hover:text-on-warn text-status-warn border border-status-warn-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Cấp lại mật khẩu và gửi email kích hoạt"
                         >
-                          <Key className="w-3 h-3 text-amber-600 group-hover:text-white" />
+                          <Key className="w-3 h-3 text-status-warn group-hover:text-canvas" />
                           <span>Cấp lại pass</span>
                         </button>
                         {emp.status !== 'INACTIVE' && (
                           <button
                             type="button"
                             onClick={() => handleResign(emp)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-600 hover:text-white text-slate-700 border border-slate-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                            className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-ink-muted hover:text-canvas text-ink border border-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                             title="Đánh dấu đã nghỉ việc: rời khỏi tổ chức nhưng giữ lịch sử chấm công. Mã nhân viên vẫn giữ (không cấp lại được), email thì có thể cấp cho nhân viên mới."
                           >
-                            <UserX className="w-3 h-3 text-slate-600 group-hover:text-white" />
+                            <UserX className="w-3 h-3 text-ink-secondary group-hover:text-canvas" />
                             <span>Đã nghỉ</span>
                           </button>
                         )}
@@ -837,14 +837,14 @@ export const EmployeeManagementPage: React.FC = () => {
             </div>
 
             {managerError && (
-              <div className="p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+              <div className="p-2.5 rounded-lg bg-status-danger/15 border border-status-danger/30 text-status-danger-line text-xs font-semibold">
                 ⚠️ {managerError}
               </div>
             )}
 
             <div>
               <label className="block font-bold text-ink mb-1.5">
-                Chọn Quản Lý Mới Tiếp Nhận <span className="text-rose-400">*</span>
+                Chọn Quản Lý Mới Tiếp Nhận <span className="text-status-danger">*</span>
               </label>
               <select
                 required
@@ -863,7 +863,7 @@ export const EmployeeManagementPage: React.FC = () => {
 
             <div>
               <label className="block font-bold text-ink mb-1.5">
-                Lý Do Thay Đổi Quản Lý (Bắt buộc kiểm toán) <span className="text-rose-400">*</span>
+                Lý Do Thay Đổi Quản Lý (Bắt buộc kiểm toán) <span className="text-status-danger">*</span>
               </label>
               <textarea
                 required
@@ -943,17 +943,17 @@ export const EmployeeManagementPage: React.FC = () => {
         >
           <form onSubmit={handleCreateEmployee} className="space-y-4 text-xs">
             {addError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+              <div className="p-3 rounded-xl bg-status-danger/10 border border-status-danger/30 text-status-danger-line text-xs font-semibold">
                 ⚠ {addError}
               </div>
             )}
             {/* Hướng dẫn an ninh & Gmail */}
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs space-y-1">
+            <div className="p-3 bg-status-ok/10 border border-status-ok/30 rounded-xl text-status-ok-line text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
-                <Mail className="w-4 h-4 text-emerald-400" />
+                <Mail className="w-4 h-4 text-status-ok" />
                 <span>Tự động kích hoạt tài khoản &amp; gửi email thông báo qua Gmail</span>
               </div>
-              <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+              <p className="text-[11px] text-status-ok-line/80 leading-relaxed">
                 Hệ thống sẽ cấp mã nhân viên và mật khẩu mặc định (khởi tạo: <strong>123456</strong>), đồng thời phát lệnh gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
               </p>
             </div>
@@ -999,7 +999,7 @@ export const EmployeeManagementPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-ink">Mật Khẩu Mặc Định Khởi Tạo *</label>
-                <span className="text-[10px] text-amber-500 font-bold">Bắt buộc đổi pass lần đầu</span>
+                <span className="text-[10px] text-status-warn font-bold">Bắt buộc đổi pass lần đầu</span>
               </div>
               <div className="relative">
                 <input
@@ -1128,12 +1128,12 @@ export const EmployeeManagementPage: React.FC = () => {
           title="🎉 Thông Tin Tài Khoản Khởi Tạo & Thông Báo Gmail"
         >
           <div className="space-y-4 text-xs">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300">
+            <div className="p-3 bg-status-ok/10 border border-status-ok/30 rounded-xl text-status-ok-line">
               <div className="flex items-center gap-2 font-bold text-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-status-ok shrink-0" />
                 <span>Khởi tạo tài khoản thành công!</span>
               </div>
-              <p className="text-[11px] text-emerald-200/90 mt-1 leading-relaxed">
+              <p className="text-[11px] text-status-ok-line/90 mt-1 leading-relaxed">
                 Tài khoản nhân viên đã được ghi nhận vào cơ sở dữ liệu hệ thống với đầy đủ phân quyền và cơ chế bảo mật.
               </p>
             </div>
@@ -1142,7 +1142,7 @@ export const EmployeeManagementPage: React.FC = () => {
             <div className="bg-canvas border border-line rounded-xl p-4 space-y-2.5">
               <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider border-b border-line pb-1.5 flex items-center justify-between">
                 <span>Thông Tin Đăng Nhập Của Nhân Viên</span>
-                <span className="text-amber-400 font-mono font-bold">Chờ đổi pass lần đầu</span>
+                <span className="text-status-warn font-mono font-bold">Chờ đổi pass lần đầu</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 py-1 border-b border-line/60">
@@ -1166,7 +1166,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   <span className="px-2.5 py-1 bg-surface border border-line rounded-lg font-mono font-extrabold text-sm text-ink tracking-wider">
                     {createdAccount.defaultPassword}
                   </span>
-                  <span className="text-[10px] text-amber-500 font-semibold">(Tạm thời)</span>
+                  <span className="text-[10px] text-status-warn font-semibold">(Tạm thời)</span>
                 </div>
               </div>
 
@@ -1178,7 +1178,7 @@ export const EmployeeManagementPage: React.FC = () => {
               <div className="grid grid-cols-3 gap-2 py-1">
                 <span className="text-ink-muted">Trạng thái gửi Gmail:</span>
                 <div className="col-span-2">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <div className="flex items-center gap-1.5 text-status-ok font-semibold">
                     <Mail className="w-3.5 h-3.5 shrink-0" />
                     <span>{createdAccount.emailStatusMessage || 'Đã phát lệnh gửi email thông báo qua Gmail'}</span>
                   </div>
@@ -1187,12 +1187,12 @@ export const EmployeeManagementPage: React.FC = () => {
             </div>
 
             {/* Lưu ý bảo mật */}
-            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-[11px] space-y-1">
+            <div className="p-3 bg-status-warn/10 border border-status-warn/30 rounded-xl text-status-warn-line text-[11px] space-y-1">
               <div className="font-bold flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-amber-400" />
+                <Key className="w-3.5 h-3.5 text-status-warn" />
                 <span>Quy định bảo mật lần đầu đăng nhập</span>
               </div>
-              <p className="text-amber-200/80 leading-relaxed">
+              <p className="text-status-warn-line/80 leading-relaxed">
                 Khi nhân viên đăng nhập bằng mật khẩu mặc định này tại <code>/login</code>, hệ thống sẽ cưỡng chế hiển thị giao diện đổi mật khẩu bắt buộc trước khi cấp quyền truy cập các tính năng chấm công và xin đơn.
               </p>
             </div>
@@ -1208,8 +1208,8 @@ export const EmployeeManagementPage: React.FC = () => {
               >
                 {copiedAccount ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold">Đã sao chép!</span>
+                    <Check className="w-3.5 h-3.5 text-status-ok" />
+                    <span className="text-status-ok font-bold">Đã sao chép!</span>
                   </>
                 ) : (
                   <>
@@ -1242,7 +1242,7 @@ export const EmployeeManagementPage: React.FC = () => {
           <div className="space-y-4 text-xs">
             {/* Header Card */}
             <div className="p-4 bg-canvas rounded-xl border border-line flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-accent-soft text-accent text-xl font-extrabold flex items-center justify-center uppercase ring-2 ring-accent-line shrink-0">
+              <div className="w-14 h-14 rounded-full bg-accent-soft text-accent-dark text-xl font-extrabold flex items-center justify-center uppercase ring-2 ring-accent-line shrink-0">
                 {viewDetailEmp.fullName.substring(0, 2)}
               </div>
               <div className="min-w-0 flex-1">
@@ -1308,7 +1308,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   </div>
                   <div className="py-0.5 border-b border-line/40">
                     <span className="text-ink-muted block mb-1">Chuỗi duyệt (Ai duyệt cho ai):</span>
-                    <span className={`font-semibold block ${viewDetailEmp.approvalChain?.includes('Chưa có') ? 'text-rose-500' : 'text-emerald-400 font-mono text-[10px]'}`}>
+                    <span className={`font-semibold block ${viewDetailEmp.approvalChain?.includes('Chưa có') ? 'text-status-danger' : 'text-status-ok font-mono text-[10px]'}`}>
                       {viewDetailEmp.approvalChain || '⚠ Chưa cấu hình chuỗi duyệt'}
                     </span>
                   </div>
@@ -1351,12 +1351,12 @@ export const EmployeeManagementPage: React.FC = () => {
                   <div className="p-2 bg-canvas rounded-lg border border-line flex items-center justify-between">
                     <div>
                       <span className="text-ink-muted block text-[10px]">Đổi mật khẩu lần đầu:</span>
-                      <strong className={viewDetailEmp.mustChangePassword ? 'text-amber-400' : 'text-emerald-400'}>
+                      <strong className={viewDetailEmp.mustChangePassword ? 'text-status-warn' : 'text-status-ok'}>
                         {viewDetailEmp.mustChangePassword ? 'Chờ đổi pass' : 'Đã hoàn tất đổi mật khẩu'}
                       </strong>
                     </div>
                     {viewDetailEmp.mustChangePassword && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-warn/15 text-status-warn border border-status-warn/30">
                         Cưỡng chế
                       </span>
                     )}
@@ -1364,11 +1364,11 @@ export const EmployeeManagementPage: React.FC = () => {
                   <div className="p-2 bg-canvas rounded-lg border border-line flex items-center justify-between">
                     <div>
                       <span className="text-ink-muted block text-[10px]">Khuôn mặt sinh trắc học:</span>
-                      <strong className={viewDetailEmp.faceEnrolled ? 'text-emerald-400' : 'text-rose-400'}>
+                      <strong className={viewDetailEmp.faceEnrolled ? 'text-status-ok' : 'text-status-danger'}>
                         {viewDetailEmp.faceEnrolled ? 'Đã đăng ký (Ready)' : 'Chưa đăng ký (Pending)'}
                       </strong>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${viewDetailEmp.faceEnrolled ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${viewDetailEmp.faceEnrolled ? 'bg-status-ok/15 text-status-ok border border-status-ok/30' : 'bg-status-danger/15 text-status-danger border border-status-danger/30'}`}>
                       {viewDetailEmp.faceEnrolled ? '1:N Face' : 'Cần enroll'}
                     </span>
                   </div>
@@ -1426,7 +1426,7 @@ export const EmployeeManagementPage: React.FC = () => {
                     setViewDetailEmp(null);
                     handleAdminResetPassword(emp);
                   }}
-                  className="text-amber-400 hover:text-amber-300"
+                  className="text-status-warn hover:text-status-warn-line"
                 >
                   Cấp Lại Pass
                 </Button>

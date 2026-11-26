@@ -383,13 +383,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const getKindBadge = (kind: SearchResultItem['kind']) => {
     switch (kind) {
       case 'rule':
-        return <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">Quy định</span>;
+        return <span className="text-[10px] bg-status-warn-soft text-status-warn border border-status-warn-line px-1.5 py-0.5 rounded font-semibold">Quy định</span>;
       case 'user':
-        return <span className="text-[10px] bg-sky-50 text-sky-800 border border-sky-200 px-1.5 py-0.5 rounded font-semibold">Nhân viên</span>;
+        return <span className="text-[10px] bg-status-info-soft text-status-info border border-status-info-line px-1.5 py-0.5 rounded font-semibold">Nhân viên</span>;
       case 'request':
-        return <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.5 rounded font-semibold">Đơn từ</span>;
+        return <span className="text-[10px] bg-status-danger-soft text-status-danger border border-status-danger-line px-1.5 py-0.5 rounded font-semibold">Đơn từ</span>;
       case 'action':
-        return <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">Thao tác</span>;
+        return <span className="text-[10px] bg-status-ok-soft text-status-ok border border-status-ok-line px-1.5 py-0.5 rounded font-semibold">Thao tác</span>;
       default:
         return <span className="text-[10px] bg-canvas text-ink-muted border border-line px-1.5 py-0.5 rounded">Màn hình</span>;
     }
@@ -468,7 +468,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                     onMouseEnter={() => setSelectedIndex(idx)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition-colors group cursor-pointer ${
                       isSelected
-                        ? 'bg-accent-soft border border-accent-line text-accent shadow-2xs'
+                        ? 'bg-accent-soft border border-accent-line text-accent-dark shadow-2xs'
                         : 'border border-transparent text-ink hover:bg-canvas'
                     }`}
                   >

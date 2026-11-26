@@ -62,9 +62,23 @@
   --rail-hover: 246 246 248;
   --rail-active: 194 24 21;
   --rail-active-bg: 253 236 234;
+  /* Badge số trong menu — đỏ accent như mockup (không dùng màu xanh) */
+  --rail-badge-bg: 253 236 234;
+  --rail-badge-ink: 194 24 21;
 
   --shadow: 20 20 25;
   --on-accent: 255 255 255;
+  --on-ok: 255 255 255;
+  --on-warn: 255 255 255;
+  --on-danger: 255 255 255;
+  --on-info: 255 255 255;
+  --on-wfh: 255 255 255;
+
+  /* Nút secondary — nền tối đậm (nổi trên nền sáng) */
+  --btn-secondary-bg: 20 28 26;
+  --btn-secondary-ink: 255 255 255;
+  --btn-secondary-hover: 31 43 40;
+  --danger-hover: 153 27 27;
 }
 
 /* ── B · Midnight Rail (MẶC ĐỊNH — rail tối, nội dung sáng) ──────────────── */
@@ -112,9 +126,22 @@
   --rail-hover: 26 26 32;
   --rail-active: 255 107 99;
   --rail-active-bg: 42 20 22;
+  --rail-badge-bg: 58 20 22;
+  --rail-badge-ink: 255 128 120;
 
   --shadow: 20 20 25;
   --on-accent: 255 255 255;
+  --on-ok: 255 255 255;
+  --on-warn: 255 255 255;
+  --on-danger: 255 255 255;
+  --on-info: 255 255 255;
+  --on-wfh: 255 255 255;
+
+  /* Nút secondary — nền tối đậm (nổi trên nền sáng) */
+  --btn-secondary-bg: 20 28 26;
+  --btn-secondary-ink: 255 255 255;
+  --btn-secondary-hover: 31 43 40;
+  --danger-hover: 153 27 27;
 }
 
 /* ── C · Bento Studio (tối toàn bộ) ──────────────────────────────────────── */
@@ -162,10 +189,41 @@
   --rail-hover: 23 25 31;
   --rail-active: 255 128 120;
   --rail-active-bg: 52 35 38;
+  --rail-badge-bg: 52 35 38;
+  --rail-badge-ink: 255 128 120;
 
   --shadow: 0 0 0;
   --on-accent: 26 11 10;
+  --on-ok: 6 26 16;
+  --on-warn: 38 24 4;
+  --on-danger: 26 11 10;
+  --on-info: 8 16 38;
+  --on-wfh: 26 16 46;
+
+  /* Nút secondary — nền nâng cao so với surface để nổi trên nền tối */
+  --btn-secondary-bg: 30 33 40;
+  --btn-secondary-ink: 242 243 245;
+  --btn-secondary-hover: 42 46 54;
+  --danger-hover: 255 106 97;
 }
+
+/* ── Logo Ascend: đổi bản theo NỀN mà logo đứng trên ──────────────────────
+   Mặc định (nền sáng: trang login, rail trắng của Ascend Clean) → logo đỏ.
+   Chỉ khi logo nằm trong `.on-rail` (Sidebar) VÀ theme có rail tối
+   (Midnight Rail / Bento Studio) mới đổi sang logo trắng. */
+/* Subtitle logo: nền sáng (content) → ink-muted; trên rail tối → rail-muted */
+.brand-logo-subtitle { color: rgb(var(--ink-muted)); }
+.on-rail .brand-logo-subtitle { color: rgb(var(--rail-muted)); }
+
+.brand-logo-dark { display: none; }
+.brand-logo-text-light { display: inline; }
+
+[data-theme='midnight-rail'] .on-rail .brand-logo-light,
+[data-theme='bento-studio'] .on-rail .brand-logo-light { display: none; }
+[data-theme='midnight-rail'] .on-rail .brand-logo-dark,
+[data-theme='bento-studio'] .on-rail .brand-logo-dark { display: block; }
+[data-theme='midnight-rail'] .on-rail .brand-logo-text-light,
+[data-theme='bento-studio'] .on-rail .brand-logo-text-light { display: none; }
 
 body {
   margin: 0;

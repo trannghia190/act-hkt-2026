@@ -428,7 +428,7 @@ export const FaceEnrollmentPage: React.FC = () => {
       <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-2">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Sinh Trắc Học AI • OpenCV YuNet + SFace (128D ONNX)</span>
             </div>
@@ -543,7 +543,7 @@ export const FaceEnrollmentPage: React.FC = () => {
 
                 {/* Status Pills */}
                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-status-ok animate-pulse" />
                   {capturedImage ? 'Ảnh Đã Chụp (Sẵn Sàng)' : isCameraActive ? 'Webcam Live' : 'Camera Khởi Tạo...'}
                 </div>
               </div>
@@ -625,7 +625,7 @@ export const FaceEnrollmentPage: React.FC = () => {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-ink-muted mb-1">
-                    Mã nhân viên (Employee Code) <span className="text-red-500">*</span>
+                    Mã nhân viên (Employee Code) <span className="text-status-danger">*</span>
                     <span className="text-[10px] text-ink-muted ml-1.5">(cố định theo tài khoản đang đăng nhập)</span>
                   </label>
                   <input
@@ -689,7 +689,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                       }}
                       className={`text-[10px] px-2 py-1 rounded border transition-colors ${
                         employeeCode === seed.code
-                          ? 'border-accent bg-accent-soft text-accent font-bold'
+                          ? 'border-accent bg-accent-soft text-accent-dark font-bold'
                           : 'border-line text-ink-muted hover:border-accent hover:text-ink'
                       }`}
                     >
@@ -705,14 +705,14 @@ export const FaceEnrollmentPage: React.FC = () => {
                 <div
                   className={`text-xs rounded-xl p-3 border flex items-start gap-2 ${
                     enrollStatus === 'success'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
-                      : 'border-rose-500/30 bg-rose-500/10 text-rose-700'
+                      ? 'border-status-ok/30 bg-status-ok/10 text-status-ok'
+                      : 'border-status-danger/30 bg-status-danger/10 text-status-danger'
                   }`}
                 >
                   {enrollStatus === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-status-ok mt-0.5" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-status-danger mt-0.5" />
                   )}
                   <div className="leading-relaxed">{enrollMessage}</div>
                 </div>
@@ -775,7 +775,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                 </div>
 
                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-status-info animate-pulse" />
                   {verifyImage ? 'Ảnh Đã Chọn' : 'Webcam Live (Verify)'}
                 </div>
               </div>
@@ -820,7 +820,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                   size="sm"
                   onClick={handleVerifySubmit}
                   disabled={verifyStatus === 'processing'}
-                  className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="text-xs font-bold bg-status-ok hover:bg-status-ok text-on-ok"
                 >
                   {verifyStatus === 'processing' ? 'Đang Đối Soát...' : '🔍 Xác Thực Khuôn Mặt Ngay'}
                 </Button>
@@ -853,21 +853,21 @@ export const FaceEnrollmentPage: React.FC = () => {
                 <div
                   className={`p-4 rounded-xl border space-y-3 ${
                     verifyResult.is_matched
-                      ? 'border-emerald-500/40 bg-emerald-500/5'
-                      : 'border-rose-500/40 bg-rose-500/5'
+                      ? 'border-status-ok/40 bg-status-ok/5'
+                      : 'border-status-danger/40 bg-status-danger/5'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-ink flex items-center gap-1.5">
                       {verifyResult.is_matched ? (
                         <>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span className="text-emerald-700">Xác Thực Thành Công</span>
+                          <CheckCircle2 className="w-4 h-4 text-status-ok" />
+                          <span className="text-status-ok">Xác Thực Thành Công</span>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle className="w-4 h-4 text-rose-600" />
-                          <span className="text-rose-700">Không Trùng Khớp</span>
+                          <AlertTriangle className="w-4 h-4 text-status-danger" />
+                          <span className="text-status-danger">Không Trùng Khớp</span>
                         </>
                       )}
                     </span>
@@ -892,13 +892,13 @@ export const FaceEnrollmentPage: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-ink-muted">Liveness:</span>
-                        <span className="text-emerald-600 font-semibold">✓ Đã vượt qua</span>
+                        <span className="text-status-ok font-semibold">✓ Đã vượt qua</span>
                       </div>
                     </div>
                   ) : null}
 
                   {verifyResult.is_proxy_punch_detected && (
-                    <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg text-xs text-rose-700 font-medium">
+                    <div className="p-2.5 bg-status-danger/10 border border-status-danger/30 rounded-lg text-xs text-status-danger font-medium">
                       🚨 CẢNH BÁO CHẤM CÔNG HỘ: Khuôn mặt đối soát khác với mã nhân viên dự kiến!
                     </div>
                   )}
@@ -1017,7 +1017,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleSelectForVerify(emp)}
-                          className="px-2 py-1 rounded bg-accent-soft text-accent hover:bg-accent-soft/80 text-[11px] font-semibold"
+                          className="px-2 py-1 rounded bg-accent-soft text-accent-dark hover:bg-accent-soft/80 text-[11px] font-semibold"
                           title="Thử nghiệm nhận diện khuôn mặt nhân viên này"
                         >
                           Verify
@@ -1033,7 +1033,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteFace(emp.employee_code)}
-                          className="px-2 py-1 rounded border border-line text-rose-600 hover:bg-rose-50 text-[11px] font-medium"
+                          className="px-2 py-1 rounded border border-line text-status-danger hover:bg-status-danger-soft text-[11px] font-medium"
                           title="Xoá mẫu khuôn mặt sinh trắc học"
                         >
                           <Trash2 className="w-3.5 h-3.5 inline" />

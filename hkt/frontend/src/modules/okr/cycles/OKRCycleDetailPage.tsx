@@ -414,7 +414,7 @@ export const OKRCycleDetailPage: React.FC = () => {
               <div key={p.key} className="rounded-xl border border-line p-3 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-accent text-white text-xs grid place-items-center">{idx + 1}</span>
+                    <span className="w-6 h-6 rounded-full bg-accent text-on-accent text-xs grid place-items-center">{idx + 1}</span>
                     <div>
                       <div className="text-xs font-bold text-ink">{p.name}</div>
                       <div className="text-[11px] text-ink-muted">
@@ -529,7 +529,7 @@ export const OKRCycleDetailPage: React.FC = () => {
                 <div><b>{reopenPhaseTarget.name}</b> · {reopenPhaseTarget.key}</div>
                 <div>Thời gian hiện tại: {reopenPhaseTarget.start_date || '—'} → {reopenPhaseTarget.due_date || '—'}</div>
                 {isPhaseOverdue(reopenPhaseTarget) && (
-                  <div className="text-amber-700">Phase đã quá hạn — bắt buộc nhập hạn chót mới từ hôm nay trở đi.</div>
+                  <div className="text-status-warn">Phase đã quá hạn — bắt buộc nhập hạn chót mới từ hôm nay trở đi.</div>
                 )}
               </div>
               <div>

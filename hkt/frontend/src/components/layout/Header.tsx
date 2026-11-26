@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 import { Menu, Search, Camera, LogOut } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -41,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/todo')}>
-          <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent border border-accent-line font-mono">
+          <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent-dark border border-accent-line font-mono">
             ACT-HKT
           </span>
           <span className="text-[11px] text-ink-muted hidden md:inline font-medium">
@@ -68,12 +69,15 @@ export const Header: React.FC<HeaderProps> = ({
           variant="outline"
           size="sm"
           onClick={onOpenGmailModal}
-          className="text-xs gap-1.5 hidden md:inline-flex border-accent-line text-accent hover:bg-accent-soft"
+          className="text-xs gap-1.5 hidden md:inline-flex border-accent-line text-accent-dark hover:bg-accent-soft"
           title="Cấu hình gửi email thông báo qua Gmail SMTP"
         >
           <span>📧</span>
           <span>Gmail</span>
         </Button>
+
+        {/* Template / theme picker */}
+        <ThemeSwitcher />
 
         {/* Global Multi-channel Notification Center */}
         <NotificationDropdown />
@@ -82,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
         {user?.faceEnrolled === false && (
           <button
             onClick={() => navigate('/auth/enroll-face')}
-            className="px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer bg-amber-500/10 text-amber-600 border-amber-500/30 font-bold"
+            className="px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer bg-status-warn-soft text-status-warn border-status-warn-line font-bold"
             title="Tài khoản chưa đăng ký khuôn mặt — bấm để đăng ký"
           >
             <Camera className="w-3.5 h-3.5 text-accent" />
@@ -105,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-7 h-7 rounded-full object-cover border border-line"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+              <div className="w-7 h-7 rounded-full bg-accent text-on-accent flex items-center justify-center font-bold text-xs shadow-2xs">
                 {user?.fullName?.charAt(0) || 'A'}
               </div>
             )}

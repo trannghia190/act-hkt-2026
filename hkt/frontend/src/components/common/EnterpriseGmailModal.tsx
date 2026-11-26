@@ -130,7 +130,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             onClick={() => setActiveStepTab('config')}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
               activeStepTab === 'config'
-                ? 'bg-accent-soft text-accent border border-accent-line'
+                ? 'bg-accent-soft text-accent-dark border border-accent-line'
                 : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -140,7 +140,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             onClick={() => setActiveStepTab('guide')}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
               activeStepTab === 'guide'
-                ? 'bg-accent-soft text-accent border border-accent-line'
+                ? 'bg-accent-soft text-accent-dark border border-accent-line'
                 : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -258,8 +258,8 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             <div
               className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
                 result.success
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                  : 'bg-rose-50 border-rose-300 text-rose-900'
+                  ? 'bg-status-ok-soft border-status-ok-line text-status-ok'
+                  : 'bg-status-danger-soft border-status-danger-line text-status-danger'
               }`}
             >
               {result.message}

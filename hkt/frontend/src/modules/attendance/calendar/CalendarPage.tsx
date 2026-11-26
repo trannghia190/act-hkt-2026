@@ -124,7 +124,7 @@ export const CalendarPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-1">
             <span>📅</span> Lịch Chấm Công Cá Nhân
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink">Lịch Công Tháng Cá Nhân</h1>
@@ -154,13 +154,13 @@ export const CalendarPage: React.FC = () => {
         </div>
         <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
           <div className="text-[11px] text-ink-muted">Công Đã Tích Lũy</div>
-          <div className="text-xl font-bold text-emerald-700 mt-0.5">{summary.actualDays} ngày</div>
-          <div className="text-[10px] text-emerald-600">Đạt {(summary.actualDays * 8).toFixed(1)}h hợp lệ</div>
+          <div className="text-xl font-bold text-status-ok mt-0.5">{summary.actualDays} ngày</div>
+          <div className="text-[10px] text-status-ok">Đạt {(summary.actualDays * 8).toFixed(1)}h hợp lệ</div>
         </div>
         <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
           <div className="text-[11px] text-ink-muted">Đi Muộn / Về Sớm</div>
-          <div className="text-xl font-bold text-amber-700 mt-0.5">{summary.lateCount} lần</div>
-          <div className="text-[10px] text-amber-600">
+          <div className="text-xl font-bold text-status-warn mt-0.5">{summary.lateCount} lần</div>
+          <div className="text-[10px] text-status-warn">
             {summary.lateCount > 2 ? '⚠️ Vượt quota miễn phạt' : 'Trong hạn mức cho phép'}
           </div>
         </div>
@@ -171,8 +171,8 @@ export const CalendarPage: React.FC = () => {
         </div>
         <div className="p-3 bg-surface rounded-xl border border-line col-span-2 md:col-span-1 shadow-2xs">
           <div className="text-[11px] text-ink-muted">Làm Từ Xa (WFH)</div>
-          <div className="text-xl font-bold text-blue-700 mt-0.5">{summary.wfhDays} ngày</div>
-          <div className="text-[10px] text-blue-600">Đã duyệt hợp lệ</div>
+          <div className="text-xl font-bold text-status-info mt-0.5">{summary.wfhDays} ngày</div>
+          <div className="text-[10px] text-status-info">Đã duyệt hợp lệ</div>
         </div>
       </div>
 
@@ -205,29 +205,29 @@ export const CalendarPage: React.FC = () => {
                   d.status === 'WEEKEND'
                     ? 'bg-canvas/30 border-line/50 text-ink-muted'
                     : d.status === 'ON_TIME'
-                    ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-400'
+                    ? 'bg-status-ok-soft/40 border-status-ok-line hover:border-status-ok'
                     : d.status === 'LATE'
-                    ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                    ? 'bg-status-warn-soft/50 border-status-warn-line hover:border-status-warn'
                     : d.status === 'LEAVE'
-                    ? 'bg-blue-50/50 border-blue-200 hover:border-blue-400'
+                    ? 'bg-status-info-soft/50 border-status-info-line hover:border-status-info'
                     : d.status === 'WFH'
-                    ? 'bg-purple-50/50 border-purple-200 hover:border-purple-400'
+                    ? 'bg-status-info-soft/50 border-status-info-line hover:border-status-info'
                     : d.status === 'INCOMPLETE'
-                    ? 'bg-rose-50/60 border-rose-300 hover:border-rose-500'
+                    ? 'bg-status-danger-soft/60 border-status-danger-line hover:border-status-danger'
                     : d.status === 'ABSENT'
-                    ? 'bg-rose-50/30 border-rose-200 hover:border-rose-400'
+                    ? 'bg-status-danger-soft/30 border-status-danger-line hover:border-status-danger'
                     : d.status === 'HOLIDAY'
-                    ? 'bg-teal-50/50 border-teal-200 hover:border-teal-400'
+                    ? 'bg-status-ok-soft/50 border-status-ok-line hover:border-status-ok'
                     : 'bg-surface border-line hover:border-accent'
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <span className="font-bold text-xs text-ink">{d.day}</span>
-                  {d.status === 'ON_TIME' && <span className="w-2 h-2 rounded-full bg-emerald-500" title="Đúng giờ" />}
-                  {d.status === 'LATE' && <span className="w-2 h-2 rounded-full bg-amber-500" title="Đi muộn" />}
-                  {d.status === 'LEAVE' && <span className="w-2 h-2 rounded-full bg-blue-500" title="Nghỉ phép" />}
-                  {d.status === 'WFH' && <span className="w-2 h-2 rounded-full bg-purple-500" title="WFH" />}
-                  {d.status === 'INCOMPLETE' && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Thiếu giờ" />}
+                  {d.status === 'ON_TIME' && <span className="w-2 h-2 rounded-full bg-status-ok" title="Đúng giờ" />}
+                  {d.status === 'LATE' && <span className="w-2 h-2 rounded-full bg-status-warn" title="Đi muộn" />}
+                  {d.status === 'LEAVE' && <span className="w-2 h-2 rounded-full bg-status-info" title="Nghỉ phép" />}
+                  {d.status === 'WFH' && <span className="w-2 h-2 rounded-full bg-status-info" title="WFH" />}
+                  {d.status === 'INCOMPLETE' && <span className="w-2 h-2 rounded-full bg-status-danger animate-pulse" title="Thiếu giờ" />}
                 </div>
 
                 {d.checkIn && (
@@ -239,7 +239,7 @@ export const CalendarPage: React.FC = () => {
 
                 <div className="text-[10px] font-medium truncate text-ink-muted mt-1 flex items-center justify-between">
                   <span>{d.symbol || d.statusText}</span>
-                  {d.hoursWorked ? <span className="text-emerald-700 font-mono">{d.hoursWorked}h</span> : null}
+                  {d.hoursWorked ? <span className="text-status-ok font-mono">{d.hoursWorked}h</span> : null}
                 </div>
               </div>
             ))}
@@ -249,22 +249,22 @@ export const CalendarPage: React.FC = () => {
         {/* Legend */}
         <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center gap-4 text-[11px] text-ink-muted">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Đúng giờ
+            <span className="w-2.5 h-2.5 rounded-full bg-status-ok" /> Đúng giờ
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Đi muộn
+            <span className="w-2.5 h-2.5 rounded-full bg-status-warn" /> Đi muộn
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Làm từ xa (WFH)
+            <span className="w-2.5 h-2.5 rounded-full bg-status-info" /> Làm từ xa (WFH)
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Nghỉ phép
+            <span className="w-2.5 h-2.5 rounded-full bg-status-info" /> Nghỉ phép
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Thiếu giờ / Vắng
+            <span className="w-2.5 h-2.5 rounded-full bg-status-danger" /> Thiếu giờ / Vắng
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-zinc-400" /> Cuối tuần / Lễ
+            <span className="w-2.5 h-2.5 rounded-full bg-ink-muted" /> Cuối tuần / Lễ
           </div>
         </div>
       </Card>
@@ -315,18 +315,18 @@ export const CalendarPage: React.FC = () => {
 
             <div className="p-3 bg-canvas rounded-lg border border-line">
               <span className="text-ink-muted text-[11px]">Số giờ làm thực tế:</span>
-              <div className="font-bold text-sm text-emerald-700 mt-1">
+              <div className="font-bold text-sm text-status-ok mt-1">
                 {selectedDay.hoursWorked ? `${selectedDay.hoursWorked} giờ` : '0 giờ'}
               </div>
             </div>
           </div>
 
           {selectedDay.lateMinutes ? (
-            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center justify-between">
+            <div className="mt-3 p-3 bg-status-warn-soft border border-status-warn-line rounded-lg text-xs text-status-warn flex items-center justify-between">
               <span>⚠️ Bạn đã check-in muộn <strong>{selectedDay.lateMinutes} phút</strong> so với ca chuẩn.</span>
               <button
                 onClick={() => navigate('/attendance/requests')}
-                className="px-3 py-1 rounded bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700"
+                className="px-3 py-1 rounded bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn"
               >
                 Tạo đơn giải trình đi muộn
               </button>
@@ -334,11 +334,11 @@ export const CalendarPage: React.FC = () => {
           ) : null}
 
           {selectedDay.status === 'INCOMPLETE' && !selectedDay.checkOut && (
-            <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-900 flex items-center justify-between">
+            <div className="mt-3 p-3 bg-status-danger-soft border border-status-danger-line rounded-lg text-xs text-status-danger flex items-center justify-between">
               <span>⚠️ Ngày này chưa có giờ check-out. Hãy tạo đơn bổ sung công để không bị trừ ngày công.</span>
               <button
                 onClick={() => navigate('/attendance/requests')}
-                className="px-3 py-1 rounded bg-rose-600 text-white font-semibold text-xs hover:bg-rose-700"
+                className="px-3 py-1 rounded bg-status-danger text-on-danger font-semibold text-xs hover:bg-status-danger"
               >
                 Tạo đơn bổ sung công
               </button>

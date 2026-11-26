@@ -168,7 +168,7 @@ export const OKRApprovalsPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('SUBMITTED')}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'SUBMITTED' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
+              activeTab === 'SUBMITTED' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             Chờ duyệt ({items.filter((i) => i.status === 'SUBMITTED').length})
@@ -176,7 +176,7 @@ export const OKRApprovalsPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('LOCKED')}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'LOCKED' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
+              activeTab === 'LOCKED' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             Đã duyệt ({items.filter((i) => i.status === 'LOCKED').length})
@@ -184,7 +184,7 @@ export const OKRApprovalsPage: React.FC = () => {
           <button
             onClick={() => setActiveTab('ALL')}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'ALL' ? 'bg-accent text-white shadow-xs' : 'text-ink-secondary hover:text-ink'
+              activeTab === 'ALL' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             Tất cả ({items.length})
@@ -238,14 +238,14 @@ export const OKRApprovalsPage: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-lg border border-line bg-surface space-y-2">
-                  <div className="font-semibold text-emerald-600 flex items-center justify-between">
+                  <div className="font-semibold text-status-ok flex items-center justify-between">
                     <span>People (Thành tựu con người)</span>
                     <span className="text-[11px] text-ink-muted font-normal">{item.peopleItems.length} mục</span>
                   </div>
                   <div className="space-y-1.5">
                     {item.peopleItems.map((p) => (
                       <div key={p.id} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
-                        <span className="text-emerald-500">•</span>
+                        <span className="text-status-ok">•</span>
                         <span className="line-clamp-1 flex-1">{p.title}</span>
                       </div>
                     ))}
@@ -259,7 +259,7 @@ export const OKRApprovalsPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                    className="text-status-warn border-status-warn-line hover:bg-status-warn-soft"
                     onClick={() => {
                       setSelectedItem(item);
                       setManagerComment(
@@ -340,8 +340,8 @@ export const OKRApprovalsPage: React.FC = () => {
               {/* Nhóm People */}
               <div className="border border-line rounded-xl p-4 space-y-3 bg-surface">
                 <div className="flex items-center justify-between border-b border-line pb-2">
-                  <h3 className="font-bold text-sm text-emerald-600 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <h3 className="font-bold text-sm text-status-ok flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-status-ok" />
                     People (Mục tiêu con người & Đội ngũ)
                   </h3>
                   <Badge variant="ok">{selectedItem.peopleItems.length} mục</Badge>
@@ -364,19 +364,19 @@ export const OKRApprovalsPage: React.FC = () => {
               <div className="p-3.5 bg-canvas rounded-xl border border-line text-xs space-y-2">
                 {selectedItem.selfDirection && (
                   <div>
-                    <span className="font-bold text-purple-600">Định hướng phát triển:</span>
+                    <span className="font-bold text-status-info">Định hướng phát triển:</span>
                     <p className="text-ink-secondary">{selectedItem.selfDirection}</p>
                   </div>
                 )}
                 {selectedItem.selfProposal && (
                   <div>
-                    <span className="font-bold text-purple-600">Đề xuất:</span>
+                    <span className="font-bold text-status-info">Đề xuất:</span>
                     <p className="text-ink-secondary">{selectedItem.selfProposal}</p>
                   </div>
                 )}
                 {selectedItem.selfImprovementArea && (
                   <div>
-                    <span className="font-bold text-purple-600">Điểm cần cải thiện:</span>
+                    <span className="font-bold text-status-info">Điểm cần cải thiện:</span>
                     <p className="text-ink-secondary">{selectedItem.selfImprovementArea}</p>
                   </div>
                 )}
@@ -393,7 +393,7 @@ export const OKRApprovalsPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-amber-600 border-amber-300"
+                    className="text-status-warn border-status-warn-line"
                     onClick={() => {
                       setManagerComment(
                         selectedItem.status === 'LOCKED'

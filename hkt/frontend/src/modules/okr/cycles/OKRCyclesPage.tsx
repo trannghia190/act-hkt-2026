@@ -243,7 +243,7 @@ export const OKRCyclesPage: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+          <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-3 text-xs text-status-warn space-y-1">
             <div className="font-bold">Chưa xoá được — dữ liệu đang vướng</div>
             <div>{forceInfo?.message}</div>
             {typeof forceInfo?.linkedReviews === 'number' && forceInfo.linkedReviews > 0 && (

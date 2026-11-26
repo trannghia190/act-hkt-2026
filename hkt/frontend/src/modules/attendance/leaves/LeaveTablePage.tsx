@@ -105,8 +105,8 @@ export const LeaveTablePage: React.FC = () => {
             {filtered.map(r => {
               const rem = r.annualRemaining + r.carriedRemaining;
               return (
-                <tr key={r.code} className={`border-t border-line ${rem < 2 ? 'bg-amber-50' : ''}`}>
-                  <td className={`p-3 sticky left-0 border-r border-line ${rem < 2 ? 'bg-amber-50' : 'bg-surface'}`}>
+                <tr key={r.code} className={`border-t border-line ${rem < 2 ? 'bg-status-warn-soft' : ''}`}>
+                  <td className={`p-3 sticky left-0 border-r border-line ${rem < 2 ? 'bg-status-warn-soft' : 'bg-surface'}`}>
                     <Link className="font-semibold hover:underline" to={`/attendance/leave-ledger?user=${r.code}`}>{r.name}</Link>
                     <div className="text-xs text-ink-muted">{r.code}</div>
                   </td>

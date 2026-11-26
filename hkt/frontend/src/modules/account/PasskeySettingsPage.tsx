@@ -75,7 +75,7 @@ export const PasskeySettingsPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-2">
           <span>🔐</span> Passkey &amp; bảo mật
         </div>
         <h1 className="text-xl font-bold text-ink">Đăng nhập nhanh bằng Passkey</h1>
@@ -88,15 +88,15 @@ export const PasskeySettingsPage: React.FC = () => {
       </div>
 
       {!supported && (
-        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+        <div className="text-sm text-status-warn bg-status-warn-soft border border-status-warn-line rounded-xl p-3">
           Trình duyệt này không hỗ trợ WebAuthn/Passkey — hãy dùng Chrome, Edge, Safari hoặc Firefox phiên bản mới.
         </div>
       )}
 
       {message && (
         <div className={`text-sm rounded-xl p-3 border ${ok
-          ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-          : 'text-rose-700 bg-rose-50 border-rose-200'}`}>
+          ? 'text-status-ok bg-status-ok-soft border-status-ok-line'
+          : 'text-status-danger bg-status-danger-soft border-status-danger-line'}`}>
           {message}
         </div>
       )}

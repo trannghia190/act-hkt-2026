@@ -75,12 +75,12 @@ type PeriodStatus = TimesheetData['periodStatus'];
  * thay vì rơi vào nhánh else và hiển thị sai (lỗi đã từng xảy ra: draft hiện "đã khoá").
  */
 const PERIOD_BANNER: Record<PeriodStatus, { icon: string; title: string; cls: string; badge: 'accent' | 'warn' | 'gray' }> = {
-  OPEN: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-sky-50 border-sky-300 text-sky-900', badge: 'accent' },
-  UNPUBLISHED: { icon: '⏳', title: 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)', cls: 'bg-amber-50 border-amber-300 text-amber-900', badge: 'warn' },
-  DRAFT: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-sky-50 border-sky-300 text-sky-900', badge: 'accent' },
-  DISPUTABLE: { icon: '🟢', title: 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI', cls: 'bg-emerald-50 border-emerald-300 text-emerald-900', badge: 'accent' },
-  EXPIRED: { icon: '⏰', title: 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)', cls: 'bg-zinc-50 border-zinc-300 text-zinc-800', badge: 'gray' },
-  LOCKED: { icon: '🔒', title: 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)', cls: 'bg-rose-50 border-rose-300 text-rose-900', badge: 'gray' },
+  OPEN: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-status-info-soft border-status-info-line text-status-info', badge: 'accent' },
+  UNPUBLISHED: { icon: '⏳', title: 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)', cls: 'bg-status-warn-soft border-status-warn-line text-status-warn', badge: 'warn' },
+  DRAFT: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-status-info-soft border-status-info-line text-status-info', badge: 'accent' },
+  DISPUTABLE: { icon: '🟢', title: 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI', cls: 'bg-status-ok-soft border-status-ok-line text-status-ok', badge: 'accent' },
+  EXPIRED: { icon: '⏰', title: 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)', cls: 'bg-surface-secondary border-line-hover text-ink', badge: 'gray' },
+  LOCKED: { icon: '🔒', title: 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)', cls: 'bg-status-danger-soft border-status-danger-line text-status-danger', badge: 'gray' },
 };
 
 /** Mô tả phụ — switch có kiểm tra `never` để không bao giờ bỏ sót trạng thái. */
@@ -336,17 +336,17 @@ export const MyTimesheetPage: React.FC = () => {
     : s === 'RESOLVED' ? 'Đã xử lý' : s === 'REJECTED' ? 'Đã từ chối' : s === 'EXPIRED' ? 'Quá hạn' : s;
   const disputeIcon = (s: string) => s === 'PENDING' ? '⏳'
     : s === 'RESOLVED' ? '✔' : s === 'REJECTED' ? '✖' : s === 'EXPIRED' ? '⌛' : '•';
-  const disputeBadgeCls = (s: string) => s === 'PENDING' ? 'text-amber-700 bg-amber-50 border-amber-200'
-    : s === 'RESOLVED' ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-      : s === 'REJECTED' ? 'text-rose-700 bg-rose-50 border-rose-200'
-        : 'text-slate-600 bg-slate-100 border-slate-200';
+  const disputeBadgeCls = (s: string) => s === 'PENDING' ? 'text-status-warn bg-status-warn-soft border-status-warn-line'
+    : s === 'RESOLVED' ? 'text-status-ok bg-status-ok-soft border-status-ok-line'
+      : s === 'REJECTED' ? 'text-status-danger bg-status-danger-soft border-status-danger-line'
+        : 'text-ink-secondary bg-surface-secondary border-line';
 
   return (
     <div className="space-y-6">
       {/* Header and Month Controls (Criterion B4 #1) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent rounded-full text-xs font-semibold border border-accent-line mb-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-1">
             <span>📑</span> Bảng Công Cá Nhân
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink">{isOwnTimesheet ? 'Bảng Công Cá Nhân Của Tôi' : `Bảng Công Của ${data?.employeeName || viewedEmployeeCode}`}</h1>
@@ -380,7 +380,7 @@ export const MyTimesheetPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
+        <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">
           ⚠️ {error}
         </div>
       )}
@@ -411,25 +411,25 @@ export const MyTimesheetPage: React.FC = () => {
             <div className="text-[10px] text-ink-muted">1. Công Chuẩn</div>
             <div className="text-lg font-bold text-ink mt-0.5">{data.standardDays} ngày</div>
           </div>
-          <div className="p-3 bg-surface rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-2xs">
-            <div className="text-[10px] text-emerald-800 font-medium">2. Công Thực Tế</div>
-            <div className="text-lg font-bold text-emerald-700 mt-0.5">{data.actualDays} ngày</div>
+          <div className="p-3 bg-surface rounded-xl border border-status-ok-line bg-status-ok-soft/20 shadow-2xs">
+            <div className="text-[10px] text-status-ok font-medium">2. Công Thực Tế</div>
+            <div className="text-lg font-bold text-status-ok mt-0.5">{data.actualDays} ngày</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">3. Làm Từ Xa (WFH)</div>
-            <div className="text-lg font-bold text-purple-700 mt-0.5">{data.wfhDays} ngày</div>
+            <div className="text-lg font-bold text-status-info mt-0.5">{data.wfhDays} ngày</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">4. Nghỉ Phép Năm</div>
-            <div className="text-lg font-bold text-blue-700 mt-0.5">{data.leaveDays} ngày</div>
+            <div className="text-lg font-bold text-status-info mt-0.5">{data.leaveDays} ngày</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">5. Đi Muộn / Sớm</div>
-            <div className="text-lg font-bold text-amber-700 mt-0.5">{data.lateCount} lần</div>
+            <div className="text-lg font-bold text-status-warn mt-0.5">{data.lateCount} lần</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">6. Ngày Lễ (NL)</div>
-            <div className="text-lg font-bold text-teal-700 mt-0.5">{data.holidayDays} ngày</div>
+            <div className="text-lg font-bold text-status-ok mt-0.5">{data.holidayDays} ngày</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">7. Nghỉ Ốm (S)</div>
@@ -441,7 +441,7 @@ export const MyTimesheetPage: React.FC = () => {
           </div>
           <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
             <div className="text-[10px] text-ink-muted">9. Không Lương (UP)</div>
-            <div className="text-lg font-bold text-rose-700 mt-0.5">{data.unpaidDays} ngày</div>
+            <div className="text-lg font-bold text-status-danger mt-0.5">{data.unpaidDays} ngày</div>
           </div>
           <div className="p-3 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20 shadow-2xs">
             <div className="text-[10px] text-accent-dark font-medium">10. Tổng Ngày Công</div>
@@ -471,20 +471,22 @@ export const MyTimesheetPage: React.FC = () => {
               ));
             })()}
             {data.days.map((d) => {
-              const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE' || d.status === 'ABSENT';
+              // Vắng (ABSENT) chỉ tô chữ đỏ, không tô nền: một tháng nhiều ngày vắng
+              // sẽ thành "biển đỏ" át hết thông tin. Muộn/thiếu chấm công mới đánh dấu nổi.
+              const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE';
               const cls =
                 d.status === 'LEAVE'
-                  ? 'bg-sky-50 border-sky-200 text-sky-800'
+                  ? 'bg-status-info-soft border-status-info-line text-status-info'
                   : d.status === 'WFH'
-                  ? 'bg-violet-50 border-violet-200 text-violet-800'
+                  ? 'bg-status-info-soft border-status-info-line text-status-info'
                   : d.status === 'LATE'
-                  ? 'bg-amber-100 border-amber-300 text-amber-900 ring-1 ring-amber-400'
+                  ? 'bg-status-warn-soft border-status-warn-line text-status-warn ring-1 ring-status-warn'
                   : d.status === 'INCOMPLETE'
-                  ? 'bg-rose-100 border-rose-300 text-rose-900 ring-1 ring-rose-400'
+                  ? 'bg-status-danger-soft border-status-danger-line text-status-danger ring-1 ring-status-danger'
                   : d.status === 'ABSENT'
-                  ? 'bg-red-50 border-red-200 text-red-800'
+                  ? 'bg-canvas border-line/60 text-status-danger'
                   : d.status === 'ON_TIME'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  ? 'bg-status-ok-soft border-status-ok-line text-status-ok'
                   : d.isWeekend
                   ? 'bg-canvas text-ink-muted border-line/40'
                   : 'bg-canvas border-line text-ink-muted';
@@ -497,9 +499,9 @@ export const MyTimesheetPage: React.FC = () => {
                 >
                   <div className="flex items-center justify-between w-full px-0.5">
                     <span className="font-bold text-xs">{d.day}</span>
-                    {hasIssue && <span className="w-2 h-2 rounded-full bg-rose-600" title="Ngày có vấn đề" />}
+                    {hasIssue && <span className="w-2 h-2 rounded-full bg-status-danger" title="Ngày có vấn đề" />}
                     {d.dispute && (
-                      <span className="text-[9px] px-1 bg-amber-500 text-white rounded" title="Đã có khiếu nại">
+                      <span className="text-[9px] px-1 bg-status-warn text-on-warn rounded" title="Đã có khiếu nại">
                         KN
                       </span>
                     )}
@@ -554,7 +556,7 @@ export const MyTimesheetPage: React.FC = () => {
                     <tr
                       key={r.date}
                       className={`hover:bg-canvas/50 transition-colors ${
-                        isIssue ? 'bg-amber-50/20' : ''
+                        isIssue ? 'bg-status-warn-soft/20' : ''
                       }`}
                     >
                       <td className="py-2.5 px-3 font-mono font-medium">{r.date}</td>
@@ -571,7 +573,7 @@ export const MyTimesheetPage: React.FC = () => {
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono">
                         {r.lateMinutes ? (
-                          <span className="text-amber-700 font-bold">{r.lateMinutes}′</span>
+                          <span className="text-status-warn font-bold">{r.lateMinutes}′</span>
                         ) : (
                           '0'
                         )}
@@ -609,7 +611,7 @@ export const MyTimesheetPage: React.FC = () => {
                                 type="button"
                                 onClick={() => openDisputeModal(r)}
                                 title="Đã bị từ chối/kết luận — bạn còn 1 lần gửi lại cho ngày này"
-                                className="text-[11px] text-amber-700 underline hover:text-amber-800 cursor-pointer"
+                                className="text-[11px] text-status-warn underline hover:text-status-warn cursor-pointer"
                               >
                                 Khiếu nại lại
                               </button>
@@ -624,7 +626,7 @@ export const MyTimesheetPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => openDisputeModal(r)}
-                            className="text-xs px-2.5 py-1 rounded bg-amber-600 text-white font-medium hover:bg-amber-700 shadow-xs cursor-pointer"
+                            className="text-xs px-2.5 py-1 rounded bg-status-warn text-on-warn font-medium hover:bg-status-warn shadow-xs cursor-pointer"
                           >
                             Khiếu nại
                           </button>
@@ -675,7 +677,7 @@ export const MyTimesheetPage: React.FC = () => {
               </div>
               <div>
                 <span className="text-ink-muted">Trạng thái ghi nhận:</span>
-                <span className="ml-2 font-semibold text-rose-700">{disputeDay.statusText}</span>
+                <span className="ml-2 font-semibold text-status-danger">{disputeDay.statusText}</span>
               </div>
             </div>
 
@@ -716,7 +718,7 @@ export const MyTimesheetPage: React.FC = () => {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="block text-ink-muted mb-1">Giờ vào <span className="text-rose-500">*</span></span>
+                  <span className="block text-ink-muted mb-1">Giờ vào <span className="text-status-danger">*</span></span>
                   <input
                     type="time"
                     required
@@ -726,7 +728,7 @@ export const MyTimesheetPage: React.FC = () => {
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-ink-muted mb-1">Giờ ra <span className="text-rose-500">*</span></span>
+                  <span className="block text-ink-muted mb-1">Giờ ra <span className="text-status-danger">*</span></span>
                   <input
                     type="time"
                     required
@@ -766,16 +768,16 @@ export const MyTimesheetPage: React.FC = () => {
 
             {disputeKind === 'LEAVE' && (
               <div className={`p-3 rounded-lg border space-y-2 ${
-                selectedLeaveCfg?.requiresAttachment ? 'bg-amber-50 border-amber-200' : 'bg-canvas border-line'
+                selectedLeaveCfg?.requiresAttachment ? 'bg-status-warn-soft border-status-warn-line' : 'bg-canvas border-line'
               }`}>
                 <div className="font-semibold text-ink">
                   Giấy tờ đính kèm
                   {selectedLeaveCfg?.requiresAttachment
-                    ? <span className="text-rose-600"> * (Bắt buộc với {selectedLeaveCfg.name})</span>
+                    ? <span className="text-status-danger"> * (Bắt buộc với {selectedLeaveCfg.name})</span>
                     : <span className="text-ink-muted font-normal"> (tuỳ chọn)</span>}
                 </div>
                 {selectedLeaveCfg?.requiresAttachment && (
-                  <p className="text-[11px] text-amber-800">
+                  <p className="text-[11px] text-status-warn">
                     Loại nghỉ này yêu cầu giấy tờ chứng minh — thiếu giấy tờ thì khiếu nại không gửi được và HR cũng không duyệt được.
                   </p>
                 )}
@@ -798,14 +800,14 @@ export const MyTimesheetPage: React.FC = () => {
             )}
 
             {disputeError && (
-              <div className="p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <div className="p-2.5 rounded bg-status-danger-soft border border-status-danger-line text-status-danger text-xs">
                 ⚠️ {disputeError}
               </div>
             )}
 
             <div>
               <label className="block font-semibold text-ink mb-1">
-                Lý do khiếu nại <span className="text-rose-500">* (Bắt buộc)</span>
+                Lý do khiếu nại <span className="text-status-danger">* (Bắt buộc)</span>
               </label>
               <textarea
                 rows={3}
@@ -827,7 +829,7 @@ export const MyTimesheetPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={!disputeReason.trim() || submittingDispute}
-                className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold shadow-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors"
+                className="px-4 py-2 rounded-lg bg-accent text-on-accent text-xs font-semibold shadow-xs disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors"
               >
                 {submittingDispute ? 'Đang gửi...' : 'Gửi khiếu nại lên HR'}
               </button>
