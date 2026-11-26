@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>S3 · Tuỳ chỉnh thông báo — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 14px; }
+    .wrap { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); max-width: 620px; line-height: 1.5; }
+    .phead .sub b { color: rgb(var(--ink-secondary)); }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { padding: 13px 16px 11px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+    .panel-s { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .panel-b { padding: 14px 16px 16px; }
+
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      padding: 2.5px 8px; border-radius: 6px; }
+    .tag.ok { background: rgb(var(--ok-soft)); color: rgb(var(--ok)); }
+    .tag.warn { background: rgb(var(--warn-soft)); color: rgb(var(--warn)); }
+    .tag.gray { background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .tag.accent { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+
+    /* 2 thẻ số việc chờ */
+    .tasks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .task-card { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px; border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--surface));
+      text-decoration: none; }
+    .task-card:hover { border-color: rgb(var(--accent-line)); background: rgb(var(--accent-soft) / .4); }
+    .task-card .l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .task-card .ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 32px; }
+    .task-card .ic.a { background: rgb(var(--accent-soft)); border: 1px solid rgb(var(--accent-line)); color: rgb(var(--accent-dark)); }
+    .task-card .ic.i { background: rgb(var(--info-soft)); border: 1px solid rgb(var(--info-line)); color: rgb(var(--info)); }
+    .task-card .ic svg { width: 16px; height: 16px; }
+    .task-card .lb { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .task-card .vl { font-size: 14px; font-weight: 700; color: rgb(var(--ink)); margin-top: 1px; }
+
+    /* Quiet hours */
+    .qh { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--canvas)); }
+    .qh .t { font-size: 14px; font-weight: 700; color: rgb(var(--ink)); display: flex; align-items: center; gap: 8px; }
+    .qh .t svg { width: 16px; height: 16px; color: rgb(var(--warn)); }
+    .qh .d { font-size: 12px; color: rgb(var(--ink-muted)); line-height: 1.55; margin-top: 4px; max-width: 620px; }
+    .qh .d b { color: rgb(var(--ink-secondary)); }
+    .switch { width: 44px; height: 24px; border-radius: 999px; background: rgb(var(--line));
+      position: relative; flex: 0 0 44px; }
+    .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+      border-radius: 999px; background: #fff; border: 1px solid rgb(var(--line-hover)); transition: all .18s; }
+    .switch.on { background: rgb(var(--ok)); }
+    .switch.on::after { transform: translateX(20px); border-color: rgb(var(--on-ok)); }
+
+    .times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+      padding: 12px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); }
+    .times label { display: block; font-size: 12px; font-weight: 600; color: rgb(var(--ink-muted)); margin-bottom: 5px; }
+    .times input { width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); color: rgb(var(--ink)); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .limits { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      font-size: 11.5px; color: rgb(var(--ink-muted)); }
+    .limits .li { display: flex; align-items: center; gap: 6px; }
+    .limits input { width: 64px; height: 28px; padding: 0 6px; border-radius: 8px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); color: rgb(var(--ink)); font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: center; }
+
+    /* Ma trận sự kiện */
+    .section-t { display: flex; align-items: center; gap: 6px; font-size: 9.5px; font-weight: 800;
+      letter-spacing: .07em; text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .section-t svg { width: 14px; height: 14px; }
+    .matrix-note { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: -6px; }
+
+    .erow { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 12px 16px; border-bottom: 1px solid rgb(var(--line-soft)); }
+    .erow:last-child { border-bottom: 0; }
+    .erow .l { min-width: 0; }
+    .erow .lb { font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .erow .key { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .chans { display: flex; align-items: center; gap: 18px; flex: 0 0 auto; }
+    .chan { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: rgb(var(--ink-secondary)); }
+    .chan svg { width: 13px; height: 13px; }
+    .chan .gl { color: rgb(var(--accent)); }
+    .chan .ml { color: rgb(var(--info)); }
+    .chan .sp { color: rgb(var(--warn)); }
+    .box { width: 15px; height: 15px; border-radius: 4px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
+    .box.on { background: rgb(var(--accent)); border-color: rgb(var(--accent)); }
+
+    .ibtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; background: rgb(var(--surface));
+      color: rgb(var(--ink-secondary)); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+    .ibtn.primary { background: rgb(var(--accent)); border-color: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+    .ibtn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 4px; line-height: 1.55; }
+    .m-sub b { color: rgb(var(--ink-secondary)); }
+    .m-tasks { display: flex; flex-direction: column; gap: 8px; }
+    .m-task-card { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 11px; border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--surface)); text-decoration: none; }
+    .m-task-card .l { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .m-task-card .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 30px; }
+    .m-task-card .ic svg { width: 15px; height: 15px; }
+    .m-task-card .lb { font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .m-task-card .vl { font-size: 13px; font-weight: 700; color: rgb(var(--ink)); margin-top: 1px; }
+    .m-panel-h { padding: 11px 12px; border-bottom: 1px solid rgb(var(--line)); }
+    .m-panel-b { padding: 11px 12px 13px; }
+    .m-qh { padding: 12px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--canvas)); }
+    .m-qh .t { font-size: 13px; font-weight: 700; color: rgb(var(--ink)); display: flex; align-items: center; gap: 7px; }
+    .m-qh .t svg { width: 15px; height: 15px; color: rgb(var(--warn)); }
+    .m-qh .d { font-size: 11px; color: rgb(var(--ink-muted)); line-height: 1.55; margin-top: 5px; }
+    .m-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
+      padding: 11px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); }
+    .m-times label { display: block; font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); margin-bottom: 4px; }
+    .m-times input { width: 100%; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); color: rgb(var(--ink)); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+    .m-erow { padding: 11px 12px; border-bottom: 1px solid rgb(var(--line-soft)); }
+    .m-erow:last-child { border-bottom: 0; }
+    .m-erow .lb { font-size: 12px; font-weight: 650; color: rgb(var(--ink)); }
+    .m-erow .key { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .m-chans { display: flex; gap: 14px; margin-top: 9px; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+  </style>
+</head>
+<body data-title="S3 · Tuỳ chỉnh thông báo">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">Cài đặt</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Hồ sơ cá nhân</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Tuỳ chỉnh thông báo</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+                  Tuỳ chỉnh cá nhân
+                </div>
+                <h1 class="h1">Tuỳ chỉnh thông báo</h1>
+                <div class="sub">Tắt thông báo mình không quan tâm, giữ lại cái mình cần. <b>Tắt thông báo không làm mất việc</b> — mọi công việc vẫn nằm nguyên trong trang Cần làm.</div>
+              </div>
+              <span class="tag accent">Tự động lưu ngay · Hiệu lực tức thì</span>
+            </div>
+
+            <!-- Số việc chờ theo nhóm -->
+            <div class="tasks">
+              <a class="task-card" href="#">
+                <div class="l">
+                  <div class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.5-6.9A2 2 0 0016.8 4H7.2a2 2 0 00-1.7 1.1z"/></svg></div>
+                  <div>
+                    <div class="lb">Việc của tôi (Personal Actions)</div>
+                    <div class="vl">4 việc đang chờ</div>
+                  </div>
+                </div>
+                <span class="tag ok">Đang hoạt động</span>
+              </a>
+              <a class="task-card" href="#">
+                <div class="l">
+                  <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.9"/><path d="M16 3.1a4 4 0 010 7.8"/></svg></div>
+                  <div>
+                    <div class="lb">Việc tôi phụ trách (Approvals)</div>
+                    <div class="vl">0 việc cần duyệt</div>
+                  </div>
+                </div>
+                <span class="tag accent">Quản lý / HR</span>
+              </a>
+            </div>
+
+            <!-- Khung giờ yên lặng -->
+            <section class="panel">
+              <div class="panel-h">
+                <div class="panel-t">Khung giờ yên lặng</div>
+                <div class="panel-s">Chống spam — không gửi Web Push trong khung giờ nghỉ</div>
+              </div>
+              <div class="panel-b">
+                <div class="qh">
+                  <div>
+                    <div class="t">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+                      Bật chế độ Giờ Yên Lặng (22:00 – 06:00)
+                    </div>
+                    <div class="d">Không gửi Web Push trong khoảng thời gian nghỉ ngơi. <b>Việc quá hạn vẫn nổi badge đếm số</b> trên menu và được gom vào email digest lúc 08:00 sáng hôm sau.</div>
+                  </div>
+                  <div class="switch on"></div>
+                </div>
+                <div class="times" style="margin-top:12px">
+                  <div>
+                    <label>Bắt đầu giờ yên lặng:</label>
+                    <input value="22:00" />
+                  </div>
+                  <div>
+                    <label>Kết thúc giờ yên lặng:</label>
+                    <input value="06:00" />
+                  </div>
+                </div>
+                <div class="limits" style="margin-top:12px">
+                  <span class="li">Giới hạn push tối đa: <input value="100" /> lượt push/ngày</span>
+                  <span class="li">Cửa sổ chống trùng (Dedupe): <input value="0" /> giờ</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Push trên thiết bị -->
+            <section class="panel">
+              <div class="panel-h">
+                <div class="panel-t">Thông báo đẩy trên thiết bị này</div>
+                <div class="panel-s">Nhận thông báo ngay cả khi không mở tab ACT HR</div>
+              </div>
+              <div class="panel-b">
+                <div class="qh" style="align-items:center">
+                  <div class="l" style="display:flex;align-items:center;gap:10px">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:rgb(var(--warn))"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+                    <div>
+                      <div style="font-size:12.5px;font-weight:650;color:rgb(var(--ink))">Thiết bị này chưa bật thông báo đẩy</div>
+                      <div style="font-size:11px;color:rgb(var(--ink-muted));margin-top:2px">0 thiết bị đã đăng ký nhận push</div>
+                    </div>
+                  </div>
+                  <button class="ibtn primary">Bật thông báo đẩy</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Ma trận sự kiện -->
+            <div>
+              <div class="section-t">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+                Ma trận 25 sự kiện × 3 kênh thông báo
+              </div>
+              <div class="matrix-note" style="margin-top:6px">Chỉ hiển thị sự kiện áp dụng cho vai trò của bạn (Nhân viên · Quản lý · HR). Đổi vai trò sẽ thấy thêm sự kiện tương ứng; cấu hình cũ được giữ nguyên.</div>
+            </div>
+
+            <section class="panel">
+              <div class="panel-h">
+                <div class="panel-t">Phân hệ Chấm công &amp; Ca làm việc</div>
+              </div>
+              <div class="erow">
+                <div class="l">
+                  <div class="lb">Chưa check-in khi quá 30 phút</div>
+                  <div class="key">MISSING_CHECKIN</div>
+                </div>
+                <div class="chans">
+                  <span class="chan"><span class="box"></span><span class="gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span>Web</span>
+                  <span class="chan"><span class="box on"></span><span class="ml"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>Email</span>
+                  <span class="chan"><span class="box on"></span><span class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>Push</span>
+                </div>
+              </div>
+              <div class="erow">
+                <div class="l">
+                  <div class="lb">Chưa check-out khi quá 30 phút</div>
+                  <div class="key">MISSING_CHECKOUT</div>
+                </div>
+                <div class="chans">
+                  <span class="chan"><span class="box"></span><span class="gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span>Web</span>
+                  <span class="chan"><span class="box on"></span><span class="ml"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>Email</span>
+                  <span class="chan"><span class="box"></span><span class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>Push</span>
+                </div>
+              </div>
+              <div class="erow">
+                <div class="l">
+                  <div class="lb">Quên chấm công 2 ngày liên tiếp</div>
+                  <div class="key">FORGOT_ATTENDANCE</div>
+                </div>
+                <div class="chans">
+                  <span class="chan"><span class="box"></span><span class="gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span>Web</span>
+                  <span class="chan"><span class="box on"></span><span class="ml"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>Email</span>
+                  <span class="chan"><span class="box"></span><span class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>Push</span>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Tuỳ chỉnh cá nhân</div>
+          <div class="m-h1 h1">Tuỳ chỉnh thông báo</div>
+          <div class="m-sub">Tắt thông báo mình không quan tâm, giữ lại cái mình cần. <b>Tắt thông báo không làm mất việc</b> — việc vẫn nằm trong trang Cần làm.</div>
+        </div>
+
+        <div class="m-tasks">
+          <a class="m-task-card" href="#">
+            <div class="l">
+              <div class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.5-6.9A2 2 0 0016.8 4H7.2a2 2 0 00-1.7 1.1z"/></svg></div>
+              <div>
+                <div class="lb">Việc của tôi</div>
+                <div class="vl">4 việc đang chờ</div>
+              </div>
+            </div>
+            <span class="tag ok">Đang hoạt động</span>
+          </a>
+          <a class="m-task-card" href="#">
+            <div class="l">
+              <div class="ic i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.9"/><path d="M16 3.1a4 4 0 010 7.8"/></svg></div>
+              <div>
+                <div class="lb">Việc tôi phụ trách</div>
+                <div class="vl">0 việc cần duyệt</div>
+              </div>
+            </div>
+            <span class="tag accent">Quản lý / HR</span>
+          </a>
+        </div>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="panel-t" style="font-size:12.5px">Khung giờ yên lặng</div>
+            <div class="panel-s" style="font-size:10.5px">Chống spam — không gửi Web Push trong khung giờ nghỉ</div>
+          </div>
+          <div class="m-panel-b">
+            <div class="m-qh">
+              <div class="t">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+                Bật Giờ Yên Lặng (22:00 – 06:00)
+              </div>
+              <div class="d">Không gửi Web Push trong khoảng thời gian nghỉ ngơi. <b style="color:rgb(var(--ink-secondary))">Việc quá hạn vẫn nổi badge đếm số</b> trên menu và được gom vào email digest 08:00 sáng hôm sau.</div>
+            </div>
+            <div class="m-times" style="margin-top:10px">
+              <div>
+                <label>Bắt đầu:</label>
+                <input value="22:00" />
+              </div>
+              <div>
+                <label>Kết thúc:</label>
+                <input value="06:00" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="panel-t" style="font-size:12.5px">Thông báo đẩy trên thiết bị này</div>
+          </div>
+          <div class="m-panel-b">
+            <div class="m-qh" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:rgb(var(--warn));flex:0 0 15px"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+                <div style="min-width:0">
+                  <div style="font-size:12px;font-weight:650;color:rgb(var(--ink))">Chưa bật thông báo đẩy</div>
+                  <div style="font-size:10.5px;color:rgb(var(--ink-muted));margin-top:2px">0 thiết bị đã đăng ký</div>
+                </div>
+              </div>
+              <button class="ibtn primary" style="height:30px;font-size:11.5px">Bật thông báo đẩy</button>
+            </div>
+          </div>
+        </section>
+
+        <div>
+          <div class="section-t">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+            Ma trận 25 sự kiện × 3 kênh
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="panel-t" style="font-size:12.5px">Phân hệ Chấm công &amp; Ca làm việc</div>
+          </div>
+          <div class="m-erow">
+            <div class="lb">Chưa check-in khi quá 30 phút</div>
+            <div class="key">MISSING_CHECKIN</div>
+            <div class="m-chans">
+              <span class="chan"><span class="box"></span><span class="gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span>Web</span>
+              <span class="chan"><span class="box on"></span><span class="ml"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>Email</span>
+              <span class="chan"><span class="box on"></span><span class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>Push</span>
+            </div>
+          </div>
+          <div class="m-erow">
+            <div class="lb">Chưa check-out khi quá 30 phút</div>
+            <div class="key">MISSING_CHECKOUT</div>
+            <div class="m-chans">
+              <span class="chan"><span class="box"></span><span class="gl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span>Web</span>
+              <span class="chan"><span class="box on"></span><span class="ml"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>Email</span>
+              <span class="chan"><span class="box"></span><span class="sp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>Push</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

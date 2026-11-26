@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
-import { Card } from '../../../components/common/Card';
 import { useAuth } from '../../../context/AuthContext';
 import {
   disablePushOnThisDevice,
@@ -12,9 +11,7 @@ import {
 import {
   Bell,
   Moon,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   RotateCcw,
   Inbox,
   UserCheck,
@@ -240,56 +237,59 @@ export const NotificationPrefsPage: React.FC = () => {
   };
 
   const renderEventRow = ([key, item]: [string, EventPref]) => (
-    <div key={key} className="py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line last:border-0 hover:bg-canvas/40 rounded-lg transition-colors">
+    <div
+      key={key}
+      className="flex flex-col items-start justify-between gap-2.5 border-b border-line-soft px-4 py-3 last:border-b-0 sm:flex-row sm:items-center"
+    >
       <div className="min-w-0 pr-2">
-        <div className="text-xs font-semibold text-ink flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-ink">
           {item.label}
           {roleHint(item.roles) && (
-            <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent-soft text-accent-dark border border-accent-line">
+            <span className="rounded border border-accent-line bg-accent-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent-dark">
               {roleHint(item.roles)}
             </span>
           )}
         </div>
-        <div className="text-[10px] text-ink-muted font-mono mt-0.5">{key}</div>
+        <div className="mt-0.5 font-mono text-[10px] text-ink-muted">{key}</div>
       </div>
 
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex shrink-0 items-center gap-4">
         {/* Web In-App Toggle */}
-        <label className="flex items-center gap-1.5 cursor-pointer text-xs" title="Thông báo trên thanh Header web">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs" title="Thông báo trên thanh Header web">
           <input
             type="checkbox"
             checked={item.web}
             onChange={() => handleToggleEventChannel(key, 'web')}
-            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
+            className="h-3.5 w-3.5 rounded border-line text-accent focus:ring-accent"
           />
-          <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Globe className="w-3 h-3 text-accent" /> Web
+          <span className="flex items-center gap-1 text-[11px] text-ink-secondary">
+            <Globe className="h-3 w-3 text-accent" /> Web
           </span>
         </label>
 
         {/* Email Digest Toggle */}
-        <label className="flex items-center gap-1.5 cursor-pointer text-xs" title="Gom vào Email digest 08:00 sáng">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs" title="Gom vào Email digest 08:00 sáng">
           <input
             type="checkbox"
             checked={item.email}
             onChange={() => handleToggleEventChannel(key, 'email')}
-            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
+            className="h-3.5 w-3.5 rounded border-line text-accent focus:ring-accent"
           />
-          <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Mail className="w-3 h-3 text-status-info" /> Email
+          <span className="flex items-center gap-1 text-[11px] text-ink-secondary">
+            <Mail className="h-3 w-3 text-status-info" /> Email
           </span>
         </label>
 
         {/* Web Push Toggle */}
-        <label className="flex items-center gap-1.5 cursor-pointer text-xs" title="Thông báo đẩy trình duyệt Web Push tức thì">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs" title="Thông báo đẩy trình duyệt Web Push tức thì">
           <input
             type="checkbox"
             checked={item.push}
             onChange={() => handleToggleEventChannel(key, 'push')}
-            className="rounded border-line text-accent focus:ring-accent w-3.5 h-3.5"
+            className="h-3.5 w-3.5 rounded border-line text-accent focus:ring-accent"
           />
-          <span className="text-[11px] text-ink-secondary flex items-center gap-1">
-            <Smartphone className="w-3 h-3 text-status-warn" /> Push
+          <span className="flex items-center gap-1 text-[11px] text-ink-secondary">
+            <Smartphone className="h-3 w-3 text-status-warn" /> Push
           </span>
         </label>
       </div>
@@ -297,61 +297,68 @@ export const NotificationPrefsPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16">
-      {/* Header Banner (Mockup S36) */}
-      <div className="bg-canvas border border-line rounded-2xl p-6 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
-          <Badge variant="accent">Tất cả vai trò</Badge>
-          <span className="text-[11px] text-ink-muted">Tự động lưu ngay · Hiệu lực tức thì</span>
+    <div className="mx-auto w-full max-w-4xl space-y-3.5 px-3 pb-16 sm:px-4">
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Bell className="h-3.5 w-3.5" />
+            Tuỳ chỉnh cá nhân
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Tuỳ chỉnh thông báo
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Tắt thông báo mình không quan tâm, giữ lại cái mình cần.{' '}
+            <strong className="text-ink-secondary">Tắt thông báo không làm mất việc</strong> — mọi công việc
+            vẫn nằm nguyên trong trang Cần làm.
+          </p>
         </div>
-        <h1 className="text-xl font-bold tracking-tight text-ink">Tuỳ Chỉnh Thông Báo Cá Nhân</h1>
-        <p className="text-xs text-ink-muted leading-relaxed">
-          Tắt thông báo mình không quan tâm, giữ lại cái mình cần. <strong>Tắt thông báo KHÔNG làm mất việc</strong> — mọi công việc cần làm vẫn nằm nguyên trong Todo Inbox.
-        </p>
+        <Badge variant="accent" className="shrink-0">Tự động lưu ngay · Hiệu lực tức thì</Badge>
+      </div>
 
-        {/* STATS BANNER: Số việc chờ theo nhóm (Criteria G4-#6) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          <Link
-            to="/todo"
-            className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs hover:border-accent-line hover:bg-accent-soft/40 transition-colors group"
-            title="Mở Todo Inbox"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-accent-soft border border-accent-line flex items-center justify-center text-accent-dark">
-                <Inbox className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-ink-muted">Việc của tôi (Personal Actions)</div>
-                <div className="text-sm font-bold text-ink">{prefs.personalTasksCount} việc đang chờ</div>
-              </div>
+      {/* STATS BANNER: Số việc chờ theo nhóm (Criteria G4-#6) */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <Link
+          to="/todo"
+          className="flex items-center justify-between gap-3 rounded-[13px] border border-line bg-surface p-3 shadow-2xs transition-colors hover:border-accent-line hover:bg-accent-soft/40"
+          title="Mở trang Cần làm"
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent-line bg-accent-soft text-accent-dark">
+              <Inbox className="h-4 w-4" />
             </div>
-            <Badge variant="ok">Đang hoạt động</Badge>
-          </Link>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted">Việc của tôi (Personal Actions)</div>
+              <div className="text-sm font-bold text-ink">{prefs.personalTasksCount} việc đang chờ</div>
+            </div>
+          </div>
+          <Badge variant="ok" className="shrink-0">Đang hoạt động</Badge>
+        </Link>
 
-          <Link
-            to="/attendance/approvals"
-            className="p-3 bg-surface rounded-xl border border-line flex items-center justify-between shadow-2xs hover:border-status-info-line hover:bg-status-info-soft/40 transition-colors group"
-            title="Mở trang Duyệt đơn"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-status-info-soft border border-status-info-line flex items-center justify-center text-status-info">
-                <UserCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] text-ink-muted">Việc tôi phụ trách (Approvals)</div>
-                <div className="text-sm font-bold text-ink">{prefs.approvalTasksCount} việc cần duyệt</div>
-              </div>
+        <Link
+          to="/attendance/approvals"
+          className="flex items-center justify-between gap-3 rounded-[13px] border border-line bg-surface p-3 shadow-2xs transition-colors hover:border-status-info-line hover:bg-status-info-soft/40"
+          title="Mở trang Duyệt đơn"
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-status-info-line bg-status-info-soft text-status-info">
+              <UserCheck className="h-4 w-4" />
             </div>
-            <Badge variant="accent">Quản lý / HR</Badge>
-          </Link>
-        </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted">Việc tôi phụ trách (Approvals)</div>
+              <div className="text-sm font-bold text-ink">{prefs.approvalTasksCount} việc cần duyệt</div>
+            </div>
+          </div>
+          <Badge variant="accent" className="shrink-0">Quản lý / HR</Badge>
+        </Link>
       </div>
 
       {/* TOAST WITH 1-CLICK UNDO (Criteria G4-#7) */}
       {toastMessage && (
-        <div className="p-3.5 bg-status-ok-soft border border-status-ok-line rounded-xl text-status-ok text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="flex animate-in fade-in flex-col items-start justify-between gap-2 rounded-xl border border-status-ok-line bg-status-ok-soft p-3.5 text-xs font-semibold text-status-ok shadow-xs sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-status-ok shrink-0" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-status-ok" />
             <span>{toastMessage}</span>
           </div>
           {previousStateRef.current && (
@@ -362,7 +369,7 @@ export const NotificationPrefsPage: React.FC = () => {
               className="font-bold"
               onClick={handleUndo}
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="h-3 w-3" />
               Hoàn tác (Undo)
             </Button>
           )}
@@ -370,96 +377,101 @@ export const NotificationPrefsPage: React.FC = () => {
       )}
 
       {/* CARD 1: GIỜ YÊN LẶNG (QUIET HOURS - Criteria G4-#3 & G4-#5) */}
-      <Card title="Khung Giờ Yên Lặng (Quiet Hours & Chống Spam)">
-        <div className="space-y-4 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-canvas rounded-xl border border-line">
-            <div className="space-y-1">
-              <div className="font-bold text-sm text-ink flex items-center gap-2">
-                <Moon className="w-4 h-4 text-status-warn" />
+      <Panel title="Khung giờ yên lặng" subtitle="Chống spam — không gửi Web Push trong khung giờ nghỉ">
+        <div className="space-y-3.5 text-xs">
+          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-line bg-canvas p-3.5 sm:flex-row sm:items-center">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-bold text-ink">
+                <Moon className="h-4 w-4 shrink-0 text-status-warn" />
                 Bật chế độ Giờ Yên Lặng ({prefs.quietHoursStart} – {prefs.quietHoursEnd})
               </div>
-              <p className="text-ink-muted text-xs leading-relaxed max-w-xl">
-                Không gửi Web Push trong khoảng thời gian nghỉ ngơi. <strong>Việc quá hạn vẫn nổi badge đếm số</strong> trên menu và được gom vào email digest lúc 08:00 sáng hôm sau.
+              <p className="max-w-xl leading-relaxed text-ink-muted">
+                Không gửi Web Push trong khoảng thời gian nghỉ ngơi.{' '}
+                <strong className="text-ink-secondary">Việc quá hạn vẫn nổi badge đếm số</strong> trên menu và
+                được gom vào email digest lúc 08:00 sáng hôm sau.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
               <input
                 type="checkbox"
                 checked={prefs.quietHoursEnabled}
                 onChange={handleToggleQuietHours}
                 className="sr-only peer"
+                aria-label="Bật chế độ giờ yên lặng"
               />
               <div className="w-11 h-6 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-line-hover after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-status-ok" />
             </label>
           </div>
 
           {prefs.quietHoursEnabled && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-surface rounded-xl border border-line text-xs">
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-line bg-surface p-3 text-xs sm:grid-cols-2">
               <div>
-                <label className="block text-ink-muted mb-1 font-medium">Bắt đầu giờ yên lặng:</label>
+                <label htmlFor="qh-start" className="mb-1 block font-medium text-ink-muted">Bắt đầu giờ yên lặng:</label>
                 <input
+                  id="qh-start"
                   type="text"
                   value={prefs.quietHoursStart}
                   onChange={(e) => handleChangeQuietTime('quietHoursStart', e.target.value)}
-                  className="w-full p-2 rounded-lg border border-line bg-canvas text-ink font-mono"
+                  className="w-full rounded-[10px] border border-line bg-canvas p-2 font-mono text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
                   placeholder="21:00"
                 />
               </div>
               <div>
-                <label className="block text-ink-muted mb-1 font-medium">Kết thúc giờ yên lặng:</label>
+                <label htmlFor="qh-end" className="mb-1 block font-medium text-ink-muted">Kết thúc giờ yên lặng:</label>
                 <input
+                  id="qh-end"
                   type="text"
                   value={prefs.quietHoursEnd}
                   onChange={(e) => handleChangeQuietTime('quietHoursEnd', e.target.value)}
-                  className="w-full p-2 rounded-lg border border-line bg-canvas text-ink font-mono"
+                  className="w-full rounded-[10px] border border-line bg-canvas p-2 font-mono text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
                   placeholder="07:00"
                 />
               </div>
             </div>
           )}
 
-          <div className="text-[11px] text-ink-muted flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1">
+          <div className="flex flex-col items-start justify-between gap-2 pt-0.5 text-[11px] text-ink-muted sm:flex-row sm:items-center">
             <label className="flex items-center gap-1.5">
-              • Giới hạn push tối đa:
+              Giới hạn push tối đa:
               <input
                 type="number"
                 min={0}
                 max={50}
                 value={prefs.maxPushPerDay}
                 onChange={(e) => handleChangeNumber('maxPushPerDay', e.target.value)}
-                className="w-16 p-1 rounded border border-line bg-canvas text-ink font-mono text-center"
+                className="w-16 rounded border border-line bg-canvas p-1 text-center font-mono text-ink focus:border-accent focus:outline-none"
                 aria-label="Số lượt push tối đa mỗi ngày"
               />
               lượt push/ngày
             </label>
             <label className="flex items-center gap-1.5">
-              • Cửa sổ chống trùng (Dedupe):
+              Cửa sổ chống trùng (Dedupe):
               <input
                 type="number"
                 min={0}
                 max={50}
                 value={prefs.dedupeHours}
                 onChange={(e) => handleChangeNumber('dedupeHours', e.target.value)}
-                className="w-16 p-1 rounded border border-line bg-canvas text-ink font-mono text-center"
+                className="w-16 rounded border border-line bg-canvas p-1 text-center font-mono text-ink focus:border-accent focus:outline-none"
                 aria-label="Số giờ chống trùng thông báo"
               />
               giờ
             </label>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* Thiết bị nhận Web Push (S36) */}
-      <Card title="Thông Báo Đẩy Trên Thiết Bị Này">
-        <div className="space-y-3 text-xs">
-          <p className="text-ink-secondary leading-relaxed">
-            Bật Web Push để nhận thông báo ngay cả khi không mở tab ACT Pulse.
+      <Panel title="Thông báo đẩy trên thiết bị này" subtitle="Nhận thông báo ngay cả khi không mở tab ACT HR">
+        <div className="space-y-2.5 text-xs">
+          <p className="leading-relaxed text-ink-secondary">
+            Bật Web Push để nhận thông báo ngay cả khi không mở tab ACT HR.
             Trong giờ yên lặng hoặc khi vượt hạn mức push/ngày, thông báo được dồn vào email digest 08:00.
           </p>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-canvas rounded-xl border border-line">
-            <div className="flex items-center gap-2.5">
-              <Smartphone className="w-4 h-4 text-status-warn" />
-              <div>
+          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-line bg-canvas p-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Smartphone className="h-4 w-4 shrink-0 text-status-warn" />
+              <div className="min-w-0">
                 <div className="font-semibold text-ink">
                   {pushOnThisDevice ? 'Thiết bị này đang nhận thông báo đẩy' : 'Thiết bị này chưa bật thông báo đẩy'}
                 </div>
@@ -473,61 +485,79 @@ export const NotificationPrefsPage: React.FC = () => {
               variant={pushOnThisDevice ? 'outline' : 'primary'}
               disabled={pushBusy || !pushSupported || (!pushOnThisDevice && !pushPublicKey)}
               onClick={pushOnThisDevice ? handleDisablePush : handleEnablePush}
+              className="shrink-0"
             >
               {pushBusy ? 'Đang xử lý…' : pushOnThisDevice ? 'Tắt trên thiết bị này' : 'Bật thông báo đẩy'}
             </Button>
           </div>
           {!pushSupported && (
-            <div className="text-[11px] text-status-warn bg-status-warn-soft border border-status-warn-line rounded-lg p-2">
+            <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2 text-[11px] text-status-warn">
               Trình duyệt này không hỗ trợ Web Push — thông báo trong ứng dụng và email vẫn hoạt động.
             </div>
           )}
           {pushMsg && (
-            <div className="text-[11px] text-ink-secondary bg-surface border border-line rounded-lg p-2">{pushMsg}</div>
+            <div className="rounded-lg border border-line bg-surface p-2 text-[11px] text-ink-secondary">{pushMsg}</div>
           )}
         </div>
-      </Card>
+      </Panel>
 
       {/* CARD 2: BẬT/TẮT THEO TỪNG LOẠI SỰ KIỆN × KÊNH (Criteria G4-#1 & G4-#2) */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Bell className="w-4 h-4 text-status-ok" />
-          Ma Trận {Object.keys(prefs.events).length} Sự Kiện × 3 Kênh Thông Báo
-        </h2>
-        <p className="text-[11px] text-ink-muted">
+      <div className="space-y-3">
+        <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
+          <Bell className="h-3.5 w-3.5" />
+          Ma trận {Object.keys(prefs.events).length} sự kiện × 3 kênh thông báo
+        </div>
+        <p className="-mt-1 text-[11px] text-ink-muted">
           Chỉ hiển thị sự kiện áp dụng cho vai trò của bạn (Nhân viên · Quản lý · HR). Đổi vai trò
           sẽ thấy thêm sự kiện tương ứng; cấu hình cũ được giữ nguyên.
         </p>
 
         {/* Nhóm 1: Chấm công */}
-        <Card title="Phân Hệ Chấm Công & Ca Làm Việc">
-          <div className="divide-y divide-line/60">
+        <Panel title="Phân hệ Chấm công & Ca làm việc">
+          <div className="-mx-4">
             {attendanceEvents.map(renderEventRow)}
           </div>
-        </Card>
+        </Panel>
 
         {/* Nhóm 2: Đơn từ & Phép */}
-        <Card title="Phân Hệ Đơn Từ & Nghỉ Phép">
-          <div className="divide-y divide-line/60">
+        <Panel title="Phân hệ Đơn từ & Nghỉ phép">
+          <div className="-mx-4">
             {requestEvents.map(renderEventRow)}
           </div>
-        </Card>
+        </Panel>
 
         {/* Nhóm 3: OKR */}
-        <Card title="Phân Hệ Mục Tiêu & Đánh Giá OKR">
-          <div className="divide-y divide-line/60">
+        <Panel title="Phân hệ Mục tiêu & Đánh giá OKR">
+          <div className="-mx-4">
             {okrEvents.map(renderEventRow)}
           </div>
-        </Card>
+        </Panel>
 
         {/* Nhóm 4: Bảng công & Quản trị */}
-        <Card title="Bảng Công & Quản Trị Hệ Thống">
-          <div className="divide-y divide-line/60">
+        <Panel title="Bảng công & Quản trị hệ thống">
+          <div className="-mx-4">
             {systemEvents.map(renderEventRow)}
           </div>
-        </Card>
+        </Panel>
       </div>
-
     </div>
   );
 };
+
+/**
+ * Panel dùng chung — header tiêu đề + mô tả, thân padding 14–16px. Khác `Card` cũ ở
+ * chỗ viền bo 13px và header tách viền, khớp mockup `.panel`.
+ */
+const Panel: React.FC<{
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}> = ({ title, subtitle, children }) => (
+  <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+    <div className="border-b border-line px-4 py-3">
+      <div className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">{title}</div>
+      {subtitle && <div className="mt-0.5 text-[11px] text-ink-muted">{subtitle}</div>}
+    </div>
+    <div className="p-4">{children}</div>
+  </div>
+);

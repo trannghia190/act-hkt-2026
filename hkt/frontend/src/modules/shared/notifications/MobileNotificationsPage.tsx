@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, ArrowRight, Settings, Search, Trash2 } from 'lucide-react';
-import { Badge } from '../../../components/common/Badge';
+import { CheckCircle2, ArrowRight, BellRing, Inbox, Settings, Search, Trash2 } from 'lucide-react';
 import { Button } from '../../../components/common/Button';
 
 interface MobileNotifItem {
@@ -212,51 +211,60 @@ export const MobileNotificationsPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-3 pb-12 sm:px-4 lg:max-w-5xl">
-      {/* Top Banner (Mockup S04m) */}
-      <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 shadow-2xs space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant="accent">Trung tâm thông báo</Badge>
-          <button
-            type="button"
-            onClick={() => navigate('/account/notifications')}
-            className="text-xs text-ink-muted hover:text-accent flex items-center gap-1 cursor-pointer font-medium shrink-0"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            Cài đặt
-          </button>
+    <div className="mx-auto w-full max-w-5xl space-y-3.5 px-3 pb-12 sm:px-4">
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <BellRing className="h-3.5 w-3.5" />
+            Trung tâm thông báo
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Thông báo &amp; nhắc việc
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Hệ thống gửi tự động qua 3 kênh: Trong web · Email digest 08:00 · Web Push
+          </p>
         </div>
-        <h1 className="text-lg sm:text-xl font-bold text-ink">Thông Báo &amp; Nhắc Việc</h1>
-        <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-          Thông báo được hệ thống gửi tự động qua 3 kênh: Trong web · Email digest 08:00 · Web Push.
-        </p>
+
+        <Button
+          variant="outline"
+          size="md"
+          onClick={() => navigate('/account/notifications')}
+          className="shrink-0"
+        >
+          <Settings className="h-3.5 w-3.5" />
+          Cài đặt thông báo
+        </Button>
       </div>
 
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="p-3 bg-status-ok-soft border border-status-ok-line rounded-xl text-status-ok text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
-          <CheckCircle2 className="w-4 h-4 text-status-ok" />
+        <div className="flex animate-in fade-in items-center gap-2 rounded-xl border border-status-ok-line bg-status-ok-soft p-3 text-xs font-semibold text-status-ok shadow-2xs">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-status-ok" />
           {toastMsg}
         </div>
       )}
 
-      {/* Search Bar & Event Filter */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      {/* Bộ lọc — tìm kiếm + nhóm sự kiện */}
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Tìm theo tiêu đề, nội dung..."
-            className="w-full pl-8 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
+            aria-label="Tìm thông báo"
+            className="w-full rounded-[10px] border border-line bg-surface py-2 pl-8 pr-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-full sm:w-64 px-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent cursor-pointer"
+          className="w-full cursor-pointer rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 sm:w-56"
           title="Lọc theo nhóm sự kiện"
+          aria-label="Lọc theo nhóm sự kiện"
         >
           <option value="ALL">Tất cả nhóm sự kiện</option>
           {categoryOptions.map((opt) => (
@@ -265,30 +273,34 @@ export const MobileNotificationsPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Filter Tabs & Quick Action */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="flex gap-2 text-xs font-semibold">
+      {/* Chip lọc trạng thái + Đọc tất cả */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveFilter('ALL')}
-            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors cursor-pointer ${
+            aria-pressed={activeFilter === 'ALL'}
+            className={`inline-flex h-[31px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
               activeFilter === 'ALL'
-                ? 'bg-ink border-ink text-canvas'
-                : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
+                ? 'border-ink bg-ink text-canvas'
+                : 'border-line bg-surface text-ink-secondary hover:border-line-hover'
             }`}
           >
-            Tất cả ({totalCount})
+            Tất cả
+            <span className="font-mono text-[10.5px] opacity-65">{totalCount}</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveFilter('UNREAD')}
-            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors cursor-pointer ${
+            aria-pressed={activeFilter === 'UNREAD'}
+            className={`inline-flex h-[31px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
               activeFilter === 'UNREAD'
-                ? 'bg-ink border-ink text-canvas'
-                : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
+                ? 'border-ink bg-ink text-canvas'
+                : 'border-line bg-surface text-ink-secondary hover:border-line-hover'
             }`}
           >
-            Chưa đọc ({unreadCount})
+            Chưa đọc
+            <span className="font-mono text-[10.5px] opacity-65">{unreadCount}</span>
           </button>
         </div>
 
@@ -296,70 +308,74 @@ export const MobileNotificationsPage: React.FC = () => {
           <button
             type="button"
             onClick={handleMarkAllRead}
-            className="text-[11px] text-accent hover:underline font-semibold cursor-pointer"
+            className="ml-auto cursor-pointer text-[11.5px] font-semibold text-accent hover:underline"
           >
             Đọc tất cả
           </button>
         )}
       </div>
 
-      {/* Notification List */}
-      <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+      {/* Danh sách thông báo */}
+      <div className="grid gap-2.5 md:grid-cols-2">
         {loading && items.length === 0 ? (
-          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted shadow-2xs md:col-span-2">
+          <div className="rounded-[13px] border border-line bg-surface p-10 text-center text-xs text-ink-muted shadow-2xs md:col-span-2">
             Đang tải thông báo…
           </div>
         ) : items.length === 0 ? (
-          <div className="p-10 text-center bg-surface border border-line rounded-2xl text-xs text-ink-muted space-y-2 shadow-2xs md:col-span-2">
-            <div className="text-2xl">🎉</div>
-            <div className="font-semibold text-ink">Hộp thông báo trống</div>
-            <p>Bạn đã đọc hết mọi thông báo và nhắc việc.</p>
+          <div className="rounded-[13px] border border-line bg-surface p-10 text-center shadow-2xs md:col-span-2">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-status-ok-soft text-status-ok">
+              <Inbox className="h-5 w-5" />
+            </div>
+            <div className="mt-3 text-[13px] font-semibold text-ink">Hộp thông báo trống</div>
+            <p className="mt-1 text-xs text-ink-muted">Bạn đã đọc hết mọi thông báo và nhắc việc.</p>
           </div>
         ) : (
           items.map((item) => (
             <div
               key={item.id}
               onClick={() => handleClickItem(item)}
-              className={`p-4 rounded-xl border bg-surface transition-all cursor-pointer shadow-2xs hover:border-line-focus space-y-2.5 ${
+              className={`flex min-w-0 cursor-pointer flex-col gap-2 rounded-[13px] border bg-surface p-3.5 shadow-2xs transition-colors hover:border-line-hover ${
                 !item.read
                   ? item.kind === 'urgent'
-                    ? 'border-status-danger-line bg-status-danger-soft/50'
+                    ? 'border-status-danger-line bg-status-danger-soft/40'
                     : item.kind === 'warn'
-                      ? 'border-status-warn-line bg-status-warn-soft/50'
+                      ? 'border-status-warn-line bg-status-warn-soft/40'
                       : 'border-accent-line bg-accent-soft/30'
                   : 'border-line opacity-75'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${
-                      item.kind === 'urgent'
-                        ? 'bg-status-danger animate-pulse'
+              <div className="flex min-w-0 items-start gap-2">
+                <span
+                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                    item.read
+                      ? 'bg-ink-muted'
+                      : item.kind === 'urgent'
+                        ? 'bg-status-danger'
                         : item.kind === 'warn'
                           ? 'bg-status-warn'
                           : 'bg-accent'
-                    }`}
-                  />
-                  <h3 className="font-bold text-xs text-ink leading-tight">{item.title}</h3>
-                </div>
-                <span className="text-[10px] font-mono text-ink-muted shrink-0">{item.timestamp}</span>
+                  }`}
+                />
+                {/* min-w-0 để tiêu đề dài xuống dòng thay vì đẩy card ra ngoài lưới */}
+                <h3 className="min-w-0 break-words text-[12.5px] font-bold leading-tight text-ink">{item.title}</h3>
+                <span className="ml-auto shrink-0 whitespace-nowrap font-mono text-[10px] text-ink-muted">{item.timestamp}</span>
               </div>
 
-              <p className="text-xs text-ink-secondary leading-relaxed pl-4">{item.detail}</p>
+              <p className="break-words pl-4 text-[11.5px] leading-relaxed text-ink-secondary">{item.detail}</p>
 
-              <div className="pt-2 pl-4 flex items-center justify-between border-t border-line/60">
-                <span className="text-[10px] font-mono text-ink-muted">
+              <div className="flex min-w-0 items-center justify-between gap-2 border-t border-line-soft pl-4 pt-2">
+                <span className="min-w-0 truncate font-mono text-[10px] text-ink-muted">
                   # {eventLabels[item.eventKey] || LEGACY_TYPE_LABELS[item.eventKey] || item.eventKey}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <button
                     type="button"
                     onClick={(e) => handleDeleteNotification(item.id, e)}
-                    className="p-1 text-ink-muted hover:text-status-danger transition-colors cursor-pointer"
-                    title="Xóa thông báo"
+                    className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-line text-ink-muted transition-colors hover:border-status-danger-line hover:text-status-danger"
+                    title="Xoá thông báo"
+                    aria-label={`Xoá thông báo: ${item.title}`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                   {item.actionUrl && (
                     <Button
@@ -370,8 +386,8 @@ export const MobileNotificationsPage: React.FC = () => {
                         handleClickItem(item);
                       }}
                     >
-                      <span>{item.actionLabel || 'Xử lý ngay'}</span>
-                      <ArrowRight className="w-3 h-3 ml-1" />
+                      {item.actionLabel || 'Xử lý ngay'}
+                      <ArrowRight className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
@@ -394,11 +410,10 @@ export const MobileNotificationsPage: React.FC = () => {
       )}
 
       {/* Footer Info */}
-      <div className="text-[11px] text-ink-muted text-center pt-2 space-y-1">
-        <div>Tắt thông báo không làm mất việc khỏi trang <strong>"Cần làm"</strong>.</div>
-        <div>Badge số việc luôn đồng bộ theo thời gian thực.</div>
+      <div className="pt-1 text-center text-[11px] text-ink-muted">
+        Tắt thông báo không làm mất việc khỏi trang <strong className="text-ink-secondary">Cần làm</strong> —
+        badge số việc luôn đồng bộ theo thời gian thực.
       </div>
-
     </div>
   );
 };

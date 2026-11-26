@@ -42,8 +42,8 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | 🟡 | ⬜ | ⬜ |
-| S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ⬜ | ⬜ | ⬜ |
-| S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ⬜ | ⬜ | ⬜ |
+| S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ✅ | ✅ | ✅ |
+| S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ⬜ | ⬜ | ⬜ |
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ⬜ | ⬜ | ⬜ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ⬜ | ⬜ | ⬜ |
@@ -276,4 +276,38 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   **ngay** (`data-theme` + localStorage) và **lưu DB** (`GET /auth/profile` trả về
   `bento-studio`); reload vẫn giữ theme; `aria-pressed` đúng ô đang chọn; form sửa hồ
   sơ mở với tên hiện tại; 4 đích điều hướng bảo mật đúng; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **S2 · Thông báo & nhắc việc** ✅ (2026-11-27) — mockup `screens/notifications.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `MobileNotificationsPage`: banner cũ
+  (`bg-canvas` bo 16px + badge "Trung tâm thông báo") → **đầu trang eyebrow + `h1`
+  "Thông báo & nhắc việc" + sub**, nút "Cài đặt thông báo" ở góc phải dẫn
+  `/account/notifications` (trước chỉ có chữ "Cài đặt" nhỏ); bộ lọc gộp 1 hàng (ô
+  tìm kiếm có icon + select nhóm sự kiện, cao 38px bo 10px); **chip lọc pill 31px**
+  đúng spec design system (đang chọn `bg-ink text-canvas`, đếm bằng font-mono) +
+  nút "Đọc tất cả" — trước là 2 chip tròn + nút chữ đỏ lệch hẳn; **thẻ thông báo**
+  bo 13px, chấm trạng thái đỏ/hổ phách/xám theo mức độ, tiêu đề `break-words` +
+  `min-w-0` để **không đẩy card ra ngoài lưới ở 390px** (trước card rộng 415px
+  trong cột 338px → nút "Xử lý ngay" bị cắt); nút xoá thành **ô vuông 28px có
+  viền** (trước là icon trần) kèm `aria-label`; empty state **bỏ emoji 🎉** → icon
+  `Inbox` trong vòng tròn xanh; footer gộp 2 dòng thành 1 dòng. Không đổi nghiệp vụ:
+  cùng API `/notifications` + `mark-all-read` + `DELETE /notifications/{id}`, cùng
+  lọc / tìm kiếm / phân trang. Verify: 3 theme × 320/360/390/414/768/1024/1440
+  không tràn ngang, 0 lỗi JS, 0 request 4xx/5xx; chip đếm khớp header API (489 tổng /
+  173 chưa đọc); lọc "Chưa đọc" gửi `unread=true`, "Tất cả" gửi `unread=false`, tìm
+  kiếm gửi `q=`; số thẻ = số item API trả về.
+- **S3 · Tuỳ chỉnh thông báo** ✅ (2026-11-27) — mockup `screens/notification-prefs.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `NotificationPrefsPage`: banner cũ →
+  **đầu trang eyebrow + `h1` "Tuỳ chỉnh thông báo" + sub** (nhấn mạnh "tắt thông
+  báo không làm mất việc") + badge "Tự động lưu ngay · Hiệu lực tức thì"; 2 thẻ số
+  việc chờ lên dạng card 13px có icon ô vuông bo 9px; các `Card` → **panel mới**
+  (header tách viền, bo 13px, body 14–16px) với tiêu đề viết gọn ("Khung giờ yên
+  lặng" / "Thông báo đẩy trên thiết bị này"); **ma trận sự kiện** dùng tab header
+  9.5px uppercase `font-extrabold` theo spec, dòng sự kiện có đường kẻ
+  `border-line-soft` và 3 toggle Web · Email · Push **giữ nguyên hành vi**; input
+  giờ yên lặng có `id` + `htmlFor` + focus ring accent. Không đổi nghiệp vụ: cùng
+  API `/notifications/preferences` GET/PUT, **lưu ngay không cần bấm Lưu**, có nút
+  **Hoàn tác 1 click**, chỉ hiện sự kiện theo vai trò. Verify: 3 theme ×
+  320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS, 0 request 4xx/5xx; số
+  toggle = 3 × 25 sự kiện API trả về; đổi 1 toggle → **lưu thẳng DB** và hiện nút
+  Hoàn tác; bấm Hoàn tác → DB trở lại giá trị cũ; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
