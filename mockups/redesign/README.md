@@ -10,6 +10,23 @@ cd mockups/redesign && python3 -m http.server 8899
 # mở http://localhost:8899/index.html
 ```
 
+## Public ra internet
+
+```bash
+./scripts/share-mockup.sh          # foreground (Ctrl+C để tắt)
+./scripts/share-mockup.sh daemon   # chạy nền, sống sau khi đóng terminal
+./scripts/share-mockup.sh url      # in URL hiện tại
+./scripts/share-mockup.sh stop     # tắt
+```
+
+Script tự chọn provider theo thứ tự **ngrok → cloudflare**, và tự chuyển sang
+cloudflare nếu ngrok bị 403 (hết quota tháng).
+
+> **Lưu ý về máy này:** tài khoản ngrok đã **hết quota tháng** — tunnel vẫn mở
+> được nhưng mọi request trả `403 ERR_NGROK_727`. Script tự phát hiện và chuyển
+> provider. Muốn dùng ngrok thật sự thì cần nạp thêm credit tại
+> https://dashboard.ngrok.com/billing.
+
 ## Ba hướng thiết kế
 
 | | Hướng | Tóm tắt | Khi nào chọn |
