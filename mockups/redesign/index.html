@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACT HR — Modern UI Directions (Ascend Technology)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   ACT HR — 3 hướng thiết kế hiện đại
+   Brand: Ascend Technology (đỏ #E31D1A / xám #6E6F72)
+   ================================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{
+  margin:0;background:#0d0d0f;color:#e8e8ea;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,h5{margin:0;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+p{margin:0}
+ul{margin:0;padding:0;list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;border:0;background:none;cursor:pointer}
+img{display:block;max-width:100%}
+code{font-family:'JetBrains Mono',monospace;font-size:.86em}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ---------- TOP NAV của trang mockup ---------- */
+.mocknav{
+  position:sticky;top:0;z-index:999;background:rgba(13,13,15,.86);
+  backdrop-filter:blur(16px) saturate(180%);
+  border-bottom:1px solid rgba(255,255,255,.09);
+}
+.mocknav-in{max-width:1360px;margin:0 auto;padding:0 28px;height:64px;display:flex;align-items:center;gap:28px}
+.mocknav-brand{display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;letter-spacing:-.02em}
+.mocknav-brand img{height:26px;width:auto}
+.mocknav-brand .tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:#8b8b93;border:1px solid rgba(255,255,255,.16);border-radius:5px;padding:2px 6px;letter-spacing:.04em}
+.mocknav-links{display:flex;gap:2px;margin-left:auto}
+.mocknav-links a{
+  font-size:13px;font-weight:500;color:#a0a0a8;padding:7px 12px;border-radius:8px;
+  transition:color .16s,background .16s;
+}
+.mocknav-links a:hover{color:#fff;background:rgba(255,255,255,.06)}
+
+/* ---------- HERO của trang mockup ---------- */
+.mockhero{max-width:1360px;margin:0 auto;padding:72px 28px 56px}
+.mockhero .eyebrow{
+  display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#ff6b63;
+  border:1px solid rgba(227,29,26,.34);background:rgba(227,29,26,.1);
+  padding:5px 11px;border-radius:999px;margin-bottom:24px;
+}
+.mockhero h1{font-size:clamp(34px,5vw,54px);font-weight:800;letter-spacing:-.035em;line-height:1.06;max-width:16ch}
+.mockhero h1 em{font-style:normal;color:#ff5a52}
+.mockhero p{color:#9b9ba3;font-size:16px;max-width:62ch;margin-top:20px;line-height:1.65}
+.mockhero-stats{display:flex;flex-wrap:wrap;gap:32px;margin-top:36px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08)}
+.mockhero-stats div{display:flex;flex-direction:column;gap:3px}
+.mockhero-stats b{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;color:#fff}
+.mockhero-stats span{font-size:12px;color:#77777f}
+
+/* ---------- KHỐI HƯỚNG THIẾT KẾ ---------- */
+.dir{
+  max-width:1360px;margin:0 auto;padding:88px 28px;
+}
+.dir-head{display:flex;gap:22px;align-items:flex-start;margin-bottom:38px}
+.dir-num{
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:.04em;
+  width:40px;height:40px;flex:0 0 40px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(140deg,#E31D1A,#ff5f56);color:#fff;box-shadow:0 6px 18px rgba(227,29,26,.34);
+}
+.dir-head h2{font-size:29px;font-weight:800;letter-spacing:-.03em;color:#fff}
+.dir-head p{color:#91919a;font-size:14.5px;margin-top:7px;max-width:80ch;line-height:1.6}
+.dir-swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.sw{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#a5a5ad;
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 9px;background:rgba(255,255,255,.03)}
+.sw i{width:13px;height:13px;border-radius:4px;display:block}
+.sw b{color:#dcdce1;font-weight:500}
+
+.dir-note{
+  margin-top:26px;border:1px solid rgba(255,255,255,.1);border-left:3px solid #E31D1A;
+  background:rgba(255,255,255,.025);border-radius:12px;padding:16px 20px;
+}
+.dir-note h4{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#ff6b63;font-family:'JetBrains Mono',monospace;font-weight:600;margin-bottom:9px}
+.dir-note ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:7px 26px}
+.dir-note li{font-size:13.5px;color:#a8a8b0;padding-left:16px;position:relative;line-height:1.55}
+.dir-note li::before{content:'';position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:#E31D1A}
+
+/* ---------- KHUNG MOCKUP ---------- */
+.frame{
+  border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4);
+  background:#fff;position:relative;
+}
+.frame-label{
+  display:flex;align-items:center;gap:9px;padding:10px 16px;
+  background:linear-gradient(180deg,#1b1b1f,#141417);border-bottom:1px solid rgba(255,255,255,.08);
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#8e8e97;letter-spacing:.02em;
+}
+.frame-label .dots{display:flex;gap:6px;margin-right:6px}
+.frame-label .dots i{width:10px;height:10px;border-radius:50%;display:block;background:#33333a}
+.frame-label .dots i:first-child{background:#E31D1A}
+.frame-label b{color:#d4d4da;font-weight:500}
+
+.frames2{display:grid;grid-template-columns:1fr;gap:26px}
+.frames2.pair{grid-template-columns:1fr 1fr}
+@media(max-width:1180px){.frames2,.frames2.pair{grid-template-columns:1fr}}
+
+/* ================================================================
+   SHARED APP PRIMITIVES (dùng lại cho cả 3 hướng)
+   ================================================================ */
+.app{display:flex;min-height:720px;background:#fff;color:var(--sd-ink)}
+
+/* Sidebar */
+.side{
+  width:252px;flex:0 0 252px;display:flex;flex-direction:column;
+  border-right:1px solid var(--sd-line);background:var(--sd-bg);color:var(--sd-ink);
+}
+.side-brand{
+  height:66px;display:flex;align-items:center;gap:10px;padding:0 18px;
+  border-bottom:1px solid var(--sd-line);flex:0 0 66px;
+}
+.side-brand img{height:26px;width:auto}
+.side-brand .mark{height:30px;width:30px;flex:0 0 30px}
+.side-brand .sb-txt{display:flex;flex-direction:column;line-height:1.15}
+.side-brand .sb-txt b{font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;font-weight:800;letter-spacing:-.02em}
+.side-brand .sb-txt span{font-size:9.5px;color:var(--sd-muted);letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.side-scroll{flex:1;overflow-y:auto;padding:14px 12px 18px}
+.side-scroll::-webkit-scrollbar{width:5px}
+.side-scroll::-webkit-scrollbar-thumb{background:var(--sd-line);border-radius:9px}
+.sgroup{margin-bottom:16px}
+.sgroup-t{
+  font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--sd-muted);padding:0 10px;margin-bottom:7px;
+}
+.sitem{
+  display:flex;align-items:center;gap:10px;padding:7.5px 10px;border-radius:9px;
+  font-size:13.5px;font-weight:500;color:var(--sd-ink-2);cursor:pointer;
+  transition:background .14s,color .14s;position:relative;
+}
+.sitem:hover{background:var(--sd-hover);color:var(--sd-ink)}
+.sitem.on{background:var(--sd-active-bg);color:var(--sd-active-ink);font-weight:600}
+.sitem.on::before{
+  content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;border-radius:0 3px 3px 0;background:var(--brand);
+}
+.sitem svg{width:17px;height:17px;flex:0 0 17px;stroke-width:1.9;opacity:.85}
+.sitem.on svg{opacity:1}
+.sitem .badge{
+  margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  min-width:19px;height:19px;padding:0 5px;border-radius:6px;display:grid;place-items:center;
+  background:var(--sd-badge-bg);color:var(--sd-badge-ink);
+}
+.sitem .sc-id{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--sd-muted)}
+.side-foot{padding:12px;border-top:1px solid var(--sd-line)}
+.side-user{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;transition:background .14s}
+.side-user:hover{background:var(--sd-hover)}
+.avatar{
+  width:32px;height:32px;border-radius:9px;flex:0 0 32px;display:grid;place-items:center;
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:12px;color:#fff;
+  background:linear-gradient(140deg,#3f3f46,#18181b);
+}
+.avatar.red{background:linear-gradient(140deg,#C21815,#8A0F0C)}
+.su-txt{min-width:0;flex:1}
+.su-txt b{display:block;font-size:12.5px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.su-txt span{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--sd-muted)}
+
+/* Main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--mc-bg);color:var(--sd-ink)}
+.topbar{
+  height:66px;flex:0 0 66px;display:flex;align-items:center;gap:14px;padding:0 24px;
+  border-bottom:1px solid var(--sd-line);background:var(--top-bg);backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:20;
+}
+.search{
+  display:flex;align-items:center;gap:9px;height:36px;padding:0 12px;min-width:250px;
+  border:1px solid var(--sd-line);border-radius:10px;background:var(--sd-bg);
+  color:var(--sd-muted);font-size:13px;cursor:pointer;transition:border-color .15s,box-shadow .15s;
+}
+.search:hover{border-color:var(--sd-line-strong);box-shadow:0 0 0 3px var(--focus-ring)}
+.search svg{width:15px;height:15px}
+.search kbd{
+  margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;
+  border:1px solid var(--sd-line);border-radius:5px;background:var(--sd-hover);color:var(--sd-muted);
+}
+.tb-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.iconbtn{
+  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;cursor:pointer;
+  color:var(--sd-ink-2);border:1px solid transparent;transition:background .14s,color .14s,border-color .14s;
+  position:relative;
+}
+.iconbtn:hover{background:var(--sd-hover);color:var(--sd-ink)}
+.iconbtn svg{width:18px;height:18px;stroke-width:1.9}
+.iconbtn .dot{
+  position:absolute;top:5px;right:5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+  background:var(--brand);color:var(--brand-dot-ink,#fff);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  display:grid;place-items:center;border:2px solid var(--top-bg);
+}
+.tb-div{width:1px;height:22px;background:var(--sd-line)}
+.btn-ghost{
+  height:36px;padding:0 13px;border-radius:10px;display:flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:550;color:var(--sd-ink-2);border:1px solid var(--sd-line);
+  background:var(--sd-bg);cursor:pointer;transition:background .14s,border-color .14s,color .14s;
+}
+.btn-ghost:hover{background:var(--sd-hover);color:var(--sd-ink);border-color:var(--sd-line-strong)}
+.btn-ghost svg{width:15px;height:15px;stroke-width:2}
+
+.content{flex:1;padding:26px 28px 34px;overflow-y:auto;background:var(--mc-bg)}
+.content::-webkit-scrollbar{width:8px}
+.content::-webkit-scrollbar-thumb{background:var(--sd-line);border-radius:9px}
+
+/* Page head */
+.phead{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.phead h3{font-size:23px;font-weight:700;letter-spacing:-.028em}
+.phead .sub{font-size:13px;color:var(--sd-muted);margin-top:4px}
+.phead .right{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+
+.btn{
+  height:36px;padding:0 15px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+  font-family:'Inter',sans-serif;
+}
+.btn svg{width:15px;height:15px;stroke-width:2.2}
+.btn-primary{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(227,29,26,.24),0 4px 12px rgba(227,29,26,.2)}
+.dir-c .btn-primary{color:#1A0B0A}
+.btn-primary:hover{background:var(--brand-h);box-shadow:0 2px 4px rgba(227,29,26,.28),0 8px 20px rgba(227,29,26,.26)}
+.btn-sec{background:var(--sd-bg);color:var(--sd-ink);border:1px solid var(--sd-line);box-shadow:var(--sh-1)}
+.btn-sec:hover{background:var(--sd-hover);border-color:var(--sd-line-strong)}
+.btn-quiet{color:var(--sd-ink-2)}
+.btn-quiet:hover{background:var(--sd-hover);color:var(--sd-ink)}
+
+/* Chips */
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
+.chip{
+  height:31px;padding:0 13px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;
+  font-size:12.5px;font-weight:550;color:var(--sd-ink-2);border:1px solid var(--sd-line);
+  background:var(--sd-bg);cursor:pointer;transition:all .14s;
+}
+.chip:hover{border-color:var(--sd-line-strong);background:var(--sd-hover)}
+.chip.on{background:var(--sd-ink);border-color:var(--sd-ink);color:#fff}
+.chip .n{font-family:'JetBrains Mono',monospace;font-size:10.5px;opacity:.65}
+
+/* Section */
+.sect{margin-bottom:26px}
+.sect-h{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.sect-h .bar{width:3px;height:15px;border-radius:2px;background:var(--brand)}
+.sect-h h4{font-size:13px;font-weight:700;letter-spacing:-.01em;text-transform:uppercase;color:var(--sd-ink)}
+.sect-h .cnt{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;
+  background:var(--brand-soft);color:var(--brand-ink);border-radius:6px;padding:2px 6px;
+}
+.sect-h .more{margin-left:auto;font-size:12px;color:var(--sd-muted);cursor:pointer;font-weight:500}
+.sect-h .more:hover{color:var(--brand)}
+
+/* Task card */
+.task{
+  background:var(--card-bg);border:1px solid var(--sd-line);border-radius:13px;
+  padding:14px 16px;margin-bottom:9px;display:flex;gap:13px;align-items:flex-start;
+  transition:border-color .15s,box-shadow .15s,transform .15s;cursor:pointer;
+  box-shadow:var(--sh-1);
+}
+.task:hover{border-color:var(--sd-line-strong);box-shadow:var(--sh-2);transform:translateY(-1px)}
+.task-ico{
+  width:36px;height:36px;flex:0 0 36px;border-radius:10px;display:grid;place-items:center;
+}
+.task-ico svg{width:17px;height:17px;stroke-width:2}
+.task-body{flex:1;min-width:0}
+.task-body h5{font-family:'Inter',sans-serif;font-size:13.8px;font-weight:600;letter-spacing:-.012em;line-height:1.35}
+.task-body p{font-size:12.5px;color:var(--sd-muted);margin-top:3px;line-height:1.45}
+.task-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;align-items:center}
+.tag{
+  font-size:11px;font-weight:600;padding:2.5px 8px;border-radius:6px;letter-spacing:.01em;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.tag-red{background:var(--brand-soft);color:var(--brand-ink)}
+.tag-amber{background:#FEF4E6;color:#9A5B00}
+.tag-green{background:#E8F6EE;color:#116A3A}
+.tag-gray{background:#F0F0F2;color:#5C5C66}
+.tag-blue{background:#EAF0FE;color:#1D4ED8}
+.task-act{
+  display:flex;align-items:center;gap:8px;flex:0 0 auto;align-self:center;
+}
+.task-act .btn{height:32px;padding:0 12px;font-size:12.5px;border-radius:9px}
+.task-act .more{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--sd-muted);cursor:pointer}
+.task-act .more:hover{background:var(--sd-hover);color:var(--sd-ink)}
+.task-act .more svg{width:16px;height:16px}
+
+/* Two-column: list + rail panel */
+.split{display:grid;grid-template-columns:1fr 296px;gap:20px;align-items:start}
+@media(max-width:1080px){.split{grid-template-columns:1fr}}
+.panel{
+  background:var(--card-bg);border:1px solid var(--sd-line);border-radius:14px;
+  box-shadow:var(--sh-1);overflow:hidden;
+}
+.panel-h{
+  padding:13px 16px;border-bottom:1px solid var(--sd-line);display:flex;align-items:center;gap:9px;
+}
+.panel-h h4{font-family:'Inter',sans-serif;font-size:13px;font-weight:650}
+.panel-h .x{margin-left:auto;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;cursor:pointer;color:var(--sd-muted)}
+.panel-h .x:hover{background:var(--sd-hover);color:var(--sd-ink)}
+.panel-h .x svg{width:15px;height:15px}
+.panel-b{padding:14px 16px}
+.leave-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px dashed var(--sd-line)}
+.leave-row:last-child{border-bottom:0;padding-bottom:0}
+.leave-row:first-child{padding-top:0}
+.lv{
+  width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+}
+.lv svg{width:17px;height:17px}
+.lv-txt b{display:block;font-size:13px;font-weight:600;letter-spacing:-.01em}
+.lv-txt span{display:block;font-size:11.5px;color:var(--sd-muted)}
+.lv-val{margin-left:auto;text-align:right}
+.lv-val b{display:block;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;letter-spacing:-.02em}
+.lv-val span{display:block;font-size:10.5px;color:var(--sd-muted)}
+.neg{color:var(--danger)}
+.pos{color:var(--ok)}
+
+/* Mini stat row */
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat{
+  background:var(--card-bg);border:1px solid var(--sd-line);border-radius:13px;padding:14px 15px;
+  box-shadow:var(--sh-1);position:relative;overflow:hidden;
+}
+.stat .lbl{font-size:11.5px;font-weight:600;color:var(--sd-muted);display:flex;align-items:center;gap:6px}
+.stat .lbl svg{width:13px;height:13px}
+.stat .val{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.035em;margin-top:7px;line-height:1}
+.stat .val small{font-size:13px;font-weight:600;color:var(--sd-muted);letter-spacing:0}
+.stat .delta{margin-top:6px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:4px}
+.stat .delta svg{width:12px;height:12px}
+
+/* Progress bar */
+.pbar{height:6px;border-radius:99px;background:var(--sd-hover);overflow:hidden;margin-top:10px}
+.pbar i{display:block;height:100%;border-radius:99px;background:var(--brand)}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{
+  text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--sd-muted);padding:9px 12px;border-bottom:1px solid var(--sd-line);white-space:nowrap;
+}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--sd-line);color:var(--sd-ink-2)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:var(--sd-hover)}
+.tbl .num{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:-.02em}
+
+/* ================================================================
+   HƯỚNG A — ASCEND CLEAN (light, white rail, đỏ brand)
+   ================================================================ */
+.dir-a{
+  --brand:#E31D1A;--brand-h:#C21815;--brand-ink:#C21815;--brand-soft:#FDECEA;--brand-line:#F8C8C4;
+  --sd-bg:#FFFFFF;--sd-ink:#17171A;--sd-ink-2:#4A4A52;--sd-muted:#6B6C6F;
+  --sd-line:#ECECEF;--sd-line-strong:#D9D9DF;--sd-hover:#F6F6F8;
+  --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
+  --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
+  --mc-bg:#FAFAFB;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.82);
+  --focus-ring:rgba(227,29,26,.13);--sh-1:0 1px 2px rgba(20,20,25,.04);--sh-2:0 4px 14px rgba(20,20,25,.07),0 1px 2px rgba(20,20,25,.04);
+  --ok:#116A3A;--warn:#9A5B00;--danger:#B42318;--info:#1D4ED8;
+}
+.dir-a .side{background:#fff}
+.dir-a .sitem.on::before{left:-12px}
+.dir-a .topbar{background:rgba(255,255,255,.85)}
+.dir-a .task-ico.t-red{background:#FDECEA;color:#C21815}
+.dir-a .task-ico.t-amber{background:#FEF4E6;color:#9A5B00}
+.dir-a .task-ico.t-green{background:#E8F6EE;color:#116A3A}
+.dir-a .task-ico.t-blue{background:#EAF0FE;color:#1D4ED8}
+.dir-a .task-ico.t-gray{background:#F0F0F2;color:#5C5C66}
+.dir-a .lv.l-red{background:#FDECEA;color:#C21815}
+.dir-a .lv.l-green{background:#E8F6EE;color:#116A3A}
+.dir-a .lv.l-blue{background:#EAF0FE;color:#1D4ED8}
+.dir-a .lv.l-gray{background:#F0F0F2;color:#5C5C66}
+.dir-a .stat .lbl svg{color:var(--brand)}
+
+/* ================================================================
+   HƯỚNG B — MIDNIGHT RAIL (dark rail + light canvas)
+   ================================================================ */
+.dir-b{
+  --brand:#E31D1A;--brand-h:#C21815;--brand-ink:#C21815;--brand-soft:#FDECEA;--brand-line:#F8C8C4;
+  --mc-bg:#F7F7F9;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.84);
+  --focus-ring:rgba(227,29,26,.14);--sh-1:0 1px 2px rgba(20,20,25,.05);--sh-2:0 6px 18px rgba(20,20,25,.09),0 1px 2px rgba(20,20,25,.04);
+  --ok:#116A3A;--warn:#9A5B00;--danger:#B42318;--info:#1D4ED8;
+}
+/* Rail tối — token riêng, KHÔNG rò sang vùng nội dung */
+.dir-b .side{
+  --sd-bg:#101114;--sd-ink:#F4F4F6;--sd-ink-2:#B9B9C2;--sd-muted:#8A9099;
+  --sd-line:#212127;--sd-line-strong:#2E2E36;--sd-hover:#1A1A20;
+  --sd-active-bg:rgba(227,29,26,.16);--sd-active-ink:#FF6B63;
+  --sd-badge-bg:#24242C;--sd-badge-ink:#B9B9C2;
+}
+/* Vùng nội dung sáng (kể cả màn đăng nhập) */
+.dir-b .app{
+  --sd-bg:#FFFFFF;--sd-ink:#17171A;--sd-ink-2:#4A4A52;--sd-muted:#6B6C6F;
+  --sd-line:#E6E6EA;--sd-line-strong:#D5D5DC;--sd-hover:#F4F4F6;
+  --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
+  --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
+}
+.dir-b .side{border-right:0}
+.dir-b .side-brand{border-bottom-color:var(--sd-line)}
+.dir-b .side-brand img{filter:none}
+.dir-b .sitem.on::before{background:var(--brand)}
+.dir-b .side .sitem .badge{background:rgba(227,29,26,.2);color:#FF8078}
+.dir-b .topbar{border-bottom-color:#E6E6EA}
+.dir-b .task-ico.t-red{background:#FDECEA;color:#C21815}
+.dir-b .task-ico.t-amber{background:#FEF4E6;color:#9A5B00}
+.dir-b .task-ico.t-green{background:#E8F6EE;color:#116A3A}
+.dir-b .task-ico.t-blue{background:#EAF0FE;color:#1D4ED8}
+.dir-b .task-ico.t-gray{background:#F0F0F2;color:#5C5C66}
+.dir-b .lv.l-red{background:#FDECEA;color:#C21815}
+.dir-b .lv.l-green{background:#E8F6EE;color:#116A3A}
+.dir-b .lv.l-blue{background:#EAF0FE;color:#1D4ED8}
+.dir-b .lv.l-gray{background:#F0F0F2;color:#5C5C66}
+
+/* ================================================================
+   HƯỚNG C — BENTO STUDIO (full dark, bento grid)
+   ================================================================ */
+.dir-c{
+  --brand:#FF5147;--brand-h:#FF6A61;--brand-ink:#FF8078;--brand-dot-ink:#1A0B0A;--brand-soft:rgba(255,81,71,.14);--brand-line:rgba(255,81,71,.32);
+  --sd-bg:#0C0D10;--sd-ink:#F2F3F5;--sd-ink-2:#B4B7BE;--sd-muted:#8A9099;
+  --sd-line:#1E2026;--sd-line-strong:#2B2E36;--sd-hover:#15171C;
+  --sd-active-bg:rgba(255,81,71,.15);--sd-active-ink:#FF8078;
+  --sd-badge-bg:#1E2026;--sd-badge-ink:#B4B7BE;
+  --mc-bg:#0C0D10;--card-bg:#141519;--top-bg:rgba(12,13,16,.86);
+  --focus-ring:rgba(255,81,71,.18);
+  --sh-1:0 1px 2px rgba(0,0,0,.3);--sh-2:0 8px 24px rgba(0,0,0,.42);
+  --ok:#3DD68C;--warn:#F5A524;--danger:#FF6B63;--info:#7AA5FF;
+}
+.dir-c .side{background:#0A0B0E}
+.dir-c .side-brand img{filter:none}
+.dir-c .topbar{border-bottom-color:var(--sd-line)}
+.dir-c .content{background:#0C0D10}
+.dir-c .task{background:#141519;border-color:#1E2026}
+.dir-c .task:hover{border-color:#33363F;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.dir-c .panel{background:#141519;border-color:#1E2026}
+.dir-c .pbar{background:#22252C}
+.dir-c .tbl th{border-bottom-color:#1E2026}
+.dir-c .tbl td{border-bottom-color:#191B20}
+.dir-c .tbl tbody tr:hover{background:#17191F}
+.dir-c .task-ico.t-red{background:rgba(255,81,71,.14);color:#FF8078}
+.dir-c .task-ico.t-amber{background:rgba(245,165,36,.14);color:#F5A524}
+.dir-c .task-ico.t-green{background:rgba(61,214,140,.14);color:#3DD68C}
+.dir-c .task-ico.t-blue{background:rgba(122,165,255,.14);color:#7AA5FF}
+.dir-c .task-ico.t-gray{background:#1E2026;color:#9AA0AA}
+.dir-c .lv.l-red{background:rgba(255,81,71,.14);color:#FF8078}
+.dir-c .lv.l-green{background:rgba(61,214,140,.14);color:#3DD68C}
+.dir-c .lv.l-blue{background:rgba(122,165,255,.14);color:#7AA5FF}
+.dir-c .lv.l-gray{background:#1E2026;color:#9AA0AA}
+.dir-c .avatar{background:linear-gradient(140deg,#C21815,#7A0E0B)}
+.dir-c .tag-amber{background:rgba(245,165,36,.14);color:#F5A524}
+.dir-c .tag-green{background:rgba(61,214,140,.14);color:#3DD68C}
+.dir-c .tag-gray{background:#1E2026;color:#9AA0AA}
+.dir-c .tag-blue{background:rgba(122,165,255,.14);color:#7AA5FF}
+.dir-c .chip.on{background:#F2F3F5;border-color:#F2F3F5;color:#0C0D10}
+.dir-c .btn-sec{background:#17191E;border-color:#262931;color:#E6E7EA}
+.dir-c .btn-sec:hover{background:#1C1F25;border-color:#33363F}
+.dir-c .btn-quiet:hover{background:#17191E}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.bento > *{min-width:0}
+.b-card{
+  background:var(--card-bg);border:1px solid var(--sd-line);border-radius:16px;
+  padding:16px 18px;position:relative;overflow:hidden;box-shadow:var(--sh-1);
+  display:flex;flex-direction:column;
+}
+.b-card .b-h{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.b-card .b-h h4{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:650;letter-spacing:-.01em}
+.b-card .b-h svg{width:15px;height:15px;color:var(--brand)}
+.b-card .b-h .more{margin-left:auto;color:var(--sd-muted);cursor:pointer;display:flex}
+.b-card .b-h .more svg{width:15px;height:15px;color:var(--sd-muted)}
+.b-kpi{font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1}
+.b-kpi small{font-size:14px;font-weight:600;color:var(--sd-muted);letter-spacing:0}
+.b-sub{font-size:11.5px;color:var(--sd-muted);margin-top:5px}
+.spark{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:12px}
+.spark i{flex:1;border-radius:2px 2px 0 0;background:var(--brand);opacity:.28;min-height:3px}
+.spark i.hot{opacity:1}
+.b-list{display:flex;flex-direction:column;gap:9px}
+.b-list li{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--sd-ink-2)}
+.b-list li .dot{width:6px;height:6px;border-radius:50%;background:var(--brand);flex:0 0 6px}
+.b-list li .r{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--sd-muted)}
+.donut{
+  width:80px;height:80px;border-radius:50%;flex:0 0 80px;display:grid;place-items:center;position:relative;
+}
+.donut::after{content:'';position:absolute;inset:10px;background:var(--card-bg);border-radius:50%}
+.donut span{position:relative;z-index:1;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.03em}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--sd-ink-2);min-width:0}
+.legend div{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.legend i{width:8px;height:8px;border-radius:2.5px;display:block}
+.legend b{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;padding-left:6px}
+
+/* OKR progress rows */
+.okr-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sd-line)}
+.okr-row:last-child{border-bottom:0}
+.okr-row .t{flex:1;min-width:0}
+.okr-row .t b{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.okr-row .t .pbar{margin-top:6px}
+.okr-row .v{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;flex:0 0 auto}
+
+/* Footer note */
+.foot{max-width:1360px;margin:0 auto;padding:60px 28px 100px;color:#77777f;font-size:13px;text-align:center;line-height:1.7}
+.foot b{color:#a5a5ad}
+@media(max-width:900px){
+  /* Khung mockup là bản desktop — cho phép cuộn ngang để không bị cắt nội dung */
+  .frame{overflow-x:auto;overflow-y:hidden}
+  .frame > .app{min-width:1040px}
+}
+@media(max-width:820px){
+  .mocknav-in{padding:0 16px;gap:12px}
+  .mocknav-links{display:none}
+  .mockhero,.dir,.foot{padding-left:16px;padding-right:16px}
+  .dir{padding-top:56px;padding-bottom:56px}
+  .split{grid-template-columns:1fr}
+  .stats3{grid-template-columns:1fr 1fr}
+  .bento{grid-template-columns:repeat(6,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TOP NAV ═══════════════ -->
+<nav class="mocknav">
+  <div class="mocknav-in">
+    <div class="mocknav-brand">
+      <img src="assets/ascend_logo_2_white.png" alt="Ascend Technology">
+      <span class="tag">UI/UX</span>
+    </div>
+    <div class="mocknav-links">
+      <a href="#direction-a">A · Ascend Clean</a>
+      <a href="#direction-b">B · Midnight Rail</a>
+      <a href="#direction-c">C · Bento Studio</a>
+      <a href="#palette">Palette</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="mockhero">
+  <div class="eyebrow"><span style="width:6px;height:6px;border-radius:50%;background:#E31D1A;display:block"></span> ACT HR · 2026</div>
+  <h1>Giao diện mới cho <em>ACT HR</em> — hiện đại hơn, chuyên nghiệp hơn</h1>
+  <p>
+    Ba hướng thiết kế mới dựa trên nhận diện <b style="color:#d4d4da">Ascend Technology</b> (đỏ #E31D1A + xám #6E6F72).
+    Mỗi hướng giữ nguyên toàn bộ nghiệp vụ hiện có (Cần làm · Chấm công · OKR · HR) nhưng thay đổi ngôn ngữ thị giác:
+    typography, spacing, màu, shadow, cấu trúc thông tin và cách logo được đặt trong sản phẩm.
+  </p>
+  <div class="mockhero-stats">
+    <div><b>3</b><span>Hướng thiết kế</span></div>
+    <div><b>6</b><span>Màn hình minh hoạ</span></div>
+    <div><b>Ascend</b><span>Brand color #E31D1A</span></div>
+    <div><b>Inter + Plus Jakarta</b><span>Type system</span></div>
+    <div><b>Token</b><span>Tailwind-ready</span></div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════
+     HƯỚNG A — ASCEND CLEAN
+     ═══════════════════════════════════════════════ -->
+<section class="dir dir-a" id="direction-a">
+  <div class="dir-head">
+    <div class="dir-num">A</div>
+    <div>
+      <h2>Ascend Clean</h2>
+      <p>
+        Hướng "an toàn" — giữ cấu trúc điều hướng dọc nhưng chuyển sang nền sáng, sidebar trắng, viền hairline mảnh,
+        bo góc 10–13px, shadow nhẹ một tầng. Đỏ Ascend dùng có kiểm soát: active nav, nút chính, badge quá hạn.
+        Đây là hướng "đọc được ngay" — phù hợp nhất nếu cần an toàn cho hội đồng giám khảo và người dùng thực tế.
+      </p>
+      <div class="dir-swatches">
+        <span class="sw"><i style="background:#E31D1A"></i>Brand <b>#E31D1A</b></span>
+        <span class="sw"><i style="background:#C21815"></i>Brand hover <b>#C21815</b></span>
+        <span class="sw"><i style="background:#FDECEA"></i>Brand soft <b>#FDECEA</b></span>
+        <span class="sw"><i style="background:#17171A"></i>Ink <b>#17171A</b></span>
+        <span class="sw"><i style="background:#FAFAFB"></i>Canvas <b>#FAFAFB</b></span>
+        <span class="sw"><i style="background:#ECECEF"></i>Line <b>#ECECEF</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="frames2">
+    <!-- A1: Cần làm -->
+    <div class="frame">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>ACT HR</b> — Cần làm · Nhân viên</div>
+      <div class="app">
+        <!-- Sidebar -->
+        <aside class="side">
+          <div class="side-brand">
+            <img src="assets/ascend_lockup.png" alt="Ascend" style="height:30px;width:auto;flex:0 0 auto">
+            <div class="sb-txt"><b>ACT HR</b><span>Ascend Tech</span></div>
+          </div>
+          <div class="side-scroll">
+            <div class="sgroup">
+              <div class="sgroup-t">Hôm nay</div>
+              <a class="sitem on">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Cần làm <span class="badge">5</span>
+              </a>
+              <a class="sitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Thông báo <span class="badge">171</span>
+              </a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Chấm công</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg>Chấm công<span class="sc-id">S05</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn của tôi<span class="badge">123</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công<span class="sc-id">S06</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Lịch nhóm<span class="sc-id">S14</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Số dư phép<span class="sc-id">S09</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi<span class="sc-id">S11</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">OKR</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Tổng quan OKR<span class="sc-id">S20</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>OKR của tôi<span class="badge">1</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Cá nhân</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>Hồ sơ cá nhân<span class="sc-id">S29</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Tuỳ chỉnh thông báo<span class="sc-id">S36</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>Thiết bị của tôi<span class="sc-id">S27</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Passkey &amp; bảo mật<span class="sc-id">S28m</span></a>
+            </div>
+          </div>
+          <div class="side-foot">
+            <div class="side-user">
+              <div class="avatar red">VL</div>
+              <div class="su-txt"><b>Vũ Văn Luân</b><span>136ACT · EMPLOYEE</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main -->
+        <div class="main">
+          <div class="topbar">
+            <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+            <div class="tb-actions">
+              <button class="btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Gmail</button>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">99+</span></button>
+              <div class="tb-div"></div>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="phead">
+              <div>
+                <h3>Cần làm</h3>
+                <div class="sub">Thứ Năm, 26/11/2026 · 10:45 sáng</div>
+              </div>
+              <div class="right">
+                <button class="btn btn-sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M7 12h10M11 18h2"/></svg>Lọc theo</button>
+                <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>Tạo đơn</button>
+              </div>
+            </div>
+
+            <div class="chips">
+              <span class="chip on">Tất cả <span class="n">5</span></span>
+              <span class="chip">Việc cần làm tôi <span class="n">3</span></span>
+              <span class="chip">Quá hạn <span class="n">2</span></span>
+              <span class="chip">Hôm nay <span class="n">2</span></span>
+            </div>
+
+            <div class="split">
+              <div>
+                <div class="sect">
+                  <div class="sect-h"><span class="bar"></span><h4>Quá hạn</h4><span class="cnt">2</span><span class="more">Xem tất cả</span></div>
+                  <div class="task">
+                    <div class="task-ico t-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+                    <div class="task-body">
+                      <h5>Bạn có 2 đơn bị từ chối cần phản hồi kịp giờ</h5>
+                      <p>Admin đã từ chối 2 đơn của bạn — cần phản hồi lại hoặc tạo đơn mới.</p>
+                      <div class="task-meta"><span class="tag tag-red">Đơn bị từ chối</span><span class="tag tag-gray">Hết hạn 26/11</span></div>
+                    </div>
+                    <div class="task-act"><button class="btn btn-primary">Xem đơn bị từ chối</button><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                  </div>
+                  <div class="task">
+                    <div class="task-ico t-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                    <div class="task-body">
+                      <h5>Quá hạn bổ sung chấm công ngày 20/11</h5>
+                      <p>2021-11-20 đã quá hạn bổ sung — bị tính nghỉ tự động, bạn có thể tham gia tranh chấp.</p>
+                      <div class="task-meta"><span class="tag tag-red">Quá hạn 1 ngày</span><span class="tag tag-gray">Chấm công</span></div>
+                    </div>
+                    <div class="task-act"><button class="btn btn-sec">Liên hệ HQ</button><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                  </div>
+                </div>
+
+                <div class="sect">
+                  <div class="sect-h"><span class="bar" style="background:#14804A"></span><h4>Hôm nay</h4><span class="cnt" style="background:#E8F6EE;color:#116A3A">2</span><span class="more">Xem tất cả</span></div>
+                  <div class="task">
+                    <div class="task-ico t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/><path d="M12 6v6l4 2"/></svg></div>
+                    <div class="task-body">
+                      <h5>Chấm công việc cả hôm nay (Ca 08:00 – 17:00)</h5>
+                      <p>Check-in và muộn hơn khoảng 15 phút so với ca — vui lòng điều chỉnh nếu cần.</p>
+                      <div class="task-meta"><span class="tag tag-green">Chấm công</span><span class="tag tag-gray">Hôm nay, 09:36</span></div>
+                    </div>
+                    <div class="task-act"><button class="btn btn-primary">Chấm công</button><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                  </div>
+                  <div class="task">
+                    <div class="task-ico t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+                    <div class="task-body">
+                      <h5>Bổ sung chấm công cho 3 ngày còn thiếu</h5>
+                      <p>2021/11/23 chưa có bản ghi chấm công, bạn cần bổ sung trước 26/11.</p>
+                      <div class="task-meta"><span class="tag tag-green">Bổ sung công</span><span class="tag tag-gray">Hạn 26/11</span></div>
+                    </div>
+                    <div class="task-act"><button class="btn btn-sec">Bổ sung công</button><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                  </div>
+                </div>
+
+                <div class="sect">
+                  <div class="sect-h"><span class="bar" style="background:#1D4ED8"></span><h4>Lưu ý</h4><span class="cnt" style="background:#EAF0FE;color:#1D4ED8">1</span></div>
+                  <div class="task">
+                    <div class="task-ico t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+                    <div class="task-body">
+                      <h5>Số phiếu nhận hiện tại của bạn còn 41.50 ngày</h5>
+                      <p>Bạn còn phải nhận báo cáo từ dữ liệu chấm công trước ngày 23/11 với 3105 hàng dữ liệu.</p>
+                      <div class="task-meta"><span class="tag tag-blue">Phép năm</span><span class="tag tag-gray">Thông tin tổng hợp</span></div>
+                    </div>
+                    <div class="task-act"><button class="btn btn-sec">Xem Số Phép</button><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel phải -->
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div class="panel">
+                  <div class="panel-h">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;color:#E31D1A"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                    <h4>Phép còn lại</h4>
+                  </div>
+                  <div class="panel-b">
+                    <div class="leave-row">
+                      <div class="lv l-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div>
+                      <div class="lv-txt"><b>Phép năm 2026</b><span>Quỹ phép năm</span></div>
+                      <div class="lv-val"><b class="neg">-10.5</b><span>ngày</span></div>
+                    </div>
+                    <div class="leave-row">
+                      <div class="lv l-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                      <div class="lv-txt"><b>Phép tổng</b><span>Cộng bù theo ngày onboard</span></div>
+                      <div class="lv-val"><b class="pos">+41.5</b><span>ngày</span></div>
+                    </div>
+                    <div class="leave-row">
+                      <div class="lv l-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                      <div class="lv-txt"><b>Thâm niên</b><span>Tính từ ngày onboard</span></div>
+                      <div class="lv-val"><b>1.2</b><span>năm</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <div class="panel-h">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;color:#14804A"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                    <h4>Tóm tắt tuần</h4>
+                  </div>
+                  <div class="panel-b">
+                    <div class="stats3" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+                      <div class="stat" style="border:0;box-shadow:none;padding:0">
+                        <div class="lbl">Đủ công</div>
+                        <div class="val">4<small>/5</small></div>
+                        <div class="delta pos">+1 vs tuần trước</div>
+                      </div>
+                      <div class="stat" style="border:0;box-shadow:none;padding:0">
+                        <div class="lbl">Tổng giờ</div>
+                        <div class="val">38<small>h</small></div>
+                        <div class="delta" style="color:var(--sd-muted)">TB 7.6h/ngày</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A2: OKR Dashboard -->
+    <div class="frame">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>ACT HR</b> — Tổng quan OKR · Quản lý</div>
+      <div class="app">
+        <aside class="side">
+          <div class="side-brand">
+            <img src="assets/ascend_lockup.png" alt="Ascend" style="height:30px;width:auto;flex:0 0 auto">
+            <div class="sb-txt"><b>ACT HR</b><span>Ascend Tech</span></div>
+          </div>
+          <div class="side-scroll">
+            <div class="sgroup">
+              <div class="sgroup-t">Hôm nay</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm<span class="badge">5</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Thông báo<span class="badge">171</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Chấm công</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg>Chấm công<span class="sc-id">S05</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn của tôi<span class="badge">123</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công<span class="sc-id">S06</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Số dư phép<span class="sc-id">S09</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">OKR</div>
+              <a class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Tổng quan OKR<span class="sc-id">S20</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>OKR của tôi<span class="badge">1</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Quản lý</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>Duyệt đơn<span class="badge">8</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Duyệt OKR<span class="sc-id">S42</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Review OKR nhóm<span class="sc-id">S24</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">HR</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công &amp; chốt<span class="sc-id">S15</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>Khiếu nại<span class="badge">4</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Nhân viên<span class="sc-id">S40</span></a>
+            </div>
+          </div>
+          <div class="side-foot">
+            <div class="side-user">
+              <div class="avatar red">VL</div>
+              <div class="su-txt"><b>Vũ Văn Luân</b><span>136ACT · MANAGER</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+            <div class="tb-actions">
+              <button class="btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Gmail</button>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">99+</span></button>
+              <div class="tb-div"></div>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="phead">
+              <div>
+                <h3>Tổng quan OKR</h3>
+                <div class="sub">Chu kỳ Q4 2026 · Phase 2 — Check-in &amp; Tự đánh giá · Cập nhật 26/11/2026</div>
+              </div>
+              <div class="right">
+                <button class="btn btn-sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M7 12h10M11 18h2"/></svg>Bộ lọc</button>
+                <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>Tạo OKR</button>
+              </div>
+            </div>
+
+            <div class="stats3">
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>Tiến độ chung</div>
+                <div class="val">68<small>%</small></div>
+                <div class="delta pos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17 17 7M9 7h8v8"/></svg>+12% so với tuần trước</div>
+                <div class="pbar"><i style="width:68%"></i></div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Đã check-in</div>
+                <div class="val">42<small>/58</small></div>
+                <div class="delta" style="color:var(--sd-muted)">16 người chưa check-in</div>
+                <div class="pbar"><i style="width:72%;background:#116A3A"></i></div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>At risk</div>
+                <div class="val">5<small> KR</small></div>
+                <div class="delta" style="color:#9A5B00">Cần review trong 3 ngày</div>
+                <div class="pbar"><i style="width:24%;background:#9A5B00"></i></div>
+              </div>
+            </div>
+
+            <div class="split">
+              <div class="panel">
+                <div class="panel-h">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;color:#E31D1A"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>
+                  <h4>Tiến độ theo mục tiêu</h4>
+                  <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sd-muted)">Q4 2026</span>
+                </div>
+                <div class="panel-b">
+                  <div class="okr-row">
+                    <div class="t"><b>Tăng tốc độ onboarding nhân viên mới xuống 3 ngày</b><div class="pbar"><i style="width:82%"></i></div></div>
+                    <div class="v" style="color:#116A3A">82%</div>
+                  </div>
+                  <div class="okr-row">
+                    <div class="t"><b>Đưa tỷ lệ chấm công đúng giờ lên 95%</b><div class="pbar"><i style="width:74%"></i></div></div>
+                    <div class="v">74%</div>
+                  </div>
+                  <div class="okr-row">
+                    <div class="t"><b>Hoàn thiện hệ thống đánh giá OKR 3 phase</b><div class="pbar"><i style="width:61%"></i></div></div>
+                    <div class="v">61%</div>
+                  </div>
+                  <div class="okr-row">
+                    <div class="t"><b>Giảm thời gian xử lý khiếu nại xuống 24 giờ</b><div class="pbar"><i style="width:45%"></i></div></div>
+                    <div class="v" style="color:#9A5B00">45%</div>
+                  </div>
+                  <div class="okr-row">
+                    <div class="t"><b>Tự động hoá quy trình duyệt phép</b><div class="pbar"><i style="width:28%;background:#9A5B00"></i></div></div>
+                    <div class="v" style="color:#9A5B00">28%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div class="panel">
+                  <div class="panel-h">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;color:#E31D1A"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <h4>Việc cần duyệt</h4><span class="cnt" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;background:#FDECEA;color:#C21815;border-radius:6px;padding:2px 6px">8</span>
+                  </div>
+                  <div class="panel-b">
+                    <ul class="b-list">
+                      <li><span class="dot"></span>3 đơn nghỉ chờ duyệt<span class="r">Hôm nay</span></li>
+                      <li><span class="dot"></span>2 OKR chờ duyệt nội dung<span class="r">2h</span></li>
+                      <li><span class="dot"></span>2 bản chấm công cần đối chiếu<span class="r">26/11</span></li>
+                      <li><span class="dot"></span>1 yêu cầu đổi ca<span class="r">27/11</span></li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="panel">
+                  <div class="panel-h"><h4>Phân bố trạng thái</h4></div>
+                  <div class="panel-b" style="display:flex;gap:16px;align-items:center">
+                    <div class="donut" style="background:conic-gradient(#14804A 0 62%,#E31D1A 62% 80%,#F0A500 80% 92%,#ECECEF 92% 100%)">
+                      <span>68%</span>
+                    </div>
+                    <div class="legend" style="flex:1">
+                      <div><i style="background:#116A3A"></i>Đạt<b>62%</b></div>
+                      <div><i style="background:#E31D1A"></i>Đang chạy<b>18%</b></div>
+                      <div><i style="background:#F0A500"></i>At risk<b>12%</b></div>
+                      <div><i style="background:#ECECEF"></i>Chưa bắt đầu<b>8%</b></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dir-note">
+    <h4>Điểm mạnh &amp; đánh đổi</h4>
+    <ul>
+      <li><b>Tối giản nhất</b> — sidebar trắng + hairline, tạo cảm giác thoáng và "chuyên nghiệp mới".</li>
+      <li><b>Logo đúng chỗ</b> — logo 1 (mark + wordmark) trong sidebar, logo 2 (lockup ngang) ở nơi rộng.</li>
+      <li><b>Đỏ có kiểm soát</b> — chỉ dùng cho hành động chính &amp; cảnh báo, không lạm dụng.</li>
+      <li><b>Đánh đổi</b> — sidebar trắng kém "cô lập" hơn hướng B khi màn hình nhiều dữ liệu.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     HƯỚNG B — MIDNIGHT RAIL
+     ═══════════════════════════════════════════════ -->
+<section class="dir dir-b" id="direction-b">
+  <div class="dir-head">
+    <div class="dir-num">B</div>
+    <div>
+      <h2>Midnight Rail</h2>
+      <p>
+        Giữ cái "rail tối" đang tạo cảm giác công cụ chuyên nghiệp, nhưng nâng cấp toàn diện: nền rail đổi từ xanh lục
+        (#141c1a) sang neutral đen xám (#101114), bo góc mềm hơn, active state dùng đỏ Ascend thay vì xanh,
+        sidebar 252px thay vì 256px, và header dạng kính mờ. Nội dung bên trong vẫn sáng — tương phản tốt, dễ đọc bảng số.
+      </p>
+      <div class="dir-swatches">
+        <span class="sw"><i style="background:#101114"></i>Rail <b>#101114</b></span>
+        <span class="sw"><i style="background:#FF6B63"></i>Active <b>#FF6B63</b></span>
+        <span class="sw"><i style="background:#E31D1A"></i>Brand <b>#E31D1A</b></span>
+        <span class="sw"><i style="background:#F7F7F9"></i>Canvas <b>#F7F7F9</b></span>
+        <span class="sw"><i style="background:#212127"></i>Rail line <b>#212127</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="frames2">
+    <!-- B1: Chấm công / Timesheet -->
+    <div class="frame">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>ACT HR</b> — Bảng công &amp; chốt · HR</div>
+      <div class="app">
+        <aside class="side">
+          <div class="side-brand">
+            <img src="assets/ascend_lockup_white.png" alt="Ascend" style="height:30px;width:auto;flex:0 0 auto">
+            <div class="sb-txt"><b>ACT HR</b><span>Ascend Tech</span></div>
+          </div>
+          <div class="side-scroll">
+            <div class="sgroup">
+              <div class="sgroup-t">Hôm nay</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm<span class="badge">5</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Thông báo<span class="badge">171</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Chấm công</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg>Chấm công<span class="sc-id">S05</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn của tôi<span class="badge">123</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công<span class="sc-id">S06</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">HR</div>
+              <a class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công &amp; chốt<span class="sc-id">S15</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>Khiếu nại<span class="badge">4</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Bảng phép<span class="sc-id">S46</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06"/></svg>Cấu hình quy định<span class="sc-id">S16</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Quản lý nhân viên<span class="sc-id">S40</span></a>
+            </div>
+          </div>
+          <div class="side-foot">
+            <div class="side-user">
+              <div class="avatar red">VL</div>
+              <div class="su-txt"><b>Vũ Văn Luân</b><span>136ACT · HR_ADMIN</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+            <div class="tb-actions">
+              <button class="btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Tháng 11/2026</button>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">99+</span></button>
+              <div class="tb-div"></div>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="phead">
+              <div>
+                <h3>Bảng công &amp; chốt</h3>
+                <div class="sub">Tháng 11/2026 · 3.105 dòng dữ liệu · Chu kỳ đóng 30/11/2026</div>
+              </div>
+              <div class="right">
+                <button class="btn btn-sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Xuất Excel</button>
+                <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg>Chốt bảng công</button>
+              </div>
+            </div>
+
+            <div class="stats3">
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Nhân viên</div>
+                <div class="val">58</div>
+                <div class="delta" style="color:var(--sd-muted)">5 phòng ban</div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Đủ công</div>
+                <div class="val">91<small>%</small></div>
+                <div class="delta pos">+3.2% so với tháng 10</div>
+                <div class="pbar"><i style="width:91%;background:#116A3A"></i></div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Chưa chốt</div>
+                <div class="val">12<small> NV</small></div>
+                <div class="delta" style="color:#9A5B00">Cần rà soát trước 30/11</div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-h">
+                <h4>Dữ liệu bảng công</h4>
+                <div style="margin-left:auto;display:flex;gap:8px">
+                  <div class="search" style="min-width:190px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>Tìm nhân viên</div>
+                  <button class="iconbtn" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M7 12h10M11 18h2"/></svg></button>
+                </div>
+              </div>
+              <div class="panel-b" style="padding:0;overflow-x:auto">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Đủ công</th>
+                      <th>Đi trễ</th><th>Phép</th><th>Tổng giờ</th><th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="num">136ACT</td><td><b>Vũ Văn Luân</b></td><td>Phòng CNTT</td><td class="num">21</td><td class="num">2</td><td class="num">0.5</td><td class="num">168.0</td><td><span class="tag tag-green">Đã chốt</span></td></tr>
+                    <tr><td class="num">042HR</td><td><b>Nguyễn Thu Hà</b></td><td>Nhân sự</td><td class="num">22</td><td class="num">0</td><td class="num">0</td><td class="num">176.0</td><td><span class="tag tag-green">Đã chốt</span></td></tr>
+                    <tr><td class="num">017SV</td><td><b>Trần Minh Quân</b></td><td>Sales</td><td class="num">19</td><td class="num">4</td><td class="num">1</td><td class="num">152.5</td><td><span class="tag tag-amber">Cần xác nhận</span></td></tr>
+                    <tr><td class="num">205MK</td><td><b>Lê Thị Hồng Nhung</b></td><td>Marketing</td><td class="num">22</td><td class="num">1</td><td class="num">0</td><td class="num">174.5</td><td><span class="tag tag-green">Đã chốt</span></td></tr>
+                    <tr><td class="num">089AC</td><td><b>Phạm Đức Anh</b></td><td>Kế toán</td><td class="num">17</td><td class="num">6</td><td class="num">2</td><td class="num">136.0</td><td><span class="tag tag-red">Có khiếu nại</span></td></tr>
+                    <tr><td class="num">133EN</td><td><b>Hoàng Mai Anh</b></td><td>Kỹ thuật</td><td class="num">21</td><td class="num">3</td><td class="num">1</td><td class="num">166.0</td><td><span class="tag tag-gray">Đang xử lý</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B2: Login / Onboarding -->
+    <div class="frame">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>ACT HR</b> — Đăng nhập</div>
+      <div class="app" style="background:#fff">
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:720px">
+          <!-- Brand panel -->
+          <div style="background:#101114;padding:44px 40px;display:flex;flex-direction:column;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;opacity:.5;background:radial-gradient(600px 300px at 15% 12%,rgba(227,29,26,.34),transparent 65%),radial-gradient(500px 320px at 85% 88%,rgba(227,29,26,.16),transparent 62%)"></div>
+            <div style="position:relative">
+              <img src="assets/ascend_logo_2_white.png" alt="Ascend Technology" style="height:40px;width:auto">
+            </div>
+            <div style="position:relative;margin-top:auto">
+              <h2 style="color:#fff;font-size:31px;font-weight:800;letter-spacing:-.035em;line-height:1.16">
+                Quản trị nhân sự<br>chuẩn doanh nghiệp.
+              </h2>
+              <p style="color:#A0A0A8;font-size:14px;margin-top:14px;line-height:1.65;max-width:38ch">
+                Chấm công, quản lý phép, đánh giá OKR và giải quyết khiếu nại — trong một hệ thống duy nhất.
+              </p>
+              <div style="display:flex;gap:22px;margin-top:30px;padding-top:24px;border-top:1px solid #212127">
+                <div><b style="color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;display:block">58</b><span style="font-size:11.5px;color:#7C7C88">nhân viên</span></div>
+                <div><b style="color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;display:block">5</b><span style="font-size:11.5px;color:#7C7C88">phòng ban</span></div>
+                <div><b style="color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;display:block">3.1k</b><span style="font-size:11.5px;color:#7C7C88">dòng công/tháng</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Form -->
+          <div style="padding:44px 40px;display:flex;flex-direction:column;justify-content:center">
+            <h3 style="font-size:22px;font-weight:750;letter-spacing:-.025em">Đăng nhập tài khoản</h3>
+            <p style="font-size:13px;color:#6B6C6F;margin-top:6px">Dùng email công vụ hoặc Email</p>
+            <div style="margin-top:26px">
+              <label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;color:#17171A">Mã nhân viên hoặc Email</label>
+              <div style="height:44px;border:1px solid #D9D9DF;border-radius:11px;background:#fff;display:flex;align-items:center;padding:0 13px;font-size:14px;color:#17171A;box-shadow:0 0 0 3px rgba(227,29,26,.09)">136ACT</div>
+            </div>
+            <div style="margin-top:16px">
+              <label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;color:#17171A">Mật khẩu</label>
+              <div style="height:44px;border:1px solid #D9D9DF;border-radius:11px;background:#fff;display:flex;align-items:center;padding:0 13px;font-size:14px;color:#17171A">••••••</div>
+              <div style="text-align:right;margin-top:8px"><span style="font-size:12.5px;color:#E31D1A;font-weight:600;cursor:pointer">Quên mật khẩu?</span></div>
+            </div>
+            <button style="margin-top:22px;height:46px;border-radius:11px;background:#E31D1A;color:#fff;font-size:14px;font-weight:650;box-shadow:0 4px 14px rgba(227,29,26,.26);cursor:pointer">Đăng nhập vào hệ thống</button>
+            <div style="display:flex;align-items:center;gap:12px;margin:22px 0;color:#6B6C6F;font-size:11.5px;font-weight:600;letter-spacing:.08em"><span style="flex:1;height:1px;background:#ECECEF"></span>HOẶC<span style="flex:1;height:1px;background:#ECECEF"></span></div>
+            <button style="height:46px;border-radius:11px;border:1px solid #D9D9DF;background:#fff;color:#17171A;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:17px;height:17px"><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 7 9.5v-6.7a3 3 0 0 1 1-2.3V9.5a12 12 0 0 0-3.5-.5 4.5 4.5 0 0 0-4.3 5.6A12 12 0 0 0 12 22a10 10 0 0 0 7-9.5c0-1-.3-2-.6-2.9H12z" fill="#E31D1A" stroke="none"/></svg>
+              Đăng nhập bằng Passkey (Vân tay / Face ID)
+            </button>
+            <p style="font-size:11.5px;color:#6B6C6F;margin-top:26px;line-height:1.6;text-align:center">
+              Hệ thống hỗ trợ thông báo bảo mật hoạt động qua Gmail / Mailpit.<br>
+              <span style="color:#767676">© 2026 Ascend Technology</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dir-note">
+    <h4>Điểm mạnh &amp; đánh đổi</h4>
+    <ul>
+      <li><b>Cô lập tốt</b> — rail tối tách mạnh vùng điều hướng khỏi vùng dữ liệu.</li>
+      <li><b>Nền neutral</b> — bỏ tông xanh lục cũ, dùng xám than để đỏ Ascend nổi bật đúng vai trò.</li>
+      <li><b>Login tách đôi</b> — panel thương hiệu + form, tăng độ tin cậy khi khách hàng đánh giá.</li>
+      <li><b>Đánh đổi</b> — rail tối đòi hợp đồng nhất quán cao hơn; sidebar trắng linh hoạt hơn khi thêm mục mới.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     HƯỚNG C — BENTO STUDIO
+     ═══════════════════════════════════════════════ -->
+<section class="dir dir-c" id="direction-c">
+  <div class="dir-head">
+    <div class="dir-num">C</div>
+    <div>
+      <h2>Bento Studio</h2>
+      <p>
+        Hướng mạnh mẽ nhất: toàn bộ sản phẩm chuyển sang nền tối, bố cục Bento grid 12 cột, đỏ Ascend được nâng
+        thành điểm nhấn phát sáng (#FF5147). Đây là hướng "wow" khi trình bày/demonstrating, nhưng đòi hỏi
+        bảng dữ liệu và biểu đồ được thiết kế lại chứ không chỉ đổi màu.
+      </p>
+      <div class="dir-swatches">
+        <span class="sw"><i style="background:#FF5147"></i>Brand (dark) <b>#FF5147</b></span>
+        <span class="sw"><i style="background:#141519"></i>Card <b>#141519</b></span>
+        <span class="sw"><i style="background:#1E2026"></i>Line <b>#1E2026</b></span>
+        <span class="sw"><i style="background:#3DD68C"></i>Success <b>#3DD68C</b></span>
+        <span class="sw"><i style="background:#F5A524"></i>Warning <b>#F5A524</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="frames2">
+    <!-- C1: Command Center -->
+    <div class="frame" style="grid-column:1/-1">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>ACT HR</b> — Command Center · HR Admin</div>
+      <div class="app">
+        <aside class="side">
+          <div class="side-brand">
+            <img src="assets/ascend_lockup_white.png" alt="Ascend" style="height:30px;width:auto;flex:0 0 auto">
+            <div class="sb-txt"><b>ACT HR</b><span>Ascend Tech</span></div>
+          </div>
+          <div class="side-scroll">
+            <div class="sgroup">
+              <div class="sgroup-t">Hôm nay</div>
+              <a class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Command Center<span class="sc-id">01</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm<span class="badge">5</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Thông báo<span class="badge">171</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">Chấm công</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg>Chấm công<span class="sc-id">05</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công &amp; chốt<span class="sc-id">15</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>Khiếu nại<span class="badge">4</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Bảng phép<span class="sc-id">46</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">OKR</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>Tổng quan OKR<span class="sc-id">20</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>OKR của tôi<span class="badge">1</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Chu kỳ OKR<span class="sc-id">44</span></a>
+            </div>
+            <div class="sgroup">
+              <div class="sgroup-t">HR</div>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Nhân viên<span class="sc-id">40</span></a>
+              <a class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Bảo mật<span class="sc-id">28</span></a>
+            </div>
+          </div>
+          <div class="side-foot">
+            <div class="side-user">
+              <div class="avatar">VL</div>
+              <div class="su-txt"><b>Vũ Văn Luân</b><span>136ACT · HR_ADMIN</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+            <div class="tb-actions">
+              <span style="font-size:12px;color:var(--sd-muted)">26/11/2026 · 10:45</span>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">99+</span></button>
+              <div class="tb-div"></div>
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="phead">
+              <div>
+                <h3>Command Center</h3>
+                <div class="sub">Tổng quan nhân sự · Chu kỳ OKR Q4 2026 Phase 2 · Dữ liệu cập nhật 26/11/2026 10:45</div>
+              </div>
+              <div class="right">
+                <button class="btn btn-sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Xuất báo cáo</button>
+                <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>Tạo chu kỳ</button>
+              </div>
+            </div>
+
+            <!-- Bento grid -->
+            <div class="bento">
+              <!-- KPI 1 -->
+              <div class="b-card" style="grid-column:span 3">
+                <div class="b-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg><h4>Tiến độ OKR</h4></div>
+                <div class="b-kpi">68<small>%</small></div>
+                <div class="b-sub">Trung bình toàn công ty</div>
+                <div class="spark">
+                  <i style="height:32%"></i><i style="height:41%"></i><i style="height:38%"></i><i style="height:55%"></i>
+                  <i style="height:52%"></i><i style="height:67%"></i><i style="height:61%"></i><i class="hot" style="height:82%"></i>
+                  <i class="hot" style="height:74%"></i><i class="hot" style="height:68%"></i>
+                </div>
+              </div>
+
+              <!-- KPI 2 -->
+              <div class="b-card" style="grid-column:span 3">
+                <div class="b-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h4>Đủ công tháng 11</h4></div>
+                <div class="b-kpi">91<small>%</small></div>
+                <div class="b-sub"><span style="color:#3DD68C;font-weight:600">+3.2%</span> so với tháng 10</div>
+                <div class="spark">
+                  <i style="height:74%"></i><i style="height:70%"></i><i style="height:78%"></i><i style="height:76%"></i>
+                  <i style="height:82%"></i><i style="height:85%"></i><i style="height:80%"></i><i style="height:88%"></i>
+                  <i class="hot" style="height:86%"></i><i class="hot" style="height:91%"></i>
+                </div>
+              </div>
+
+              <!-- Donut -->
+              <div class="b-card" style="grid-column:span 3;flex-direction:row;gap:18px;align-items:center">
+                <div class="donut" style="background:conic-gradient(#3DD68C 0 62%,#FF5147 62% 80%,#F5A524 80% 92%,#262931 92% 100%)">
+                  <span>68%</span>
+                </div>
+                <div class="legend" style="flex:1">
+                  <div><i style="background:#3DD68C"></i>Đạt<b>62%</b></div>
+                  <div><i style="background:#FF5147"></i>Đang chạy<b>18%</b></div>
+                  <div><i style="background:#F5A524"></i>At risk<b>12%</b></div>
+                  <div><i style="background:#262931"></i>Chưa bắt đầu<b>8%</b></div>
+                </div>
+              </div>
+
+              <!-- Quick actions -->
+              <div class="b-card" style="grid-column:span 3">
+                <div class="b-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><h4>Thao tác nhanh</h4></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;min-width:0">
+                  <button class="btn btn-sec" style="justify-content:flex-start;height:36px;padding:0 9px;font-size:12px;min-width:0;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Duyệt đơn</button>
+                  <button class="btn btn-sec" style="justify-content:flex-start;height:36px;padding:0 9px;font-size:12px;min-width:0;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Duyệt OKR</button>
+                  <button class="btn btn-sec" style="justify-content:flex-start;height:36px;padding:0 9px;font-size:12px;min-width:0;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công</button>
+                  <button class="btn btn-sec" style="justify-content:flex-start;height:36px;padding:0 9px;font-size:12px;min-width:0;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:0 0 15px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Nhân viên</button>
+                </div>
+              </div>
+
+              <!-- Danh sách việc -->
+              <div class="b-card" style="grid-column:span 7">
+                <div class="b-h">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                  <h4>Cần xử lý gấp</h4>
+                  <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;background:rgba(255,81,71,.16);color:#FF8078;border-radius:6px;padding:2px 6px">7</span>
+                </div>
+                <div class="b-list">
+                  <div class="okr-row" style="border-color:#191B20">
+                    <div class="lv l-red" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                    <div class="t"><b>4 đơn nghỉ chờ duyệt quá 24 giờ</b><span style="font-size:11px;color:var(--sd-muted)">Hết hạn hôm nay · Nhóm A</span></div>
+                    <button class="btn btn-sec" style="height:30px;padding:0 11px;font-size:12px">Xử lý</button>
+                  </div>
+                  <div class="okr-row" style="border-color:#191B20">
+                    <div class="lv l-amber" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;background:rgba(245,165,36,.14);color:#F5A524"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
+                    <div class="t"><b>2 khiếu nại chờ đối chiếu log chấm công</b><span style="font-size:11px;color:var(--sd-muted)">Có bằng chứng kèm theo</span></div>
+                    <button class="btn btn-sec" style="height:30px;padding:0 11px;font-size:12px">Xử lý</button>
+                  </div>
+                  <div class="okr-row" style="border-color:#191B20">
+                    <div class="lv l-blue" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;background:rgba(122,165,255,.14);color:#7AA5FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                    <div class="t"><b>16 người chưa check-in Phase 2</b><span style="font-size:11px;color:var(--sd-muted)">Deadline 30/11/2026</span></div>
+                    <button class="btn btn-sec" style="height:30px;padding:0 11px;font-size:12px">Nhắc</button>
+                  </div>
+                  <div class="okr-row" style="border:none">
+                    <div class="lv l-green" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></div>
+                    <div class="t"><b>12 dòng bảng công chưa chốt</b><span style="font-size:11px;color:var(--sd-muted)">Chu kỳ đóng 30/11/2026</span></div>
+                    <button class="btn btn-sec" style="height:30px;padding:0 11px;font-size:12px">Mở</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- OKR progress -->
+              <div class="b-card" style="grid-column:span 5">
+                <div class="b-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg><h4>KR tiến độ cao nhất</h4><span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span></div>
+                <div class="okr-row" style="border-color:#191B20">
+                  <div class="t"><b>Onboarding dưới 3 ngày</b><div class="pbar"><i style="width:88%"></i></div></div>
+                  <div class="v" style="color:#3DD68C">88%</div>
+                </div>
+                <div class="okr-row" style="border-color:#191B20">
+                  <div class="t"><b>Check-in đúng giờ 95%</b><div class="pbar"><i style="width:79%"></i></div></div>
+                  <div class="v" style="color:#3DD68C">79%</div>
+                </div>
+                <div class="okr-row" style="border-color:#191B20">
+                  <div class="t"><b>Hệ thống đánh giá 3 phase</b><div class="pbar"><i style="width:64%"></i></div></div>
+                  <div class="v" style="color:#F5A524">64%</div>
+                </div>
+                <div class="okr-row" style="border:none">
+                  <div class="t"><b>Xử lý khiếu nại trong 24h</b><div class="pbar"><i style="width:41%;background:#F5A524"></i></div></div>
+                  <div class="v" style="color:#F5A524">41%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dir-note">
+    <h4>Điểm mạnh &amp; đánh đổi</h4>
+    <ul>
+      <li><b>Wow-factor cao</b> — Bento + dark là combo được đánh giá cao nhất khi demo sản phẩm.</li>
+      <li><b>Thông tin nénp lại</b> — 4 KPI + 2 bảng ngay trong 1 màn hình, giảm thao tác.</li>
+      <li><b>Đỏ phát sáng</b> — đổi #E31D1A thành #FF5147 để đạt tương phản AA trên nền tối.</li>
+      <li><b>Đánh đổi</b> — dark mode toàn sản phẩm tốn gấp đôi công sức kiểm thử; bảng dữ liệu dày dễ mỏi mắt.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     PALETTE
+     ═══════════════════════════════════════════════ -->
+<section class="dir" id="palette">
+  <div class="dir-head">
+    <div class="dir-num">◎</div>
+    <div>
+      <h2>Bảng màu &amp; token dùng chung</h2>
+      <p>
+        Trích xuất trực tiếp từ logo Ascend Technology (đỏ #E31D1A từ mark, xám #6E6F72 từ wordmark "TECHNOLOGY").
+        Bộ token này ánh xạ 1–1 sang <code>tailwind.config.js</code> hiện tại — đổi tên biến là xong.
+      </p>
+    </div>
+  </div>
+
+  <div class="frames2 pair">
+    <div class="frame" style="background:#0E0E11;border-color:rgba(255,255,255,.1)">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>Token</b> — màu cốt lõi</div>
+      <div style="padding:26px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+        <div>
+          <div style="height:64px;border-radius:12px;background:#E31D1A;box-shadow:0 6px 20px rgba(227,29,26,.3)"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">brand</b>
+          <code style="font-size:11px;color:#8B8B93">#E31D1A</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#C21815"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">brand-hover</b>
+          <code style="font-size:11px;color:#8B8B93">#C21815</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#FDECEA;border:1px solid rgba(255,255,255,.09)"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">brand-soft</b>
+          <code style="font-size:11px;color:#8B8B93">#FDECEA</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#17171A;border:1px solid rgba(255,255,255,.09)"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">ink</b>
+          <code style="font-size:11px;color:#8B8B93">#17171A</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#8A8A94"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">ink-muted</b>
+          <code style="font-size:11px;color:#8B8B93">#8A8A94</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#ECECEF"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">line</b>
+          <code style="font-size:11px;color:#8B8B93">#ECECEF</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#6E6F72"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">neutral-logo</b>
+          <code style="font-size:11px;color:#8B8B93">#6E6F72</code>
+        </div>
+        <div>
+          <div style="height:64px;border-radius:12px;background:#FF5147"></div>
+          <b style="display:block;font-size:13px;color:#fff;margin-top:9px;font-family:'Plus Jakarta Sans',sans-serif">brand-dark</b>
+          <code style="font-size:11px;color:#8B8B93">#FF5147</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame" style="background:#0E0E11;border-color:rgba(255,255,255,.1)">
+      <div class="frame-label"><span class="dots"><i></i><i></i><i></i></span><b>Token</b> — ánh xạ Tailwind</div>
+      <div style="padding:24px 26px">
+<pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:#B4B7BE;overflow-x:auto"><span style="color:#FF8078">// tailwind.config.js — colors</span>
+{
+  <span style="color:#7AA5FF">canvas</span>: <span style="color:#9BE38B">'#FAFAFB'</span>,      <span style="color:#5E6675">// was #f7f7f5</span>
+  <span style="color:#7AA5FF">surface</span>: { DEFAULT: <span style="color:#9BE38B">'#FFFFFF'</span> },
+  <span style="color:#7AA5FF">ink</span>: {
+    DEFAULT:  <span style="color:#9BE38B">'#17171A'</span>,      <span style="color:#5E6675">// was #1a1a17</span>
+    secondary:<span style="color:#9BE38B">'#4A4A52'</span>,
+    muted:    <span style="color:#9BE38B">'#6B6C6F'</span>,      <span style="color:#5E6675">// AA 5.25:1</span>
+  },
+  <span style="color:#7AA5FF">line</span>: {
+    DEFAULT: <span style="color:#9BE38B">'#ECECEF'</span>,
+    soft:    <span style="color:#9BE38B">'#F4F4F6'</span>,
+    strong:  <span style="color:#9BE38B">'#D9D9DF'</span>,
+  },
+  <span style="color:#7AA5FF">brand</span>: {           <span style="color:#5E6675">// ← đổi tên từ accent</span>
+    DEFAULT: <span style="color:#9BE38B">'#E31D1A'</span>,     <span style="color:#5E6675">// Ascend red</span>
+    hover:   <span style="color:#9BE38B">'#C21815'</span>,
+    ink:     <span style="color:#9BE38B">'#C21815'</span>,     <span style="color:#5E6675">// chữ đỏ AA</span>
+    soft:    <span style="color:#9BE38B">'#FDECEA'</span>,
+    line:    <span style="color:#9BE38B">'#F8C8C4'</span>,
+  },
+  <span style="color:#7AA5FF">status</span>: {
+    ok:     <span style="color:#9BE38B">'#116A3A'</span>,     <span style="color:#5E6675">// AA trên nền xanh nhạt</span>
+    warn:   <span style="color:#9BE38B">'#9A5B00'</span>,
+    danger: <span style="color:#9BE38B">'#B42318'</span>,
+    info:   <span style="color:#9BE38B">'#1D4ED8'</span>,
+  },
+}
+
+<span style="color:#FF8078">// Logo — đặt vào /public/brand/</span>
+ascend_mark.png        <span style="color:#5E6675">// 161x157, nền trong suốt</span>
+ascend_lockup.png      <span style="color:#5E6675">// mark + wordmark ngang</span>
+ascend_lockup_white.png <span style="color:#5E6675">// bản trắng cho nền tối</span>
+ascend_logo_2_white.png <span style="color:#5E6675">// lockup "ascend TECHNOLOGY"</span>
+
+<span style="color:#FF8078">// src/index.css — font stack</span>
+--font-sans: <span style="color:#9BE38B">'Inter'</span>, -apple-system, sans-serif;
+--font-display: <span style="color:#9BE38B">'Plus Jakarta Sans'</span>, sans-serif;
+--font-mono: <span style="color:#9BE38B">'JetBrains Mono'</span>, monospace;
+
+<span style="color:#FF8078">// Shadow scale — 1 tầng thay vì 3</span>
+--sh-1: 0 1px 2px rgba(20,20,25,.04);
+--sh-2: 0 4px 14px rgba(20,20,25,.07), 0 1px 2px rgba(20,20,25,.04);
+--sh-pop: 0 12px 40px rgba(20,20,25,.14);</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="dir-note">
+    <h4>Cách đọc logo trong sản phẩm</h4>
+    <ul>
+      <li><b>Logo 1</b> (mark + wordmark dọc) — dùng ở <b>sidebar thu gọn</b> và <b>avatar/app icon</b>. Chữ "ascend" đỏ là điểm nhận diện.</li>
+      <li><b>Logo 2</b> (lockup ngang "ascend TECHNOLOGY") — dùng ở <b>màn đăng nhập</b>, <b>trang trắng</b>, <b>PDF xuất ra</b>.</li>
+      <li><b>Trên nền tối</b> — dùng bản đơn trắng (CSS <code>filter: brightness(0) invert(1)</code>) để giữ độ tương phản.</li>
+      <li><b>Tỷ lệ</b> — mark chiếm ~40% chiều cao header; wordmark đặt cách mark 8–10px.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="foot">
+  <b>ACT HR · Mockup giao diện 2026</b><br>
+  Dựa trên nhận diện Ascend Technology · 3 hướng thiết kế · Bảng chấm công, OKR, đăng nhập<br>
+  <span style="color:#55555c">Tài liệu này chỉ là bản dự thảo giao diện — chưa áp dụng vào mã nguồn.</span>
+</footer>
+
+</body>
+</html>
