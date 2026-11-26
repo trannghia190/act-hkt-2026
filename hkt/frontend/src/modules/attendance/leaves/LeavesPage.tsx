@@ -1,7 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
+import {
+  AlertTriangle,
+  CalendarPlus,
+  Clock,
+  Download,
+  ShieldCheck,
+  Sun,
+  Wallet,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface LeaveLedgerEntry {
   id: string;
@@ -14,8 +23,36 @@ interface LeaveLedgerEntry {
   createdAt?: string;
 }
 
+interface BalanceState {
+  carriedOver: number;
+  grantedCurrentYear: number;
+  seniorityBonus: number;
+  totalEntitlement: number;
+  used: number;
+  remaining: number;
+  expiringOnMarch31: number;
+  annualRemaining: number;
+  carriedRemaining: number;
+  sickUsed: number;
+  adjust: number;
+  baseAnnual: number;
+  positionBonus: number;
+  carriedGrant: number;
+  expiredCarry: number;
+  carryStatus: string;
+  annualYear: number;
+  carriedYear: number;
+  annualEntitlement: number;
+  annualUsed: number;
+  pendingLeaveDays: number;
+  availableForLeave: number;
+  policyNotice: string;
+  byType: { code: string; name: string; used: number; defaultDays: number | null; unit?: string }[];
+}
+
 export const LeavesPage: React.FC = () => {
-  const [balance, setBalance] = useState({
+  const navigate = useNavigate();
+  const [balance, setBalance] = useState<BalanceState>({
     carriedOver: 0,
     grantedCurrentYear: 0,
     seniorityBonus: 0,
@@ -32,7 +69,14 @@ export const LeavesPage: React.FC = () => {
     carriedGrant: 0,
     expiredCarry: 0,
     carryStatus: 'AVAILABLE',
-    byType: [] as { code: string; name: string; used: number; defaultDays: number | null; unit?: string }[],
+    annualYear: new Date().getFullYear(),
+    carriedYear: new Date().getFullYear() - 1,
+    annualEntitlement: 0,
+    annualUsed: 0,
+    pendingLeaveDays: 0,
+    availableForLeave: 0,
+    policyNotice: '',
+    byType: [],
   });
 
   const [ledger, setLedger] = useState<LeaveLedgerEntry[]>([]);
@@ -62,6 +106,13 @@ export const LeavesPage: React.FC = () => {
           carriedGrant: Number(j.data.carriedGrant ?? 0),
           expiredCarry: Number(j.data.expiredCarry ?? 0),
           carryStatus: String(j.data.carryStatus || 'AVAILABLE'),
+          annualYear: Number(j.data.annualYear ?? b.annualYear),
+          carriedYear: Number(j.data.carriedYear ?? b.carriedYear),
+          annualEntitlement: Number(j.data.annualEntitlement ?? 0),
+          annualUsed: Number(j.data.annualUsed ?? 0),
+          pendingLeaveDays: Number(j.data.pendingLeaveDays ?? 0),
+          availableForLeave: Number(j.data.availableForLeave ?? 0),
+          policyNotice: String(j.data.policyNotice || ''),
           byType: Array.isArray(j.data.byType) ? j.data.byType.map((x: any) => ({
             code: x.code, name: x.name, used: Number(x.used || 0),
             defaultDays: x.defaultDays == null ? null : Number(x.defaultDays), unit: x.unit,
@@ -109,147 +160,260 @@ export const LeavesPage: React.FC = () => {
     return true;
   });
 
+  const exportLedger = () => {
+    const headers = ['Ngày ghi sổ', 'Loại phép', 'Mã', 'Nghiệp vụ', 'Chi tiết', 'Số ngày', 'Số dư sau'];
+    const label: Record<string, string> = {
+      GRANT: 'Cấp phép đầu kỳ', USED: 'Sử dụng phép',
+      ADJUST: 'Điều chỉnh HR', EXPIRED: 'Hết hạn phép tồn',
+    };
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = filteredLedger.map(e => [
+      e.date, esc(leaveTypeName(e.leaveType)), esc(e.leaveType || 'AL'),
+      esc(label[e.type] || e.type), esc(e.description), e.amount, e.balanceAfter,
+    ].join(','));
+    const csv = '﻿' + [headers.join(','), ...lines].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `So_phep_ca_nhan_${filterYear === 'Tất cả' ? 'all' : filterYear}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Tổng phép năm được cấp — dùng cho thanh tiến trình & dải phân bổ.
+  const totalGranted = balance.annualEntitlement > 0
+    ? balance.annualEntitlement
+    : balance.baseAnnual + balance.positionBonus + balance.seniorityBonus + balance.adjust;
+  const usedPct = totalGranted > 0 ? Math.min(100, Math.round((balance.annualUsed / totalGranted) * 100)) : 0;
+  const remainingNegative = balance.remaining < 0;
+  const usedApprovedCount = ledger.filter(e => e.type === 'USED' && e.amount < 0).length;
+
+  const FILTER_CHIPS = ['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'];
+
+  const carryNotice = balance.carryStatus === 'EXPIRED' || balance.expiringOnMarch31 <= 0
+    ? <>Phép tồn năm {balance.carriedYear} đã <strong>hết hiệu lực từ 01/07</strong> theo quy chế (01/04 giữ tối đa 5 ngày · 01/07 về 0). Số dư hiện tại không còn phép tồn.</>
+    : balance.carryStatus === 'CAPPED'
+      ? <>Đã qua <strong>01/04</strong>: chỉ được giữ tối đa <strong>5 ngày phép tồn</strong>. Bạn còn <strong>{balance.expiringOnMarch31} ngày</strong>; phần vượt sẽ hết hiệu lực từ <strong>01/07</strong>.</>
+      : <>Bạn có <strong>{balance.expiringOnMarch31} ngày phép tồn</strong>; dùng trước <strong>01/04</strong>. Từ 01/04 chỉ giữ tối đa 5 ngày, từ <strong>01/07</strong> về 0.</>;
+
+  const statCards = [
+    {
+      key: 'remaining',
+      label: 'Phép còn lại',
+      value: balance.remaining,
+      unit: 'ngày',
+      icon: Wallet,
+      accent: true,
+      delta: <>Phép năm {balance.annualRemaining} + Phép tồn {balance.carriedRemaining}</>,
+      bar: { pct: usedPct, tone: remainingNegative ? 'danger' : 'accent' },
+    },
+    {
+      key: 'annual',
+      label: `Phép năm ${balance.annualYear}`,
+      value: balance.baseAnnual,
+      unit: 'ngày',
+      icon: Sun,
+      accent: false,
+      delta: <>Cấp theo quy chế (chưa gồm chức vụ &amp; thâm niên)</>,
+    },
+    {
+      key: 'carry',
+      label: `Phép tồn ${balance.carriedYear}`,
+      value: balance.carriedRemaining,
+      unit: 'ngày',
+      icon: Clock,
+      accent: false,
+      tone: 'warn',
+      delta: balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07/2026'
+        : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày'
+        : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04',
+    },
+    {
+      key: 'sick',
+      label: 'Phép ốm (BHXH)',
+      value: balance.sickUsed,
+      unit: 'ngày',
+      icon: ShieldCheck,
+      accent: false,
+      delta: <>Theo BHXH · cần giấy tờ</>,
+    },
+  ];
+
+  // Dải phân bổ phép năm — tách rõ từng khoản cộng để người dùng đối chiếu với quy chế.
+  const allocationTiles = [
+    { label: 'Công chuẩn', value: balance.baseAnnual, hint: 'Theo quy chế phép năm', tone: '' },
+    { label: 'Phép chức vụ', value: balance.positionBonus, hint: balance.positionBonus > 0 ? 'Theo cấu hình phép chức vụ' : 'Chức vụ hiện tại không cộng thêm', tone: '' },
+    { label: 'Phép thâm niên', value: balance.seniorityBonus, hint: '+1 ngày mỗi 2 năm, cộng đúng ngày tròn', tone: '' },
+    { label: 'Đã sử dụng', value: balance.annualUsed, hint: `${usedApprovedCount} đợt nghỉ đã được duyệt`, tone: 'danger' },
+  ];
+
+  const ledgerBadge = (type: LeaveLedgerEntry['type']) => (
+    <Badge variant={type === 'GRANT' ? 'ok' : type === 'ADJUST' ? 'warn' : type === 'EXPIRED' ? 'danger' : 'gray'}>
+      {type === 'GRANT' ? 'Cấp phép đầu kỳ' : type === 'ADJUST' ? 'Điều chỉnh HR' : type === 'EXPIRED' ? 'Hết hạn phép tồn' : 'Sử dụng phép'}
+    </Badge>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Số Dư Phép &amp; Sổ Phép Cá Nhân</h1>
+      {/* Header — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Sun className="h-3.5 w-3.5" />
+            Quỹ phép năm &amp; sổ phép cá nhân
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Minh bạch từng ngày nghỉ phép năm, bảo lưu phép năm cũ và hạn chót sử dụng trước ngày 31/03
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Số dư phép
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Năm phép {balance.annualYear} · minh bạch từng ngày nghỉ, phép tồn và hạn dùng
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="md" onClick={exportLedger} disabled={filteredLedger.length === 0}
+            title="Tải CSV sổ phép cá nhân đúng các dòng đang lọc (loại phép + năm)">
+            <Download className="h-4 w-4" />
+            Xuất sổ phép
+          </Button>
+          <Button variant="primary" size="md" onClick={() => navigate('/attendance/requests', { state: { openCreate: 'LEAVE' } })}
+            title="Mở form xin nghỉ phép — số dư còn lại hiện ngay trong form">
+            <CalendarPlus className="h-4 w-4" />
+            Xin nghỉ phép
+          </Button>
         </div>
       </div>
 
-      {/* Expiration Alert */}
-      <div className="p-4 bg-status-warn-soft rounded-xl border border-status-warn-line text-xs flex items-start gap-3 text-status-warn shadow-xs">
-        <span className="text-lg">⚠️</span>
+      {/* Luật phép tồn — mockup `.notice` */}
+      <div className="flex items-start gap-2.5 rounded-[13px] border border-status-warn-line bg-status-warn-soft p-3 text-xs leading-relaxed text-status-warn shadow-2xs">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
           <div className="font-bold">Luật phép tồn: 01/04 giữ tối đa 5 ngày · 01/07 về 0</div>
-          <p className="mt-0.5 text-status-warn leading-relaxed">
-            {balance.carryStatus === 'EXPIRED' || balance.expiringOnMarch31 <= 0
-              ? <>Phép tồn năm trước đã <strong>hết hiệu lực từ 01/07</strong> theo quy chế (01/04 giữ tối đa 5 ngày · 01/07 về 0). Số dư hiện tại không còn phép tồn.</>
-              : balance.carryStatus === 'CAPPED'
-              ? <>Đã qua <strong>01/04</strong>: chỉ được giữ tối đa <strong>5 ngày phép tồn</strong>. Bạn còn <strong>{balance.expiringOnMarch31} ngày</strong>; phần vượt sẽ hết hiệu lực từ <strong>01/07</strong>.</>
-              : <>Bạn có <strong>{balance.expiringOnMarch31} ngày phép tồn</strong>; dùng trước <strong>01/04</strong>. Từ 01/04 chỉ giữ tối đa 5 ngày, từ <strong>01/07</strong> về 0.</>}
-          </p>
+          <p className="mt-0.5">{carryNotice}</p>
         </div>
       </div>
 
-      {/* Balance Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép tồn năm cũ</div>
-          <div className="text-2xl font-bold text-status-warn mt-1">{balance.carriedGrant} ngày</div>
-          <div className="text-[11px] text-status-warn mt-1">
-            Đã cấp {balance.carriedGrant} · còn {balance.carriedRemaining} sau luật tồn
-            {balance.expiredCarry ? ` · ${balance.expiredCarry} hết hạn` : ''}
-          </div>
-        </div>
+      {/* Stat row — mockup `.stats` */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {statCards.map((s) => {
+          const Icon = s.icon;
+          const bar = (s as { bar?: { pct: number; tone: string } }).bar;
+          return (
+            <div
+              key={s.key}
+              className={`rounded-[13px] border p-3.5 shadow-2xs sm:p-[15px] ${
+                s.accent ? 'border-accent-line bg-accent-soft/45' : 'border-line bg-surface'
+              }`}
+            >
+              <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${s.accent ? 'text-accent-dark' : 'text-ink-muted'}`}>
+                <Icon className="h-3.5 w-3.5 text-accent" />
+                {s.label}
+              </div>
+              <div className={`mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] ${s.accent ? 'text-accent' : 'text-ink'}`}>
+                {s.value}
+                <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">{s.unit}</small>
+              </div>
+              <div className={`mt-1.5 text-[11px] font-semibold ${s.tone === 'warn' ? 'text-status-warn' : s.accent ? 'text-accent-dark' : 'text-ink-muted'}`}>
+                {s.delta}
+              </div>
+              {bar && (
+                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line">
+                  <div
+                    className={`h-full rounded-full ${bar.tone === 'danger' ? 'bg-status-danger' : 'bg-accent'}`}
+                    style={{ width: `${bar.pct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép năm</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.baseAnnual} ngày</div>
-          <div className="text-[11px] text-ink-muted mt-1">Cấp theo quy chế phép năm (không gồm tồn/chức vụ/thâm niên)</div>
+      {/* Dải phân bổ quỹ phép — tách từng khoản cộng (chức vụ / thâm niên) để đối chiếu quy chế */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Phân bổ quỹ phép năm {balance.annualYear}</h2>
+          <span className="ml-auto text-[10.5px] text-ink-muted">
+            Tổng được cấp <strong className="text-ink">{totalGranted}</strong> ngày · đã dùng <strong className="text-ink">{balance.annualUsed}</strong>
+          </span>
         </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép chức vụ</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.positionBonus} ngày</div>
-          <div className="text-[11px] text-ink-muted mt-1">
-            {balance.positionBonus > 0 ? 'Theo cấu hình phép chức vụ (đã nằm trong tổng phép năm)' : 'Chức vụ hiện tại không được cộng thêm phép'}
-          </div>
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép thâm niên</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.seniorityBonus} ngày</div>
-          <div className="text-[11px] text-ink-muted mt-1">+1 ngày mỗi 2 năm, cộng đúng ngày tròn</div>
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép đã sử dụng</div>
-          <div className="text-2xl font-bold text-status-danger mt-1">{balance.used} ngày</div>
-          <div className="text-[11px] text-status-danger mt-1">{ledger.filter(e => e.type === 'USED' && e.amount < 0).length} đợt nghỉ đã được duyệt</div>
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20">
-          <div className="text-xs text-accent-dark font-medium">Phép còn lại</div>
-          <div className="text-2xl font-extrabold text-accent mt-1">{balance.remaining} ngày</div>
-          <div className="text-[11px] text-accent-dark mt-1">Phép năm {balance.annualRemaining} + Phép tồn {balance.carriedRemaining}</div>
-          {(() => {
-            const total = balance.baseAnnual + balance.positionBonus + balance.seniorityBonus + balance.carriedGrant;
-            return (
-              <>
-                <div className="mt-2 h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${total > 0 ? Math.min(100, Math.round((balance.used / total) * 100)) : 0}%` }} /></div>
-                <div className="text-[10px] text-ink-muted mt-1">Đã dùng {balance.used}/{total} ngày được cấp</div>
-              </>
-            );
-          })()}
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép tồn còn lại (hạn 01/07)</div>
-          <div className="text-2xl font-bold text-status-warn mt-1">{balance.carriedRemaining} ngày</div>
-          <div className="text-[11px] text-status-warn mt-1">{balance.carryStatus === 'EXPIRED' ? 'Đã hết hiệu lực từ 01/07' : balance.carryStatus === 'CAPPED' ? 'Từ 01/04 chỉ giữ tối đa 5 ngày' : 'Dùng trước 01/04 · giữ tối đa 5 từ 01/04'}</div>
-        </div>
-
-        <div className="p-4 bg-surface rounded-xl border border-line">
-          <div className="text-xs text-ink-muted">Phép ốm (S)</div>
-          <div className="text-2xl font-bold text-ink mt-1">{balance.sickUsed} ngày</div>
-          <div className="text-[11px] text-ink-muted mt-1">Theo BHXH · cần giấy tờ</div>
+        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
+          {allocationTiles.map(t => (
+            <div key={t.label} className="bg-surface px-4 py-3">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{t.label}</div>
+              <div className={`mt-1 font-display text-lg font-extrabold leading-none tracking-[-0.03em] ${t.tone === 'danger' ? 'text-status-danger' : 'text-ink'}`}>
+                {t.value}<small className="ml-1 text-[11px] font-semibold tracking-normal text-ink-muted">ngày</small>
+              </div>
+              <div className="mt-1 text-[10.5px] leading-snug text-ink-muted">{t.hint}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Bộ lọc lịch sử phép */}
-      <div className="flex flex-wrap items-center gap-2">
-        {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
-          <button key={f} onClick={() => setFilterType(f)}
-            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${filterType === f ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
+      {/* Bộ lọc lịch sử — mockup `.filters` */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {FILTER_CHIPS.map(f => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFilterType(f)}
+            aria-pressed={filterType === f}
+            className={`inline-flex h-[30px] items-center rounded-full border px-3 text-xs font-semibold transition-colors ${
+              filterType === f
+                ? 'border-ink bg-ink text-canvas'
+                : 'border-line bg-surface text-ink-secondary hover:border-line-hover'
+            }`}
+          >
             {f}
           </button>
         ))}
-        <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="ml-auto text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
+        <span className="flex-1" />
+        <select
+          value={filterYear}
+          onChange={e => setFilterYear(e.target.value)}
+          aria-label="Lọc theo năm"
+          className="h-[30px] rounded-full border border-line bg-surface px-2.5 text-[11px] font-semibold text-ink-secondary"
+        >
           <option value="2026">Năm: 2026</option>
           <option value="2025">Năm: 2025</option>
           <option value="Tất cả">Tất cả năm</option>
         </select>
       </div>
 
-      {/* Ledger Table */}
-      <Card title="Sổ Phép Cá Nhân (Nhật Ký Biến Động)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+      {/* Sổ phép — mockup `.panel` (desktop bảng · mobile danh sách 2 dòng) */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Sổ phép cá nhân</h2>
+          <span className="ml-auto font-mono text-[10.5px] text-ink-muted">
+            {filteredLedger.length} dòng
+          </span>
+        </div>
+
+        {/* Desktop: bảng */}
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full border-collapse text-left text-[11.5px]">
             <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-2.5 px-3">Ngày Ghi Sổ</th>
-                <th className="py-2.5 px-3">Loại Phép</th>
-                <th className="py-2.5 px-3">Nghiệp Vụ Biến Động</th>
-                <th className="py-2.5 px-3">Chi Tiết / Mã Đơn</th>
-                <th className="py-2.5 px-3 text-center">Số Ngày</th>
-                <th className="py-2.5 px-3 text-right">Số Dư Sau (theo loại)</th>
+              <tr className="bg-canvas text-ink-secondary">
+                <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Ngày ghi sổ</th>
+                <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Loại phép</th>
+                <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghiệp vụ biến động</th>
+                <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Chi tiết</th>
+                <th className="border-b border-line px-3 py-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Số ngày</th>
+                <th className="border-b border-line px-3 py-2.5 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Số dư sau</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {filteredLedger.map(entry => (
-                <tr key={entry.id} className="hover:bg-canvas/40 transition-colors">
-                  <td className="py-2.5 px-3 font-mono text-ink-secondary">{entry.date}</td>
-                  <td className="py-2.5 px-3">
+                <tr key={entry.id} className="transition-colors hover:bg-canvas/40">
+                  <td className="px-3 py-2.5 font-mono text-ink-secondary">{entry.date}</td>
+                  <td className="px-3 py-2.5">
                     <div className="font-semibold text-ink">{leaveTypeName(entry.leaveType)}</div>
                     <div className="font-mono text-[10px] text-ink-muted">{entry.leaveType || 'AL'}</div>
                   </td>
-                  <td className="py-2.5 px-3">
-                    <Badge variant={entry.type === 'GRANT' ? 'ok' : entry.type === 'ADJUST' ? 'warn' : 'gray'}>
-                      {entry.type === 'GRANT' ? 'Cấp phép đầu kỳ' : entry.type === 'ADJUST' ? 'Điều chỉnh HR' : entry.type === 'EXPIRED' ? 'Hết hạn phép tồn' : 'Sử dụng phép'}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 px-3 font-medium text-ink">{entry.description}</td>
-                  <td className={`py-2.5 px-3 text-center font-bold ${entry.amount > 0 ? 'text-status-ok' : 'text-status-danger'}`}>
+                  <td className="px-3 py-2.5">{ledgerBadge(entry.type)}</td>
+                  <td className="px-3 py-2.5 font-medium text-ink">{entry.description}</td>
+                  <td className={`px-3 py-2.5 text-center font-bold ${entry.amount > 0 ? 'text-status-ok' : 'text-status-danger'}`}>
                     {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
                   </td>
-                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-status-danger' : 'text-ink'}`}>
+                  <td className={`px-3 py-2.5 text-right font-mono font-bold ${entry.balanceAfter < 0 ? 'text-status-danger' : 'text-ink'}`}>
                     {hasGrantFor(entry.leaveType)
                       ? `${entry.balanceAfter} ngày`
                       : `Đã dùng ${Math.abs(entry.balanceAfter)} ngày`}
@@ -259,7 +423,36 @@ export const LeavesPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </Card>
+
+        {/* Mobile: danh sách 2 dòng (tên + badge · mô tả · số ngày + số dư) */}
+        <div className="flex flex-col gap-2 p-3 md:hidden">
+          {filteredLedger.map(entry => (
+            <div key={entry.id} className="rounded-xl border border-line bg-surface p-3">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-[12.5px] font-bold text-ink">{leaveTypeName(entry.leaveType)}</span>
+                {ledgerBadge(entry.type)}
+                <span className="ml-auto font-mono text-[10px] text-ink-muted">{entry.date}</span>
+              </div>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-secondary">{entry.description}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`font-mono text-[12px] font-bold ${entry.amount > 0 ? 'text-status-ok' : 'text-status-danger'}`}>
+                  {entry.amount > 0 ? `+${entry.amount}` : entry.amount} ngày
+                </span>
+                <span className="ml-auto text-[10.5px] text-ink-muted">
+                  {hasGrantFor(entry.leaveType)
+                    ? `Còn ${entry.balanceAfter} ngày`
+                    : `Đã dùng ${Math.abs(entry.balanceAfter)} ngày`}
+                </span>
+              </div>
+            </div>
+          ))}
+          {filteredLedger.length === 0 && (
+            <p className="px-1 py-6 text-center text-[11.5px] text-ink-muted">
+              Không có dòng nào khớp bộ lọc hiện tại.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

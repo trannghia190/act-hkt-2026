@@ -63,7 +63,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ⬜ | ⬜ | ⬜ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ⬜ | ⬜ | ⬜ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ⬜ | ⬜ | ⬜ |
-| T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ⬜ | ⬜ | ⬜ |
+| T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
@@ -161,3 +161,15 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   theme × 320/360/390/414/1440 không tràn ngang, 0 lỗi JS, đổi kỳ 10/2026 hiện
   "Chu kỳ đóng 01/11/2026" đúng, `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` sạch.
+- **T7 · Nghỉ phép của tôi** ✅ (2026-11-26) — mockup `screens/leaves.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `LeavesPage`: đầu trang eyebrow + `h1` "Số dư phép"
+  + 2 nút (Xuất sổ phép CSV / Xin nghỉ phép → mở form đơn nghỉ); dải 4 chỉ số chính
+  (Phép còn lại có thanh tiến trình · Phép năm · Phép tồn · Phép ốm BHXH); **dải phân
+  bổ quỹ phép** tách rõ công chuẩn / phép chức vụ / phép thâm niên / đã sử dụng để
+  đối chiếu quy chế (giữ đủ card riêng theo tiêu chí C6c); bảng sổ phép 6 cột trên
+  desktop, **mobile đổi sang danh sách 2 dòng** (tên + badge · mô tả · số ngày + số
+  dư) — không mất cột nào; bộ lọc chip + năm, số dòng hiện trên tiêu đề panel. Không
+  đổi nghiệp vụ (bộ lọc, số dư, export). Verify: 3 theme × 320/360/390/414/768/1440
+  không tràn ngang, 0 lỗi JS; lọc loại + năm lọc đúng số dòng; xuất CSV tải được;
+  nút Xin nghỉ phép mở đúng form và form hiện số dư phép còn lại; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
