@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
+import {
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  Clock,
+  FileSpreadsheet,
+  Hourglass,
+  Info,
+  Lock,
+  MonitorSmartphone,
+  PenLine,
+  Printer,
+} from 'lucide-react';
 
 interface DayItem {
   day: number;
@@ -74,26 +90,29 @@ type PeriodStatus = TimesheetData['periodStatus'];
  * phải khai báo ĐỦ mọi trạng thái — thêm trạng thái mới mà quên xử lý sẽ lỗi build,
  * thay vì rơi vào nhánh else và hiển thị sai (lỗi đã từng xảy ra: draft hiện "đã khoá").
  */
-const PERIOD_BANNER: Record<PeriodStatus, { icon: string; title: string; cls: string; badge: 'accent' | 'warn' | 'gray' }> = {
-  OPEN: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-status-info-soft border-status-info-line text-status-info', badge: 'accent' },
-  UNPUBLISHED: { icon: '⏳', title: 'BẢNG CÔNG TẠM TÍNH (CHƯA CÔNG BỐ)', cls: 'bg-status-warn-soft border-status-warn-line text-status-warn', badge: 'warn' },
-  DRAFT: { icon: '🟡', title: 'BẢNG CÔNG ĐANG MỞ — CÓ THỂ KHIẾU NẠI', cls: 'bg-status-info-soft border-status-info-line text-status-info', badge: 'accent' },
-  DISPUTABLE: { icon: '🟢', title: 'BẢNG CÔNG ĐÃ CÔNG BỐ — ĐANG MỞ KHIẾU NẠI', cls: 'bg-status-ok-soft border-status-ok-line text-status-ok', badge: 'accent' },
-  EXPIRED: { icon: '⏰', title: 'ĐÃ HẾT HẠN KHIẾU NẠI (QUÁ 2 NGÀY)', cls: 'bg-surface-secondary border-line-hover text-ink', badge: 'gray' },
-  LOCKED: { icon: '🔒', title: 'KỲ CÔNG ĐÃ CHỐT VÀ KHÓA (CHỈ ĐỌC)', cls: 'bg-status-danger-soft border-status-danger-line text-status-danger', badge: 'gray' },
+const PERIOD_BANNER: Record<
+  PeriodStatus,
+  { icon: React.ComponentType<{ className?: string }>; title: string; cls: string; chip: string; badge: 'accent' | 'warn' | 'gray' | 'ok' }
+> = {
+  OPEN: { icon: CircleDot, title: 'Bảng công đang mở', cls: 'bg-status-info-soft border-status-info-line text-status-info', chip: 'Có thể khiếu nại', badge: 'accent' },
+  UNPUBLISHED: { icon: Hourglass, title: 'Bảng công tạm tính (chưa công bố)', cls: 'bg-status-warn-soft border-status-warn-line text-status-warn', chip: 'Chưa công bố', badge: 'warn' },
+  DRAFT: { icon: CircleDot, title: 'Bảng công đang mở', cls: 'bg-status-info-soft border-status-info-line text-status-info', chip: 'Có thể khiếu nại', badge: 'accent' },
+  DISPUTABLE: { icon: CheckCircle2, title: 'Bảng công đã công bố', cls: 'bg-status-ok-soft border-status-ok-line text-status-ok', chip: 'Đang mở khiếu nại', badge: 'ok' },
+  EXPIRED: { icon: Clock, title: 'Đã hết hạn khiếu nại', cls: 'bg-surface-secondary border-line-hover text-ink', chip: 'Đã hết hạn', badge: 'gray' },
+  LOCKED: { icon: Lock, title: 'Kỳ công đã chốt và khóa', cls: 'bg-status-danger-soft border-status-danger-line text-status-danger', chip: 'Đã khóa', badge: 'gray' },
 };
 
 /** Mô tả phụ — switch có kiểm tra `never` để không bao giờ bỏ sót trạng thái. */
 const periodDescription = (s: PeriodStatus, d: TimesheetData): string => {
   switch (s) {
-    case 'OPEN': return `Bảng công tháng đang mở: bạn có thể gửi khiếu nại ngay. Kỳ sẽ được HR chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau, sau đó còn ${''}vài ngày để khiếu nại bổ sung.`;
+    case 'OPEN': return `Bảng công tháng đang mở — bạn có thể gửi khiếu nại ngay. Kỳ sẽ được HR chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau.`;
     case 'DISPUTABLE': {
       const [y, m, dd] = String(d.disputeDeadline || '').slice(0, 10).split('-');
       const shown = dd ? `${dd}/${m}/${y}` : String(d.disputeDeadline || '—');
       return `Hạn khiếu nại công: đến hết ngày ${shown}. Hãy kiểm tra kỹ từng ngày công.`;
     }
-    case 'UNPUBLISHED': return `Bảng công đang mở. Kỳ trước sẽ được chốt vào ngày ${d.closeDay ?? 1} hàng tháng.`;
-    case 'DRAFT': return `Bảng công đang mở: bạn có thể gửi khiếu nại ngay. Kỳ sẽ được chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau.`;
+    case 'UNPUBLISHED': return `Bảng công đang tạm tính. Kỳ trước sẽ được HR chốt vào ngày ${d.closeDay ?? 1} hàng tháng.`;
+    case 'DRAFT': return `Bảng công đang mở — bạn có thể gửi khiếu nại ngay. Kỳ sẽ được chốt vào ngày ${d.closeDay ?? d.publishDay ?? 1} tháng sau.`;
     case 'EXPIRED': return 'Đã qua thời hạn 2 ngày kể từ khi công bố. Nút khiếu nại đã bị khóa tự động theo quy chế.';
     case 'LOCKED': return 'Kỳ công đã chốt bởi HR và khóa sổ lương — không thể chỉnh sửa hay khiếu nại.';
     default: { const unreachable: never = s; return unreachable; }
@@ -103,6 +122,7 @@ const periodDescription = (s: PeriodStatus, d: TimesheetData): string => {
 export const MyTimesheetPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showAllStats, setShowAllStats] = useState(false);
 
   const now = new Date();
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -342,203 +362,339 @@ export const MyTimesheetPage: React.FC = () => {
         : 'text-ink-secondary bg-surface-secondary border-line';
 
   return (
-    <div className="space-y-6">
-      {/* Header and Month Controls (Criterion B4 #1) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-1">
-            <span>📑</span> Bảng Công Cá Nhân
+    <div className="space-y-4 sm:space-y-5">
+      {/* Đầu trang + điều hướng kỳ công */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Bảng công cá nhân
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">{isOwnTimesheet ? 'Bảng Công Cá Nhân Của Tôi' : `Bảng Công Của ${data?.employeeName || viewedEmployeeCode}`}</h1>
-          <p className="text-xs text-ink-muted mt-1">
-            Tổng hợp dữ liệu công nhật, đối soát ký hiệu chuẩn và thực hiện khiếu nại trong thời hạn quy định.
+          <h1 className="mt-1 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            {isOwnTimesheet ? 'Bảng công của tôi' : `Bảng công của ${data?.employeeName || viewedEmployeeCode || 'nhân viên'}`}
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            {`Kỳ công tháng ${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`}
+            {data?.employeeCode ? ` · ${data.employeeCode}` : ''}
+          </p>
+          <p className="mt-0.5 text-[11px] text-ink-muted">
+            {data
+              ? data.shiftName
+                ? `${data.shiftName} · ${(data.shiftCheckInStart || '').slice(0, 5)}–${(data.shiftCheckOutEnd || '').slice(0, 5)} · ${data.shiftRequiredWorkHours ?? 8}h/ngày`
+                : 'Ca chuẩn 08:00–17:00 · 8h/ngày'
+              : 'Ca chuẩn 08:00–17:00 · 8h/ngày'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrevMonth} title="Tháng trước">
-            ‹
-          </Button>
-          <select
-            value={selectedMonth}
-            onChange={(e) => handleMonthChange(e.target.value)}
-            className="text-xs p-2 border border-line rounded-lg bg-surface font-semibold text-ink shadow-2xs font-mono"
-          >
-            {monthOptions.map((m) => (
-              <option key={m} value={m}>
-                Kỳ công: Tháng {m.slice(5, 7)} / {m.slice(0, 4)}
-              </option>
-            ))}
-          </select>
-          <Button variant="outline" size="sm" onClick={handleNextMonth} title="Tháng sau">
-            ›
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            In / PDF
+          <div className="flex h-9 items-center overflow-hidden rounded-[10px] border border-line bg-surface shadow-2xs">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              title="Tháng trước"
+              className="grid h-full w-8 cursor-pointer place-items-center text-ink-muted hover:bg-canvas-subtle hover:text-ink"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <select
+              value={selectedMonth}
+              onChange={(e) => handleMonthChange(e.target.value)}
+              className="h-full cursor-pointer border-x border-line bg-transparent px-2 font-mono text-xs font-semibold text-ink outline-none"
+            >
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m.slice(5, 7)} / {m.slice(0, 4)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              title="Tháng sau"
+              className="grid h-full w-8 cursor-pointer place-items-center text-ink-muted hover:bg-canvas-subtle hover:text-ink"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <Button variant="secondary" size="md" onClick={() => window.print()} title="In bảng công hoặc lưu PDF">
+            <Printer className="h-4 w-4" />
+            <span className="hidden sm:inline">In / PDF</span>
+            <span className="sm:hidden">In</span>
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">
-          ⚠️ {error}
+        <div className="flex items-start gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-xs text-status-danger">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Period Status Notification Banner */}
+      {/* Banner trạng thái kỳ công */}
       {data && (() => {
         const b = PERIOD_BANNER[data.periodStatus];
+        const Icon = b.icon;
         return (
-          <div className={`p-3.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${b.cls}`}>
-            <div className="flex items-center gap-2">
-              <span className="text-base">{b.icon}</span>
+          <div className={`flex flex-col gap-2 rounded-xl border p-3.5 text-xs shadow-2xs sm:flex-row sm:items-center sm:justify-between ${b.cls}`}>
+            <div className="flex items-start gap-2.5">
+              <Icon className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
                 <span className="font-bold">{b.title}</span>
-                <p className="text-[11px] opacity-90 mt-0.5">{periodDescription(data.periodStatus, data)}</p>
+                <p className="mt-0.5 text-[11px] opacity-90">{periodDescription(data.periodStatus, data)}</p>
               </div>
             </div>
-            <div>
-              <Badge variant={b.badge}>{data.periodStatus}</Badge>
+            <div className="self-start sm:self-auto">
+              <Badge variant={b.badge}>{b.chip}</Badge>
             </div>
           </div>
         );
       })()}
 
-      {/* 11 KPI / Summary Metrics Cards (Criterion B4 #3) */}
+      {/* Chỉ số công — 6 chỉ số chính + dải chỉ số phụ */}
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">1. Công Chuẩn</div>
-            <div className="text-lg font-bold text-ink mt-0.5">{data.standardDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-status-ok-line bg-status-ok-soft/20 shadow-2xs">
-            <div className="text-[10px] text-status-ok font-medium">2. Công Thực Tế</div>
-            <div className="text-lg font-bold text-status-ok mt-0.5">{data.actualDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">3. Làm Từ Xa (WFH)</div>
-            <div className="text-lg font-bold text-status-info mt-0.5">{data.wfhDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">4. Nghỉ Phép Năm</div>
-            <div className="text-lg font-bold text-status-info mt-0.5">{data.leaveDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">5. Đi Muộn / Sớm</div>
-            <div className="text-lg font-bold text-status-warn mt-0.5">{data.lateCount} lần</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">6. Ngày Lễ (NL)</div>
-            <div className="text-lg font-bold text-status-ok mt-0.5">{data.holidayDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">7. Nghỉ Ốm (S)</div>
-            <div className="text-lg font-bold text-ink mt-0.5">{data.sickDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">8. Nghỉ Bù (RO)</div>
-            <div className="text-lg font-bold text-ink mt-0.5">{data.compDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-            <div className="text-[10px] text-ink-muted">9. Không Lương (UP)</div>
-            <div className="text-lg font-bold text-status-danger mt-0.5">{data.unpaidDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-accent/40 bg-accent-soft/20 shadow-2xs">
-            <div className="text-[10px] text-accent-dark font-medium">10. Tổng Ngày Công</div>
-            <div className="text-lg font-black text-accent mt-0.5">{data.totalDays} ngày</div>
-          </div>
-          <div className="p-3 bg-surface rounded-xl border border-line col-span-2 sm:col-span-1 shadow-2xs">
-            <div className="text-[10px] text-ink-muted">11. Phép Còn Lại</div>
-            <div className="text-lg font-bold text-ink mt-0.5">{data.remainingLeave} ngày</div>
-          </div>
-        </div>
-      )}
-
-      {/* Square Calendar Grid (Criterion B4 #2) */}
-      {data && (
-        <Card title={`Lịch Tháng Dạng Ô Vuông — ${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`}>
-          <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
-            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
-              <div key={d} className="font-semibold text-ink-muted py-1 text-[11px]">
-                {d}
-              </div>
-            ))}
-            {(() => {
-              const [yy, mm] = selectedMonth.split('-').map(Number);
-              const offset = (new Date(yy, mm - 1, 1).getDay() + 6) % 7; // 0 = Thứ 2
-              return Array.from({ length: offset }, (_, i) => (
-                <div key={`lead-${i}`} aria-hidden="true" className="min-h-[56px]" />
-              ));
-            })()}
-            {data.days.map((d) => {
-              // Vắng (ABSENT) chỉ tô chữ đỏ, không tô nền: một tháng nhiều ngày vắng
-              // sẽ thành "biển đỏ" át hết thông tin. Muộn/thiếu chấm công mới đánh dấu nổi.
-              const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE';
-              const cls =
-                d.status === 'LEAVE'
-                  ? 'bg-status-info-soft border-status-info-line text-status-info'
-                  : d.status === 'WFH'
-                  ? 'bg-status-info-soft border-status-info-line text-status-info'
-                  : d.status === 'LATE'
-                  ? 'bg-status-warn-soft border-status-warn-line text-status-warn ring-1 ring-status-warn'
-                  : d.status === 'INCOMPLETE'
-                  ? 'bg-status-danger-soft border-status-danger-line text-status-danger ring-1 ring-status-danger'
-                  : d.status === 'ABSENT'
-                  ? 'bg-canvas border-line/60 text-status-danger'
-                  : d.status === 'ON_TIME'
-                  ? 'bg-status-ok-soft border-status-ok-line text-status-ok'
-                  : d.isWeekend
-                  ? 'bg-canvas text-ink-muted border-line/40'
-                  : 'bg-canvas border-line text-ink-muted';
-
-              return (
-                <div
-                  key={d.date}
-                  title={`${d.date} (${d.weekday}): ${d.statusText}`}
-                  className={`rounded-lg border p-1.5 min-h-[56px] flex flex-col items-center justify-between transition-all ${cls}`}
-                >
-                  <div className="flex items-center justify-between w-full px-0.5">
-                    <span className="font-bold text-xs">{d.day}</span>
-                    {hasIssue && <span className="w-2 h-2 rounded-full bg-status-danger" title="Ngày có vấn đề" />}
-                    {d.dispute && (
-                      <span className="text-[9px] px-1 bg-status-warn text-on-warn rounded" title="Đã có khiếu nại">
-                        KN
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-mono text-[10px] font-bold mt-1">
-                    {d.isWeekend && d.status === 'WEEKEND' ? '—' : d.symbol}
-                  </span>
+        <>
+          <section className="overflow-hidden rounded-xl border border-line bg-line-soft shadow-2xs">
+            <div className="grid grid-cols-2 gap-px md:grid-cols-6">
+              <div className="order-1 bg-accent-soft/50 p-3 sm:px-3.5">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-accent-dark">
+                  <PenLine className="h-3 w-3" /> Tổng ngày công
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-accent sm:text-xl">
+                  {data.totalDays}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">ngày</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Đã gồm phép &amp; ngày lễ</div>
+              </div>
+
+              <div className="order-2 bg-surface p-3 sm:px-3.5">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                  <Check className="h-3 w-3" /> Công thực tế
+                </div>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-status-ok sm:text-xl">
+                  {data.actualDays}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">ngày</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Trên {data.standardDays} ngày công chuẩn</div>
+              </div>
+
+              <div className="order-3 bg-surface p-3 sm:px-3.5 md:order-6">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                  <CalendarDays className="h-3 w-3" /> Phép còn lại
+                </div>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-ink sm:text-xl">
+                  {data.remainingLeave}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">ngày</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Tính đến kỳ này</div>
+              </div>
+
+              <div className="order-4 hidden bg-surface p-3 sm:px-3.5 md:order-3 md:block">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                  <CalendarDays className="h-3 w-3" /> Phép năm đã dùng
+                </div>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-status-info sm:text-xl">
+                  {data.leaveDays}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">ngày</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Còn lại {data.remainingLeave} ngày phép</div>
+              </div>
+
+              <div className="order-5 bg-surface p-3 sm:px-3.5 md:order-4">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                  <MonitorSmartphone className="h-3 w-3" /> Làm từ xa (WFH)
+                </div>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-status-wfh sm:text-xl">
+                  {data.wfhDays}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">ngày</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Ngày làm từ xa</div>
+              </div>
+
+              <div className="order-6 hidden bg-surface p-3 sm:px-3.5 md:order-5 md:block">
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                  <Clock className="h-3 w-3" /> Đi muộn / sớm
+                </div>
+                <div className="mt-1.5 font-display text-lg font-extrabold tracking-tight text-status-warn sm:text-xl">
+                  {data.lateCount}<span className="ml-1 text-[10.5px] font-semibold text-ink-muted">lần</span>
+                </div>
+                <div className="mt-1 text-[10px] text-ink-muted">Trong kỳ công này</div>
+              </div>
+
+              <div className="order-7 col-span-2 hidden flex-wrap items-center gap-x-5 gap-y-1.5 bg-canvas/60 px-3.5 py-2 sm:flex md:col-span-6">
+                <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-ink-muted">Chi tiết ký hiệu</span>
+                <span className="text-[11px] text-ink-secondary">Công chuẩn <b className="font-mono text-xs text-ink">{data.standardDays}</b></span>
+                <span className="text-[11px] text-ink-secondary">Ngày lễ (NL) <b className="font-mono text-xs text-ink">{data.holidayDays}</b></span>
+                <span className="text-[11px] text-ink-secondary">Nghỉ ốm (S) <b className="font-mono text-xs text-ink">{data.sickDays}</b></span>
+                <span className="text-[11px] text-ink-secondary">Nghỉ bù (RO) <b className="font-mono text-xs text-ink">{data.compDays}</b></span>
+                <span className="text-[11px] text-ink-secondary">Không lương (UP) <b className="font-mono text-xs text-status-danger">{data.unpaidDays}</b></span>
+              </div>
+            </div>
+          </section>
+
+          <button
+            type="button"
+            onClick={() => setShowAllStats((v) => !v)}
+            className="flex w-full cursor-pointer items-center justify-between rounded-[10px] border border-dashed border-line bg-surface px-3 py-2 text-[11px] text-ink-muted sm:hidden"
+          >
+            <span>
+              Phép năm <b className="text-ink">{data.leaveDays}</b> · Lễ <b className="text-ink">{data.holidayDays}</b> · Muộn <b className="text-ink">{data.lateCount}</b> · Ốm <b className="text-ink">{data.sickDays}</b>
+            </span>
+            <span className="flex items-center gap-1 font-bold text-accent-dark">
+              {showAllStats ? 'Thu gọn' : 'Đủ chỉ số'}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAllStats ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+
+          {showAllStats && (
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              {[
+                ['Phép năm đã dùng', data.leaveDays, 'ngày'],
+                ['Đi muộn / sớm', data.lateCount, 'lần'],
+                ['Công chuẩn', data.standardDays, 'ngày'],
+                ['Ngày lễ (NL)', data.holidayDays, 'ngày'],
+                ['Nghỉ ốm (S)', data.sickDays, 'ngày'],
+                ['Nghỉ bù (RO)', data.compDays, 'ngày'],
+                ['Không lương (UP)', data.unpaidDays, 'ngày'],
+              ].map(([label, value, unit]) => (
+                <div key={String(label)} className="rounded-[10px] border border-line bg-surface px-3 py-2">
+                  <div className="text-[9.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">{label}</div>
+                  <div className="mt-0.5 text-base font-extrabold text-ink">
+                    {value}<span className="ml-1 text-[9.5px] font-semibold text-ink-muted">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Exactly 11 Columns Timesheet Table (Criterion B4 #3) */}
-      <Card title={`Bảng Kê Chi Tiết 11 Cột — ${user?.fullName || 'Nhân Viên'} (${user?.employeeCode || '—'})`}>
+      {/* Lịch tháng dạng ô vuông */}
+      {data && (
+        <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3.5">
+            <div>
+              <h2 className="text-sm font-bold tracking-tight text-ink">
+                Lịch công tháng {selectedMonth.slice(5, 7)}/{selectedMonth.slice(0, 4)}
+              </h2>
+              <p className="mt-0.5 text-[11px] text-ink-muted">
+                1.00 = đủ công · R = WFH · AL = phép · NL = lễ
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {[
+                ['Đúng giờ', 'bg-status-ok'],
+                ['Muộn / thiếu', 'bg-status-warn'],
+                ['Nghỉ phép', 'bg-status-info'],
+                ['WFH', 'bg-status-wfh'],
+              ].map(([label, dot]) => (
+                <span key={label} className="inline-flex items-center gap-1.5 text-[10.5px] text-ink-muted">
+                  <span className={`h-2 w-2 rounded-[3px] ${dot}`} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
+                <div key={d} className="py-1 text-center text-[10px] font-bold uppercase tracking-[0.06em] text-ink-muted">
+                  {d}
+                </div>
+              ))}
+              {(() => {
+                const [yy, mm] = selectedMonth.split('-').map(Number);
+                const offset = (new Date(yy, mm - 1, 1).getDay() + 6) % 7; // 0 = Thứ 2
+                return Array.from({ length: offset }, (_, i) => (
+                  <div key={`lead-${i}`} aria-hidden="true" />
+                ));
+              })()}
+              {data.days.map((d) => {
+                // Vắng (ABSENT) chỉ tô chữ đỏ, không tô nền: một tháng nhiều ngày vắng
+                // sẽ thành "biển đỏ" át hết thông tin. Muộn/thiếu chấm công mới đánh dấu nổi.
+                const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE';
+                const cls =
+                  d.status === 'LEAVE'
+                    ? 'bg-status-info-soft border-status-info-line text-status-info'
+                    : d.status === 'WFH'
+                    ? 'bg-status-wfh-soft border-status-wfh-line text-status-wfh'
+                    : d.status === 'LATE'
+                    ? 'bg-status-warn-soft border-status-warn-line text-status-warn'
+                    : d.status === 'INCOMPLETE'
+                    ? 'bg-status-danger-soft border-status-danger-line text-status-danger'
+                    : d.status === 'ABSENT'
+                    ? 'bg-canvas border-line text-status-danger'
+                    : d.status === 'ON_TIME'
+                    ? 'bg-status-ok-soft/60 border-status-ok-line text-status-ok'
+                    : d.isHoliday
+                    ? 'bg-status-ok-soft/40 border-status-ok-line text-status-ok'
+                    : d.isWeekend
+                    ? 'bg-canvas-subtle border-line-soft text-ink-muted'
+                    : 'bg-canvas border-line text-ink-muted';
+
+                return (
+                  <div
+                    key={d.date}
+                    title={`${d.date} (${d.weekday}): ${d.statusText}`}
+                    className={`flex min-h-[52px] flex-col justify-between rounded-lg border px-1 py-1 transition-colors sm:min-h-[62px] sm:rounded-[10px] sm:px-1.5 sm:py-1.5 ${cls}`}
+                  >
+                    <div className="flex w-full items-start justify-between gap-0.5">
+                      <span className="font-mono text-[10.5px] font-extrabold sm:text-[11.5px]">{d.day}</span>
+                      {d.dispute ? (
+                        <span
+                          className="rounded bg-status-warn px-1 text-[8px] font-bold text-on-warn sm:text-[9px]"
+                          title="Đã có khiếu nại"
+                        >
+                          KN
+                        </span>
+                      ) : hasIssue ? (
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-status-danger" title="Ngày có vấn đề" />
+                      ) : null}
+                    </div>
+                    <div className="flex w-full items-end justify-between gap-1">
+                      <span className="font-mono text-[9.5px] font-bold sm:text-[10.5px]">
+                        {d.isWeekend && d.status === 'WEEKEND' ? '—' : d.symbol}
+                      </span>
+                      {typeof d.hoursWorked === 'number' && d.hoursWorked > 0 && (
+                        <span className="hidden font-mono text-[9px] text-ink-muted sm:inline">{d.hoursWorked}h</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Bảng kê chi tiết 11 cột */}
+      <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3.5">
+          <div>
+            <h2 className="text-sm font-bold tracking-tight text-ink">Chi tiết từng ngày</h2>
+            <p className="mt-0.5 text-[11px] text-ink-muted">
+              Đối soát giờ vào/ra, ký hiệu công và trạng thái khiếu nại của {user?.fullName || 'nhân viên'} ({user?.employeeCode || '—'})
+            </p>
+            <p className="mt-0.5 text-[10.5px] text-ink-muted sm:hidden">Vuốt ngang để xem thêm cột — cột Ngày cố định</p>
+          </div>
+          {data && <Badge variant="gray">{data.daysInMonth} ngày</Badge>}
+        </div>
+
         {loading ? (
           <div className="py-8 text-center text-xs text-ink-muted">Đang tải dữ liệu bảng công...</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full border-collapse text-left text-[11.5px]">
               <thead>
-                <tr className="bg-canvas border-b border-line text-ink-secondary font-semibold">
-                  <th className="py-2.5 px-3">1. Ngày</th>
-                  <th className="py-2.5 px-3">2. Thứ</th>
-                  <th className="py-2.5 px-3">3. Ca Làm</th>
-                  <th className="py-2.5 px-3 text-center">4. Giờ Vào</th>
-                  <th className="py-2.5 px-3 text-center">5. Giờ Ra</th>
-                  <th className="py-2.5 px-3 text-center">6. Giờ Làm</th>
-                  <th className="py-2.5 px-3 text-center">7. Muộn (p)</th>
-                  <th className="py-2.5 px-3 text-center">8. Ký Hiệu</th>
-                  <th className="py-2.5 px-3">9. Trạng Thái</th>
-                  <th className="py-2.5 px-3 text-center">10. Khiếu Nại</th>
-                  <th className="py-2.5 px-3">11. Ghi Chú</th>
+                <tr className="border-b border-line bg-canvas">
+                  {['Ngày', 'Thứ', 'Ca làm', 'Vào', 'Ra', 'Giờ làm', 'Muộn', 'Ký hiệu', 'Trạng thái', 'Khiếu nại', 'Ghi chú'].map((h, i) => (
+                    <th
+                      key={h}
+                      className={`whitespace-nowrap px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-ink-muted ${
+                        i === 0 ? 'sticky left-0 z-10 bg-canvas' : ''
+                      } ${i >= 3 && i <= 7 ? 'text-center' : ''} ${i === 9 ? 'text-center' : ''}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody>
                 {(!data || data.days.length === 0) && (
                   <tr>
                     <td colSpan={11} className="py-8 text-center text-ink-muted">
@@ -552,55 +708,56 @@ export const MyTimesheetPage: React.FC = () => {
                   const dayDisputable = isOwnTimesheet && data.canDispute && !r.isWeekend;
                   const canDisputeThisDay = dayDisputable && !r.dispute;
 
+                  // Ô Ngày dính (sticky) luôn nền đục để không lộ chữ bên dưới khi cuộn ngang.
+                  const rowTint = isIssue ? 'bg-status-warn-soft/30' : '';
+
                   return (
                     <tr
                       key={r.date}
-                      className={`hover:bg-canvas/50 transition-colors ${
-                        isIssue ? 'bg-status-warn-soft/20' : ''
-                      }`}
+                      className={`border-b border-line-soft transition-colors last:border-0 hover:bg-canvas/60 ${rowTint}`}
                     >
-                      <td className="py-2.5 px-3 font-mono font-medium">{r.date}</td>
-                      <td className="py-2.5 px-3 text-ink-secondary">{r.weekday}</td>
-                      <td className="py-2.5 px-3 text-ink-secondary">
+                      <td className="sticky left-0 z-[1] whitespace-nowrap border-r border-line-soft bg-surface px-3 py-2 font-mono font-semibold text-ink">{r.date}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-ink-secondary">{r.weekday}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-ink-secondary">
                         {data.shiftName
-                          ? `${data.shiftIsException ? 'Ca ngoại lệ' : 'Ca chuẩn'} · ${data.shiftName} (${(data.shiftCheckInStart || '').slice(0, 5)}–${(data.shiftCheckOutEnd || '').slice(0, 5)}) · ${data.shiftRequiredWorkHours ?? 8}h`
+                          ? `${data.shiftName} (${(data.shiftCheckInStart || '').slice(0, 5)}–${(data.shiftCheckOutEnd || '').slice(0, 5)}) · ${data.shiftRequiredWorkHours ?? 8}h`
                           : 'Ca chuẩn (08:00–17:00)'}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono">{r.checkIn || '—'}</td>
-                      <td className="py-2.5 px-3 text-center font-mono">{r.checkOut || '—'}</td>
-                      <td className="py-2.5 px-3 text-center font-mono">
+                      <td className="whitespace-nowrap px-3 py-2 text-center font-mono">{r.checkIn || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-center font-mono">{r.checkOut || '—'}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-center font-mono">
                         {r.hoursWorked ? `${r.hoursWorked}h` : '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono">
+                      <td className="whitespace-nowrap px-3 py-2 text-center font-mono">
                         {r.lateMinutes ? (
-                          <span className="text-status-warn font-bold">{r.lateMinutes}′</span>
+                          <span className="font-bold text-status-warn">{r.lateMinutes}′</span>
                         ) : (
                           '0'
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold">{r.symbol}</td>
-                      <td className="py-2.5 px-3">
+                      <td className="whitespace-nowrap px-3 py-2 text-center font-mono font-bold">{r.symbol}</td>
+                      <td className="whitespace-nowrap px-3 py-2">
                         <Badge
                           variant={
                             r.status === 'ON_TIME'
-                              ? 'accent'
+                              ? 'ok'
                               : r.status === 'LATE'
                               ? 'warn'
                               : r.status === 'INCOMPLETE' || r.status === 'ABSENT'
                               ? 'danger'
-                              : r.status === 'WFH'
-                              ? 'accent'
+                              : r.status === 'WFH' || r.status === 'LEAVE'
+                              ? 'info'
                               : 'gray'
                           }
                         >
                           {r.statusText}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="min-w-[200px] px-3 py-2 text-center">
                         {r.dispute ? (
-                          <div className="flex flex-col items-center gap-1">
+                          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <span
-                              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${disputeBadgeCls(r.dispute.status)}`}
+                              className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-semibold ${disputeBadgeCls(r.dispute.status)}`}
                               title={r.dispute.reason}
                             >
                               <span>{disputeIcon(r.dispute.status)}</span>
@@ -611,7 +768,7 @@ export const MyTimesheetPage: React.FC = () => {
                                 type="button"
                                 onClick={() => openDisputeModal(r)}
                                 title="Đã bị từ chối/kết luận — bạn còn 1 lần gửi lại cho ngày này"
-                                className="text-[11px] text-status-warn underline hover:text-status-warn cursor-pointer"
+                                className="cursor-pointer whitespace-nowrap text-[11px] text-status-warn underline hover:text-status-warn"
                               >
                                 Khiếu nại lại
                               </button>
@@ -626,7 +783,7 @@ export const MyTimesheetPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => openDisputeModal(r)}
-                            className="text-xs px-2.5 py-1 rounded bg-status-warn text-on-warn font-medium hover:bg-status-warn shadow-xs cursor-pointer"
+                            className="cursor-pointer rounded-md bg-status-warn px-2.5 py-1 text-[11px] font-semibold text-on-warn hover:bg-status-warn/90"
                           >
                             Khiếu nại
                           </button>
@@ -635,13 +792,13 @@ export const MyTimesheetPage: React.FC = () => {
                             type="button"
                             disabled
                             title={getDisputeTooltip(data.periodStatus)}
-                            className="text-xs px-2.5 py-1 rounded border border-line text-ink-muted cursor-not-allowed opacity-50"
+                            className="cursor-not-allowed rounded-md border border-line px-2.5 py-1 text-[11px] text-ink-muted opacity-60"
                           >
-                            Khóa khiếu nại
+                            Khóa
                           </button>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-ink-secondary text-[11px]">
+                      <td className="max-w-[260px] truncate px-3 py-2 text-[10.5px] text-ink-muted" title={r.dispute ? `Khiếu nại: ${r.dispute.reason}` : r.statusText}>
                         {r.dispute
                           ? `Khiếu nại: ${
                               r.dispute.status === 'RESOLVED' ? 'đã xử lý'
@@ -658,7 +815,14 @@ export const MyTimesheetPage: React.FC = () => {
             </table>
           </div>
         )}
-      </Card>
+
+        {data && !loading && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-canvas/50 px-4 py-2 text-[10.5px] text-ink-muted">
+            <span>{data.days.length} ngày trong kỳ · Mỗi ngày tối đa 2 đơn khiếu nại</span>
+            <span>Hạn khiếu nại: {data.disputeDeadline ? String(data.disputeDeadline).slice(0, 10).split('-').reverse().join('/') : '—'}</span>
+          </div>
+        )}
+      </section>
 
       {/* Dispute Modal Dialog */}
       {disputeDay && (

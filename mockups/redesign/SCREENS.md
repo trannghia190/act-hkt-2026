@@ -67,7 +67,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | 🟡 | ⬜ | ⬜ |
-| T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | 🟡 | ⬜ | ⬜ |
+| T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
 | T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ⬜ | ⬜ | ⬜ |
 | T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ⬜ | ⬜ | ⬜ |
 | T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ⬜ | ⬜ | ⬜ |
@@ -139,3 +139,12 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   nút chính/passkey 48px bo12. Kit: toolbar `fixed`→`sticky` (hết che đỉnh hero khi
   khổ hẹp). Verify: desktop1440 + mobile390 × Bento/Midnight, không tràn, desktop
   không regression. `tsc` + `build` sạch.
+- **T11 · Bảng công của tôi** ✅ (2026-11-26) — mockup `screens/my-timesheet.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `MyTimesheetPage`: đầu trang gọn +
+  điều hướng kỳ công (‹ Tháng ›) + In/PDF; 6 chỉ số chính có icon (tổng ngày công,
+  công thực tế, phép năm, WFH, đi muộn, phép còn lại) + dải "Chi tiết ký hiệu" 5
+  chỉ số phụ (mobile gộp vào nút "Đủ chỉ số"); lịch tháng ô vuông có chú giải + nhãn
+  KN; bảng 11 cột: cột Ngày dính khi cuộn ngang, header viết tắt, nút khiếu nại gọn.
+  Không đổi nghiệp vụ (khiếu nại, in, đổi kỳ). Verify: 3 theme × 320/390/1440 không
+  tràn, cột Ngày dính đúng, modal khiếu nại mở/đóng được, `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` sạch.
