@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AC1 · Hồ sơ cá nhân — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+    .wrap { width: 100%; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 14px;
+      padding: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+    .hero .av { width: 80px; height: 80px; border-radius: 16px; flex: 0 0 80px; display: grid; place-items: center;
+      background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-size: 30px; font-weight: 800; }
+    .hero .nm { font-size: 21px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.02em; color: rgb(var(--ink)); }
+    .hero .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 6px; }
+    .hero .code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: rgb(var(--ink-muted)); }
+    .hero .org { font-size: 12px; color: rgb(var(--ink-2)); margin-top: 5px; }
+    .hero .acts { margin-left: auto; display: flex; gap: 8px; flex: 0 0 auto; }
+
+    /* 4 ô hành động nhanh */
+    .quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px;
+      padding-top: 18px; border-top: 1px solid rgb(var(--line-soft)); }
+    .quick a { display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface));
+      font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); text-decoration: none; }
+    .quick a:hover { background: rgb(var(--canvas-subtle)); }
+    .quick a svg { width: 15px; height: 15px; stroke-width: 2; color: rgb(var(--accent)); flex: 0 0 15px; }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 13px 16px 11px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; color: rgb(var(--ink)); }
+    .panel-s { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .panel-b { padding: 14px 16px 16px; }
+
+    .cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+    /* Dòng thông tin */
+    .irow { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+    .irow + .irow { border-top: 1px solid rgb(var(--line-soft)); }
+    .irow .ic { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; color: rgb(var(--ink-muted)); }
+    .irow .lbl { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .irow .val { font-size: 13px; font-weight: 600; color: rgb(var(--ink)); margin-top: 1px; }
+    .irow .hint { font-size: 10.5px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+
+    /* ── Theme picker ──────────────────────────────────────────────────── */
+    .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .theme { text-align: left; border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 10px;
+      background: rgb(var(--surface)); cursor: pointer; font-family: inherit; }
+    .theme:hover { border-color: rgb(var(--line-hover)); background: rgb(var(--canvas-subtle)); }
+    .theme.on { border-color: rgb(var(--accent)); box-shadow: 0 0 0 3px rgb(var(--accent) / .18);
+      background: rgb(var(--accent-soft)); }
+    /* Preview mini-mockup: rail + nội dung + chấm trạng thái + thanh brand */
+    .tpv { display: flex; height: 68px; border-radius: 9px; overflow: hidden; border: 1px solid rgb(var(--line)); }
+    .tpv .r { width: 26%; flex: 0 0 26%; padding: 7px 6px; display: flex; flex-direction: column; gap: 5px; }
+    .tpv .r i { height: 4px; border-radius: 99px; display: block; }
+    .tpv .c { flex: 1; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .tpv .c .h { height: 6px; width: 52%; border-radius: 99px; display: block; }
+    .tpv .c .l { height: 4px; width: 100%; border-radius: 99px; opacity: .22; display: block; }
+    .tpv .c .dots { margin-top: auto; display: flex; align-items: center; gap: 4px; }
+    .tpv .c .dots i { width: 7px; height: 7px; border-radius: 99px; display: block; flex: 0 0 7px; }
+    .tpv .c .dots .bar { flex: 1; height: 6px; border-radius: 99px; margin-left: 3px; }
+    .theme .nm { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .theme .nm b { font-size: 12.5px; font-weight: 700; color: rgb(var(--ink)); }
+    .theme.on .nm b { color: rgb(var(--accent-dark)); }
+    .theme .nm .tick { width: 14px; height: 14px; color: rgb(var(--accent)); }
+    .theme .nm .def { margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .theme .ds { font-size: 10.5px; line-height: 1.45; color: rgb(var(--ink-muted)); margin-top: 3px; }
+
+    /* ── Row bảo mật ───────────────────────────────────────────────────── */
+    .srow { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+    .srow + .srow { border-top: 1px solid rgb(var(--line-soft)); }
+    .srow .ic { width: 16px; height: 16px; flex: 0 0 16px; color: rgb(var(--ink-muted)); }
+    .srow .t { font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); display: flex; align-items: center; gap: 8px; }
+    .srow .d { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .srow .act { margin-left: auto; flex: 0 0 auto; }
+
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      padding: 2.5px 8px; border-radius: 6px; }
+    .tag.ok { background: rgb(var(--ok-soft)); color: rgb(var(--ok)); }
+    .tag.warn { background: rgb(var(--warn-soft)); color: rgb(var(--warn)); }
+    .tag.gray { background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .tag.accent { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+
+    .ibtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; background: rgb(var(--surface));
+      color: rgb(var(--ink-secondary)); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+      text-decoration: none; }
+    .ibtn:hover { background: rgb(var(--canvas-subtle)); color: rgb(var(--ink)); }
+    .ibtn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-hero { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 14px; }
+    .m-hero .top { display: flex; gap: 12px; align-items: center; }
+    .m-hero .av { width: 56px; height: 56px; border-radius: 14px; flex: 0 0 56px; display: grid; place-items: center;
+      background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-size: 21px; font-weight: 800; }
+    .m-hero .nm { font-size: 16px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.02em; }
+    .m-hero .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+    .m-hero .code { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .m-hero .org { font-size: 11px; color: rgb(var(--ink-2)); margin-top: 4px; }
+    .m-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 13px;
+      padding-top: 13px; border-top: 1px solid rgb(var(--line-soft)); }
+    .m-quick a { display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface));
+      font-size: 12px; font-weight: 650; color: rgb(var(--ink)); text-decoration: none; }
+    .m-quick a svg { width: 14px; height: 14px; stroke-width: 2; color: rgb(var(--accent)); flex: 0 0 14px; }
+    .m-themes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .m-theme { display: flex; gap: 12px; align-items: flex-start; border: 1px solid rgb(var(--line));
+      border-radius: 13px; padding: 10px; background: rgb(var(--surface)); cursor: pointer; font-family: inherit;
+      text-align: left; }
+    .m-theme.on { border-color: rgb(var(--accent)); box-shadow: 0 0 0 3px rgb(var(--accent) / .18);
+      background: rgb(var(--accent-soft)); }
+    .m-theme .tpv { width: 108px; flex: 0 0 108px; height: 56px; }
+    .m-theme .info { min-width: 0; flex: 1; }
+    .m-theme .nm { display: flex; align-items: center; gap: 5px; }
+    .m-theme .nm b { font-size: 12.5px; font-weight: 700; color: rgb(var(--ink)); }
+    .m-theme.on .nm b { color: rgb(var(--accent-dark)); }
+    .m-theme .nm .tick { width: 13px; height: 13px; color: rgb(var(--accent)); }
+    .m-theme .nm .def { margin-left: auto; font-size: 8.5px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .m-theme .ds { font-size: 10.5px; line-height: 1.45; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+  </style>
+</head>
+<body data-title="AC1 · Hồ sơ cá nhân">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">Cài đặt</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Hồ sơ cá nhân</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/><path d="M16 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2"/></svg>Passkey &amp; bảo mật</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Tuỳ chỉnh thông báo</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Tuỳ chỉnh cá nhân
+                </div>
+                <h1 class="h1">Hồ sơ cá nhân</h1>
+                <div class="sub">Thông tin tài khoản, giao diện và cách bạn đăng nhập — 136ACT</div>
+              </div>
+              <button class="ibtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+                Chỉnh sửa hồ sơ
+              </button>
+            </div>
+
+            <!-- Hero -->
+            <section class="hero">
+              <div class="av">V</div>
+              <div style="min-width:0">
+                <div class="nm">VŨ VĂN LUẬN</div>
+                <div class="meta">
+                  <span class="code">136ACT</span>
+                  <span class="tag accent">Nhân viên</span>
+                  <span class="tag ok">Đang hoạt động</span>
+                </div>
+                <div class="org">Kỹ sư Phần mềm Cao cấp · Sirius Backend Architecture</div>
+              </div>
+              <div class="acts">
+                <button class="ibtn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+                  Đổi ảnh
+                </button>
+              </div>
+              <div class="quick" style="flex-basis:100%">
+                <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 11-7.8 7.8 5.5 5.5 0 017.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>Đổi mật khẩu</a>
+                <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/></svg>Passkey</a>
+                <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a4 4 0 00-4 4v1a8 8 0 00-1 3.6M12 2a4 4 0 014 4v1a8 8 0 011 3.6M4 12v2a8 8 0 004 7.5"/><circle cx="12" cy="11" r="2"/></svg>Khuôn mặt</a>
+                <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>Thiết bị</a>
+              </div>
+            </section>
+
+            <!-- 2 cột: Thông tin cá nhân / Công việc -->
+            <div class="cols2">
+              <section class="panel">
+                <div class="panel-h">
+                  <div>
+                    <div class="panel-t">Thông tin cá nhân</div>
+                    <div class="panel-s">Bạn tự sửa được tên hiển thị và số điện thoại</div>
+                  </div>
+                  <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Chỉnh sửa</button>
+                </div>
+                <div class="panel-b">
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div><div class="lbl">Họ và tên</div><div class="val">VŨ VĂN LUẬN</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012 4.2 2 2 0 014 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.8a16 16 0 006 6l1.2-1.1a2 2 0 012.1-.5c.9.3 1.8.6 2.8.7a2 2 0 011.8 2z"/></svg>
+                    <div><div class="lbl">Số điện thoại</div><div class="val">Chưa cập nhật</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+                    <div>
+                      <div class="lbl">Email</div>
+                      <div class="val">luan.vu@act-corp.internal</div>
+                      <div class="hint">Dùng để đăng nhập — liên hệ HR nếu cần đổi</div>
+                    </div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
+                    <div>
+                      <div class="lbl">Tên đăng nhập</div>
+                      <div class="val">136ACT</div>
+                      <div class="hint">Đăng nhập bằng mã nhân viên hoặc email</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-h">
+                  <div>
+                    <div class="panel-t">Công việc</div>
+                    <div class="panel-s">Thông tin do HR quản lý — liên hệ HR nếu cần điều chỉnh</div>
+                  </div>
+                </div>
+                <div class="panel-b">
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9"/><path d="M16 3.1a4 4 0 010 7.8"/></svg>
+                    <div><div class="lbl">Nhóm</div><div class="val">Sirius Backend Architecture</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>
+                    <div><div class="lbl">Phòng ban</div><div class="val">Sirius Core</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+                    <div><div class="lbl">Chức danh</div><div class="val">Kỹ sư Phần mềm Cao cấp</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div><div class="lbl">Quản lý trực tiếp</div><div class="val">NGUYỄN THANH TÙNG (05ACT)</div></div>
+                  </div>
+                  <div class="irow">
+                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <div><div class="lbl">Ngày vào làm</div><div class="val">15/06/2023</div></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- Giao diện — chọn 3 template -->
+            <section class="panel">
+              <div class="panel-h">
+                <div>
+                  <div class="panel-t">Giao diện</div>
+                  <div class="panel-s">Chọn template màu cho toàn bộ ứng dụng — lưu theo tài khoản, áp dụng trên mọi thiết bị</div>
+                </div>
+                <span class="tag gray">Đang dùng · Midnight Rail</span>
+              </div>
+              <div class="panel-b">
+                <div class="themes">
+                  <!-- Ascend Clean -->
+                  <button class="theme" type="button">
+                    <div class="tpv">
+                      <div class="r" style="background:#FFFFFF">
+                        <i style="background:#17171A;opacity:.8"></i>
+                        <i style="background:#17171A;opacity:.4"></i>
+                        <i style="background:#17171A;opacity:.4"></i>
+                      </div>
+                      <div class="c" style="background:#FFFFFF">
+                        <span class="h" style="background:#17171A;opacity:.8"></span>
+                        <span class="l" style="background:#17171A"></span>
+                        <div class="dots">
+                          <i style="background:#116A3A"></i>
+                          <i style="background:#9A5B00"></i>
+                          <i style="background:#B42318"></i>
+                          <span class="bar" style="background:#E31D1A"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="nm"><b>Ascend Clean</b></div>
+                    <div class="ds">Nền sáng, sidebar trắng, viền hairline. Gọn và đọc dễ.</div>
+                  </button>
+
+                  <!-- Midnight Rail — đang chọn -->
+                  <button class="theme on" type="button" aria-pressed="true">
+                    <div class="tpv">
+                      <div class="r" style="background:#101114">
+                        <i style="background:#F4F4F6;opacity:.8"></i>
+                        <i style="background:#F4F4F6;opacity:.4"></i>
+                        <i style="background:#F4F4F6;opacity:.4"></i>
+                      </div>
+                      <div class="c" style="background:#FFFFFF">
+                        <span class="h" style="background:#17171A;opacity:.8"></span>
+                        <span class="l" style="background:#17171A"></span>
+                        <div class="dots">
+                          <i style="background:#116A3A"></i>
+                          <i style="background:#9A5B00"></i>
+                          <i style="background:#B42318"></i>
+                          <span class="bar" style="background:#E31D1A"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="nm">
+                      <b>Midnight Rail</b>
+                      <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                      <span class="def">Mặc định</span>
+                    </div>
+                    <div class="ds">Sidebar tối, nội dung sáng. Tách vùng điều hướng rõ ràng.</div>
+                  </button>
+
+                  <!-- Bento Studio -->
+                  <button class="theme" type="button">
+                    <div class="tpv">
+                      <div class="r" style="background:#0A0B0E">
+                        <i style="background:#F2F3F5;opacity:.8"></i>
+                        <i style="background:#F2F3F5;opacity:.4"></i>
+                        <i style="background:#F2F3F5;opacity:.4"></i>
+                      </div>
+                      <div class="c" style="background:#141519">
+                        <span class="h" style="background:#F2F3F5;opacity:.8"></span>
+                        <span class="l" style="background:#F2F3F5"></span>
+                        <div class="dots">
+                          <i style="background:#3DD68C"></i>
+                          <i style="background:#F5A524"></i>
+                          <i style="background:#FF8078"></i>
+                          <span class="bar" style="background:#FF5147"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="nm"><b>Bento Studio</b></div>
+                    <div class="ds">Nền tối toàn bộ, đỏ sáng nổi bật. Dành cho màn hình nhiều dữ liệu.</div>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Bảo mật & đăng nhập -->
+            <section class="panel">
+              <div class="panel-h">
+                <div>
+                  <div class="panel-t">Bảo mật &amp; đăng nhập</div>
+                  <div class="panel-s">Quản lý cách bạn đăng nhập và xác thực</div>
+                </div>
+              </div>
+              <div class="panel-b">
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 11-7.8 7.8 5.5 5.5 0 017.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>
+                  <div>
+                    <div class="t">Mật khẩu <span class="tag gray">Đã thiết lập</span></div>
+                    <div class="d">Đổi mật khẩu định kỳ để bảo vệ tài khoản.</div>
+                  </div>
+                  <div class="act"><button class="ibtn">Đổi mật khẩu</button></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/></svg>
+                  <div>
+                    <div class="t">Passkey <span class="tag ok">Đã đăng ký</span></div>
+                    <div class="d">Đăng nhập nhanh bằng vân tay / Face ID / Windows Hello.</div>
+                  </div>
+                  <div class="act"><button class="ibtn">Quản lý</button></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 00-4 4v1a8 8 0 00-1 3.6M12 2a4 4 0 014 4v1a8 8 0 011 3.6M4 12v2a8 8 0 004 7.5"/><circle cx="12" cy="11" r="2"/></svg>
+                  <div>
+                    <div class="t">Khuôn mặt chấm công <span class="tag ok">Đã đăng ký</span></div>
+                    <div class="d">Bắt buộc để chấm công bằng camera.</div>
+                  </div>
+                  <div class="act"><button class="ibtn">Đăng ký</button></div>
+                </div>
+                <div class="srow">
+                  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+                  <div>
+                    <div class="t">Thiết bị chấm công</div>
+                    <div class="d">Quản lý điện thoại/máy tính được phép chấm công.</div>
+                  </div>
+                  <div class="act"><button class="ibtn">Xem thiết bị</button></div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Tuỳ chỉnh cá nhân</div>
+          <div class="m-h1 h1">Hồ sơ cá nhân</div>
+          <div class="m-sub">Thông tin tài khoản, giao diện và cách bạn đăng nhập — 136ACT</div>
+        </div>
+
+        <section class="m-hero">
+          <div class="top">
+            <div class="av">V</div>
+            <div style="min-width:0">
+              <div class="nm">VŨ VĂN LUẬN</div>
+              <div class="meta">
+                <span class="code">136ACT</span>
+                <span class="tag accent">Nhân viên</span>
+                <span class="tag ok">Đang hoạt động</span>
+              </div>
+              <div class="org">Kỹ sư Phần mềm Cao cấp · Sirius Backend Architecture</div>
+            </div>
+          </div>
+          <div class="m-quick">
+            <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 11-7.8 7.8 5.5 5.5 0 017.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>Đổi mật khẩu</a>
+            <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/></svg>Passkey</a>
+            <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a4 4 0 00-4 4v1a8 8 0 00-1 3.6M12 2a4 4 0 014 4v1a8 8 0 011 3.6M4 12v2a8 8 0 004 7.5"/><circle cx="12" cy="11" r="2"/></svg>Khuôn mặt</a>
+            <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>Thiết bị</a>
+          </div>
+        </section>
+
+        <!-- Giao diện — mobile: mỗi template 1 hàng ngang (preview + mô tả) -->
+        <section class="panel">
+          <div class="panel-h" style="padding:11px 12px">
+            <div>
+              <div class="panel-t" style="font-size:12.5px">Giao diện</div>
+              <div class="panel-s" style="font-size:10.5px">Lưu theo tài khoản — áp dụng trên mọi thiết bị</div>
+            </div>
+          </div>
+          <div class="panel-b" style="padding:11px 12px 13px">
+            <div class="m-themes">
+              <button class="m-theme" type="button">
+                <div class="tpv">
+                  <div class="r" style="background:#FFFFFF">
+                    <i style="background:#17171A;opacity:.8"></i>
+                    <i style="background:#17171A;opacity:.4"></i>
+                    <i style="background:#17171A;opacity:.4"></i>
+                  </div>
+                  <div class="c" style="background:#FFFFFF">
+                    <span class="h" style="background:#17171A;opacity:.8"></span>
+                    <span class="l" style="background:#17171A"></span>
+                    <div class="dots">
+                      <i style="background:#116A3A"></i>
+                      <i style="background:#9A5B00"></i>
+                      <i style="background:#B42318"></i>
+                      <span class="bar" style="background:#E31D1A"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="info">
+                  <div class="nm"><b>Ascend Clean</b></div>
+                  <div class="ds">Nền sáng, sidebar trắng, viền hairline. Gọn và đọc dễ.</div>
+                </div>
+              </button>
+
+              <button class="m-theme on" type="button" aria-pressed="true">
+                <div class="tpv">
+                  <div class="r" style="background:#101114">
+                    <i style="background:#F4F4F6;opacity:.8"></i>
+                    <i style="background:#F4F4F6;opacity:.4"></i>
+                    <i style="background:#F4F4F6;opacity:.4"></i>
+                  </div>
+                  <div class="c" style="background:#FFFFFF">
+                    <span class="h" style="background:#17171A;opacity:.8"></span>
+                    <span class="l" style="background:#17171A"></span>
+                    <div class="dots">
+                      <i style="background:#116A3A"></i>
+                      <i style="background:#9A5B00"></i>
+                      <i style="background:#B42318"></i>
+                      <span class="bar" style="background:#E31D1A"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="info">
+                  <div class="nm">
+                    <b>Midnight Rail</b>
+                    <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    <span class="def">Mặc định</span>
+                  </div>
+                  <div class="ds">Sidebar tối, nội dung sáng. Tách vùng điều hướng rõ ràng.</div>
+                </div>
+              </button>
+
+              <button class="m-theme" type="button">
+                <div class="tpv">
+                  <div class="r" style="background:#0A0B0E">
+                    <i style="background:#F2F3F5;opacity:.8"></i>
+                    <i style="background:#F2F3F5;opacity:.4"></i>
+                    <i style="background:#F2F3F5;opacity:.4"></i>
+                  </div>
+                  <div class="c" style="background:#141519">
+                    <span class="h" style="background:#F2F3F5;opacity:.8"></span>
+                    <span class="l" style="background:#F2F3F5"></span>
+                    <div class="dots">
+                      <i style="background:#3DD68C"></i>
+                      <i style="background:#F5A524"></i>
+                      <i style="background:#FF8078"></i>
+                      <span class="bar" style="background:#FF5147"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="info">
+                  <div class="nm"><b>Bento Studio</b></div>
+                  <div class="ds">Nền tối toàn bộ, đỏ sáng nổi bật. Dành cho màn hình nhiều dữ liệu.</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bảo mật (mobile) -->
+        <section class="panel">
+          <div class="panel-h" style="padding:11px 12px">
+            <div>
+              <div class="panel-t" style="font-size:12.5px">Bảo mật &amp; đăng nhập</div>
+              <div class="panel-s" style="font-size:10.5px">Quản lý cách bạn đăng nhập và xác thực</div>
+            </div>
+          </div>
+          <div class="panel-b" style="padding:11px 12px 13px">
+            <div class="srow" style="flex-wrap:wrap;gap:8px">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/></svg>
+              <div style="min-width:0;flex:1">
+                <div class="t">Passkey <span class="tag ok">Đã đăng ký</span></div>
+                <div class="d">Đăng nhập nhanh bằng vân tay / Face ID.</div>
+              </div>
+              <div class="act"><button class="ibtn" style="height:30px;font-size:11.5px">Quản lý</button></div>
+            </div>
+            <div class="srow" style="flex-wrap:wrap;gap:8px">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 00-4 4v1a8 8 0 00-1 3.6M12 2a4 4 0 014 4v1a8 8 0 011 3.6M4 12v2a8 8 0 004 7.5"/><circle cx="12" cy="11" r="2"/></svg>
+              <div style="min-width:0;flex:1">
+                <div class="t">Khuôn mặt chấm công <span class="tag ok">Đã đăng ký</span></div>
+                <div class="d">Bắt buộc để chấm công bằng camera.</div>
+              </div>
+              <div class="act"><button class="ibtn" style="height:30px;font-size:11.5px">Đăng ký</button></div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

@@ -77,7 +77,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
-| AC1 | Hồ sơ cá nhân (+ chọn theme) | `/account/profile` | `ProfilePage` | ⬜ | ⬜ | ⬜ |
+| AC1 | Hồ sơ cá nhân (+ chọn theme) | `/account/profile` | `ProfilePage` | ✅ | ✅ | ✅ |
 | AC2 | Passkey & bảo mật | `/account/passkey` | `PasskeySettingsPage` | ⬜ | ⬜ | ⬜ |
 
 ## 4 · OKR
@@ -257,3 +257,23 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   5 ngày có dispute trong API; form đơn mở đúng loại `LATE_EARLY` + ngày `2026-11-22`;
   `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
+- **AC1 · Hồ sơ cá nhân (+ chọn theme)** ✅ (2026-11-27) — mockup `screens/profile.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `ProfilePage`: đầu trang eyebrow +
+  `h1` "Hồ sơ cá nhân" + sub + nút "Chỉnh sửa hồ sơ"; hero chuyển từ `bg-canvas`
+  sang panel `bg-surface` viền 14px, tên lên `font-display` 21px + 3 badge (mã NV ·
+  vai trò · trạng thái); 4 ô hành động nhanh (Đổi mật khẩu · Passkey · Khuôn mặt ·
+  Thiết bị) cao 40px bo 10px — trước là 4 ô bo 12px trộn 2 hàng ở mobile; 2 card
+  "Thông tin cá nhân" / "Công việc" dùng panel mới (header tách viền, bo 13px) thay
+  `Card`; dòng thông tin có đường kẻ ngăn cách `border-line-soft` + chữ đậm hơn;
+  icon "Phòng ban" đổi `Briefcase` → `Building2` (icon đúng nghĩa); **card "Giao diện"
+  thêm badge "Đang dùng · Midnight Rail"** + preview mini-mockup cao 56px (mobile) /
+  64px (desktop) — **mobile chuyển từ 3 card dọc sang 3 hàng ngang** (preview 108px
+  bên trái · tên + mô tả bên phải) để không phải cuộn 3 màn hình; nút input form sửa
+  hồ sơ có `id` + `htmlFor` và focus ring `ring-accent/20`. Không đổi nghiệp vụ: cùng
+  API `/auth/profile` GET/PUT, cùng luồng đổi avatar / đổi mật khẩu / chuyển theme
+  (localStorage + sync DB). Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn
+  ngang, 0 lỗi JS, 0 request 4xx/5xx; theme khớp DB khi mở màn; bấm "Bento Studio" áp
+  **ngay** (`data-theme` + localStorage) và **lưu DB** (`GET /auth/profile` trả về
+  `bento-studio`); reload vẫn giữ theme; `aria-pressed` đúng ô đang chọn; form sửa hồ
+  sơ mở với tên hiện tại; 4 đích điều hướng bảo mật đúng; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
