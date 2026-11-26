@@ -1,10 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../../context/AuthContext';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Info as InfoIcon,
+  MapPin,
+  RefreshCw,
+  ScanFace,
+  Smartphone,
+  Video,
+  VideoOff,
+  Wifi,
+  XCircle,
+} from 'lucide-react';
 
 interface AttendancePunchRecord {
   id: string;
@@ -545,15 +558,25 @@ export const CheckInPage: React.FC = () => {
     && checkInEndMinutes != null && nowMinutes > checkInEndMinutes;
   const missingCheckInPunch = !hasCheckInToday && checkType === 'OUT';
 
+
+  /** 5 lớp xác thực — khớp thứ tự bước backend trả về (`parallelSteps`). */
+  const verifyLayers = [
+    { name: 'device', title: 'Thiết bị đã đăng ký', desc: 'Khóa theo fingerprint trình duyệt', Icon: Smartphone },
+    { name: 'network', title: 'Mạng nội bộ công ty', desc: 'SSID/BSSID khớp cấu hình văn phòng', Icon: Wifi },
+    { name: 'gps', title: 'GPS trong bán kính văn phòng', desc: 'Kiểm tra tọa độ so với geofence', Icon: MapPin },
+    { name: 'shift', title: 'Khung giờ ca làm việc', desc: `${shiftCheckInText} · ${shiftCheckOutText}`, Icon: Clock3 },
+    { name: 'face', title: 'Nhận diện khuôn mặt & liveness', desc: 'Chống ảnh giả, so khớp khuôn mặt', Icon: ScanFace },
+  ] as const;
+
   return (
-    <div className="max-w-xl lg:max-w-5xl mx-auto space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+    <div className="max-w-6xl mx-auto space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Yesterday Missing Checkout Banner (Criterion B2 #2) */}
       {yesterdayMissingCheckout && (
         <div className="p-3.5 bg-status-warn-soft border border-status-warn-line rounded-xl text-xs text-status-warn flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="text-base">⚠️</span>
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             <div>
               <strong className="font-semibold text-status-warn">
                 Bạn chưa chấm công ra ngày hôm qua ({yesterdayDate})
@@ -578,456 +601,509 @@ export const CheckInPage: React.FC = () => {
         <div className="text-center">
           <button
             onClick={() => navigate('/auth/enroll-face')}
-            className="inline-flex items-center gap-1.5 text-xs text-status-danger bg-status-danger-soft hover:bg-status-danger-soft font-bold px-3.5 py-1.5 rounded-full border border-status-danger-line shadow-2xs cursor-pointer animate-pulse"
+            className="inline-flex items-center gap-1.5 text-xs text-status-danger bg-status-danger-soft hover:bg-status-danger-soft font-bold px-3.5 py-1.5 rounded-full border border-status-danger-line shadow-2xs cursor-pointer"
           >
-            <span>📸</span>
-            <span>⚠️ Bạn chưa đăng ký khuôn mặt! Bấm vào đây để đăng ký (B0)</span>
+            <ScanFace className="w-3.5 h-3.5" />
+            Chưa đăng ký khuôn mặt — đăng ký ngay để chấm công
           </button>
         </div>
       )}
 
-      {/* Main Punch Card (Mobile-First, Criterion B1 #13) */}
-      <Card className="text-center p-4 sm:p-6 lg:p-8 shadow-sm">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-8 lg:items-center">
-          {/* Cột trái: đồng hồ + camera */}
-          <div className="space-y-4 lg:rounded-2xl lg:border lg:border-line lg:bg-canvas/60 lg:p-5">
-            {/* Real-time Clock */}
-            <div>
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-extrabold font-mono tracking-tight text-ink tabular-nums">
-                {currentTime || '08:30:00'}
-              </div>
-              <div className="text-xs sm:text-sm text-ink-secondary mt-1.5 capitalize font-medium">
-                {currentDate}
-              </div>
-            </div>
-
-        {/* Camera Viewport with Oval Guideline Overlay (Criterion B1 #2) */}
-        <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 mx-auto rounded-full border-4 border-accent/40 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`w-full h-full object-cover rounded-full -scale-x-100 ${useRealCamera && cameraStream ? 'block' : 'hidden'}`}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-5 lg:items-start">
+        {/* ── Cột trái: đồng hồ + camera + thao tác chấm ─────────────────── */}
+        <section className="relative overflow-hidden rounded-2xl border border-line bg-surface shadow-xs p-4 sm:p-6">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-36"
+            style={{
+              background:
+                'radial-gradient(420px 140px at 18% 0%, rgb(var(--accent) / 0.10), transparent 70%)',
+            }}
           />
 
-          {/* Oval guideline overlay */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-36 h-44 sm:w-40 sm:h-52 lg:w-44 lg:h-56 rounded-[50%] border-2 border-dashed border-status-ok/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex flex-col items-center justify-between py-2.5 sm:py-3">
-              <div className="text-[10px] text-status-ok-line font-semibold bg-zinc-900/60 px-2 py-0.5 rounded-full backdrop-blur-2xs">
-                Khung oval hướng dẫn
-              </div>
-              <div className="text-[9px] text-status-ok-line/80 bg-zinc-900/60 px-1.5 py-0.5 rounded-full">
-                Nhìn thẳng vào camera
-              </div>
-            </div>
-          </div>
-
-          {/* Prompt if camera is not active */}
-          {(!useRealCamera || !cameraStream) && !isScanning && (
-            <div className="text-center p-4 z-10">
-              <div className="text-4xl mb-2">📸</div>
-              <div className="text-xs text-zinc-300 font-medium">
-                Căn chỉnh khuôn mặt vào giữa khung tròn
-              </div>
-            </div>
-          )}
-
-          {/* Live Scanning Spinner */}
-          {isScanning && checkInStep !== 'success' && checkInStep !== 'error' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/80 text-white backdrop-blur-xs z-20">
-              <div className="w-40 h-40 rounded-full border-3 border-accent border-t-transparent animate-spin" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-center px-4 font-semibold text-status-ok-line">
-                Đang xác thực 5 tầng song song...
-              </div>
-            </div>
-          )}
-
-          {/* Success Overlay with Match Percentage (Criterion B1 #5) */}
-          {checkInStep === 'success' && checkResult && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center p-4 z-20 animate-in fade-in ${
-              checkResult.status.startsWith('GHI NHẬN') ? 'bg-status-warn text-on-warn' : 'bg-status-ok text-on-ok'
-            }`}>
-              <div className="text-4xl mb-1">
-                {checkResult.status.startsWith('GHI NHẬN') ? '!' : '✓'}
-              </div>
-              <div className="text-sm font-extrabold">
-                {checkResult.status.startsWith('GHI NHẬN')
-                  ? 'Đã ghi nhận RA — thiếu giờ vào'
-                  : `✓ Khớp ${(checkResult.similarity * 100).toFixed(0)}%`}
-              </div>
-              <div className="text-xs font-semibold opacity-90 mt-0.5">
-                {checkResult.fullName} ({checkResult.employeeCode})
-              </div>
-              <div className="text-[10px] mt-1 opacity-90">
-                Liveness: 100% · Vị trí: Hợp lệ
-              </div>
-            </div>
-          )}
-
-          {/* Error Overlay */}
-          {checkInStep === 'error' && (
-            <div className="absolute inset-0 bg-status-danger/90 flex flex-col items-center justify-center text-on-danger p-4 z-20 animate-in fade-in">
-              <div className="text-4xl mb-1">✕</div>
-              <div className="text-xs font-bold uppercase opacity-90">BỊ CHẶN XÁC THỰC</div>
-            </div>
-          )}
-        </div>
-
-        {/* Toggle Real Webcam Button */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={toggleRealCamera}
-            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs border cursor-pointer ${
-              useRealCamera && cameraStream
-                ? 'bg-status-ok/15 text-status-ok border-status-ok/30'
-                : 'bg-accent text-on-accent border-transparent hover:bg-accent-hover'
-            }`}
-          >
-            <span>{useRealCamera && cameraStream ? '🟢' : '📹'}</span>
-            <span>{useRealCamera && cameraStream ? 'Webcam Đang Hoạt Động' : 'Bật Webcam Thực'}</span>
-          </button>
-        </div>
-          </div>
-
-          {/* Cột phải: ca làm việc + trạng thái + nút chấm công */}
-          <div className="flex flex-col gap-4 text-left">
-            <div className="rounded-xl border border-line bg-canvas p-4 space-y-2.5 order-3 lg:order-none">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Ca làm việc hôm nay</div>
-                  {shiftLoading ? (
-                    <div className="text-sm font-bold text-ink-muted mt-0.5">Đang tải cấu hình ca…</div>
-                  ) : !myShift ? (
-                    <div className="text-sm font-bold text-ink mt-0.5">Chưa xác định được ca làm việc</div>
-                  ) : (
-                    <div className="text-sm font-bold text-ink mt-0.5 truncate">{myShift.name}</div>
-                  )}
+          <div className="relative space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-muted">
+                  Chấm công hôm nay
                 </div>
-                {!shiftLoading && myShift && (
-                  <Badge variant={myShift.isBase ? 'info' : 'warn'}>
-                    {myShift.isBase ? 'Ca chuẩn' : 'Ca ghi đè'}
-                  </Badge>
-                )}
+                <div className="mt-2 text-4xl sm:text-5xl lg:text-[52px] font-extrabold font-mono tracking-tight text-ink tabular-nums leading-none">
+                  {currentTime || '08:30:00'}
+                </div>
+                <div className="text-xs text-ink-muted mt-2 capitalize font-medium">
+                  {currentDate}
+                </div>
               </div>
+              <Badge variant={todayOut && !todayIn ? 'warn' : todayOut ? 'ok' : todayIn ? 'info' : 'gray'}>
+                {todayOut && !todayIn ? 'Thiếu giờ vào' : todayOut ? 'Đã ra ca' : todayIn ? 'Đã vào ca' : 'Chưa vào ca'}
+              </Badge>
+            </div>
 
-              {shiftLoading ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="h-12 rounded-lg bg-line/50 animate-pulse" />
-                  ))}
-                </div>
-              ) : !myShift ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg bg-status-warn-soft border border-status-warn-line p-2.5">
-                  <p className="text-[11px] text-status-warn leading-relaxed">
-                    Chưa tải được cấu hình ca áp dụng cho bạn. Kiểm tra kết nối hoặc liên hệ HR.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShiftReload((v) => v + 1)}
-                    className="shrink-0 text-[11px] font-semibold text-status-warn underline"
-                  >
-                    Thử lại
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
-                      <div className="text-[10px] text-ink-muted">Khung vào</div>
-                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckInText}</div>
-                    </div>
-                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
-                      <div className="text-[10px] text-ink-muted">Nghỉ trưa</div>
-                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftLunchText}</div>
-                    </div>
-                    <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
-                      <div className="text-[10px] text-ink-muted">Khung ra</div>
-                      <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckOutText}</div>
-                    </div>
+            {/* Camera Viewport with Oval Guideline Overlay (Criterion B1 #2) */}
+            <div className="relative w-44 h-44 sm:w-52 sm:h-52 lg:w-[212px] lg:h-[212px] mx-auto rounded-full border-4 border-accent/35 bg-surface-secondary flex items-center justify-center overflow-hidden shadow-[0_0_0_8px_rgb(var(--accent)/0.06)]">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover rounded-full -scale-x-100 ${useRealCamera && cameraStream ? 'block' : 'hidden'}`}
+              />
+
+              {/* Oval guideline overlay */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-32 h-40 sm:w-36 sm:h-46 lg:w-40 lg:h-52 rounded-[50%] border-2 border-dashed border-status-ok/70 shadow-[0_0_15px_rgb(var(--ok)/0.25)] flex flex-col items-center justify-between py-2.5">
+                  <div className="text-[9px] text-ink-muted font-semibold bg-surface/90 px-2 py-0.5 rounded-full">
+                    Nhìn thẳng vào camera
                   </div>
-                  <p className="text-[11px] leading-relaxed text-ink-muted">
-                    Áp dụng theo cấu hình ca hiệu lực <span className="font-semibold text-ink">{myShift.code}</span>
-                    {myShift.requiredWorkHours ? ` · ${myShift.requiredWorkHours}h/ngày` : ''}
-                    {' · khung vào/ra là khoảng hợp lệ'}
-                    {myShift.isFlexible ? ', ca linh hoạt' : ''}.
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-ink-muted">
-                    Lần chấm đầu tiên trong ngày là <strong>vào ca</strong>, các lần sau là{' '}
-                    <strong>ra ca</strong> (giữ lần cuối). Không cần chọn vào/ra.
-                  </p>
-                </>
+                </div>
+              </div>
+
+              {/* Live pill */}
+              {!isScanning && checkInStep !== 'success' && checkInStep !== 'error' && (
+                <span className="absolute top-2.5 inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-status-ok bg-status-ok-soft border border-status-ok-line px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-ok animate-pulse" />
+                  Camera sẵn sàng
+                </span>
+              )}
+
+              {/* Prompt if camera is not active */}
+              {(!useRealCamera || !cameraStream) && !isScanning && (
+                <div className="text-center px-4 z-10">
+                  <ScanFace className="w-9 h-9 mx-auto mb-1.5 text-ink-muted/70" />
+                  <div className="text-[11px] text-ink-muted font-medium">
+                    Căn chỉnh khuôn mặt vào giữa khung tròn
+                  </div>
+                </div>
+              )}
+
+              {/* Live Scanning Spinner */}
+              {isScanning && checkInStep !== 'success' && checkInStep !== 'error' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-ink/80 text-canvas backdrop-blur-xs z-20">
+                  <div className="w-32 h-32 rounded-full border-[3px] border-accent border-t-transparent animate-spin" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-[11px] text-center px-5 font-semibold text-status-ok-line">
+                    Đang xác thực 5 tầng song song...
+                  </div>
+                </div>
+              )}
+
+              {/* Success Overlay with Match Percentage (Criterion B1 #5) */}
+              {checkInStep === 'success' && checkResult && (
+                <div className={`absolute inset-0 flex flex-col items-center justify-center p-4 z-20 animate-in fade-in ${
+                  checkResult.status.startsWith('GHI NHẬN') ? 'bg-status-warn text-on-warn' : 'bg-status-ok text-on-ok'
+                }`}>
+                  <CheckCircle2 className="w-9 h-9 mb-1" />
+                  <div className="text-xs font-extrabold text-center">
+                    {checkResult.status.startsWith('GHI NHẬN')
+                      ? 'Đã ghi nhận RA — thiếu giờ vào'
+                      : `Khớp ${(checkResult.similarity * 100).toFixed(0)}%`}
+                  </div>
+                  <div className="text-[10px] font-semibold opacity-90 mt-0.5 text-center">
+                    {checkResult.fullName} ({checkResult.employeeCode})
+                  </div>
+                </div>
+              )}
+
+              {/* Error Overlay */}
+              {checkInStep === 'error' && (
+                <div className="absolute inset-0 bg-status-danger/90 flex flex-col items-center justify-center text-on-danger p-4 z-20 animate-in fade-in">
+                  <XCircle className="w-9 h-9 mb-1" />
+                  <div className="text-[10px] font-bold uppercase text-center opacity-90">Bị chặn xác thực</div>
+                </div>
               )}
             </div>
 
-        {/* 5-Parallel Checks Display (Criterion B1 #4) */}
-        {isScanning && (
-          <div className="p-3 bg-canvas rounded-xl border border-line text-left text-xs space-y-1.5 animate-in fade-in">
-            <div className="font-bold text-[11px] text-ink mb-1 flex items-center justify-between">
-              <span>Đang kiểm tra 5 lớp chạy song song:</span>
-              <span className="text-accent animate-pulse">● Đang xử lý...</span>
+            {/* Toggle Real Webcam Button */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={toggleRealCamera}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                  useRealCamera && cameraStream
+                    ? 'bg-status-ok-soft text-status-ok border-status-ok-line'
+                    : 'bg-btn-secondary text-btn-secondary-ink border-line hover:bg-btn-secondary-hover'
+                }`}
+              >
+                {useRealCamera && cameraStream ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+                <span>{useRealCamera && cameraStream ? 'Webcam đang hoạt động' : 'Bật webcam thực'}</span>
+              </button>
             </div>
-            {parallelSteps.map((s) => (
-              <div key={s.name} className="flex items-center justify-between text-[11px]">
-                <span className="text-ink-secondary">{s.label}</span>
-                <span>
-                  {s.status === 'passed' && <span className="text-status-ok font-bold">✓ Đạt</span>}
-                  {s.status === 'checking' && <span className="text-accent animate-spin">⠙</span>}
-                  {s.status === 'failed' && <span className="text-status-danger font-bold">✕ Chặn</span>}
-                  {s.status === 'pending' && <span className="text-ink-muted">···</span>}
+
+            {/* Giờ vào/ra hôm nay */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-canvas px-3 py-2">
+                <span className="text-[10.5px] font-semibold text-ink-muted">Giờ vào</span>
+                <span className={`text-sm font-mono font-bold ${todayIn ? 'text-status-ok' : 'text-ink-muted'}`}>
+                  {todayIn || '—'}
                 </span>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Error Alert Display with Specific Remedies (Criteria B1 #6, #8, #9, #10) */}
-        {errorMessage && (
-          <div className="p-3.5 bg-status-danger-soft border border-status-danger-line rounded-xl text-left text-xs text-status-danger space-y-2 animate-in fade-in">
-            <div className="font-bold flex items-center gap-1.5 text-status-danger">
-              <span>⚠️</span>
-              <span>Lý Do Bị Chặn:</span>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-canvas px-3 py-2">
+                <span className="text-[10.5px] font-semibold text-ink-muted">Giờ ra</span>
+                <span className={`text-sm font-mono font-bold ${todayOut ? 'text-ink' : 'text-ink-muted'}`}>
+                  {todayOut || '—'}
+                </span>
+              </div>
             </div>
-            <p className="leading-relaxed font-medium">{errorMessage}</p>
+            <p className="text-[11px] text-ink-muted text-center -mt-1">{todayStatusText}</p>
 
-            {/* Criterion B1 #9: Outside GPS Geofence Remedies */}
-            {errorType === 'GPS_GEOFENCE' && (
-              <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
-                <button
-                  type="button"
-                  onClick={() => navigate('/attendance/requests')}
-                  className="px-3 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
-                >
-                  Tạo đơn WFH
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/attendance/rules')}
-                  className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
-                >
-                  Cấu hình GPS văn phòng (Rule Engine)
-                </button>
-                <Button variant="outline" size="sm" onClick={handleReset}>
-                  Thử lại
-                </Button>
+            {/* Thiếu đầu chấm — chỉ ghi nhận phần có thật, phần còn lại phải bổ sung công có duyệt */}
+            {(todayMissingCheckIn || (checkInStep !== 'success' && missingCheckInPunch)) && (
+              <div className="p-3 rounded-xl bg-status-warn-soft border border-status-warn-line text-[11px] text-status-warn flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <strong className="font-semibold">
+                    {todayMissingCheckIn ? 'Hôm nay thiếu giờ vào' : 'Bạn chưa chấm công vào hôm nay'}
+                  </strong>
+                  <p className="mt-0.5 text-status-warn">
+                    {todayMissingCheckIn
+                      ? 'Giờ RA đã được ghi nhận. Ngày công chỉ được tính sau khi đơn bổ sung giờ vào được duyệt.'
+                      : 'Lần chấm này chỉ ghi nhận giờ RA — ngày công sẽ Thiếu giờ vào. Hãy chọn “Vào ca” nếu bạn đi muộn.'}
+                  </p>
+                </div>
+                {todayMissingCheckIn && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/attendance/requests')}
+                    className="px-3.5 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
+                  >
+                    Bổ sung công
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Outside Network Remedies */}
-            {errorType === 'NETWORK' && (
-              <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
-                {networkDetail && (
-                  <div className="basis-full text-[11px] text-status-danger font-mono bg-status-danger-soft border border-status-danger-line rounded-lg px-2.5 py-1.5">
-                    {networkDetail}
+            {ambiguousNoPunch && checkInStep !== 'success' && (
+              <div className="p-2.5 rounded-xl bg-status-info-soft border border-status-info-line text-[11px] text-status-info">
+                Hiện không nằm trong khung vào hay khung ra của ca — hãy chọn đúng <strong>Vào ca</strong> hoặc <strong>Ra ca</strong> bên dưới.
+              </div>
+            )}
+
+            {/* Chọn loại chấm rõ ràng — hệ thống gợi ý nhưng nhân viên luôn đổi được */}
+            {checkInStep !== 'success' && (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl w-full max-w-xs bg-canvas border border-line">
+                  <button
+                    type="button"
+                    onClick={() => setCheckType('IN')}
+                    disabled={isScanning || hasCheckInToday || todayMissingCheckIn}
+                    className={`h-9 rounded-lg text-xs font-bold transition-colors cursor-pointer ${checkType === 'IN'
+                      ? 'bg-status-ok text-on-ok'
+                      : 'bg-transparent text-ink-muted hover:text-ink'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    {hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckType('OUT')}
+                    disabled={isScanning}
+                    className={`h-9 rounded-lg text-xs font-bold transition-colors cursor-pointer ${checkType === 'OUT'
+                      ? 'bg-ink text-canvas'
+                      : 'bg-transparent text-ink-muted hover:text-ink'} disabled:opacity-40`}
+                  >
+                    {alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca'}
+                  </button>
+                </div>
+                {lateCheckIn && checkType === 'IN' && (
+                  <p className="text-[10px] text-status-warn">
+                    Đã qua khung vào {shiftCheckInText} — lần chấm VÀO này có thể bị tính đi muộn.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 1 Big Punch Button — Debounced and Disabled when scanning (Criterion B1 #3, #12, #13) */}
+            {checkInStep !== 'success' && (
+              <div className="pt-1 flex flex-col items-center">
+                <button
+                  type="button"
+                  disabled={isScanning || isLockedByAttempts || !faceEnrolled}
+                  onClick={handleStartCheckIn}
+                  className={`w-36 h-36 sm:w-40 sm:h-40 rounded-full font-black tracking-wider flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                    isLockedByAttempts
+                      ? 'bg-status-danger text-on-danger opacity-60 cursor-not-allowed'
+                      : isScanning
+                      ? 'bg-accent/80 text-on-accent opacity-60 cursor-wait'
+                      : checkType === 'IN'
+                      ? 'bg-accent text-on-accent hover:bg-accent-hover active:scale-95 shadow-[0_0_0_8px_rgb(var(--accent)/0.10),0_14px_30px_rgb(var(--accent)/0.22)]'
+                      : 'bg-ink text-canvas hover:opacity-90 active:scale-95 shadow-[0_0_0_8px_rgb(var(--ink)/0.08)]'
+                  }`}
+                >
+                  <ScanFace className="w-6 h-6 opacity-80" />
+                  <span className="text-2xl">{isScanning ? '...' : checkType === 'IN' ? 'VÀO' : 'RA'}</span>
+                  <span className="text-[10px] font-normal tracking-normal opacity-85">
+                    {isScanning
+                      ? 'Đang ghi nhận'
+                      : checkType === 'OUT' && alreadyCheckedOut
+                      ? 'Cập nhật giờ ra'
+                      : checkType === 'OUT' && !hasCheckInToday
+                      ? 'Chỉ ghi nhận RA'
+                      : 'Bấm 1 chạm'}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/* Success Card Details */}
+            {checkInStep === 'success' && checkResult && (
+              <div className={`p-4 rounded-xl text-left text-xs space-y-2 animate-in fade-in border ${
+                checkResult.status.startsWith('GHI NHẬN')
+                  ? 'bg-status-warn-soft border-status-warn-line' : 'bg-status-ok-soft border-status-ok-line'
+              }`}>
+                <div className={`flex items-center justify-between gap-2 pb-2 border-b ${
+                  checkResult.status.startsWith('GHI NHẬN') ? 'border-status-warn-line' : 'border-status-ok-line'
+                }`}>
+                  <span className={`font-bold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-status-warn' : 'text-status-ok'}`}>
+                    {checkResult.status.startsWith('GHI NHẬN') ? 'Đã ghi nhận giờ ra — thiếu giờ vào' : 'Ghi nhận chấm công thành công'}
+                  </span>
+                  <Badge variant={checkResult.status.startsWith('GHI NHẬN') ? 'warn' : 'accent'}>{checkResult.status}</Badge>
+                </div>
+                {punchNotice && (
+                  <div className="text-[11px] text-status-warn bg-status-warn-soft border border-status-warn-line rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span>{punchNotice}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/attendance/requests')}
+                      className="px-3 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
+                    >
+                      Bổ sung công
+                    </button>
                   </div>
                 )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-ink-muted">Nhân viên:</span>{' '}
+                    <strong className="text-ink">{checkResult.fullName} ({checkResult.employeeCode})</strong>
+                  </div>
+                  <div>
+                    <span className="text-ink-muted">Giờ ghi nhận:</span>{' '}
+                    <strong className="font-mono text-ink">{checkResult.timestamp}</strong>
+                  </div>
+                  <div>
+                    <span className="text-ink-muted">Loại:</span>{' '}
+                    <strong className="text-ink">{checkResult.type === 'IN' ? 'Check-In vào' : 'Check-Out ra'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-ink-muted">Độ khớp khuôn mặt:</span>{' '}
+                    <strong className="text-ink">{(checkResult.similarity * 100).toFixed(1)}% (khớp)</strong>
+                  </div>
+                </div>
+                <div className="pt-2 flex justify-end">
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    Chấm lượt mới
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── Cột phải: ca làm việc + 5 lớp xác thực + cảnh báo ─────────── */}
+        <div className="flex flex-col gap-3 text-left">
+          {/* Ca làm việc */}
+          <div className="rounded-2xl border border-line bg-surface p-4 space-y-2.5 shadow-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold text-ink">Ca làm việc hôm nay</div>
+                <div className="text-[11px] text-ink-muted mt-0.5">
+                  {shiftLoading ? 'Đang tải cấu hình ca…' : myShift ? `Ca áp dụng cho bạn hôm nay${myShift.requiredWorkHours ? ` · ${myShift.requiredWorkHours}h/ngày` : ''}` : 'Chưa xác định được ca làm việc'}
+                </div>
+              </div>
+              {!shiftLoading && myShift && (
+                <Badge variant={myShift.isBase ? 'info' : 'warn'}>
+                  {myShift.isBase ? 'Ca chuẩn' : 'Ca ghi đè'}
+                </Badge>
+              )}
+            </div>
+
+            {shiftLoading ? (
+              <div className="grid grid-cols-3 gap-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-12 rounded-lg bg-line/50 animate-pulse" />
+                ))}
+              </div>
+            ) : !myShift ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-status-warn-soft border border-status-warn-line p-2.5">
+                <p className="text-[11px] text-status-warn leading-relaxed">
+                  Chưa tải được cấu hình ca áp dụng cho bạn. Kiểm tra kết nối hoặc liên hệ HR.
+                </p>
                 <button
                   type="button"
-                  onClick={() => navigate('/attendance/rules')}
-                  className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
+                  onClick={() => setShiftReload((v) => v + 1)}
+                  className="shrink-0 text-[11px] font-semibold text-status-warn underline"
                 >
-                  Cấu hình dải IP văn phòng (Rule Engine)
-                </button>
-                <Button variant="outline" size="sm" onClick={handleReset}>
                   Thử lại
-                </Button>
-              </div>
-            )}
-
-            {/* Criterion B1 #10: Poor GPS Accuracy */}
-            {errorType === 'GPS_ACCURACY' && (
-              <div className="pt-2 border-t border-status-danger-line">
-                <Button variant="outline" size="sm" onClick={handleReset}>
-                  Thử lại ở gần cửa sổ
-                </Button>
-              </div>
-            )}
-
-            {/* Criterion B1 #7: Face not enrolled */}
-            {errorType === 'FACE_NOT_ENROLLED' && (
-              <div className="pt-2 border-t border-status-danger-line">
-                <button
-                  type="button"
-                  onClick={() => navigate('/auth/enroll-face')}
-                  className="px-3.5 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
-                >
-                  Đăng ký khuôn mặt ngay (B0)
                 </button>
               </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-1.5 text-center">
+                  <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                    <div className="text-[10px] text-ink-muted">Khung vào</div>
+                    <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckInText}</div>
+                  </div>
+                  <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                    <div className="text-[10px] text-ink-muted">Nghỉ trưa</div>
+                    <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftLunchText}</div>
+                  </div>
+                  <div className="rounded-lg bg-surface border border-line px-2 py-1.5">
+                    <div className="text-[10px] text-ink-muted">Khung ra</div>
+                    <div className="text-[11px] font-mono font-bold text-ink whitespace-nowrap">{shiftCheckOutText}</div>
+                  </div>
+                </div>
+                <p className="text-[11px] leading-relaxed text-ink-muted">
+                  Áp dụng theo cấu hình ca hiệu lực <span className="font-semibold text-ink">{myShift.code}</span>
+                  {' · khung vào/ra là khoảng hợp lệ'}
+                  {myShift.isFlexible ? ', ca linh hoạt' : ''}.
+                </p>
+              </>
             )}
+          </div>
 
-            {/* General retry */}
-            {errorType !== 'GPS_GEOFENCE' && errorType !== 'FACE_NOT_ENROLLED' && !isLockedByAttempts && (
-              <div className="pt-2 border-t border-status-danger-line">
-                <Button variant="outline" size="sm" onClick={handleReset}>
-                  Thử lại lượt khác
-                </Button>
+          {/* 5 lớp xác thực — luôn hiển thị, đổi trạng thái khi đang chấm */}
+          <div className="rounded-2xl border border-line bg-surface p-4 shadow-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="text-[13px] font-bold text-ink">5 lớp xác thực</div>
+                <div className="text-[11px] text-ink-muted mt-0.5">Chạy song song mỗi lần chấm · tất cả phải đạt</div>
               </div>
-            )}
-          </div>
-        )}
+              {isScanning && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-accent">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Đang xử lý
+                </span>
+              )}
+            </div>
 
-        {/* Trạng thái chấm công hôm nay */}
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-line px-3.5 py-2.5">
-          <div>
-            <div className="text-xs font-bold text-ink">Chấm công hôm nay</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">{todayStatusText}</div>
+            <div className="mt-2 divide-y divide-line-soft">
+              {verifyLayers.map((layer) => {
+                const step = parallelSteps.find((s) => s.name === layer.name);
+                const status = isScanning ? step?.status ?? 'pending' : 'idle';
+                return (
+                  <div key={layer.name} className="flex items-center gap-2.5 py-2">
+                    <div className="w-7 h-7 rounded-lg bg-surface-secondary text-ink-secondary flex items-center justify-center shrink-0">
+                      <layer.Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11.5px] font-semibold text-ink truncate">{layer.title}</div>
+                      <div className="text-[10px] text-ink-muted truncate">{layer.desc}</div>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-bold ${
+                      status === 'passed'
+                        ? 'text-status-ok'
+                        : status === 'failed'
+                        ? 'text-status-danger'
+                        : status === 'checking'
+                        ? 'text-accent'
+                        : 'text-ink-muted'
+                    }`}>
+                      {status === 'passed'
+                        ? 'Đạt'
+                        : status === 'failed'
+                        ? 'Chặn'
+                        : status === 'checking'
+                        ? 'Đang kiểm tra'
+                        : 'Sẵn sàng'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <Badge variant={todayOut && !todayIn ? 'warn' : todayOut ? 'ok' : todayIn ? 'info' : 'gray'}>
-            {todayOut && !todayIn ? 'Thiếu giờ vào' : todayOut ? 'Đã ra ca' : todayIn ? 'Đã vào ca' : 'Chưa vào ca'}
-          </Badge>
-        </div>
 
-        {/* Thiếu đầu chấm — chỉ ghi nhận phần có thật, phần còn lại phải bổ sung công có duyệt */}
-        {(todayMissingCheckIn || (checkInStep !== 'success' && missingCheckInPunch)) && (
-          <div className="p-3 rounded-xl bg-status-warn-soft border border-status-warn-line text-[11px] text-status-warn flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex gap-2.5 rounded-xl bg-status-info-soft border border-status-info-line p-3 text-status-info">
+            <InfoIcon className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
-              <strong className="font-semibold">
-                {todayMissingCheckIn ? 'Hôm nay thiếu giờ vào' : 'Bạn chưa chấm công vào hôm nay'}
-              </strong>
-              <p className="mt-0.5 text-status-warn">
-                {todayMissingCheckIn
-                  ? 'Giờ RA đã được ghi nhận. Ngày công chỉ được tính sau khi đơn bổ sung giờ vào được duyệt.'
-                  : 'Lần chấm này chỉ ghi nhận giờ RA — ngày công sẽ Thiếu giờ vào. Hãy chọn “Vào ca” nếu bạn đi muộn.'}
+              <div className="text-[11.5px] font-bold">Chấm công cần đủ 5 lớp</div>
+              <p className="text-[10.5px] leading-relaxed mt-0.5">
+                Thiếu giờ vào/ra vẫn ghi nhận phần có thật — bổ sung công qua đơn từ để HR duyệt.
               </p>
             </div>
-            {todayMissingCheckIn && (
-              <button
-                type="button"
-                onClick={() => navigate('/attendance/requests')}
-                className="px-3.5 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
-              >
-                Bổ sung công
-              </button>
-            )}
           </div>
-        )}
 
-        {ambiguousNoPunch && checkInStep !== 'success' && (
-          <div className="p-2.5 rounded-xl bg-status-info-soft border border-status-info-line text-[11px] text-status-info">
-            Hiện không nằm trong khung vào hay khung ra của ca — hãy chọn đúng <strong>Vào ca</strong> hoặc <strong>Ra ca</strong> bên dưới.
-          </div>
-        )}
+          {/* Error Alert Display with Specific Remedies (Criteria B1 #6, #8, #9, #10) */}
+          {errorMessage && (
+            <div className="p-3.5 bg-status-danger-soft border border-status-danger-line rounded-xl text-left text-xs text-status-danger space-y-2 animate-in fade-in">
+              <div className="font-bold flex items-center gap-1.5 text-status-danger">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Lý do bị chặn</span>
+              </div>
+              <p className="leading-relaxed font-medium">{errorMessage}</p>
 
-        {/* Chọn loại chấm rõ ràng — hệ thống gợi ý nhưng nhân viên luôn đổi được */}
-        {checkInStep !== 'success' && (
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
-              <button
-                type="button"
-                onClick={() => setCheckType('IN')}
-                disabled={isScanning || hasCheckInToday || todayMissingCheckIn}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'IN'
-                  ? 'bg-status-ok text-on-ok border-status-ok'
-                  : 'bg-canvas text-ink border-line hover:border-status-ok'} disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                {hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCheckType('OUT')}
-                disabled={isScanning}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${checkType === 'OUT'
-                  ? 'bg-ink text-canvas border-ink'
-                  : 'bg-canvas text-ink border-line hover:border-line-hover'} disabled:opacity-40`}
-              >
-                {alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca'}
-              </button>
-            </div>
-            {lateCheckIn && checkType === 'IN' && (
-              <p className="text-[10px] text-status-warn">
-                Đã qua khung vào {shiftCheckInText} — lần chấm VÀO này có thể bị tính đi muộn.
-              </p>
-            )}
-          </div>
-        )}
+              {/* Criterion B1 #9: Outside GPS Geofence Remedies */}
+              {errorType === 'GPS_GEOFENCE' && (
+                <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/attendance/requests')}
+                    className="px-3 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
+                  >
+                    Tạo đơn WFH
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/attendance/rules')}
+                    className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
+                  >
+                    Cấu hình GPS văn phòng (Rule Engine)
+                  </button>
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    Thử lại
+                  </Button>
+                </div>
+              )}
 
-        {/* 1 Big Punch Button — Debounced and Disabled when scanning (Criterion B1 #3, #12, #13) */}
-        {checkInStep !== 'success' && (
-          <div className="pt-1 flex flex-col items-center gap-2">
-            <button
-              type="button"
-              disabled={isScanning || isLockedByAttempts || !faceEnrolled}
-              onClick={handleStartCheckIn}
-              className={`w-36 h-36 sm:w-40 sm:h-40 rounded-full font-black text-2xl tracking-wider shadow-lg flex flex-col items-center justify-center transition-all cursor-pointer ${
-                isLockedByAttempts
-                  ? 'bg-status-danger text-on-danger opacity-60 cursor-not-allowed'
-                  : isScanning
-                  ? 'bg-accent/80 text-on-accent opacity-60 cursor-wait'
-                  : checkType === 'IN'
-                  ? 'bg-status-ok text-on-ok hover:opacity-90 active:scale-95 ring-4 ring-status-ok/30'
-                  : 'bg-ink text-canvas hover:opacity-90 active:scale-95 ring-4 ring-ink/20'
-              }`}
-            >
-              <span>{isScanning ? '...' : checkType === 'IN' ? 'VÀO' : 'RA'}</span>
-              <span className="text-[10px] font-normal tracking-normal opacity-80 mt-1">
-                {isScanning
-                  ? 'Đang ghi nhận'
-                  : checkType === 'OUT' && alreadyCheckedOut
-                  ? 'Cập nhật giờ ra'
-                  : checkType === 'OUT' && !hasCheckInToday
-                  ? 'Chỉ ghi nhận RA'
-                  : 'Bấm 1 chạm'}
-              </span>
-            </button>
-          </div>
-        )}
+              {/* Outside Network Remedies */}
+              {errorType === 'NETWORK' && (
+                <div className="pt-2 border-t border-status-danger-line flex flex-wrap gap-2 items-center">
+                  {networkDetail && (
+                    <div className="basis-full text-[11px] text-status-danger font-mono bg-status-danger-soft border border-status-danger-line rounded-lg px-2.5 py-1.5">
+                      {networkDetail}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/attendance/rules')}
+                    className="px-3 py-1.5 rounded-lg bg-surface border border-line text-ink font-semibold text-xs shadow-xs hover:bg-canvas"
+                  >
+                    Cấu hình dải IP văn phòng (Rule Engine)
+                  </button>
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    Thử lại
+                  </Button>
+                </div>
+              )}
 
-        {/* Success Card Details */}
-        {checkInStep === 'success' && checkResult && (
-          <div className={`p-4 rounded-xl text-left text-xs space-y-2 animate-in fade-in border ${
-            checkResult.status.startsWith('GHI NHẬN')
-              ? 'bg-status-warn-soft border-status-warn-line' : 'bg-status-ok-soft border-status-ok-line'
-          }`}>
-            <div className={`flex items-center justify-between pb-2 border-b ${
-              checkResult.status.startsWith('GHI NHẬN') ? 'border-status-warn-line' : 'border-status-ok-line'
-            }`}>
-              <span className={`font-bold ${checkResult.status.startsWith('GHI NHẬN') ? 'text-status-warn' : 'text-status-ok'}`}>
-                {checkResult.status.startsWith('GHI NHẬN') ? 'Đã Ghi Nhận Giờ Ra — Thiếu Giờ Vào' : 'Ghi Nhận Chấm Công Thành Công'}
-              </span>
-              <Badge variant={checkResult.status.startsWith('GHI NHẬN') ? 'warn' : 'accent'}>{checkResult.status}</Badge>
+              {/* Criterion B1 #10: Poor GPS Accuracy */}
+              {errorType === 'GPS_ACCURACY' && (
+                <div className="pt-2 border-t border-status-danger-line">
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    Thử lại ở gần cửa sổ
+                  </Button>
+                </div>
+              )}
+
+              {/* Criterion B1 #7: Face not enrolled */}
+              {errorType === 'FACE_NOT_ENROLLED' && (
+                <div className="pt-2 border-t border-status-danger-line">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth/enroll-face')}
+                    className="px-3.5 py-1.5 rounded-lg bg-accent text-on-accent font-semibold text-xs shadow-xs hover:bg-accent-hover"
+                  >
+                    Đăng ký khuôn mặt ngay (B0)
+                  </button>
+                </div>
+              )}
+
+              {/* General retry */}
+              {errorType !== 'GPS_GEOFENCE' && errorType !== 'FACE_NOT_ENROLLED' && !isLockedByAttempts && (
+                <div className="pt-2 border-t border-status-danger-line">
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    Thử lại lượt khác
+                  </Button>
+                </div>
+              )}
             </div>
-            {punchNotice && (
-              <div className="text-[11px] text-status-warn bg-status-warn-soft border border-status-warn-line rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span>{punchNotice}</span>
-                <button
-                  type="button"
-                  onClick={() => navigate('/attendance/requests')}
-                  className="px-3 py-1.5 rounded-lg bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn whitespace-nowrap"
-                >
-                  Bổ sung công
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-              <div>
-                <span className="text-status-ok">Nhân viên:</span>{' '}
-                <strong className="text-status-ok">{checkResult.fullName} ({checkResult.employeeCode})</strong>
-              </div>
-              <div>
-                <span className="text-status-ok">Giờ ghi nhận:</span>{' '}
-                <strong className="font-mono text-status-ok">{checkResult.timestamp}</strong>
-              </div>
-              <div>
-                <span className="text-status-ok">Loại:</span>{' '}
-                <strong className="text-status-ok">{checkResult.type === 'IN' ? 'Check-In Vào' : 'Check-Out Ra'}</strong>
-              </div>
-              <div>
-                <span className="text-status-ok">Độ khớp khuôn mặt:</span>{' '}
-                <strong className="text-status-ok">{(checkResult.similarity * 100).toFixed(1)}% (✓ Khớp)</strong>
-              </div>
-            </div>
-            <div className="pt-2 flex justify-end">
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                Chấm lượt mới
-              </Button>
-            </div>
-          </div>
-        )}
-          </div>
+          )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
