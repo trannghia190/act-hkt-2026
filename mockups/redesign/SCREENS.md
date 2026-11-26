@@ -57,7 +57,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
-| T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ⬜ | ⬜ | ⬜ |
+| T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ✅ | ✅ | ✅ |
 | T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ⬜ | ⬜ | ⬜ |
 | T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
@@ -223,3 +223,17 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   nút duyệt hàng loạt hiện đúng số đơn đã chọn (3); bảng vừa khung 1440 — trước là
   1150px trong khung 1138px nên cắt mất nút thao tác; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **T1 · Chấm công** ✅ (2026-11-26) — mockup `screens/checkin.html` đã có sẵn, bố cục
+  2 cột + camera + 5 lớp xác thực đã áp từ commit `f83cb3a`; vòng này bổ sung phần
+  còn thiếu: **thêm đầu trang** theo mockup (crumb "Chấm công" + `h1` "Chấm công hôm
+  nay" + chip trạng thái thiết bị) — trước màn hình mở ra không có tiêu đề. Chip
+  trạng thái thiết bị đọc từ API `/devices` và đối chiếu fingerprint trình duyệt
+  (dùng chung `getDeviceFingerprint`), hiện 4 trạng thái: đã xác thực (xanh) ·
+  chờ duyệt (hổ phách) · đã bị thu hồi (đỏ) · máy này chưa đăng ký (hổ phách) —
+  kèm tooltip nói rõ lớp xác thực "khóa thiết bị" sẽ ra sao. Không đổi nghiệp vụ:
+  cùng 5 lớp xác thực, cùng nút 1 chạm, cùng payload `CheckInRequest`. Verify: 3
+  theme × 320/360/390/414/1440 không tràn ngang, 0 lỗi JS; bấm nút chấm công chạy
+  đủ 5 lớp và hiện rõ **lý do bị chặn + cách khắc phục** ("Bạn đã dùng đủ 2 thiết
+  bị — máy thứ 3 phải được HR duyệt" + nút "Thử lại lượt khác"); bật webcam thật với
+  Chromium fake device; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.

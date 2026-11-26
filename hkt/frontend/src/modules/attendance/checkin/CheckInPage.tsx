@@ -77,6 +77,8 @@ export const CheckInPage: React.FC = () => {
   const [yesterdayMissingCheckout, setYesterdayMissingCheckout] = useState(false);
   const [yesterdayDate, setYesterdayDate] = useState('');
   const [faceEnrolled, setFaceEnrolled] = useState<boolean>(true);
+  /** Trạng thái thiết bị hiện tại trên máy: đã duyệt / chờ duyệt / bị thu hồi (mockup T1). */
+  const [deviceState, setDeviceState] = useState<'approved' | 'pending' | 'revoked' | 'unknown'>('unknown');
 
   // Parallel 5-check steps (Criterion B1 #4)
   const [parallelSteps, setParallelSteps] = useState<ParallelStep[]>([
@@ -86,6 +88,25 @@ export const CheckInPage: React.FC = () => {
     { name: 'shift', status: 'pending', label: '4. Khung giờ ca làm việc hợp lệ' },
     { name: 'face', status: 'pending', label: '5. Nhận diện khuôn mặt AI & Liveness' },
   ]);
+
+  // Trạng thái thiết bị hiện tại — đối chiếu fingerprint trình duyệt với danh sách
+  // thiết bị đã đăng ký để biết chấm công có bị chặn lớp "khóa thiết bị" hay không.
+  useEffect(() => {
+    const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
+    if (!token) return;
+    fetch('/api/v1/devices', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(j => {
+        if (!Array.isArray(j?.data)) return;
+        const fp = getDeviceFingerprint();
+        const mine = j.data.find((d: any) => d.deviceFingerprint === fp);
+        if (!mine) { setDeviceState('unknown'); return; }
+        if (mine.revokedAt) setDeviceState('revoked');
+        else if (mine.isApproved) setDeviceState('approved');
+        else setDeviceState('pending');
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Chấm công ngoại tuyến đã bị bỏ: dọn queue cũ còn sót trong trình duyệt.
   useEffect(() => {
@@ -570,8 +591,54 @@ export const CheckInPage: React.FC = () => {
   ] as const;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+    <div className="mx-auto max-w-6xl space-y-4 pt-[env(safe-area-inset-top,0px)] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Đầu trang — mockup T1 `.topbar` */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="text-[11px] text-ink-muted">Chấm công</div>
+          <h1 className="mt-0.5 font-display text-lg font-extrabold tracking-[-0.01em] text-ink sm:text-xl">
+            Chấm công hôm nay
+          </h1>
+        </div>
+        {deviceState === 'approved' && (
+          <span
+            className="inline-flex h-[26px] w-fit shrink-0 items-center gap-1.5 rounded-lg border border-status-ok-line bg-status-ok-soft px-2.5 text-[11px] font-semibold text-status-ok"
+            title="Thiết bị này đã được HR duyệt — lớp xác thực 'khóa thiết bị' sẽ đạt"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Thiết bị đã xác thực
+          </span>
+        )}
+        {deviceState === 'pending' && (
+          <span
+            className="inline-flex h-[26px] w-fit shrink-0 items-center gap-1.5 rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 text-[11px] font-semibold text-status-warn"
+            title="Thiết bị này đang chờ HR duyệt — lớp xác thực 'khóa thiết bị' sẽ chặn lần chấm"
+          >
+            <Clock3 className="h-3.5 w-3.5" />
+            Thiết bị chờ duyệt
+          </span>
+        )}
+        {deviceState === 'revoked' && (
+          <span
+            className="inline-flex h-[26px] w-fit shrink-0 items-center gap-1.5 rounded-lg border border-status-danger-line bg-status-danger-soft px-2.5 text-[11px] font-semibold text-status-danger"
+            title="Thiết bị này đã bị HR thu hồi — không thể chấm công bằng máy này"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Thiết bị đã bị thu hồi
+          </span>
+        )}
+        {deviceState === 'unknown' && (
+          <span
+            className="inline-flex h-[26px] w-fit shrink-0 items-center gap-1.5 rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 text-[11px] font-semibold text-status-warn"
+            title="Máy này chưa được đăng ký — lớp xác thực 'khóa thiết bị' sẽ chặn lần chấm nếu đã vượt hạn mức thiết bị"
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            Máy này chưa đăng ký
+          </span>
+        )}
+      </div>
 
       {/* Yesterday Missing Checkout Banner (Criterion B2 #2) */}
       {yesterdayMissingCheckout && (
