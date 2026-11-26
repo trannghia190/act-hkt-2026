@@ -90,7 +90,15 @@ Mockup có **hai bộ layout riêng biệt** — mobile KHÔNG phải bản thu 
 Đây là cùng pattern đã áp dụng ở trang "Cần làm" của app hiện tại — xem memory
 `responsive-ui-pattern`.
 
-Xem phần **"Responsive — bố cục riêng cho mobile"** trong mockup (mục `▤`).
+Xem phần **"Responsive — bố cục riêng cho mobile"** trong mockup (mục `▤`) —
+gồm **6 khung mobile**: Cần làm (×3 hướng) · Bảng công · Tổng quan OKR · Đăng nhập.
+
+| Màn | Xử lý trên mobile |
+|---|---|
+| Cần làm | Card 2 dòng, tab cuộn ngang |
+| Bảng công | Bảng cuộn ngang + **cột đầu cố định**, hành động dính đáy |
+| Tổng quan OKR | KPI 2 cột, tiến độ dạng dòng |
+| Đăng nhập | Full-width, không panel thương hiệu |
 
 ## Đã kiểm tra
 

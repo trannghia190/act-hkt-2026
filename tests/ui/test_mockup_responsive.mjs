@@ -67,12 +67,27 @@ for (const w of WIDTHS) {
       const clipped = [...p.querySelectorAll('.mcard .mc-t h5')]
         .filter((h) => h.scrollWidth > h.clientWidth + 1)
         .map((h) => h.textContent.slice(0, 34));
-      // text trên nền phải tương phản
-      const h3 = p.querySelector('.mbody h3.pg');
+      // text trên nền phải tương phản (màn login không có .pg → dùng tiêu đề form)
+      const h3 = p.querySelector('.mbody h3.pg, .mlogin .form > div');
+      // Tìm nền thực sự phía sau: dây chuyền cha cho tới khi gặp nền đục (không alpha)
+      const realBg = (el) => {
+        let e = el;
+        while (e && e !== document.body) {
+          const bg = getComputedStyle(e).backgroundColor;
+          const m = bg.match(/rgba?\(([^)]+)\)/);
+          if (m) {
+            const p = m[1].split(',').map(Number);
+            const alpha = p[3] === undefined ? 1 : p[3];
+            if (alpha === 1) return bg;
+          }
+          e = e.parentElement;
+        }
+        return 'rgb(255,255,255)';
+      };
       out.push({
         i, bad: [...new Set(bad)], clipped,
         h3color: h3 ? getComputedStyle(h3).color : null,
-        h3bg: h3 ? getComputedStyle(h3.parentElement).backgroundColor : null,
+        h3bg: h3 ? realBg(h3) : null,
       });
     });
     return out;
@@ -83,6 +98,7 @@ for (const w of WIDTHS) {
     if (p.bad.length) fail(`${w}px — phone ${p.i} tràn ngang: ${p.bad.slice(0, 3).join(' | ')}`);
     if (p.clipped.length) fail(`${w}px — phone ${p.i} tiêu đề bị cắt: ${p.clipped.join(' | ')}`);
     // tương phản tối thiểu 4.5:1 giữa tiêu đề và nền
+    if (!p.h3color || !p.h3bg) return;   // màn không có tiêu đề để đo
     const parse = (s) => (s.match(/[\d.]+/g) || []).map(Number);
     const [r1, g1, b1] = parse(p.h3color);
     const [r2, g2, b2] = parse(p.h3bg);
