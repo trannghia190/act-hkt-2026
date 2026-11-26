@@ -44,7 +44,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | 🟡 | ⬜ | ⬜ |
 | S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ✅ | ✅ | ✅ |
 | S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
-| S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ⬜ | ⬜ | ⬜ |
+| S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ⬜ | ⬜ | ⬜ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ⬜ | ⬜ | ⬜ |
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ⬜ | ⬜ | ⬜ |
@@ -447,3 +447,20 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   C15 + danh sách rủi ro theo rule. Verify: 3 theme × 320/360/390/414/768/1024/1440
   không tràn ngang, 0 lỗi JS; trang **không còn emoji**; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **S4 · Quản lý nhân viên & sơ đồ duyệt** ✅ (2026-11-27) — mockup
+  `screens/employee-management.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `EmployeeManagementPage`: tiêu đề → **đầu trang eyebrow + `h1` + badge P0 + sub**;
+  **4 metric card** từ "icon tròn + chữ" → layout `.stats` (nhãn 10px uppercase
+  `font-extrabold` + icon, số `font-display` 24px); chip nhóm → **pill 31px đúng spec**
+  (đang chọn `bg-ink text-canvas`); bộ lọc `Card` → **Panel dùng chung**, input/select
+  bo 10px có `aria-label` + focus ring accent; **header bảng 8 cột viết tắt 9.5px
+  uppercase `font-extrabold`**; **bỏ hết 6 emoji làm icon** (⚠ ×3 🔑 ✕ ⚠️) sang icon
+  lucide (AlertTriangle / ShieldAlert / Key / X) — gồm cả marker "⚠ " do **backend**
+  gửi kèm trong `approvalChain`, nay được tách ra bằng helper `splitApprovalChain`;
+  **mobile đổi từ bảng 8 cột sang danh sách card 2 dòng** (dòng 1 = NV + trạng thái ·
+  dòng 2 = nhóm + chuỗi cấp trên + ngày gia nhập · dòng 3 = nút Xem/Sửa/Đổi sếp) —
+  bảng 8 cột không vừa 390px. Không đổi nghiệp vụ: cùng API nhân sự + nhóm, đổi
+  quản lý **bắt buộc có lý do + ghi audit + chuyển đơn chờ**, thêm/xem/sửa nhân viên.
+  Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang
+  **không còn emoji** (kể cả marker từ backend); `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.

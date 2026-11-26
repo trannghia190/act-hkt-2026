@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -55,6 +55,15 @@ interface OnboardPreview {
   nextSeniorityDate: string;
   isFuture: boolean;
 }
+
+/**
+ * Backend gửi chuỗi cấp trên kèm marker "⚠ " khi nhân viên chưa có quản lý.
+ * Tách marker ra để render icon thay vì emoji (quy tắc: không dùng emoji làm icon).
+ */
+const splitApprovalChain = (raw?: string | null): { text: string; missing: boolean } => {
+  const value = (raw || '').replace(/^\u26a0\s*/, '').trim();
+  return { text: value, missing: !raw || value.startsWith('Chưa có') };
+};
 
 export const EmployeeManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -483,90 +492,104 @@ export const EmployeeManagementPage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="p-3.5 bg-status-ok/15 border border-status-ok/30 text-status-ok-line rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="flex animate-in fade-in items-center justify-between gap-3 rounded-xl border border-status-ok-line bg-status-ok-soft p-3.5 text-xs shadow-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-status-ok" />
-            <span className="font-semibold">{toastMessage}</span>
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-status-ok" />
+            <span className="font-semibold text-status-ok">{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-status-ok hover:text-ink font-bold ml-2">✕</button>
+          <button
+            onClick={() => setToastMessage(null)}
+            aria-label="Đóng thông báo"
+            className="ml-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-status-ok transition-colors hover:bg-status-ok/15 hover:text-ink"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Nhân Viên &amp; Sơ Đồ Duyệt</h1>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Users className="h-3.5 w-3.5" />
+            Quản trị nhân sự
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Quản lý nhân viên &amp; sơ đồ duyệt
+            </h1>
             <Badge variant="accent">P0</Badge>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Mọi luồng duyệt bắt đầu từ một câu hỏi: ai duyệt cho ai. Quản lý phân nhóm linh hoạt, chuỗi cấp trên, đổi quản lý bảo lưu đơn chờ
+          <p className="mt-1 text-xs text-ink-muted">
+            Mọi luồng duyệt bắt đầu từ một câu hỏi: ai duyệt cho ai. Quản lý phân nhóm linh hoạt, chuỗi cấp trên, đổi quản lý bảo lưu đơn chờ.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {noTeamCount > 0 && (
             <button
               onClick={() => setFilterTeam('NO_TEAM')}
-              className="px-2.5 py-1 text-xs rounded-lg bg-status-warn/10 border border-status-warn/30 text-status-warn font-bold flex items-center gap-1.5 hover:bg-status-warn/20 transition-colors"
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[9px] border border-status-warn-line bg-status-warn-soft px-2.5 text-xs font-bold text-status-warn transition-colors hover:bg-status-warn/20"
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              ⚠ {noTeamCount} người chưa có nhóm
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {noTeamCount} người chưa có nhóm
             </button>
           )}
           {noManagerCount > 0 && (
-            <span className="px-2.5 py-1 text-xs rounded-lg bg-status-danger/10 border border-status-danger/30 text-status-danger font-bold flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5" />
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-status-danger-line bg-status-danger-soft px-2.5 text-xs font-bold text-status-danger">
+              <ShieldAlert className="h-3.5 w-3.5" />
               {noManagerCount} người chưa có sếp
             </span>
           )}
-          <Button variant="primary" size="sm" onClick={() => { setAddError(null); setIsAddModalOpen(true); }}>
-            <UserPlus className="w-3.5 h-3.5 mr-1" />
-            + Thêm nhân viên
+          <Button variant="primary" size="md" onClick={() => { setAddError(null); setIsAddModalOpen(true); }}>
+            <UserPlus className="h-3.5 w-3.5" />
+            Thêm nhân viên
           </Button>
         </div>
       </div>
 
       {/* Metrics Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <Users className="h-3.5 w-3.5 text-accent" />
+            Tổng nhân sự
           </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
-            <div className="text-lg font-bold text-ink">{employees.length} người</div>
-          </div>
-        </div>
-
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-ok-soft text-status-ok flex items-center justify-center font-bold">
-            <UserCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Đang hoạt động</div>
-            <div className="text-lg font-bold text-status-ok">
-              {employees.filter((e) => e.status === 'ACTIVE').length} nhân sự
-            </div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {employees.length}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">người</small>
           </div>
         </div>
 
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-warn-soft text-status-warn flex items-center justify-center font-bold">
-            <AlertTriangle className="w-5 h-5" />
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <UserCheck className="h-3.5 w-3.5 text-accent" />
+            Đang hoạt động
           </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Chưa có nhóm</div>
-            <div className="text-lg font-bold text-status-warn">{noTeamCount} người</div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-status-ok">
+            {employees.filter((e) => e.status === 'ACTIVE').length}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">nhân sự</small>
           </div>
         </div>
 
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-danger-soft text-status-danger flex items-center justify-center font-bold">
-            <ShieldAlert className="w-5 h-5" />
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <AlertTriangle className="h-3.5 w-3.5 text-accent" />
+            Chưa có nhóm
           </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Chưa có quản lý</div>
-            <div className="text-lg font-bold text-status-danger">{noManagerCount} người</div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-status-warn">
+            {noTeamCount}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">người</small>
+          </div>
+        </div>
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <ShieldAlert className="h-3.5 w-3.5 text-accent" />
+            Chưa có quản lý
+          </div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-status-danger">
+            {noManagerCount}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">người</small>
           </div>
         </div>
       </div>
@@ -582,10 +605,10 @@ export const EmployeeManagementPage: React.FC = () => {
             key={chip.val}
             type="button"
             onClick={() => setFilterTeam(chip.val)}
-            className={`px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
+            className={`inline-flex h-[31px] shrink-0 cursor-pointer items-center rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
               filterTeam === chip.val
-                ? 'bg-ink text-canvas shadow-xs font-bold'
-                : 'bg-surface text-ink-secondary hover:bg-canvas hover:text-ink border border-line shadow-2xs'
+                ? 'border-ink bg-ink text-canvas'
+                : 'border-line bg-surface text-ink-secondary hover:border-line-hover hover:text-ink'
             }`}
           >
             {chip.label}
@@ -594,8 +617,8 @@ export const EmployeeManagementPage: React.FC = () => {
       </div>
 
       {/* Advanced Filter Bar (Nhóm · Chức Danh · Trạng Thái · Từ Khóa) */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+      <Panel>
+        <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-4">
           <div className="md:col-span-1">
             <label className="block text-[11px] font-semibold text-ink-muted mb-1">Tìm kiếm từ khóa</label>
             <input
@@ -603,7 +626,8 @@ export const EmployeeManagementPage: React.FC = () => {
               placeholder="Tên, mã NV (Admin, 136ACT...), email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+              aria-label="Tìm kiếm nhân viên"
+              className="w-full rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             />
           </div>
 
@@ -612,10 +636,11 @@ export const EmployeeManagementPage: React.FC = () => {
             <select
               value={filterTeam}
               onChange={(e) => setFilterTeam(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+              aria-label="Phân loại nhóm"
+              className="w-full cursor-pointer rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             >
               <option value="ALL">Tất cả Nhóm</option>
-              <option value="NO_TEAM">⚠ Chưa có nhóm</option>
+              <option value="NO_TEAM">Chưa có nhóm</option>
               {teams.map((t) => (
                 <option key={t.id} value={t.name}>Nhóm {t.name}</option>
               ))}
@@ -627,7 +652,8 @@ export const EmployeeManagementPage: React.FC = () => {
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+              aria-label="Vai trò / cấp bậc"
+              className="w-full cursor-pointer rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             >
               <option value="ALL">Tất cả Vai Trò</option>
               <option value="EMPLOYEE">Nhân viên (EMPLOYEE)</option>
@@ -642,7 +668,8 @@ export const EmployeeManagementPage: React.FC = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full text-xs px-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+              aria-label="Trạng thái tài khoản"
+              className="w-full cursor-pointer rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             >
               <option value="ALL">Tất cả Trạng Thái</option>
               <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
@@ -652,22 +679,22 @@ export const EmployeeManagementPage: React.FC = () => {
             </select>
           </div>
         </div>
-      </Card>
+      </Panel>
 
-      {/* Employee List Table with Approval Chain */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Employee List Table with Approval Chain — Desktop: bảng 8 cột · Mobile: card 2 dòng */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-bold uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-4">Họ và Tên</th>
-                <th className="py-3 px-3">Mã NV</th>
-                <th className="py-3 px-3">Chức Danh</th>
-                <th className="py-3 px-3">Nhóm (Team)</th>
-                <th className="py-3 px-4">Chuỗi Cấp Trên (Ai Duyệt Cho Ai)</th>
-                <th className="py-3 px-3">Ngày Gia Nhập</th>
-                <th className="py-3 px-3">Trạng Thái</th>
-                <th className="py-3 px-4 text-right">Thao Tác</th>
+              <tr className="border-b border-line bg-canvas">
+                <th className="px-4 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Họ và tên</th>
+                <th className="px-3 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Mã NV</th>
+                <th className="px-3 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Chức danh</th>
+                <th className="px-3 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nhóm</th>
+                <th className="px-4 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Chuỗi cấp trên · ai duyệt cho ai</th>
+                <th className="px-3 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Ngày gia nhập</th>
+                <th className="px-3 py-3 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Trạng thái</th>
+                <th className="px-4 py-3 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -709,8 +736,9 @@ export const EmployeeManagementPage: React.FC = () => {
                           {emp.team}
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-status-danger-soft text-status-danger border border-status-danger-line">
-                          ⚠ Chưa có nhóm
+                        <span className="inline-flex items-center gap-1 rounded-md border border-status-danger-line bg-status-danger-soft px-2 py-0.5 text-[11px] font-semibold text-status-danger">
+                          <AlertTriangle className="h-3 w-3" />
+                          Chưa có nhóm
                         </span>
                       )}
                     </td>
@@ -718,14 +746,22 @@ export const EmployeeManagementPage: React.FC = () => {
                     {/* Chuỗi Cấp Trên — Ai Duyệt Cho Ai (Tiêu chí 5) */}
                     <td className="py-3 px-4">
                       {emp.approvalChain ? (
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
-                          <GitPullRequest className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className={emp.approvalChain.includes('Chưa có') ? 'text-status-danger font-bold' : ''}>
-                            {emp.approvalChain}
-                          </span>
-                        </div>
+                        (() => {
+                          const chain = splitApprovalChain(emp.approvalChain);
+                          return (
+                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
+                              <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-accent" />
+                              <span className={chain.missing ? 'font-bold text-status-danger' : ''}>
+                                {chain.text}
+                              </span>
+                            </div>
+                          );
+                        })()
                       ) : (
-                        <span className="text-[11px] text-status-danger font-bold">⚠ Chưa có quản lý</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-status-danger">
+                          <ShieldAlert className="h-3 w-3" />
+                          Chưa có quản lý
+                        </span>
                       )}
                     </td>
 
@@ -740,8 +776,9 @@ export const EmployeeManagementPage: React.FC = () => {
                         {emp.status === 'LOCKED' && <Badge variant="danger">Đang khoá</Badge>}
                         {emp.status === 'INACTIVE' && <Badge variant="gray">Ngừng</Badge>}
                         {emp.mustChangePassword && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-status-warn/15 text-status-warn border border-status-warn/30 whitespace-nowrap" title="Bắt buộc đổi mật khẩu lần đầu">
-                            🔑 Đổi pass lần đầu
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-status-warn-line bg-status-warn-soft px-1.5 py-0.5 text-[10px] font-semibold text-status-warn" title="Bắt buộc đổi mật khẩu lần đầu">
+                            <Key className="h-3 w-3" />
+                            Đổi pass lần đầu
                           </span>
                         )}
                       </div>
@@ -814,6 +851,103 @@ export const EmployeeManagementPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile — danh sách 2 dòng: dòng 1 = NV + trạng thái, dòng 2 = nhóm + chuỗi cấp trên, dòng 3 = nút */}
+        <div className="divide-y divide-line-soft md:hidden">
+          {employees.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-muted">
+              {loading ? 'Đang tải danh sách nhân sự...' : 'Không tìm thấy nhân viên nào phù hợp bộ lọc.'}
+            </div>
+          ) : (
+            employees.map((emp) => (
+              <div key={emp.id} className="p-3.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-bold uppercase text-accent-dark ring-1 ring-accent-line">
+                    {emp.fullName.substring(0, 2)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-bold text-ink">{emp.fullName}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-ink-muted">{emp.employeeCode} · {emp.email}</div>
+                    <div className="mt-1 text-[11px] text-ink-secondary">
+                      {emp.positionName || 'Chuyên viên'} <span className="text-ink-muted">· {emp.role}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {emp.status === 'ACTIVE' && <Badge variant="ok">Hoạt động</Badge>}
+                    {emp.status === 'PENDING_ACTIVATION' && <Badge variant="warn">Chưa kích hoạt</Badge>}
+                    {emp.status === 'LOCKED' && <Badge variant="danger">Đang khoá</Badge>}
+                    {emp.status === 'INACTIVE' && <Badge variant="gray">Ngừng</Badge>}
+                    {emp.mustChangePassword && (
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-status-warn-line bg-status-warn-soft px-1.5 py-0.5 text-[10px] font-semibold text-status-warn" title="Bắt buộc đổi mật khẩu lần đầu">
+                        <Key className="h-3 w-3" />
+                        Đổi pass lần đầu
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-2.5 space-y-1.5 pl-9">
+                  {emp.team && emp.team !== 'Chưa có nhóm' ? (
+                    <span className="inline-flex rounded-md border border-status-ok-line bg-status-ok-soft px-2 py-0.5 text-[11px] font-semibold text-status-ok">
+                      {emp.team}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-status-danger-line bg-status-danger-soft px-2 py-0.5 text-[11px] font-semibold text-status-danger">
+                      <AlertTriangle className="h-3 w-3" />
+                      Chưa có nhóm
+                    </span>
+                  )}
+                  {emp.approvalChain ? (
+                    (() => {
+                      const chain = splitApprovalChain(emp.approvalChain);
+                      return (
+                        <div className="flex items-start gap-1.5 text-[11px] font-medium text-ink-secondary">
+                          <GitPullRequest className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                          <span className={chain.missing ? 'font-bold text-status-danger' : ''}>
+                            {chain.text}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="flex items-start gap-1.5 text-[11px] font-bold text-status-danger">
+                      <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      Chưa có quản lý
+                    </div>
+                  )}
+                  <div className="text-[11px] text-ink-muted">Ngày gia nhập: {emp.hireDate || emp.joinDate || '01/01/2023'}</div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line-soft pt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenViewDetail(emp)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-info-line bg-status-info-soft px-2.5 text-[11.5px] font-semibold text-status-info transition-colors hover:bg-status-info hover:text-on-info"
+                    title="Xem chi tiết hồ sơ nhân sự"
+                  >
+                    <Eye className="h-3 w-3" /> Xem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(emp)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-accent-line bg-accent-soft px-2.5 text-[11.5px] font-semibold text-accent-dark transition-colors hover:bg-accent hover:text-on-accent"
+                    title="Chỉnh sửa thông tin nhân viên"
+                  >
+                    <Edit2 className="h-3 w-3" /> Sửa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenChangeManager(emp)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-info-line bg-status-info-soft px-2.5 text-[11.5px] font-semibold text-status-info transition-colors hover:bg-status-info hover:text-on-info"
+                    title="Đổi người duyệt trực tiếp"
+                  >
+                    <GitPullRequest className="h-3 w-3" /> Đổi sếp
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Modal: Đổi Quản Lý Trực Tiếp (Bắt buộc lý do, ghi audit log, chuyển đơn chờ) */}
@@ -838,7 +972,8 @@ export const EmployeeManagementPage: React.FC = () => {
 
             {managerError && (
               <div className="p-2.5 rounded-lg bg-status-danger/15 border border-status-danger/30 text-status-danger-line text-xs font-semibold">
-                ⚠️ {managerError}
+                <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
+                {managerError}
               </div>
             )}
 
@@ -944,7 +1079,8 @@ export const EmployeeManagementPage: React.FC = () => {
           <form onSubmit={handleCreateEmployee} className="space-y-4 text-xs">
             {addError && (
               <div className="p-3 rounded-xl bg-status-danger/10 border border-status-danger/30 text-status-danger-line text-xs font-semibold">
-                ⚠ {addError}
+                <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
+                {addError}
               </div>
             )}
             {/* Hướng dẫn an ninh & Gmail */}
@@ -1303,13 +1439,13 @@ export const EmployeeManagementPage: React.FC = () => {
                   <div className="flex justify-between py-0.5 border-b border-line/40">
                     <span className="text-ink-muted">Quản lý trực tiếp:</span>
                     <span className="font-semibold text-ink">
-                      {viewDetailEmp.managerName ? `${viewDetailEmp.managerName} (${viewDetailEmp.managerCode || ''})` : '⚠ Chưa có'}
+                      {viewDetailEmp.managerName ? `${viewDetailEmp.managerName} (${viewDetailEmp.managerCode || ''})` : 'Chưa có'}
                     </span>
                   </div>
                   <div className="py-0.5 border-b border-line/40">
                     <span className="text-ink-muted block mb-1">Chuỗi duyệt (Ai duyệt cho ai):</span>
                     <span className={`font-semibold block ${viewDetailEmp.approvalChain?.includes('Chưa có') ? 'text-status-danger' : 'text-status-ok font-mono text-[10px]'}`}>
-                      {viewDetailEmp.approvalChain || '⚠ Chưa cấu hình chuỗi duyệt'}
+                      {splitApprovalChain(viewDetailEmp.approvalChain).text || 'Chưa cấu hình chuỗi duyệt'}
                     </span>
                   </div>
                   <div className="flex justify-between py-0.5">
