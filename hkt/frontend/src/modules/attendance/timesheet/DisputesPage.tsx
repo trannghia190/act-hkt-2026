@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '../../../components/common/Button';
 
 interface Dispute {
   id: string; employee: string; date: string; reason: string; status: string; deadline?: string; daysLeft?: number;
@@ -197,15 +198,15 @@ export const DisputesPage: React.FC = () => {
           {selected.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-ink-muted">Đã chọn {selected.length}</span>
-              <button className="px-2.5 py-1 rounded bg-status-ok text-on-ok font-semibold"
+              <Button variant="success" size="sm" className="font-semibold"
                 title="Duyệt và áp NGAY lên bảng công cho tất cả đơn đang chọn: sửa giờ theo giờ nhân viên đề xuất (hoặc ký hiệu công chung), duyệt WFH, duyệt nghỉ (trừ quỹ phép). Đơn không xử lý được sẽ bị bỏ qua và liệt kê."
                 onClick={bulkFix}>
                 Duyệt &amp; sửa ô hàng loạt
-              </button>
-              <button className="px-2.5 py-1 rounded bg-status-danger text-on-danger font-semibold" onClick={bulkReject}>
+              </Button>
+              <Button variant="danger" size="sm" className="font-semibold" onClick={bulkReject}>
                 Từ chối hàng loạt
-              </button>
-              <button className="px-2 py-1 rounded border border-line" onClick={() => setSelected([])}>Bỏ chọn</button>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setSelected([])}>Bỏ chọn</Button>
             </div>
           )}
         </div>
@@ -260,12 +261,12 @@ export const DisputesPage: React.FC = () => {
               </span>
               {d.status === 'PENDING' && (
                 <>
-                  <button className="text-xs px-2 py-1 rounded bg-status-ok text-on-ok"
-                    title={fixTitle(d)} onClick={() => resolve(d, 'FIX')}>{fixLabel(d)}</button>
-                  <button className="text-xs px-2 py-1 rounded border border-line"
-                    title={MAKEUP_TITLE} onClick={() => resolve(d, 'MAKEUP')}>Bổ sung công</button>
-                  <button className="text-xs px-2 py-1 rounded bg-status-danger text-on-danger"
-                    title={REJECT_TITLE} onClick={() => resolve(d, 'REJECT')}>Từ chối</button>
+                  <Button variant="success" size="sm" className="text-xs px-2 py-1"
+                    title={fixTitle(d)} onClick={() => resolve(d, 'FIX')}>{fixLabel(d)}</Button>
+                  <Button variant="outline" size="sm" className="text-xs px-2 py-1"
+                    title={MAKEUP_TITLE} onClick={() => resolve(d, 'MAKEUP')}>Bổ sung công</Button>
+                  <Button variant="danger" size="sm" className="text-xs px-2 py-1"
+                    title={REJECT_TITLE} onClick={() => resolve(d, 'REJECT')}>Từ chối</Button>
                 </>
               )}
             </div>

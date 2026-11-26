@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -26,6 +26,8 @@ export const Button: React.FC<ButtonProps> = ({
     secondary: 'bg-btn-secondary text-btn-secondary-ink hover:bg-btn-secondary-hover shadow-sm',
     outline: 'border border-line bg-surface text-ink hover:bg-canvas',
     danger: 'bg-status-danger text-on-danger hover:bg-danger-hover shadow-sm',
+    /** Chỉ dùng cho hành động DUYỆT / xác nhận kết quả tích cực — không dùng cho điều hướng, tab. */
+    success: 'bg-status-ok text-on-ok hover:opacity-90 shadow-sm',
     ghost: 'text-ink-secondary hover:bg-canvas hover:text-ink',
   };
 

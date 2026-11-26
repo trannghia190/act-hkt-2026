@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Button } from '../../../components/common/Button';
 
 interface Device {
   id: string;
@@ -63,8 +64,8 @@ export const AdminDevicesPage: React.FC = () => {
             <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
               <div className="text-xs text-ink-muted">{d.deviceFingerprint}</div></div>
             <div className="flex gap-2">
-              <button className="text-xs px-3 py-1 rounded bg-status-ok text-on-ok" onClick={() => act(d, true)}>Duyệt</button>
-              <button className="text-xs px-3 py-1 rounded border border-line" onClick={() => act(d, false)}>Từ chối</button>
+              <Button variant="success" size="sm" className="text-xs px-3 py-1" onClick={() => act(d, true)}>Duyệt</Button>
+              <Button variant="outline" size="sm" className="text-xs px-3 py-1" onClick={() => act(d, false)}>Từ chối</Button>
             </div>
           </div>
         ))}

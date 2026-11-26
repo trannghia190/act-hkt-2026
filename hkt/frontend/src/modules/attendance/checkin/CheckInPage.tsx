@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
+import { SegmentedControl } from '../../../components/common/SegmentedControl';
 import { useAuth } from '../../../context/AuthContext';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 import {
@@ -779,28 +780,24 @@ export const CheckInPage: React.FC = () => {
             {/* Chọn loại chấm rõ ràng — hệ thống gợi ý nhưng nhân viên luôn đổi được */}
             {checkInStep !== 'success' && (
               <div className="flex flex-col items-center gap-1.5">
-                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl w-full max-w-xs bg-canvas border border-line">
-                  <button
-                    type="button"
-                    onClick={() => setCheckType('IN')}
-                    disabled={isScanning || hasCheckInToday || todayMissingCheckIn}
-                    className={`h-9 rounded-lg text-xs font-bold transition-colors cursor-pointer ${checkType === 'IN'
-                      ? 'bg-status-ok text-on-ok'
-                      : 'bg-transparent text-ink-muted hover:text-ink'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                  >
-                    {hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCheckType('OUT')}
-                    disabled={isScanning}
-                    className={`h-9 rounded-lg text-xs font-bold transition-colors cursor-pointer ${checkType === 'OUT'
-                      ? 'bg-ink text-canvas'
-                      : 'bg-transparent text-ink-muted hover:text-ink'} disabled:opacity-40`}
-                  >
-                    {alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca'}
-                  </button>
-                </div>
+                <SegmentedControl<'IN' | 'OUT'>
+                  ariaLabel="Chọn loại chấm công"
+                  className="max-w-xs"
+                  value={checkType}
+                  onChange={setCheckType}
+                  options={[
+                    {
+                      value: 'IN',
+                      label: hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca',
+                      disabled: isScanning || hasCheckInToday || todayMissingCheckIn,
+                    },
+                    {
+                      value: 'OUT',
+                      label: alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca',
+                      disabled: isScanning,
+                    },
+                  ]}
+                />
                 {lateCheckIn && checkType === 'IN' && (
                   <p className="text-[10px] text-status-warn">
                     Đã qua khung vào {shiftCheckInText} — lần chấm VÀO này có thể bị tính đi muộn.
@@ -821,9 +818,7 @@ export const CheckInPage: React.FC = () => {
                       ? 'bg-status-danger text-on-danger opacity-60 cursor-not-allowed'
                       : isScanning
                       ? 'bg-accent/80 text-on-accent opacity-60 cursor-wait'
-                      : checkType === 'IN'
-                      ? 'bg-accent text-on-accent hover:bg-accent-hover active:scale-95 shadow-[0_0_0_8px_rgb(var(--accent)/0.10),0_14px_30px_rgb(var(--accent)/0.22)]'
-                      : 'bg-ink text-canvas hover:opacity-90 active:scale-95 shadow-[0_0_0_8px_rgb(var(--ink)/0.08)]'
+                      : 'bg-accent text-on-accent hover:bg-accent-hover active:scale-95 shadow-[0_0_0_8px_rgb(var(--accent)/0.10),0_14px_30px_rgb(var(--accent)/0.22)]'
                   }`}
                 >
                   <ScanFace className="w-6 h-6 opacity-80" />

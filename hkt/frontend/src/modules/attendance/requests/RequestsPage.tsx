@@ -631,13 +631,15 @@ export const RequestsPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {missingCheckoutLog && (
-              <button
+              <Button
                 type="button"
+                variant="success"
+                size="sm"
+                className="font-semibold text-[11px]"
                 onClick={() => handleAutoFillPunch('OUT', missingCheckoutLog)}
-                className="px-2.5 py-1.5 rounded-lg bg-status-ok hover:bg-status-ok text-on-ok font-semibold text-[11px] transition-colors cursor-pointer"
               >
                 + Giờ ra {fmtDay(missingCheckoutLog.workDate)}
-              </button>
+              </Button>
             )}
             {lateLog && (
               <button

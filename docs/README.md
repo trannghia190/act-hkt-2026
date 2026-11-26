@@ -52,6 +52,9 @@ Danh mục toàn bộ 22 tài liệu kỹ thuật và đặc tả nghiệp vụ 
 | **21** | [21-tech-code-conventions.md](21-tech-code-conventions.md) | Quy ước mã nguồn doanh nghiệp: Cấu trúc thư mục repository (`hkt/`), Chuẩn đặt tên Clean Architecture, Exception handling, Cấu hình bảo mật Spring Security và UI Theme tokens. |
 | **22** | [22-system-changelog-and-status-tracker.md](22-system-changelog-and-status-tracker.md) | **Tài liệu quản trị trạng thái & nhật ký thay đổi dự án (Living Changelog)**: Cập nhật liên tục toàn bộ các thay đổi Business, Technical, Features, API và Ma trận tiến độ thực tế. |
 | **23** | [23-tech-gap-map.md](23-tech-gap-map.md) | **Bản đồ chênh lệch giữa tài liệu kỹ thuật (11–22) + mã nguồn `hkt/` và nghiệp vụ đã chốt (01–09)**: 19 mâu thuẫn trực tiếp · 8 nhóm nghiệp vụ còn thiếu · 14 chỗ code đang theo bản cũ · thứ tự ưu tiên xử lý. |
+| **24** | [24-review-pr.md](24-review-pr.md) | Đánh giá PR và các điểm cần sửa trước khi merge. |
+| **25** | [25-execution-plan-nghia.md](25-execution-plan-nghia.md) | Kế hoạch thực thi 21 task (C + D + E) bám theo `task-tracking.xlsx`. |
+| **26** | [26-design-system-rules.md](26-design-system-rules.md) | **Quy tắc design system cho 3 theme**: nút (primary/secondary/outline/danger/success/ghost), tab & segmented control, badge trạng thái, form, card/bảng/modal, rail, checklist trước khi merge. |
 
 > ⚠️ **Đọc `23-tech-gap-map.md` trước khi code.** Nhóm 2 đang mô tả một hệ thống khác với hệ thống đã chốt (45 cột, xếp loại A/B/C/D, dry-run, ủy quyền, 1 thiết bị, Keycloak…). Khi có mâu thuẫn, **Nhóm 1 (01–09) là nguồn sự thật**. *Phần đăng nhập đã đồng thuận: cả hai đều là Non-SSO — chỉ còn gỡ Keycloak + đồng bộ TTL token.*
 

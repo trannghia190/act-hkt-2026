@@ -820,7 +820,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                   size="sm"
                   onClick={handleVerifySubmit}
                   disabled={verifyStatus === 'processing'}
-                  className="text-xs font-bold bg-status-ok hover:bg-status-ok text-on-ok"
+                  className="text-xs font-bold"
                 >
                   {verifyStatus === 'processing' ? 'Đang Đối Soát...' : '🔍 Xác Thực Khuôn Mặt Ngay'}
                 </Button>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Button } from '../../../components/common/Button';
 
 export const DisputeDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -283,7 +284,7 @@ export const DisputeDetailPage: React.FC = () => {
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={applyFix} className="text-xs px-3 py-1.5 rounded bg-status-ok text-on-ok">Duyệt &amp; cập nhật bảng công</button>
+            <Button variant="success" size="sm" onClick={applyFix}>Duyệt &amp; cập nhật bảng công</Button>
             <button onClick={() => act('MAKEUP')} className="text-xs px-3 py-1.5 rounded border border-line"
               title="KHÔNG sửa bảng công ngay: tạo đơn điều chỉnh công (ADJUST) ở trạng thái chờ duyệt — chỉ khi đơn đó được duyệt thì ngày công mới thay đổi.">
               Tạo đơn bổ sung công (chờ duyệt)

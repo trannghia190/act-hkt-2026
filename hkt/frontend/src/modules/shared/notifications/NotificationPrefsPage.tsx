@@ -355,14 +355,16 @@ export const NotificationPrefsPage: React.FC = () => {
             <span>{toastMessage}</span>
           </div>
           {previousStateRef.current && (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              className="font-bold"
               onClick={handleUndo}
-              className="px-2.5 py-1 bg-status-ok hover:bg-status-ok text-on-ok rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
             >
               <RotateCcw className="w-3 h-3" />
               Hoàn tác (Undo)
-            </button>
+            </Button>
           )}
         </div>
       )}

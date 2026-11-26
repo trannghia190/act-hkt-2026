@@ -762,10 +762,10 @@ export const EmployeeManagementPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(emp)}
-                          className="px-2.5 py-1 rounded-lg bg-status-ok-soft hover:bg-status-ok hover:text-on-ok text-status-ok border border-status-ok-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-accent-soft hover:bg-accent hover:text-on-accent text-accent-dark border border-accent-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
                           title="Chỉnh sửa thông tin nhân viên"
                         >
-                          <Edit2 className="w-3 h-3 text-status-ok group-hover:text-canvas" />
+                          <Edit2 className="w-3 h-3 text-accent-dark group-hover:text-on-accent" />
                           <span>Sửa</span>
                         </button>
                         <button
