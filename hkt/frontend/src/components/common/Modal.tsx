@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -50,9 +51,10 @@ export const Modal: React.FC<ModalProps> = ({
           <h3 className="font-semibold text-ink text-sm tracking-tight">{title}</h3>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-md text-ink-muted hover:bg-canvas hover:text-ink flex items-center justify-center text-sm transition-colors"
+            aria-label="Đóng"
+            className="w-7 h-7 rounded-md text-ink-muted hover:bg-canvas hover:text-ink flex items-center justify-center transition-colors"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
         <div className="p-5 overflow-y-auto flex-1">{children}</div>

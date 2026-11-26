@@ -8,6 +8,22 @@ import { OkrSelfAssessmentSection } from '../assessment/OkrSelfAssessmentSection
 import { useForm4Box } from '../assessment/useForm4Box';
 import { OKRPhaseTimeline } from '../cycles/OKRPhaseTimeline';
 import { NoActiveCycleNotice } from '../components/NoActiveCycleNotice';
+import {
+  AlertTriangle,
+  History,
+  Lightbulb,
+  Lock,
+  LockOpen,
+  Paperclip,
+  Pencil,
+  Plus,
+  Save,
+  Send,
+  Sparkles,
+  Target,
+  Timer,
+  Undo2,
+} from 'lucide-react';
 
 type GroupKey = 'BUSINESS' | 'PEOPLE';
 
@@ -233,8 +249,6 @@ export const MyOKRPage: React.FC = () => {
   }, [sectionParam, showAssessment, assessment.loading, data]);
 
   const phases = data?.phases ?? [];
-  const fmtDate = (v?: string | null) => (v ? `${v.slice(8, 10)}/${v.slice(5, 7)}` : '—');
-  const phaseStatusText = (s?: string | null) => (s === 'active' ? 'Đang mở' : s === 'upcoming' ? 'Sắp tới' : s === 'locked' ? 'Đã khoá' : '');
   const phaseTitle = currentPhase === 'MIDYEAR'
     ? `Cập nhật tiến độ OKR ${data?.cycleYear ?? ''} — Review giữa năm`
     : currentPhase === 'FINAL'
@@ -701,7 +715,7 @@ export const MyOKRPage: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-[10px] text-ink-muted">
-            ℹ️ Tiến độ cập nhật qua Check-in — hệ thống tự tính · Ctrl/⌘ + Enter để lưu · Esc để huỷ
+            Tiến độ cập nhật qua Check-in — hệ thống tự tính · Ctrl/⌘ + Enter để lưu · Esc để huỷ
           </span>
           <div className="flex gap-2 shrink-0 ml-auto">
             <Button type="button" variant="ghost" size="sm" className="h-auto py-1 px-2.5 text-xs" onClick={cancelEdit} disabled={editSaving}>
@@ -723,25 +737,30 @@ export const MyOKRPage: React.FC = () => {
     );
 
     return (
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between border-b border-line pb-3">
-          <div>
-            <h2 className="text-base font-bold text-ink flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
+      <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
               {title}
             </h2>
-            <p className="text-xs text-ink-muted mt-0.5">{subtitle} · {itemsList.length} đầu việc tự do (không giới hạn số chữ)</p>
+            <p className="mt-0.5 text-[11px] text-ink-muted">
+              {subtitle} · {itemsList.length} đầu việc tự do (không giới hạn số chữ)
+            </p>
           </div>
+          <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-muted">{itemsList.length} đầu việc</span>
         </div>
+        <div className="space-y-3.5 p-4">
 
         {/* Gợi ý kế thừa từ Quản lý trực tiếp (C14) */}
         {!isLocked && showManagerSuggestions && (
-          <div className="bg-accent-soft/40 border border-accent-line/60 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-bold text-accent flex items-center gap-1.5">
-                <span>💡 Gợi ý kế thừa từ OKR Quản lý trực tiếp (C14):</span>
-                <span className="text-[11px] font-normal text-ink-muted">Bấm 1 chạm để chép mục tiêu đã duyệt</span>
+          <div className="rounded-xl border border-accent-line bg-accent-soft/40 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-accent">
+                <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                Gợi ý kế thừa từ OKR Quản lý trực tiếp (C14):
               </div>
+              <span className="text-[11px] font-normal text-ink-muted">Bấm 1 chạm để chép mục tiêu đã duyệt</span>
             </div>
             {mgrSuggestions.length > 0 ? (
               <div className="space-y-1.5">
@@ -775,7 +794,7 @@ export const MyOKRPage: React.FC = () => {
           {itemsList.length === 0 ? (
             <div className="text-xs text-ink-muted py-6 text-center bg-canvas rounded-lg border border-dashed border-line">
               {isLocked ? (
-                <>Chưa có đầu việc nào. 🔒 {data?.lockReason}</>
+                <>Chưa có đầu việc nào. {data?.lockReason}</>
               ) : (
                 <>
                   Chưa có đầu việc nào trong nhóm này. Hãy bấm <b>+ Thêm đầu việc</b> bên dưới để tự nhập
@@ -799,15 +818,15 @@ export const MyOKRPage: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-xs h-auto py-1 px-2.5"
+                        className="h-auto px-2.5 py-1 text-xs"
                         onClick={() => startEdit(item)}
                       >
-                        ✏️ Sửa
+                        <Pencil className="h-3 w-3" /> Sửa
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-xs text-danger hover:bg-danger-soft h-auto py-1 px-2"
+                        className="h-auto px-2 py-1 text-xs text-status-danger hover:bg-status-danger-soft"
                         onClick={() => {
                           setDeleteModalItem(item);
                           setDeleteReason('');
@@ -833,26 +852,29 @@ export const MyOKRPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => startAdd(group)}
-                className="w-full border-2 border-dashed border-line rounded-lg py-2.5 text-xs font-semibold text-ink-muted hover:border-accent hover:text-accent-dark hover:bg-accent-soft/20 transition-colors"
+                className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-line py-2.5 text-xs font-semibold text-ink-muted transition-colors hover:border-accent hover:bg-accent-soft/20 hover:text-accent-dark"
               >
-                + Thêm đầu việc
+                <Plus className="h-3.5 w-3.5" />
+                Thêm đầu việc
               </button>
             )
           )}
         </div>
-      </Card>
+        </div>
+      </section>
     );
   };
 
   const renderCheckInGroup = (group: GroupKey, title: string, rows: CheckInRow[]) => (
-    <Card className="space-y-3">
-      <div className="flex items-center justify-between border-b border-line pb-2.5">
-        <h3 className="text-sm font-bold text-ink flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
+    <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+        <h3 className="flex items-center gap-2 text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
           {title}
         </h3>
-        <span className="text-[11px] text-ink-muted">{rows.length} đầu việc</span>
+        <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-muted">{rows.length} đầu việc</span>
       </div>
+      <div className="space-y-2.5 p-4">
       {rows.length === 0 ? (
         <div className="text-xs text-ink-muted py-4 text-center bg-canvas rounded-lg border border-dashed border-line">
           Chưa có đầu việc trong nhóm này.
@@ -899,7 +921,8 @@ export const MyOKRPage: React.FC = () => {
           ))}
         </div>
       )}
-    </Card>
+      </div>
+    </section>
   );
 
   if (loading) {
@@ -923,36 +946,42 @@ export const MyOKRPage: React.FC = () => {
         </div>
       )}
 
-      {/* Header & Status Banner */}
-      <Card className="space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-ink">{phaseTitle}</h1>
-              {getStatusBadge()}
-              {data?.managerReviewing && <Badge variant="warn">Quản lý đang chấm điểm</Badge>}
-            </div>
-            <p className="text-xs text-ink-muted mt-1">
-              2 nhóm cố định Business & People · Điểm chấm 1–5 nguyên (không có điểm lẻ) · Không xếp loại A/B/C/D.
-            </p>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Target className="h-3.5 w-3.5" />
+            OKR của tôi
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" variant="outline" onClick={openCheckIn}>
-              ✦ Check-in tiến độ
-            </Button>
-            {!isLocked && (
-              <Button size="sm" variant="outline" onClick={handleSaveDraft} disabled={proposalSaving}>
-                {proposalSaving ? 'Đang lưu...' : '💾 Lưu nháp'}
-              </Button>
-            )}
-            {!isLocked && (
-              <Button size="sm" variant="primary" onClick={handleSubmitSetup}>
-                📤 Gửi Quản lý duyệt
-              </Button>
-            )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              {phaseTitle}
+            </h1>
+            {getStatusBadge()}
+            {data?.managerReviewing && <Badge variant="warn">Quản lý đang chấm điểm</Badge>}
           </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            2 nhóm cố định Business & People · Điểm chấm 1–5 nguyên (không có điểm lẻ) · Không xếp loại A/B/C/D.
+          </p>
         </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button size="md" variant="outline" onClick={openCheckIn}>
+            <Sparkles className="h-3.5 w-3.5" /> Check-in tiến độ
+          </Button>
+          {!isLocked && (
+            <Button size="md" variant="outline" onClick={handleSaveDraft} disabled={proposalSaving}>
+              <Save className="h-3.5 w-3.5" /> {proposalSaving ? 'Đang lưu...' : 'Lưu nháp'}
+            </Button>
+          )}
+          {!isLocked && (
+            <Button size="md" variant="primary" onClick={handleSubmitSetup}>
+              <Send className="h-3.5 w-3.5" /> Gửi Quản lý duyệt
+            </Button>
+          )}
+        </div>
+      </div>
 
+      <div className="space-y-3.5">
         {phases.length > 0 && (
           <OKRPhaseTimeline
             year={data?.cycleYear ?? new Date().getFullYear()}
@@ -970,41 +999,19 @@ export const MyOKRPage: React.FC = () => {
           />
         )}
 
-        {phases.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {phases.map((p) => {
-              const active = p.key.toUpperCase() === currentPhase;
-              return (
-                <div
-                  key={p.key}
-                  className={`rounded-xl border p-2.5 text-xs ${active ? 'border-accent bg-accent-soft/30' : 'border-line bg-canvas'}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-ink">{p.name}</span>
-                    <span className={`text-[11px] font-semibold ${p.effective_status === 'active' ? 'text-accent' : 'text-ink-muted'}`}>
-                      {phaseStatusText(p.effective_status)}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-1">NV: {fmtDate(p.start_date)}–{fmtDate(p.due_date)}</div>
-                  <div className="text-[11px] text-ink-muted">QL: {fmtDate(p.review_start)}–{fmtDate(p.review_due)}</div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         {/* Thông báo trạng thái khoá sửa */}
         {isLocked && (
-          <div className="bg-status-warn/10 border border-status-warn/30 rounded-xl p-3.5 text-xs text-status-warn flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🔒</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-status-warn-line bg-status-warn-soft p-3.5 text-xs text-status-warn">
+            <div className="flex min-w-0 items-center gap-2">
+              <Lock className="h-4 w-4 shrink-0" />
               <span>
                 <b>Bộ mục tiêu đang khoá sửa (Read-Only).</b> {data?.lockReason}
               </span>
             </div>
             {data?.status === 'submitted' && (
               <Button size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing} className="shrink-0">
-                {withdrawing ? 'Đang rút...' : '↩ Rút lại để sửa'}
+                <Undo2 className="h-3 w-3" />
+                {withdrawing ? 'Đang rút...' : 'Rút lại để sửa'}
               </Button>
             )}
           </div>
@@ -1012,9 +1019,9 @@ export const MyOKRPage: React.FC = () => {
 
         {/* Banner khi Quản lý mở lại quyền sửa trong đợt review */}
         {data?.status === 'reopened' && (
-          <div className="bg-status-info-soft border border-status-info-line rounded-xl p-3.5 text-xs text-status-info space-y-1">
-            <div className="font-bold flex items-center gap-2">
-              <span>🔓</span>
+          <div className="space-y-1 rounded-xl border border-status-info-line bg-status-info-soft p-3.5 text-xs text-status-info">
+            <div className="flex items-center gap-2 font-bold">
+              <LockOpen className="h-4 w-4 shrink-0" />
               <span>Quản lý đã mở lại quyền chỉnh sửa OKR</span>
             </div>
             {data.managerFeedback && (
@@ -1031,8 +1038,8 @@ export const MyOKRPage: React.FC = () => {
         {/* Banner góp ý khi Quản lý trả lại — nhân viên cần sửa */}
         {data?.status === 'returned' && (
           <div className="bg-status-danger-soft border border-status-danger-line rounded-xl p-4 space-y-2">
-            <div className="flex items-center gap-2 text-status-danger font-bold text-sm">
-              <span>⚠️</span>
+            <div className="flex items-center gap-2 text-sm font-bold text-status-danger">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>Quản lý đã trả lại — Cần chỉnh sửa theo góp ý dưới đây rồi gửi lại</span>
             </div>
             {data.managerFeedback ? (
@@ -1048,23 +1055,29 @@ export const MyOKRPage: React.FC = () => {
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
       {/* Tự đánh giá cuối năm — cùng một workspace, chỉ mở khi phase FINAL (hoặc deep-link ?section=assessment) */}
       {showAssessment && (
         <div ref={assessmentRef} id="self-assessment" className="space-y-5 scroll-mt-20">
-          <Card className="space-y-1 border-accent/40">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-ink">Tự đánh giá cuối năm (Form 4 Box)</h2>
-              <Badge variant="accent">{data?.phaseName || 'Đánh giá cuối năm'}</Badge>
+          <div className="overflow-hidden rounded-[13px] border border-accent-line bg-accent-soft/30 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent-line px-4 py-3">
+              <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+                Tự đánh giá cuối năm (Form 4 Box)
+              </h2>
+              <Badge variant="accent" className="shrink-0">{data?.phaseName || 'Đánh giá cuối năm'}</Badge>
             </div>
-            <p className="text-xs text-ink-muted">
-              Thành tựu công việc &amp; con người, tự chấm {assessment.scaleText} cho từng nhóm và xem lại định hướng phát triển.
-              Điểm Quản lý chấm độc lập sau khi bạn nộp.
-            </p>
-          </Card>
+            <div className="p-4">
+              <p className="text-[11.5px] leading-relaxed text-ink-muted">
+                Thành tựu công việc &amp; con người, tự chấm {assessment.scaleText} cho từng nhóm và xem lại định hướng phát triển.
+                Điểm Quản lý chấm độc lập sau khi bạn nộp.
+              </p>
+            </div>
+          </div>
           {assessment.loading ? (
-            <Card><div className="p-6 text-center text-xs text-ink-muted">Đang tải form đánh giá...</div></Card>
+            <div className="rounded-[13px] border border-line bg-surface p-6 text-center text-xs text-ink-muted shadow-2xs">
+              Đang tải form đánh giá...
+            </div>
           ) : (
             <OkrSelfAssessmentSection assessment={assessment} />
           )}
@@ -1089,21 +1102,22 @@ export const MyOKRPage: React.FC = () => {
 
       {/* Định hướng & đề xuất của kỳ — gửi kèm bộ mục tiêu; ẩn khi Box 4 trong form tự đánh giá đã sẵn sàng */}
       {!(showAssessment && (assessment.canEditSelf || proposalSubmitted)) && (
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between border-b border-line pb-2.5">
-            <div>
-              <h2 className="text-base font-bold text-ink flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-status-info" />
+        <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-2 text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-status-info" />
                 Định hướng &amp; đề xuất kỳ {data?.cycleYear ?? ''}
               </h2>
-              <p className="text-xs text-ink-muted mt-0.5">
+              <p className="mt-0.5 text-[11px] text-ink-muted">
                 Khai báo cùng bộ mục tiêu, gửi Quản lý duyệt khi bấm “Gửi Quản lý duyệt” (tuỳ chọn)
               </p>
             </div>
-            <Badge variant={proposalSubmitted ? 'ok' : hasProposalContent ? 'warn' : 'gray'}>
+            <Badge variant={proposalSubmitted ? 'ok' : hasProposalContent ? 'warn' : 'gray'} className="shrink-0">
               {proposalSubmitted ? 'Đã gửi kèm OKR' : hasProposalContent ? 'Đang viết' : 'Chưa viết'}
             </Badge>
           </div>
+          <div className="space-y-3 p-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-ink">Định hướng phát triển</label>
             <textarea
@@ -1112,7 +1126,7 @@ export const MyOKRPage: React.FC = () => {
               value={directionText}
               onChange={(e) => setDirectionText(e.target.value)}
               placeholder="Ví dụ: Phát triển theo hướng Technical Lead, mở rộng năng lực kiến trúc hệ thống..."
-              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+              className="w-full rounded-[10px] border border-line bg-canvas p-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted"
             />
           </div>
           <div className="space-y-1.5">
@@ -1123,7 +1137,7 @@ export const MyOKRPage: React.FC = () => {
               value={proposalText}
               onChange={(e) => setProposalText(e.target.value)}
               placeholder="Ví dụ: Đề xuất tham gia dự án trọng điểm, được kèm cặp bởi mentor, tham gia khoá đào tạo chuyên môn..."
-              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+              className="w-full rounded-[10px] border border-line bg-canvas p-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted"
             />
           </div>
           <div className="space-y-1.5">
@@ -1136,33 +1150,35 @@ export const MyOKRPage: React.FC = () => {
               value={improvementText}
               onChange={(e) => setImprovementText(e.target.value)}
               placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình, quản lý thời gian và chia sẻ kiến thức cho team..."
-              className="w-full border border-line rounded-lg p-3 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+              className="w-full rounded-[10px] border border-line bg-canvas p-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted"
             />
           </div>
           <div className="text-[11px] text-ink-muted">
             {isLocked
-              ? '🔒 Nội dung đã gửi kèm bộ mục tiêu — Quản lý mở lại quyền sửa nếu cần thay đổi.'
+              ? 'Nội dung đã gửi kèm bộ mục tiêu — Quản lý mở lại quyền sửa nếu cần thay đổi.'
               : 'Nội dung được gửi kèm khi bạn bấm “Gửi Quản lý duyệt”.'}
           </div>
-        </Card>
+          </div>
+        </section>
       )}
 
       {/* Lịch sử các mục đã xoá (Lưu vết không mất vết — Tiêu chí 6) */}
       {deletedItems.length > 0 && (
-        <Card className="space-y-3 bg-canvas/60 border border-line">
-          <div className="flex items-center justify-between border-b border-line pb-2">
-            <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
-              <span>📋 Lịch sử các mục đã xoá ({deletedItems.length} mục — Lưu vết theo quy định HR)</span>
+        <section className="overflow-hidden rounded-[13px] border border-line bg-canvas/60 shadow-2xs">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-muted">
+              <History className="h-3.5 w-3.5" />
+              Lịch sử các mục đã xoá ({deletedItems.length} mục — Lưu vết theo quy định HR)
             </h3>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 p-4">
             {deletedItems.map((item) => (
-              <div key={item.id} className="p-2.5 rounded border border-line bg-surface text-xs space-y-1">
+              <div key={item.id} className="space-y-1 rounded border border-line bg-surface p-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-ink-muted line-through">{item.title}</span>
                   <Badge variant="gray">{item.groupType}</Badge>
                 </div>
-                <div className="text-[11px] text-danger">
+                <div className="text-[11px] text-status-danger">
                   <b>Lý do xoá bắt buộc:</b> {item.deleteReason}
                 </div>
                 {item.deletedAt && (
@@ -1173,7 +1189,7 @@ export const MyOKRPage: React.FC = () => {
               </div>
             ))}
           </div>
-        </Card>
+        </section>
       )}
 
       {/* Modal Xoá mục tiêu (Bắt buộc nhập lý do — Tiêu chí 6) */}
@@ -1247,7 +1263,10 @@ export const MyOKRPage: React.FC = () => {
                 </div>
               )}
               {checkInData.reminder && (
-                <div className="font-semibold">⏰ {checkInData.reminderText}</div>
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <Timer className="h-3.5 w-3.5 shrink-0" />
+                  {checkInData.reminderText}
+                </div>
               )}
             </div>
 
@@ -1261,7 +1280,10 @@ export const MyOKRPage: React.FC = () => {
             {renderCheckInGroup('PEOPLE', 'People', checkInData.peopleItems || [])}
 
             <div className="rounded-xl border border-line p-3 space-y-2">
-              <div className="text-xs font-bold text-ink">📎 Đính kèm evidence (tuỳ chọn)</div>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                <Paperclip className="h-3.5 w-3.5" />
+                Đính kèm evidence (tuỳ chọn)
+              </div>
               <div className="text-[11px] text-ink-muted">
                 Ảnh chụp kết quả, báo cáo, tài liệu liên quan — làm bằng chứng cho tiến độ.
               </div>
@@ -1280,7 +1302,8 @@ export const MyOKRPage: React.FC = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {checkInFiles.map((file, idx) => (
                     <span key={`${file.name}-${idx}`} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-2.5 py-1 text-[11px] text-ink-secondary">
-                      📎 {file.name}
+                      <Paperclip className="h-3 w-3" />
+                      {file.name}
                       <button
                         type="button"
                         className="text-danger font-bold"
@@ -1357,7 +1380,8 @@ export const MyOKRPage: React.FC = () => {
                         onClick={() => downloadCheckInAttachment(att)}
                         className="inline-flex items-center gap-1 rounded-full border border-line bg-canvas px-2 py-0.5 text-[10px] text-accent hover:border-accent"
                       >
-                        📎 {att.fileName}
+                        <Paperclip className="h-3 w-3" />
+                        {att.fileName}
                       </button>
                     ))}
                   </div>

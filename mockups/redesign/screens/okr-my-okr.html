@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>O2 · OKR của tôi — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 14px; }
+    .wrap { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+    .phead .ttl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      padding: 2.5px 8px; border-radius: 6px; white-space: nowrap; }
+    .tag.ok { background: rgb(var(--ok-soft)); color: rgb(var(--ok)); }
+    .tag.warn { background: rgb(var(--warn-soft)); color: rgb(var(--warn)); }
+    .tag.gray { background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .tag.accent { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+    .tag.info { background: rgb(var(--info-soft)); color: rgb(var(--info)); }
+    .tag.danger { background: rgb(var(--danger-soft)); color: rgb(var(--danger)); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      font-weight: 700; font-size: 13px; border-radius: 10px; padding: 0 15px; height: 36px;
+      border: 1px solid transparent; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .btn svg { width: 14px; height: 14px; stroke-width: 2; }
+    .btn-outline { background: rgb(var(--surface)); color: rgb(var(--ink-secondary)); border-color: rgb(var(--line)); }
+    .btn-primary { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+      gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-h .t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; color: rgb(var(--ink)); }
+    .panel-h .s { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .panel-h .c { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .panel-b { padding: 14px 16px 16px; }
+
+    /* Timeline phase */
+    .tl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .tl .tt { font-size: 12px; font-weight: 700; color: rgb(var(--ink)); }
+    .tl .cc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .tl-bar { margin-top: 10px; height: 6px; border-radius: 999px; background: rgb(var(--line)); overflow: hidden; }
+    .tl-bar i { display: block; height: 100%; border-radius: 999px; background: rgb(var(--accent)); }
+    .tl-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .tl-step { display: flex; align-items: flex-start; gap: 10px; }
+    .tl-step .n { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; flex: 0 0 28px;
+      font-size: 11px; font-weight: 800; }
+    .tl-step.on .n { background: rgb(var(--info) / .15); color: rgb(var(--info)); box-shadow: 0 0 0 3px rgb(var(--info) / .15); }
+    .tl-step.wait .n { background: rgb(var(--line-soft)); color: rgb(var(--ink-muted)); }
+    .tl-step .nm { font-size: 12px; font-weight: 700; color: rgb(var(--ink)); }
+    .tl-step .st { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: 6px;
+      display: inline-block; }
+    .tl-step .st.on { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+    .tl-step .st.wait { background: rgb(var(--surface-2)); color: rgb(var(--ink-muted)); }
+    .tl-step .d { font-size: 11px; color: rgb(var(--ink-secondary)); margin-top: 3px; }
+    .tl-step .d b { color: rgb(var(--ink)); }
+
+    .alert { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border-radius: 12px; border: 1px solid rgb(var(--warn-line));
+      background: rgb(var(--warn-soft)); color: rgb(var(--warn)); font-size: 12px; }
+    .alert .l { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .alert svg { width: 15px; height: 15px; flex: 0 0 15px; }
+
+    /* Ô nhóm mục tiêu */
+    .empty { padding: 22px; text-align: center; font-size: 11.5px; color: rgb(var(--ink-muted));
+      background: rgb(var(--canvas)); border: 1px dashed rgb(var(--line)); border-radius: 10px; }
+    .add-btn { display: flex; width: 100%; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px; border: 2px dashed rgb(var(--line)); border-radius: 10px; background: transparent;
+      color: rgb(var(--ink-muted)); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .add-btn svg { width: 14px; height: 14px; }
+
+    .field { width: 100%; border-radius: 10px; border: 1px solid rgb(var(--line)); background: rgb(var(--canvas));
+      color: rgb(var(--ink)); font-family: inherit; font-size: 12.5px; padding: 10px 12px; resize: vertical; }
+    .field::placeholder { color: rgb(var(--ink-muted)); }
+    .flabel { display: block; font-size: 12px; font-weight: 650; color: rgb(var(--ink)); margin-bottom: 6px; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .m-acts .btn { flex: 1; min-width: 140px; }
+    .m-tl-steps { display: flex; flex-direction: column; gap: 11px; margin-top: 11px; }
+    .m-panel-h { padding: 11px 12px; border-bottom: 1px solid rgb(var(--line)); }
+    .m-panel-b { padding: 11px 12px 13px; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+  </style>
+</head>
+<body data-title="O2 · OKR của tôi">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Tổng quan OKR</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>OKR của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Chu kỳ OKR</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                  OKR của tôi
+                </div>
+                <div class="ttl">
+                  <h1 class="h1">Thiết lập OKR 2026</h1>
+                  <span class="tag warn">Đang trả nháp — Mở sửa</span>
+                  <span class="tag warn">Quản lý đang chấm điểm</span>
+                </div>
+                <div class="sub">2 nhóm cố định Business &amp; People · Điểm chấm 1–5 nguyên (không có điểm lẻ) · Không xếp loại A/B/C/D.</div>
+              </div>
+              <div style="display:flex;gap:8px;flex:0 0 auto">
+                <button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.9 5.8L20 10.7l-5.1 3.4L16 20l-4-3.4L8 20l1.1-5.9L4 10.7l6.1-1.9z"/></svg>Check-in tiến độ</button>
+                <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Gửi Quản lý duyệt</button>
+              </div>
+            </div>
+
+            <!-- Lộ trình phase -->
+            <section class="panel">
+              <div class="panel-b">
+                <div class="tl">
+                  <span class="tt">Lộ trình OKR 2026</span>
+                  <span class="cc">0/3 mốc đã xong</span>
+                </div>
+                <div class="tl-bar"><i style="width:17%"></i></div>
+                <div class="tl-steps">
+                  <div class="tl-step on">
+                    <span class="n">1</span>
+                    <div>
+                      <div class="nm">Thiết lập OKR<span class="st on">Đang mở</span></div>
+                      <div class="d"><b>NV</b> 01/10 – 28/11<br/><b>QL</b> 29/11 – 12/12</div>
+                    </div>
+                  </div>
+                  <div class="tl-step wait">
+                    <span class="n">2</span>
+                    <div>
+                      <div class="nm">Review giữa năm<span class="st wait">Sắp tới</span></div>
+                      <div class="d"><b>NV</b> 01/12 – 31/12<br/><b>QL</b> 01/01 – 12/01</div>
+                    </div>
+                  </div>
+                  <div class="tl-step wait">
+                    <span class="n">3</span>
+                    <div>
+                      <div class="nm">Đánh giá cuối năm<span class="st wait">Sắp tới</span></div>
+                      <div class="d"><b>NV</b> 01/12 – 04/12<br/><b>QL</b> 05/12 – 16/12</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Báo khoá sửa -->
+            <div class="alert">
+              <span class="l">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <span><b>Bộ mục tiêu đang khoá sửa (Read-Only).</b> Quản lý đang review phase Thiết lập OKR — chưa mở quyền sửa cho nhân viên.</span>
+              </span>
+            </div>
+
+            <!-- Nhóm Business -->
+            <section class="panel">
+              <div class="panel-h">
+                <div>
+                  <div class="t" style="display:flex;align-items:center;gap:8px">
+                    <span style="width:10px;height:10px;border-radius:99px;background:rgb(var(--accent));display:inline-block"></span>
+                    Business (Mục tiêu công việc &amp; Dự án)
+                  </div>
+                  <div class="s">Mục tiêu chuyên môn, tiến độ dự án, chỉ số kỹ thuật và đóng góp năng suất · 0 đầu việc tự do (không giới hạn số chữ)</div>
+                </div>
+                <span class="c">0 đầu việc</span>
+              </div>
+              <div class="panel-b">
+                <div class="empty">Chưa có đầu việc nào. Quản lý đang review phase Thiết lập OKR — chưa mở quyền sửa cho nhân viên.</div>
+              </div>
+            </section>
+
+            <!-- Nhóm People -->
+            <section class="panel">
+              <div class="panel-h">
+                <div>
+                  <div class="t" style="display:flex;align-items:center;gap:8px">
+                    <span style="width:10px;height:10px;border-radius:99px;background:rgb(var(--ok));display:inline-block"></span>
+                    People (Phát triển con người &amp; Đội ngũ)
+                  </div>
+                  <div class="s">Đào tạo nội bộ, phát triển năng lực cá nhân, văn hóa chia sẻ và kèm cặp đồng nghiệp · 0 đầu việc tự do (không giới hạn số chữ)</div>
+                </div>
+                <span class="c">0 đầu việc</span>
+              </div>
+              <div class="panel-b">
+                <div class="empty">Chưa có đầu việc nào. Quản lý đang review phase Thiết lập OKR — chưa mở quyền sửa cho nhân viên.</div>
+              </div>
+            </section>
+
+            <!-- Định hướng & đề xuất -->
+            <section class="panel">
+              <div class="panel-h">
+                <div>
+                  <div class="t" style="display:flex;align-items:center;gap:8px">
+                    <span style="width:10px;height:10px;border-radius:99px;background:rgb(var(--info));display:inline-block"></span>
+                    Định hướng &amp; đề xuất kỳ 2026
+                  </div>
+                  <div class="s">Khai báo cùng bộ mục tiêu, gửi Quản lý duyệt khi bấm “Gửi Quản lý duyệt” (tuỳ chọn)</div>
+                </div>
+                <span class="tag gray">Chưa viết</span>
+              </div>
+              <div class="panel-b" style="display:flex;flex-direction:column;gap:12px">
+                <div>
+                  <label class="flabel">Định hướng phát triển</label>
+                  <textarea class="field" rows="3" placeholder="Ví dụ: Phát triển theo hướng Technical Lead, mở rộng năng lực kiến trúc hệ thống..."></textarea>
+                </div>
+                <div>
+                  <label class="flabel">Đề xuất</label>
+                  <textarea class="field" rows="3" placeholder="Ví dụ: Đề xuất tham gia dự án trọng điểm, được kèm cặp bởi mentor, tham gia khoá đào tạo chuyên môn..."></textarea>
+                </div>
+                <div>
+                  <label class="flabel">Điểm cần cải thiện <span style="color:rgb(var(--ink-muted));font-weight:400">(tuỳ chọn)</span></label>
+                  <textarea class="field" rows="3" placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình, quản lý thời gian và chia sẻ kiến thức cho team..."></textarea>
+                </div>
+                <div style="font-size:11px;color:rgb(var(--ink-muted))">Nội dung đã gửi kèm bộ mục tiêu — Quản lý mở lại quyền sửa nếu cần thay đổi.</div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">OKR của tôi</div>
+          <div class="m-h1 h1">Thiết lập OKR 2026</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px">
+            <span class="tag warn">Đang trả nháp — Mở sửa</span>
+            <span class="tag warn">Quản lý đang chấm điểm</span>
+          </div>
+          <div class="m-sub">2 nhóm cố định Business &amp; People · Điểm chấm 1–5 nguyên</div>
+        </div>
+
+        <div class="m-acts">
+          <button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.9 5.8L20 10.7l-5.1 3.4L16 20l-4-3.4L8 20l1.1-5.9L4 10.7l6.1-1.9z"/></svg>Check-in tiến độ</button>
+          <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Gửi Quản lý duyệt</button>
+        </div>
+
+        <section class="panel">
+          <div class="panel-b">
+            <div class="tl">
+              <span class="tt">Lộ trình OKR 2026</span>
+              <span class="cc">0/3 mốc đã xong</span>
+            </div>
+            <div class="tl-bar"><i style="width:17%"></i></div>
+            <div class="m-tl-steps">
+              <div class="tl-step on">
+                <span class="n">1</span>
+                <div>
+                  <div class="nm">Thiết lập OKR<span class="st on">Đang mở</span></div>
+                  <div class="d"><b>NV</b> 01/10 – 28/11 · <b>QL</b> 29/11 – 12/12</div>
+                </div>
+              </div>
+              <div class="tl-step wait">
+                <span class="n">2</span>
+                <div>
+                  <div class="nm">Review giữa năm<span class="st wait">Sắp tới</span></div>
+                  <div class="d"><b>NV</b> 01/12 – 31/12 · <b>QL</b> 01/01 – 12/01</div>
+                </div>
+              </div>
+              <div class="tl-step wait">
+                <span class="n">3</span>
+                <div>
+                  <div class="nm">Đánh giá cuối năm<span class="st wait">Sắp tới</span></div>
+                  <div class="d"><b>NV</b> 01/12 – 04/12 · <b>QL</b> 05/12 – 16/12</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="alert" style="flex-direction:column;align-items:flex-start">
+          <span class="l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <span><b>Bộ mục tiêu đang khoá sửa (Read-Only).</b> Quản lý đang review phase Thiết lập OKR.</span>
+          </span>
+        </div>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="t" style="font-size:12.5px;display:flex;align-items:center;gap:7px">
+              <span style="width:9px;height:9px;border-radius:99px;background:rgb(var(--accent));display:inline-block"></span>
+              Business (Mục tiêu công việc &amp; Dự án)
+            </div>
+            <div class="s" style="font-size:10.5px;margin-top:3px">0 đầu việc tự do (không giới hạn số chữ)</div>
+          </div>
+          <div class="m-panel-b">
+            <div class="empty" style="font-size:11px;padding:16px">Chưa có đầu việc nào. Quản lý đang review phase Thiết lập OKR.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="t" style="font-size:12.5px;display:flex;align-items:center;gap:7px">
+              <span style="width:9px;height:9px;border-radius:99px;background:rgb(var(--ok));display:inline-block"></span>
+              People (Phát triển con người &amp; Đội ngũ)
+            </div>
+            <div class="s" style="font-size:10.5px;margin-top:3px">0 đầu việc tự do (không giới hạn số chữ)</div>
+          </div>
+          <div class="m-panel-b">
+            <div class="empty" style="font-size:11px;padding:16px">Chưa có đầu việc nào. Quản lý đang review phase Thiết lập OKR.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div class="t" style="font-size:12.5px;display:flex;align-items:center;gap:7px">
+              <span style="width:9px;height:9px;border-radius:99px;background:rgb(var(--info));display:inline-block"></span>
+              Định hướng &amp; đề xuất kỳ 2026
+            </div>
+          </div>
+          <div class="m-panel-b" style="display:flex;flex-direction:column;gap:11px">
+            <div>
+              <label class="flabel" style="font-size:11.5px">Định hướng phát triển</label>
+              <textarea class="field" rows="2" style="font-size:12px" placeholder="Ví dụ: Phát triển theo hướng Technical Lead..."></textarea>
+            </div>
+            <div>
+              <label class="flabel" style="font-size:11.5px">Đề xuất</label>
+              <textarea class="field" rows="2" style="font-size:12px" placeholder="Ví dụ: Tham gia dự án trọng điểm, được kèm cặp..."></textarea>
+            </div>
+            <div>
+              <label class="flabel" style="font-size:11.5px">Điểm cần cải thiện</label>
+              <textarea class="field" rows="2" style="font-size:12px" placeholder="Ví dụ: Cần cải thiện kỹ năng thuyết trình..."></textarea>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>OKR</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

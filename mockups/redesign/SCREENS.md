@@ -85,7 +85,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | O1 | Tổng quan OKR | `/okr/dashboard` | `OKRDashboardPage` | ✅ | ✅ | ✅ |
-| O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ⬜ | ⬜ | ⬜ |
+| O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ✅ | ✅ | ✅ |
 | O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ⬜ | ⬜ | ⬜ |
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ⬜ | ⬜ | ⬜ |
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ⬜ | ⬜ | ⬜ |
@@ -329,3 +329,21 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   không tràn ngang, 0 lỗi JS; phase/đếm ngược/điểm/việc cần làm/đề xuất khớp API cho
   cả `136ACT` (nhân viên) và `05ACT` (quản lý); `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **O2 · OKR của tôi** ✅ (2026-11-27) — mockup `screens/okr-my-okr.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `MyOKRPage`: `Card` bọc cả trang → **tách đầu
+  trang `.phead`** (eyebrow + `h1` phase + 2 badge trạng thái + sub) với 3 nút hành
+  động **có icon lucide** (Sparkles / Save / Send) thay emoji ✦ 💾 📤; **xoá lưới 3
+  phase trùng thông tin** với `OKRPhaseTimeline` (timeline đã hiện đủ NV/QL + trạng
+  thái) — trước hiển thị 2 bản cùng thông tin; các `Card` → **panel 13px** (header
+  tách viền, tiêu đề 13.5px + số đếm font-mono); **bỏ hết 11 emoji làm icon**
+  (🔒 🔓 ⚠️ 💡 ✏️ 📋 📎 ⏰ ℹ️) sang icon lucide (Lock / LockOpen / AlertTriangle /
+  Lightbulb / Pencil / History / Paperclip / Timer); banner khoá sửa dùng
+  `status-warn-soft` + `status-warn-line`; **shared `Modal`**: nút đóng ✕ → icon `X`
+  kèm `aria-label="Đóng"`; textarea bo 10px + focus ring accent. Không đổi nghiệp vụ:
+  cùng API `/okr/my-okr` + `/okr/objectives` + `/okr/check-in`, **vẫn ẩn nút Lưu nháp
+  / Gửi duyệt khi bộ mục tiêu đang khoá** (isLocked=true). Verify: 3 theme ×
+  320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS, 0 request 4xx/5xx; trang
+  **không còn emoji** (kể cả trong modal check-in); modal check-in mở/đóng được;
+  API `isLocked=true` → nút Gửi/Lưu **ẩn** và banner khoá sửa **hiện**; `tsc` +
+  `build` + `check-consistency` + `test_theme_responsive` + `test_mockup_responsive`
+  sạch.
