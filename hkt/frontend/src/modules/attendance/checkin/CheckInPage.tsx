@@ -790,10 +790,12 @@ export const CheckInPage: React.FC = () => {
                       value: 'IN',
                       label: hasCheckInToday ? 'Đã vào ca' : todayMissingCheckIn ? 'Thiếu giờ vào' : 'Vào ca',
                       disabled: isScanning || hasCheckInToday || todayMissingCheckIn,
+                      tone: 'ok',
                     },
                     {
                       value: 'OUT',
                       label: alreadyCheckedOut ? 'Cập nhật giờ ra' : 'Ra ca',
+                      tone: 'ink',
                       disabled: isScanning,
                     },
                   ]}

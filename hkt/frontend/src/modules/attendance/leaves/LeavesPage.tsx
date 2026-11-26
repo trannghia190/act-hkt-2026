@@ -207,7 +207,7 @@ export const LeavesPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-2">
         {['Tất cả', 'Phép năm', 'Phép tồn', 'Phép ốm', 'Nghỉ bù', 'Chức vụ', 'Thâm niên'].map(f => (
           <button key={f} onClick={() => setFilterType(f)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${filterType === f ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${filterType === f ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
             {f}
           </button>
         ))}

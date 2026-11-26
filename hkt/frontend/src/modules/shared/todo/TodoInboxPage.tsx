@@ -386,9 +386,13 @@ export const TodoInboxPage: React.FC = () => {
     // dòng cuối không tràn ngang — nhãn đầy đủ vẫn nằm trong title/aria-label.
     const shortLabel = SHORT_ACTION_LABELS[task.actionLabel] ?? task.actionLabel;
 
+    // Chỉ việc gấp mới dùng nút đặc đỏ; các việc còn lại dùng nút viền như mockup
+    // để mắt tập trung vào đúng 1-2 hành động cần làm ngay.
+    const isUrgentAction = ['Xem Đơn Của Tôi', 'Chấm Công Ngay', 'Chấm Công Ra'].includes(task.actionLabel);
+
     const actionButton = (
       <Button
-        variant="primary"
+        variant={isUrgentAction ? 'primary' : 'secondary'}
         size="sm"
         onClick={() => navigate(task.actionUrl)}
         className="shrink-0 h-8 px-3 text-[12px] font-semibold rounded-[9px]"
@@ -519,14 +523,14 @@ export const TodoInboxPage: React.FC = () => {
   };
 
   const tabChipClass = (active: boolean) =>
-    `inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-full border text-[11.5px] sm:text-[12px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+    `inline-flex items-center gap-1.5 h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
       active
-        ? 'bg-accent-soft border-accent-line text-accent-dark'
+        ? 'bg-ink border-ink text-canvas'
         : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
     }`;
   const tabCountClass = (active: boolean) =>
-    `text-[10.5px] font-mono font-semibold px-1.5 py-0.5 rounded-md leading-none ${
-      active ? 'bg-accent text-on-accent' : 'bg-canvas border border-line text-ink-muted'
+    `text-[10.5px] font-mono font-semibold leading-none ${
+      active ? 'text-canvas opacity-65' : 'bg-canvas border border-line text-ink-muted px-1.5 py-0.5 rounded-md'
     }`;
 
   const formatDays = (n: number) =>

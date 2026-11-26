@@ -310,7 +310,7 @@ export const ShiftHolidayPage: React.FC = () => {
         <p className="text-xs text-ink-muted mt-1">Ca chuẩn (SHIFT_STANDARD) là <b className="text-ink">base mặc định cho toàn công ty</b> — sửa được, không tắt/xóa được, không cần áp ca. Ca khác là <b className="text-ink">ca ngoại lệ</b>: áp theo <b className="text-ink">nhóm / chức danh / mã nhân viên</b>, có thể <b className="text-ink">loại trừ</b> thành viên và xếp thứ tự ưu tiên (ca dưới cùng thắng). Ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · geofence + dải IP · ngày lễ theo năm.</p>
         <div className="flex gap-2 mt-3">
           {(['shifts', 'holidays'] as const).map(x => (
-            <button key={x} onClick={() => setTab(x)} className={`text-xs px-3 py-1.5 rounded-full border ${tab === x ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            <button key={x} onClick={() => setTab(x)} className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${tab === x ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
               {x === 'shifts' ? 'Ca làm việc' : 'Lịch nghỉ lễ'}
             </button>
           ))}

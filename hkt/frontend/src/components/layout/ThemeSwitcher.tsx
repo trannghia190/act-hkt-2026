@@ -37,14 +37,13 @@ export const ThemeSwitcher: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs rounded-lg border border-line bg-canvas hover:bg-surface text-ink-secondary flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+        className="w-9 h-9 rounded-[9px] border border-line bg-canvas hover:bg-surface text-ink-secondary grid place-items-center cursor-pointer shadow-2xs transition-colors"
         title={`Giao diện đang dùng: ${active?.name ?? ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Đổi giao diện"
       >
         <Palette className="w-3.5 h-3.5" />
-        <span className="hidden xl:inline font-semibold">{active?.name}</span>
       </button>
 
       {open && (

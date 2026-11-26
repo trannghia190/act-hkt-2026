@@ -77,7 +77,7 @@ export const PolicyDocPage: React.FC = () => {
       <div className="flex flex-wrap gap-2">
         {['ALL', ...categories].map((c) => (
           <button key={c} onClick={() => setCategory(c)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${category === c ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${category === c ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
             {c === 'ALL' ? 'Tất cả nhóm' : c}
           </button>
         ))}

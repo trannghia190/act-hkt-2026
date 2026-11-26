@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T1 · Chấm công — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 0 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; padding: 0 24px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
+    .topbar h1 { margin: 0; font-size: 15px; font-weight: 750; letter-spacing: -.01em; }
+    .topbar .crumb { font-size: 12px; color: rgb(var(--ink-muted)); }
+    .topbar .spacer { flex: 1; }
+    .content { padding: 20px 24px 32px; }
+
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 16px;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); align-items: start; }
+
+    /* ── Punch hero ────────────────────────────────────────────────────── */
+    .hero { position: relative; overflow: hidden; padding: 20px 22px 22px; }
+    .hero::before { content: ''; position: absolute; inset: 0 0 auto; height: 150px; pointer-events: none;
+      background: radial-gradient(420px 140px at 18% 0%, rgb(var(--accent) / .10), transparent 70%); }
+    .hero > * { position: relative; }
+    .eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .clock { font-family: 'JetBrains Mono', monospace; font-size: 52px; line-height: 1; font-weight: 700;
+      letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: rgb(var(--ink)); }
+    .date { font-size: 12.5px; color: rgb(var(--ink-muted)); margin-top: 6px; }
+
+    .cam-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 18px 0 4px; }
+    .cam { width: 212px; height: 212px; border-radius: 999px; position: relative; display: grid; place-items: center;
+      background: rgb(var(--surface-2)); border: 4px solid rgb(var(--accent) / .35);
+      box-shadow: 0 0 0 8px rgb(var(--accent) / .06), inset 0 0 0 1px rgb(var(--line) / .6); }
+    .cam-face { width: 172px; height: 172px; border-radius: 999px; background: rgb(var(--canvas));
+      display: grid; place-items: center; color: rgb(var(--ink-muted)); }
+    .cam-hint { position: absolute; bottom: 12px; font-size: 10px; font-weight: 600;
+      background: rgb(var(--surface) / .9); color: rgb(var(--ink-2)); padding: 3px 10px; border-radius: 999px;
+      border: 1px solid rgb(var(--line)); backdrop-filter: blur(4px); }
+    .cam-live { position: absolute; top: 14px; display: inline-flex; align-items: center; gap: 5px;
+      font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: rgb(var(--ok)); background: rgb(var(--ok-soft)); border: 1px solid rgb(var(--ok-line));
+      padding: 3px 9px; border-radius: 999px; }
+    .cam-live i { width: 5px; height: 5px; border-radius: 99px; background: currentColor; animation: blink 1.6s infinite; }
+    @keyframes blink { 50% { opacity: .25; } }
+
+    .times { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .time-tile { border: 1px solid rgb(var(--line)); background: rgb(var(--canvas)); border-radius: 11px;
+      padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .time-tile .k { font-size: 10.5px; color: rgb(var(--ink-muted)); font-weight: 600; }
+    .time-tile .v { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px;
+      background: rgb(var(--canvas)); border: 1px solid rgb(var(--line)); }
+    .seg button { height: 34px; border: 0; border-radius: 9px; font-size: 12px; font-weight: 700;
+      font-family: inherit; background: transparent; color: rgb(var(--ink-muted)); cursor: default; }
+    .seg .on-in { background: rgb(var(--ok)); color: rgb(var(--on-ok)); }
+    .seg .on-out { background: rgb(var(--ink)); color: rgb(var(--canvas)); }
+
+    .punch { width: 150px; height: 150px; margin: 4px auto 0; border-radius: 999px; border: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      background: rgb(var(--accent)); color: rgb(var(--on-accent));
+      box-shadow: 0 0 0 8px rgb(var(--accent) / .10), 0 14px 30px rgb(var(--accent) / .22);
+      font-family: inherit; cursor: default; }
+    .punch .big { font-size: 26px; font-weight: 900; letter-spacing: .06em; }
+    .punch .sub { font-size: 10.5px; opacity: .85; font-weight: 500; }
+
+    /* ── Cột phải ──────────────────────────────────────────────────────── */
+    .col { display: flex; flex-direction: column; gap: 12px; }
+    .card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-t { font-size: 13px; font-weight: 750; letter-spacing: -.01em; }
+    .card-s { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .shift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+    .shift-cell { text-align: center; border: 1px solid rgb(var(--line)); background: rgb(var(--surface));
+      border-radius: 9px; padding: 7px 4px; }
+    .shift-cell .k { font-size: 9.5px; color: rgb(var(--ink-muted)); }
+    .shift-cell .v { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; margin-top: 2px; }
+
+    .layer { display: flex; align-items: center; gap: 10px; padding: 9px 2px; }
+    .layer + .layer { border-top: 1px solid rgb(var(--line-soft)); }
+    .layer .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      background: rgb(var(--surface-2)); color: rgb(var(--ink-2)); flex: 0 0 auto; }
+    .layer .ic svg { width: 15px; height: 15px; }
+    .layer .tx { min-width: 0; flex: 1; }
+    .layer .tx b { display: block; font-size: 11.5px; font-weight: 650; }
+    .layer .tx span { display: block; font-size: 10px; color: rgb(var(--ink-muted)); margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .layer .st { font-size: 10px; font-weight: 700; color: rgb(var(--ok)); flex: 0 0 auto; }
+
+    .note { display: flex; gap: 9px; padding: 11px 12px; border-radius: 12px;
+      background: rgb(var(--info-soft)); border: 1px solid rgb(var(--info-line)); color: rgb(var(--info)); }
+    .note b { font-size: 11.5px; display: block; }
+    .note p { margin: 2px 0 0; font-size: 10.5px; line-height: 1.5; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { background: rgb(var(--canvas)); min-height: 844px; display: flex; flex-direction: column; color: rgb(var(--ink)); }
+    .m-top { padding: 12px 16px 10px; display: flex; align-items: center; gap: 10px;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink)); }
+    .m-top .brand { font-size: 12px; font-weight: 800; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .1em; color: rgb(var(--rail-muted)); }
+    .m-top .bell { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+      background: rgb(var(--rail-hover)); color: rgb(var(--rail-ink-2)); }
+    .m-body { flex: 1; padding: 14px 14px 84px; display: flex; flex-direction: column; gap: 12px; }
+    .m .hero { padding: 16px 16px 18px; }
+    .m .clock { font-size: 42px; }
+    .m .cam { width: 168px; height: 168px; border-width: 3px; }
+    .m .cam-face { width: 136px; height: 136px; }
+    .m .punch { width: 124px; height: 124px; }
+    .m .punch .big { font-size: 22px; }
+    .m-nav { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); padding: 7px 6px 10px; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-size: 9.5px; color: rgb(var(--ink-muted)); font-weight: 600; }
+    .m-nav .on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 19px; height: 19px; }
+    .m-sec-t { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--ink-muted)); }
+  </style>
+</head>
+<body>
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="side-scroll">
+          <div class="sgroup">
+            <div class="sgroup-t">Chung</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          </div>
+          <div class="sgroup">
+            <div class="sgroup-t">Chấm công</div>
+            <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Chấm công</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch chấm công</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Duyệt đơn</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Nghỉ phép</div>
+          </div>
+          <div class="sgroup">
+            <div class="sgroup-t">OKR</div>
+            <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+          </div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div>
+            <div class="crumb">Chấm công</div>
+            <h1>Chấm công hôm nay</h1>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip chip-ok" style="font-size:10.5px">● Thiết bị đã xác thực</span>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+            <!-- hero -->
+            <section class="card hero">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div>
+                  <div class="eyebrow">Chấm công hôm nay</div>
+                  <div class="clock" style="margin-top:8px">08:27:14</div>
+                  <div class="date">Thứ Tư, 26/11/2026 · Ca HC-08:00 (8h/ngày)</div>
+                </div>
+                <span class="chip chip-info">Chưa vào ca</span>
+              </div>
+
+              <div class="cam-wrap">
+                <div class="cam">
+                  <div class="cam-face">
+                    <svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+                      <path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2"/>
+                      <circle cx="12" cy="10.5" r="2.4"/><path d="M7.8 16.4c.8-1.9 2.4-2.9 4.2-2.9s3.4 1 4.2 2.9"/>
+                    </svg>
+                  </div>
+                  <span class="cam-live"><i></i>Camera sẵn sàng</span>
+                  <span class="cam-hint">Giữ khuôn mặt trong khung</span>
+                </div>
+                <button class="btn btn-secondary" style="height:32px;font-size:11px">Bật webcam thực</button>
+              </div>
+
+              <div class="times">
+                <div class="time-tile"><span class="k">Giờ vào</span><span class="v muted">—</span></div>
+                <div class="time-tile"><span class="k">Giờ ra</span><span class="v muted">—</span></div>
+              </div>
+
+              <div class="seg" style="margin-top:12px">
+                <button class="on-in">Vào ca</button>
+                <button>Ra ca</button>
+              </div>
+
+              <button class="punch" style="margin-top:14px">
+                <span class="big">VÀO</span>
+                <span class="sub">Bấm 1 chạm</span>
+              </button>
+            </section>
+
+            <!-- right -->
+            <div class="col">
+              <section class="card" style="padding:14px 16px">
+                <div class="card-h">
+                  <div>
+                    <div class="card-t">Ca làm việc hôm nay</div>
+                    <div class="card-s">Ca HC-08:00 · 8h/ngày · khung vào/ra là khoảng hợp lệ</div>
+                  </div>
+                  <span class="chip chip-info">Ca chuẩn</span>
+                </div>
+                <div class="shift-grid">
+                  <div class="shift-cell"><div class="k">Khung vào</div><div class="v">07:30–08:30</div></div>
+                  <div class="shift-cell"><div class="k">Nghỉ trưa</div><div class="v">12:00–13:00</div></div>
+                  <div class="shift-cell"><div class="k">Khung ra</div><div class="v">17:00–18:30</div></div>
+                </div>
+              </section>
+
+              <section class="card" style="padding:6px 16px 12px">
+                <div style="padding:10px 0 2px">
+                  <div class="card-t">5 lớp xác thực</div>
+                  <div class="card-s">Chạy song song mỗi lần chấm · tất cả phải đạt</div>
+                </div>
+                <div class="layer">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+                  <div class="tx"><b>Thiết bị đã đăng ký</b><span>Khóa theo fingerprint trình duyệt</span></div>
+                  <div class="st">Sẵn sàng</div>
+                </div>
+                <div class="layer">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0"/><circle cx="12" cy="19.5" r=".8"/></svg></div>
+                  <div class="tx"><b>Mạng nội bộ công ty</b><span>SSID ACT-Office · BSSID khớp cấu hình</span></div>
+                  <div class="st">Sẵn sàng</div>
+                </div>
+                <div class="layer">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+                  <div class="tx"><b>GPS trong bán kính văn phòng</b><span>Cách văn phòng 32 m · bán kính 150 m</span></div>
+                  <div class="st">Sẵn sàng</div>
+                </div>
+                <div class="layer">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                  <div class="tx"><b>Khung giờ ca làm việc</b><span>Vào 07:30–08:30 · Ra 17:00–18:30</span></div>
+                  <div class="st">Sẵn sàng</div>
+                </div>
+                <div class="layer">
+                  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8V6a2 2 0 012-2h14a2 2 0 012 2v2"/><path d="M7 12h.01M11 12h.01M15 12h.01M19 12h.01M7 16h.01M11 16h.01M15 16h.01M19 16h.01"/></svg></div>
+                  <div class="tx"><b>Nhận diện khuôn mặt &amp; liveness</b><span>Ngưỡng khớp 85% · chống ảnh giả</span></div>
+                  <div class="st">Sẵn sàng</div>
+                </div>
+              </section>
+
+              <div class="note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <div>
+                  <b>Chấm công cần đủ 5 lớp</b>
+                  <p>Thiếu giờ vào/ra vẫn ghi nhận phần có thật — phần còn lại bổ sung công qua đơn từ để HR duyệt.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        </div>
+      </div>
+
+      <div class="m-body">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
+          <div>
+            <div class="m-sec-t">Chấm công</div>
+            <div class="h1" style="font-size:19px;margin-top:3px">Hôm nay</div>
+          </div>
+          <span class="chip chip-info" style="font-size:10px">Chưa vào ca</span>
+        </div>
+
+        <section class="card hero">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div>
+              <div class="clock">08:27:14</div>
+              <div class="date" style="font-size:11px">Thứ Tư, 26/11/2026 · HC-08:00</div>
+            </div>
+          </div>
+
+          <div class="cam-wrap">
+            <div class="cam">
+              <div class="cam-face">
+                <svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+                  <path d="M4 8V6a2 2 0 012-2h2M16 4h2a2 2 0 012 2v2M20 16v2a2 2 0 01-2 2h-2M8 20H6a2 2 0 01-2-2v-2"/>
+                  <circle cx="12" cy="10.5" r="2.4"/><path d="M7.8 16.4c.8-1.9 2.4-2.9 4.2-2.9s3.4 1 4.2 2.9"/>
+                </svg>
+              </div>
+              <span class="cam-live"><i></i>Camera sẵn sàng</span>
+              <span class="cam-hint">Giữ khuôn mặt trong khung</span>
+            </div>
+            <div class="times" style="width:100%;margin-top:4px">
+              <div class="time-tile"><span class="k">Giờ vào</span><span class="v muted">—</span></div>
+              <div class="time-tile"><span class="k">Giờ ra</span><span class="v muted">—</span></div>
+            </div>
+          </div>
+
+          <div class="seg">
+            <button class="on-in">Vào ca</button>
+            <button>Ra ca</button>
+          </div>
+
+          <button class="punch" style="margin-top:12px">
+            <span class="big">VÀO</span>
+            <span class="sub">Bấm 1 chạm</span>
+          </button>
+        </section>
+
+        <section class="card" style="padding:12px 14px">
+          <div class="card-h">
+            <div>
+              <div class="card-t">Ca làm việc hôm nay</div>
+              <div class="card-s">HC-08:00 · 8h/ngày</div>
+            </div>
+            <span class="chip chip-info" style="font-size:10px">Ca chuẩn</span>
+          </div>
+          <div class="shift-grid">
+            <div class="shift-cell"><div class="k">Khung vào</div><div class="v">07:30–08:30</div></div>
+            <div class="shift-cell"><div class="k">Nghỉ trưa</div><div class="v">12:00–13:00</div></div>
+            <div class="shift-cell"><div class="k">Khung ra</div><div class="v">17:00–18:30</div></div>
+          </div>
+        </section>
+
+        <section class="card" style="padding:6px 14px 8px">
+          <div style="padding:10px 0 2px">
+            <div class="card-t">5 lớp xác thực</div>
+            <div class="card-s">Chạy song song mỗi lần chấm</div>
+          </div>
+          <div class="layer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+            <div class="tx"><b>Thiết bị đã đăng ký</b><span>Khóa theo fingerprint trình duyệt</span></div>
+            <div class="st">Sẵn sàng</div>
+          </div>
+          <div class="layer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0"/><circle cx="12" cy="19.5" r=".8"/></svg></div>
+            <div class="tx"><b>Mạng nội bộ công ty</b><span>SSID ACT-Office · BSSID khớp cấu hình</span></div>
+            <div class="st">Sẵn sàng</div>
+          </div>
+          <div class="layer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+            <div class="tx"><b>GPS trong bán kính văn phòng</b><span>Cách văn phòng 32 m · bán kính 150 m</span></div>
+            <div class="st">Sẵn sàng</div>
+          </div>
+          <div class="layer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <div class="tx"><b>Khung giờ ca làm việc</b><span>Vào 07:30–08:30 · Ra 17:00–18:30</span></div>
+            <div class="st">Sẵn sàng</div>
+          </div>
+          <div class="layer">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8V6a2 2 0 012-2h14a2 2 0 012 2v2"/><path d="M7 12h.01M11 12h.01M15 12h.01M19 12h.01M7 16h.01M11 16h.01M15 16h.01M19 16h.01"/></svg></div>
+            <div class="tx"><b>Nhận diện khuôn mặt &amp; liveness</b><span>Ngưỡng khớp 85% · chống ảnh giả</span></div>
+            <div class="st">Sẵn sàng</div>
+          </div>
+        </section>
+
+        <div class="note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+          <div>
+            <b>Chấm công cần đủ 5 lớp</b>
+            <p>Thiếu giờ vào/ra vẫn ghi nhận phần có thật — bổ sung công qua đơn từ để HR duyệt.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Tài khoản</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

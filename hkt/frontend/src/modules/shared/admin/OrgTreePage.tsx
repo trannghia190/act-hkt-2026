@@ -987,7 +987,7 @@ export const OrgTreePage: React.FC = () => {
               onClick={() => setViewMode('graph')}
               className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'graph'
-                  ? 'bg-accent text-on-accent shadow-xs font-bold'
+                  ? 'bg-ink text-canvas shadow-xs font-bold'
                   : 'text-ink-secondary hover:text-ink hover:bg-surface'
               }`}
             >
@@ -999,7 +999,7 @@ export const OrgTreePage: React.FC = () => {
               onClick={() => setViewMode('chart')}
               className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'chart'
-                  ? 'bg-accent text-on-accent shadow-xs font-bold'
+                  ? 'bg-ink text-canvas shadow-xs font-bold'
                   : 'text-ink-secondary hover:text-ink hover:bg-surface'
               }`}
             >
@@ -1011,7 +1011,7 @@ export const OrgTreePage: React.FC = () => {
               onClick={() => setViewMode('tree')}
               className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 viewMode === 'tree'
-                  ? 'bg-accent text-on-accent shadow-xs font-bold'
+                  ? 'bg-ink text-canvas shadow-xs font-bold'
                   : 'text-ink-secondary hover:text-ink hover:bg-surface'
               }`}
             >

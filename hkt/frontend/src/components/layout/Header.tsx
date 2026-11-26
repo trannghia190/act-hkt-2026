@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
-import { Menu, Search, Camera, LogOut } from 'lucide-react';
+import { Menu, Search, Camera, LogOut, Mail } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
       : 'Ctrl+K';
 
   return (
-    <header className="h-14 border-b border-line bg-surface px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
+    <header className="h-[60px] border-b border-line bg-surface px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
       {/* Left: Mobile Hamburger & Brand Badge */}
       <div className="flex items-center gap-2.5">
         {onOpenMobileMenu && (
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Quick Search Button (Desktop: with Ctrl+K shortcut, Mobile: icon button) */}
         <button
           onClick={onOpenCommandPalette}
-          className="px-2 sm:px-2.5 py-1.5 text-xs border border-line rounded-lg bg-canvas hover:bg-surface text-ink-secondary flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs transition-colors"
+          className="h-9 px-2.5 sm:px-3 text-[12.5px] border border-line rounded-[10px] bg-canvas hover:bg-canvas-subtle text-ink-secondary flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs transition-colors"
           title={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
         >
           <Search className="w-3.5 h-3.5" />
@@ -64,17 +64,21 @@ export const Header: React.FC<HeaderProps> = ({
           <kbd className="hidden sm:inline text-[10px] bg-line px-1 rounded font-mono font-bold">{shortcutLabel}</kbd>
         </button>
 
-        {/* Enterprise Gmail Setup Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onOpenGmailModal}
-          className="text-xs gap-1.5 hidden md:inline-flex border-accent-line text-accent-dark hover:bg-accent-soft"
-          title="Cấu hình gửi email thông báo qua Gmail SMTP"
-        >
-          <span>📧</span>
-          <span>Gmail</span>
-        </Button>
+        {/* Enterprise Gmail Setup Button — ẩn trên mobile để header không bị chật.
+            Bọc ngoài vì Button luôn có `inline-flex`, class `hidden` trên chính nó
+            có thể bị luật display của Tailwind ghi đè. */}
+        <div className="hidden md:block">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenGmailModal}
+            className="text-xs gap-1.5 border-accent-line text-accent-dark hover:bg-accent-soft"
+            title="Cấu hình gửi email thông báo qua Gmail SMTP"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Gmail</span>
+          </Button>
+        </div>
 
         {/* Template / theme picker */}
         <ThemeSwitcher />

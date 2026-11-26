@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -13,21 +13,23 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none';
+  // Style tham chiếu mockup/redesign/index.html: nút cao 36px, bo 10px, chữ 13px/600.
+  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-[10px] transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none whitespace-nowrap';
 
   const sizeStyles = {
-    sm: 'text-xs px-2.5 py-1.5 gap-1.5',
-    md: 'text-xs px-3.5 py-2 gap-2',
-    lg: 'text-sm px-4 py-2.5 gap-2.5',
+    sm: 'text-xs px-3 h-8 gap-1.5',
+    md: 'text-[13px] px-[15px] h-9 gap-[7px]',
+    lg: 'text-sm px-4 h-10 gap-2',
   };
 
   const variantStyles = {
     primary: 'bg-accent text-on-accent hover:bg-accent-hover shadow-sm',
-    secondary: 'bg-btn-secondary text-btn-secondary-ink hover:bg-btn-secondary-hover shadow-sm',
-    outline: 'border border-line bg-surface text-ink hover:bg-canvas',
+    /** `.btn-sec` trong mockup: nền surface + viền line + chữ ink. */
+    secondary: 'border border-line bg-surface text-ink hover:bg-canvas-subtle shadow-xs',
+    /** `.btn-ghost` trong mockup: giống secondary nhưng chữ nhạt hơn. */
+    outline: 'border border-line bg-surface text-ink-secondary hover:bg-canvas-subtle hover:text-ink',
     danger: 'bg-status-danger text-on-danger hover:bg-danger-hover shadow-sm',
-    /** Chỉ dùng cho hành động DUYỆT / xác nhận kết quả tích cực — không dùng cho điều hướng, tab. */
-    success: 'bg-status-ok text-on-ok hover:opacity-90 shadow-sm',
+    /** `.btn-quiet` trong mockup: không nền, không viền. */
     ghost: 'text-ink-secondary hover:bg-canvas hover:text-ink',
   };
 

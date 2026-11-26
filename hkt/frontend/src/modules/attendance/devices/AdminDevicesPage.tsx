@@ -64,7 +64,7 @@ export const AdminDevicesPage: React.FC = () => {
             <div><div className="font-semibold">{d.deviceModel || 'Thiết bị'} · {d.userId.slice(0, 8)}</div>
               <div className="text-xs text-ink-muted">{d.deviceFingerprint}</div></div>
             <div className="flex gap-2">
-              <Button variant="success" size="sm" className="text-xs px-3 py-1" onClick={() => act(d, true)}>Duyệt</Button>
+              <Button variant="primary" size="sm" className="text-xs px-3 py-1" onClick={() => act(d, true)}>Duyệt</Button>
               <Button variant="outline" size="sm" className="text-xs px-3 py-1" onClick={() => act(d, false)}>Từ chối</Button>
             </div>
           </div>

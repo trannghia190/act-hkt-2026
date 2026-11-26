@@ -272,7 +272,7 @@ export const AuditLogPage: React.FC = () => {
             onClick={() => setCategoryFilter(tab.id)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               categoryFilter === tab.id
-                ? 'bg-accent text-on-accent shadow-xs'
+                ? 'bg-ink border-ink text-canvas shadow-xs'
                 : 'bg-surface text-ink-secondary hover:bg-canvas border border-line shadow-2xs'
             }`}
           >

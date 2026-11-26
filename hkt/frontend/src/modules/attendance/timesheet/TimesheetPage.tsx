@@ -374,9 +374,12 @@ export const TimesheetPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Bảng Tổng Hợp Công &amp; Chốt Lương (Master Timesheet)</h1>
-            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'}>{sheetStatus === 'locked' ? 'Đã khoá (hết hạn khiếu nại)' : sheetStatus === 'published' ? 'Đã chốt — đang nhận khiếu nại' : 'Đang mở (đang chạy)'}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-ink">
+              Bảng Tổng Hợp Công &amp; Chốt Lương{' '}
+              <span className="whitespace-nowrap">(Master Timesheet)</span>
+            </h1>
+            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'} className="shrink-0">{sheetStatus === 'locked' ? 'Đã khoá (hết hạn khiếu nại)' : sheetStatus === 'published' ? 'Đã chốt — đang nhận khiếu nại' : 'Đang mở (đang chạy)'}</Badge>
             <span className="text-[11px] text-ink-muted ml-2">
               {sheetStatus === 'draft'
                 ? 'Nhân viên khiếu nại được ngay khi kỳ còn mở'
@@ -480,44 +483,32 @@ export const TimesheetPage: React.FC = () => {
             />
           </div>
 
-          {/* Quick Filter Chips (C5) */}
+          {/* Quick Filter Chips (C5) — mockup `.chip`: cao 31px, pill, active nền ink */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setQuickFilter('ALL')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'ALL' ? 'bg-accent text-on-accent' : 'bg-canvas text-ink-muted hover:text-ink'
-              }`}
-            >
-              Tất cả ({rows.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickFilter('LATE')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'LATE' ? 'bg-status-warn text-on-warn' : 'bg-canvas text-status-warn hover:text-status-warn'
-              }`}
-            >
-              ⚠️ Đi muộn
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickFilter('OT')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'OT' ? 'bg-status-info text-on-info' : 'bg-canvas text-status-info hover:text-status-info'
-              }`}
-            >
-              ⚡ Có OT
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuickFilter('DEFICIT')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                quickFilter === 'DEFICIT' ? 'bg-status-danger text-on-danger' : 'bg-canvas text-status-danger hover:text-status-danger'
-              }`}
-            >
-              🔻 Thiếu công
-            </button>
+            {[
+              { key: 'ALL' as const, label: `Tất cả (${rows.length})`, dot: null },
+              { key: 'LATE' as const, label: 'Đi muộn', dot: 'bg-status-warn' },
+              { key: 'OT' as const, label: 'Có OT', dot: 'bg-status-info' },
+              { key: 'DEFICIT' as const, label: 'Thiếu công', dot: 'bg-status-danger' },
+            ].map((chip) => {
+              const active = quickFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => setQuickFilter(chip.key)}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-1.5 h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors ${
+                    active
+                      ? 'bg-ink border-ink text-canvas'
+                      : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
+                  }`}
+                >
+                  {chip.dot && <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`} />}
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">

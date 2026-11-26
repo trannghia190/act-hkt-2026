@@ -327,7 +327,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`hidden lg:flex flex-col h-screen sticky top-0 shrink-0 z-30 transition-all duration-300 ease-in-out overflow-hidden ${
           isCollapsed
             ? 'w-[70px] min-w-[70px] max-w-[70px]'
-            : 'w-64 min-w-[256px] max-w-[256px]'
+            : 'w-[252px] min-w-[252px] max-w-[252px]'
         }`}
       >
         {renderSidebarContent(isCollapsed, false)}

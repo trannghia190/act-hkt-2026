@@ -53,8 +53,8 @@ export const TeamSchedulePage: React.FC = () => {
           {data?.scope || 'Đang tải…'} · {data?.teamSize ?? 0} người · cảnh báo khi ≥{data?.conflictThresholdPercent ?? 60}% nhóm vắng
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          <button onClick={() => setView('week')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'week' ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tuần</button>
-          <button onClick={() => setView('month')} className={`text-xs px-3 py-1.5 rounded-full border ${view === 'month' ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>Tháng</button>
+          <button onClick={() => setView('week')} className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === 'week' ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>Tuần</button>
+          <button onClick={() => setView('month')} className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === 'month' ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>Tháng</button>
           {view === 'week' && (
             <>
               <button onClick={() => setWeekOffset(o => o - 1)} className="text-xs px-2 py-1.5 rounded border border-line">← Tuần trước</button>

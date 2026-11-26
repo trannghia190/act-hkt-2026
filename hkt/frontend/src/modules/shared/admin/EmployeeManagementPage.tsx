@@ -584,7 +584,7 @@ export const EmployeeManagementPage: React.FC = () => {
             onClick={() => setFilterTeam(chip.val)}
             className={`px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
               filterTeam === chip.val
-                ? 'bg-accent text-on-accent shadow-xs font-bold'
+                ? 'bg-ink text-canvas shadow-xs font-bold'
                 : 'bg-surface text-ink-secondary hover:bg-canvas hover:text-ink border border-line shadow-2xs'
             }`}
           >

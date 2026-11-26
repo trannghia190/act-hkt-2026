@@ -4,6 +4,7 @@ import {
   Bell,
   Briefcase,
   Calendar,
+  Check,
   Fingerprint,
   Hash,
   KeyRound,
@@ -25,6 +26,8 @@ import { useAuth } from '../../context/AuthContext';
 import { getMyProfile, resizeAvatar, updateMyProfile } from '../../utils/profile';
 import type { MyProfile } from '../../utils/profile';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { DEFAULT_THEME, useTheme } from '../../theme/ThemeContext';
+import type { ThemeMeta } from '../../theme/ThemeContext';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Quản trị viên',
@@ -45,6 +48,7 @@ const fmtDate = (value?: string | null) =>
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
+  const { theme, themes, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -347,6 +351,44 @@ export const ProfilePage: React.FC = () => {
         </Card>
       </div>
 
+      {/* Giao diện — 3 template màu, lưu theo tài khoản (DB) */}
+      <Card
+        title="Giao diện"
+        subtitle="Chọn template màu cho toàn bộ ứng dụng — lưu theo tài khoản, áp dụng trên mọi thiết bị."
+      >
+        <div role="group" aria-label="Chọn giao diện" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {themes.map((t) => {
+            const on = t.id === theme;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTheme(t.id)}
+                aria-pressed={on}
+                title={t.description}
+                className={`text-left rounded-xl border p-2.5 transition-colors cursor-pointer ${
+                  on
+                    ? 'border-accent ring-2 ring-accent/20 bg-accent-soft'
+                    : 'border-line bg-surface hover:border-line-hover hover:bg-canvas-subtle'
+                }`}
+              >
+                <ThemePreview preview={t.preview} />
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className={`text-xs font-bold ${on ? 'text-accent-dark' : 'text-ink'}`}>{t.name}</span>
+                  {on && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                  {t.id === DEFAULT_THEME && (
+                    <span className="ml-auto text-[9px] font-semibold uppercase tracking-wide text-ink-muted">
+                      Mặc định
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10.5px] text-ink-muted leading-snug mt-0.5">{t.description}</div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
       {/* Thông báo */}
       <Card title="Thông báo" subtitle="Chọn kênh nhận và khung giờ không làm phiền">
         <div className="flex items-center justify-between gap-3">
@@ -430,6 +472,31 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value?: string |
       <div className="text-[11px] text-ink-muted">{label}</div>
       <div className="font-medium text-ink break-words">{value || '—'}</div>
       {hint && <div className="text-[10px] text-ink-muted mt-0.5">{hint}</div>}
+    </div>
+  </div>
+);
+
+/**
+ * Mini-mockup của một template: rail bên trái, vùng nội dung, các chấm trạng
+ * thái + thanh accent. Dùng hex của chính template đó (không phải token) vì
+ * mỗi ô đang quảng cáo màu của theme khác với theme đang bật.
+ */
+const ThemePreview: React.FC<{ preview: ThemeMeta['preview'] }> = ({ preview }) => (
+  <div className="flex rounded-lg overflow-hidden border border-line h-16" aria-hidden="true">
+    <div className="w-1/4 shrink-0 flex flex-col gap-1 p-1.5" style={{ background: preview.rail }}>
+      <span className="h-1 rounded-full opacity-80" style={{ background: preview.ink }} />
+      <span className="h-1 w-3/4 rounded-full opacity-40" style={{ background: preview.ink }} />
+      <span className="h-1 w-2/3 rounded-full opacity-40" style={{ background: preview.ink }} />
+    </div>
+    <div className="flex-1 min-w-0 p-2 flex flex-col gap-1.5" style={{ background: preview.surface }}>
+      <span className="h-1.5 w-1/2 rounded-full opacity-80" style={{ background: preview.ink }} />
+      <span className="h-1 w-full rounded-full opacity-20" style={{ background: preview.ink }} />
+      <div className="flex items-center gap-1 mt-auto">
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: preview.ok }} />
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: preview.warn }} />
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: preview.danger }} />
+        <span className="h-2 flex-1 rounded-full ml-0.5" style={{ background: preview.brand }} />
+      </div>
     </div>
   </div>
 );

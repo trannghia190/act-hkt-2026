@@ -57,7 +57,7 @@ function MainLayout() {
         />
 
         {/* Dynamic Route View with responsive mobile-safe padding */}
-        <div className="p-3 sm:p-5 md:p-6 pb-24 lg:pb-8 max-w-7xl mx-auto">
+        <div className="p-3.5 sm:p-5 md:p-6 pb-24 lg:pb-8 max-w-7xl mx-auto">
           <ErrorBoundary key={location.pathname}>
             <AppRoutes />
           </ErrorBoundary>

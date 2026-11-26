@@ -284,7 +284,7 @@ export const DisputeDetailPage: React.FC = () => {
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="success" size="sm" onClick={applyFix}>Duyệt &amp; cập nhật bảng công</Button>
+            <Button variant="primary" size="sm" onClick={applyFix}>Duyệt &amp; cập nhật bảng công</Button>
             <button onClick={() => act('MAKEUP')} className="text-xs px-3 py-1.5 rounded border border-line"
               title="KHÔNG sửa bảng công ngay: tạo đơn điều chỉnh công (ADJUST) ở trạng thái chờ duyệt — chỉ khi đơn đó được duyệt thì ngày công mới thay đổi.">
               Tạo đơn bổ sung công (chờ duyệt)

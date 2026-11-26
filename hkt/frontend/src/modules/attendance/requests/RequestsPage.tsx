@@ -633,7 +633,7 @@ export const RequestsPage: React.FC = () => {
             {missingCheckoutLog && (
               <Button
                 type="button"
-                variant="success"
+                variant="primary"
                 size="sm"
                 className="font-semibold text-[11px]"
                 onClick={() => handleAutoFillPunch('OUT', missingCheckoutLog)}
@@ -1133,7 +1133,7 @@ export const RequestsPage: React.FC = () => {
                 : ['Việc cá nhân', 'Kẹt xe', 'Họp khách hàng', 'Sự cố máy móc', 'Việc gia đình']
               ).map((r) => (
                 <button key={r} type="button" onClick={() => setNewReq({ ...newReq, reason: r })}
-                  className={`text-[11px] px-2 py-1 rounded-full border ${newReq.reason === r ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+                  className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${newReq.reason === r ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
                   {r}
                 </button>
               ))}

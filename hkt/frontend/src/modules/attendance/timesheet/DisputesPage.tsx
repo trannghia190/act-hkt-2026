@@ -182,7 +182,7 @@ export const DisputesPage: React.FC = () => {
       <div className="flex flex-wrap items-center gap-1.5">
         {([['PENDING', 'Cần xử lý'], ['RESOLVED', 'Đã xử lý'], ['REJECTED', 'Bị từ chối'], ['EXPIRED', 'Quá hạn'], ['ALL', 'Tất cả']] as const).map(([k, label]) => (
           <button key={k} onClick={() => { setFilter(k); setSelected([]); }}
-            className={`text-xs px-3 py-1.5 rounded-full border ${filter === k ? 'bg-accent text-on-accent border-accent' : 'bg-surface border-line text-ink-secondary'}`}>
+            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${filter === k ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
             {label} ({k === 'ALL' ? items.length : items.filter(d => d.status === k).length})
           </button>
         ))}
@@ -198,7 +198,7 @@ export const DisputesPage: React.FC = () => {
           {selected.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-ink-muted">Đã chọn {selected.length}</span>
-              <Button variant="success" size="sm" className="font-semibold"
+              <Button variant="primary" size="sm" className="font-semibold"
                 title="Duyệt và áp NGAY lên bảng công cho tất cả đơn đang chọn: sửa giờ theo giờ nhân viên đề xuất (hoặc ký hiệu công chung), duyệt WFH, duyệt nghỉ (trừ quỹ phép). Đơn không xử lý được sẽ bị bỏ qua và liệt kê."
                 onClick={bulkFix}>
                 Duyệt &amp; sửa ô hàng loạt
@@ -261,7 +261,7 @@ export const DisputesPage: React.FC = () => {
               </span>
               {d.status === 'PENDING' && (
                 <>
-                  <Button variant="success" size="sm" className="text-xs px-2 py-1"
+                  <Button variant="primary" size="sm" className="text-xs px-2 py-1"
                     title={fixTitle(d)} onClick={() => resolve(d, 'FIX')}>{fixLabel(d)}</Button>
                   <Button variant="outline" size="sm" className="text-xs px-2 py-1"
                     title={MAKEUP_TITLE} onClick={() => resolve(d, 'MAKEUP')}>Bổ sung công</Button>

@@ -271,10 +271,10 @@ export const MobileNotificationsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors cursor-pointer ${
               activeFilter === 'ALL'
-                ? 'bg-accent-soft text-accent-dark border border-accent-line font-bold'
-                : 'text-ink-muted hover:text-ink'
+                ? 'bg-ink border-ink text-canvas'
+                : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
             }`}
           >
             Tất cả ({totalCount})
@@ -282,10 +282,10 @@ export const MobileNotificationsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveFilter('UNREAD')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors cursor-pointer ${
               activeFilter === 'UNREAD'
-                ? 'bg-accent-soft text-accent-dark border border-accent-line font-bold'
-                : 'text-ink-muted hover:text-ink'
+                ? 'bg-ink border-ink text-canvas'
+                : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
             }`}
           >
             Chưa đọc ({unreadCount})

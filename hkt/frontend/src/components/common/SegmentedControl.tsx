@@ -4,20 +4,24 @@ import React from 'react';
  * Segmented control dùng chung — chọn 1 trong N lựa chọn (Vào ca / Ra ca,
  * bộ lọc, phạm vi xem…).
  *
- * QUY TẮC (xem docs/26-design-system-rules.md):
- * - Mục đang chọn: `bg-accent-soft text-accent-dark` — cùng một màu accent cho
- *   MỌI lựa chọn. Không tô xanh cho "vào" và đen cho "ra": màu không mang
- *   nghĩa nghiệp vụ, chỉ thể hiện trạng thái đang chọn.
+ * Style lấy từ mockup `mockups/redesign/index.html`:
+ * - Container: `bg-canvas border-line rounded-xl p-1 gap-1`.
+ * - Mục đang chọn mặc định: `bg-ink text-canvas` — giống chip `.chip.on` trong mockup.
+ * - Ngoại lệ có chủ đích theo mockup chấm công
+ *   (`screens/checkin.html`): "Vào ca" đang chọn dùng `ok`, "Ra ca" dùng `ink`.
+ *   Chỉ truyền `tone` khi mockup của màn đó quy định; không tự chế màu.
  * - Mục chưa chọn: chữ `ink-muted`, hover `ink`.
- * - Trạng thái nghiệp vụ (thành công / lỗi / cảnh báo) chỉ dùng ở badge, toast,
- *   icon — không dùng làm nền nút điều hướng.
  */
+
+export type SegmentedTone = 'ink' | 'ok';
 
 export interface SegmentedOption<T extends string> {
   value: T;
   label: React.ReactNode;
   disabled?: boolean;
   title?: string;
+  /** Màu nền khi mục này đang chọn — mặc định `ink` như mockup. */
+  tone?: SegmentedTone;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -27,6 +31,8 @@ interface SegmentedControlProps<T extends string> {
   /** Nhãn cho trình đọc màn hình, ví dụ "Chọn loại chấm công". */
   ariaLabel: string;
   className?: string;
+  /** Màu khi đang chọn cho mọi mục — mặc định `ink`. */
+  tone?: SegmentedTone;
 }
 
 export function SegmentedControl<T extends string>({
@@ -35,6 +41,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   ariaLabel,
   className = '',
+  tone = 'ink',
 }: SegmentedControlProps<T>) {
   return (
     <div
@@ -45,6 +52,11 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((option) => {
         const active = option.value === value;
+        const activeTone = option.tone ?? tone;
+        const activeStyles: Record<SegmentedTone, string> = {
+          ink: 'bg-ink text-canvas shadow-sm',
+          ok: 'bg-status-ok text-on-ok shadow-sm',
+        };
         return (
           <button
             key={option.value}
@@ -53,9 +65,9 @@ export function SegmentedControl<T extends string>({
             disabled={option.disabled}
             title={option.title}
             onClick={() => onChange(option.value)}
-            className={`h-9 rounded-lg px-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`h-[34px] rounded-[9px] px-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               active
-                ? 'bg-accent-soft text-accent-dark shadow-sm'
+                ? activeStyles[activeTone]
                 : 'text-ink-muted hover:text-ink hover:bg-surface/70'
             }`}
           >
