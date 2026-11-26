@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
 import { AttendanceRequestItem } from './requestStore';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  FilePlus,
+  House,
+  Info,
+  MessageSquare,
+  Paperclip,
+  PenLine,
+  Plus,
+  Search,
+  X,
+  Zap,
+} from 'lucide-react';
 
 export const RequestsPage: React.FC = () => {
   const { user } = useAuth();
@@ -468,7 +482,7 @@ export const RequestsPage: React.FC = () => {
                   : (sendDates.length > 1 ? `Đã gửi ${sendDates.length} ngày WFH` : 'Đã gửi đơn thành công'))),
           uploadFailed ? 'error' : 'success');
         if (!uploadFailed && !asDraft) {
-          setTimeout(() => showToast('📨 Đã gửi thông báo tới quản lý trực tiếp', 'info'), 600);
+          setTimeout(() => showToast('Đã gửi thông báo tới quản lý trực tiếp', 'info'), 600);
         }
         loadRequests();
         // Đơn mới đang chờ duyệt giữ chỗ phép → nạp lại để cảnh báo "khả dụng" đúng.
@@ -587,49 +601,81 @@ export const RequestsPage: React.FC = () => {
 
   const filtered = requests;
 
+  // Quota hiển thị dạng chip có thanh tiến trình — người dùng thấy ngay còn bao nhiêu lượt.
+  const quotaItems = [
+    { key: 'late', label: 'Đi muộn', used: quota.lateUsed, max: quota.lateMax, icon: Clock },
+    { key: 'adjust', label: 'Bổ sung công', used: quota.adjustUsed, max: quota.adjustMax, icon: PenLine },
+    { key: 'wfh', label: 'WFH tuần này', used: quota.wfhWeekUsed, max: quota.wfhMax, icon: House },
+  ];
+
+  const STATUS_CHIPS = [
+    { key: 'ALL', label: 'Tất cả', dot: null },
+    { key: 'PENDING', label: 'Chờ duyệt', dot: 'bg-status-warn' },
+    { key: 'APPROVED', label: 'Đã duyệt', dot: 'bg-status-ok' },
+    { key: 'REJECTED', label: 'Bị từ chối', dot: 'bg-status-danger' },
+  ];
+
+  const STATUS_BADGE: Record<string, { variant: 'gray' | 'warn' | 'ok' | 'danger'; label: string }> = {
+    DRAFT: { variant: 'gray', label: 'Nháp — chưa gửi' },
+    PENDING: { variant: 'warn', label: 'Chờ duyệt' },
+    APPROVED: { variant: 'ok', label: 'Đã duyệt' },
+    REJECTED: { variant: 'danger', label: 'Bị từ chối' },
+    WITHDRAWN: { variant: 'gray', label: 'Đã hủy' },
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-16 right-6 z-[100] px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
+        <div className={`fixed top-16 right-6 z-[100] px-3 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-start gap-2 max-w-sm ${
           toast.type === 'error' ? 'bg-status-danger text-on-danger' : toast.type === 'info' ? 'bg-status-info text-on-info' : 'bg-status-ok text-on-ok'}`}>
-          <span>{toast.type === 'error' ? '⚠️' : toast.type === 'info' ? 'ℹ️' : '✓'}</span>
+          {toast.type === 'error' ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            : toast.type === 'info' ? <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            : <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
           <span className="whitespace-pre-wrap">{toast.msg}</span>
-          <button type="button" className="ml-2 opacity-80 hover:opacity-100" onClick={() => setToast(null)}>✕</button>
+          <button type="button" className="ml-2 opacity-80 hover:opacity-100" onClick={() => setToast(null)} aria-label="Đóng thông báo">
+            <X className="h-3 w-3" />
+          </button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Đơn Của Tôi &amp; Đăng Ký Chấm Công</h1>
+      {/* Header — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <FilePlus className="h-3.5 w-3.5" />
+            Nghỉ phép · WFH · giải trình chấm công
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Theo dõi tiến độ xét duyệt đơn xin nghỉ, đăng ký làm từ xa (WFH tối đa 2 ngày/tuần), làm thêm giờ (OT) và giải trình quên chấm công
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Đơn của tôi
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Theo dõi tiến độ duyệt · WFH tối đa {quota.wfhMax} ngày/tuần · hạn nộp theo ngày
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="primary" size="sm" onClick={() => { setEditingId(null); setEditingAttachmentCount(0); setAttachments([]); setIsCreateOpen(true); }}>
-            + Tạo Đơn Mới
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" size="md" onClick={() => { setEditingId(null); setEditingAttachmentCount(0); setAttachments([]); setIsCreateOpen(true); }}
+            title="Mở form tạo đơn nghỉ phép / WFH / đi muộn / bổ sung chấm công">
+            <Plus className="h-4 w-4" />
+            Tạo đơn mới
           </Button>
         </div>
       </div>
 
       {anomalyCount > 0 && (
-        <div className="p-3.5 bg-status-warn-soft border border-status-warn-line rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
-          <div className="flex items-start sm:items-center gap-2.5">
-            <span className="text-lg">⚡</span>
+        <div className="flex flex-col items-start justify-between gap-3 rounded-[13px] border border-status-warn-line bg-status-warn-soft p-3.5 text-xs shadow-2xs sm:flex-row sm:items-center">
+          <div className="flex items-start gap-2.5">
+            <Zap className="mt-0.5 h-4 w-4 shrink-0 text-status-warn" />
             <div>
               <div className="font-semibold text-status-warn">
                 Có {anomalyCount} ngày chấm công cần bổ sung đơn
               </div>
-              <p className="text-[11px] text-status-warn mt-0.5">
+              <p className="mt-0.5 text-[11px] text-status-warn">
                 Hệ thống đã đọc log chấm công của bạn và điền sẵn ngày, số phút — bạn chỉ cần kiểm tra lại rồi gửi.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             {missingCheckoutLog && (
               <Button
                 type="button"
@@ -642,88 +688,168 @@ export const RequestsPage: React.FC = () => {
               </Button>
             )}
             {lateLog && (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
+                className="font-semibold text-[11px]"
                 onClick={() => handleAutoFillPunch('LATE', lateLog)}
-                className="px-2.5 py-1.5 rounded-lg bg-status-warn hover:bg-status-warn text-on-warn font-semibold text-[11px] transition-colors cursor-pointer"
               >
                 + Đi muộn {lateMinutesOf(lateLog)}p {fmtDay(lateLog.workDate)}
-              </button>
+              </Button>
             )}
           </div>
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-3 rounded-xl border border-line shadow-2xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="text"
-            placeholder="Tìm theo lý do..."
-            value={searchKeyword}
-            onChange={e => { setSearchKeyword(e.target.value); setPage(0); }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-          />
+      {/* Quota — mockup `.quota` (mobile cuộn ngang, desktop wrap) */}
+      <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+        {quotaItems.map(q => {
+          const Icon = q.icon;
+          const pct = q.max > 0 ? Math.min(100, Math.round((q.used / q.max) * 100)) : 0;
+          const full = q.used >= q.max;
+          return (
+            <span
+              key={q.key}
+              className={`inline-flex h-[34px] shrink-0 items-center gap-2 rounded-[10px] border px-2.5 text-[11.5px] font-semibold ${
+                full ? 'border-status-warn-line bg-status-warn-soft text-status-warn' : 'border-line bg-surface text-ink-secondary'
+              }`}
+              title={`${q.label}: đã dùng ${q.used}/${q.max} lượt`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {q.label}
+              <b className={`font-mono ${full ? 'text-status-warn' : 'text-ink'}`}>{q.used}/{q.max}</b>
+              <span className="h-[5px] w-[46px] overflow-hidden rounded-full bg-line">
+                <span
+                  className={`block h-full rounded-full ${full ? 'bg-status-warn' : 'bg-accent'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </span>
+            </span>
+          );
+        })}
+        <span
+          className="inline-flex h-[34px] shrink-0 items-center gap-2 rounded-[10px] border border-status-warn-line bg-status-warn-soft px-2.5 text-[11.5px] font-semibold text-status-warn"
+          title="Đơn quá hạn sẽ bị từ chối — hạn tính theo ngày, không theo giờ"
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Hạn nộp đơn: {lateSubmitDays} ngày
+        </span>
+      </div>
 
-          <span className="text-xs text-ink-muted">Loại đơn:</span>
-          <select
-            value={filterType}
-            onChange={e => { setFilterType(e.target.value); setPage(0); }}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
-          >
-            <option value="ALL">Tất cả loại đơn</option>
-            <option value="LEAVE">Nghỉ phép năm / ốm</option>
-            <option value="WFH">Làm việc từ xa (WFH)</option>
-            <option value="LATE_EARLY">Đi muộn / về sớm</option>
-            <option value="ADJUST">Bổ sung chấm công</option>
-          </select>
+      {/* Filter panel — mockup `.filters` */}
+      <div className="rounded-[13px] border border-line bg-surface p-3 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex h-[34px] min-w-[200px] flex-1 items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+            <input
+              type="text"
+              placeholder="Tìm theo lý do..."
+              value={searchKeyword}
+              onChange={e => { setSearchKeyword(e.target.value); setPage(0); }}
+              className="w-full border-0 bg-transparent p-0 text-xs text-ink outline-none placeholder:text-ink-muted"
+            />
+          </label>
 
-          <span className="text-xs text-ink-muted ml-1">Trạng thái:</span>
-          <select
-            value={filterStatus}
-            onChange={e => { setFilterStatus(e.target.value); setPage(0); }}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="PENDING">Chờ phê duyệt</option>
-            <option value="APPROVED">Đã phê duyệt</option>
-            <option value="REJECTED">Bị từ chối</option>
-          </select>
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Loại</span>
+            <select
+              value={filterType}
+              onChange={e => { setFilterType(e.target.value); setPage(0); }}
+              className="max-w-[170px] border-0 bg-transparent p-0 text-xs font-medium text-ink outline-none"
+            >
+              <option value="ALL">Tất cả loại đơn</option>
+              <option value="LEAVE">Nghỉ phép năm / ốm</option>
+              <option value="WFH">Làm việc từ xa (WFH)</option>
+              <option value="LATE_EARLY">Đi muộn / về sớm</option>
+              <option value="ADJUST">Bổ sung chấm công</option>
+            </select>
+          </label>
 
-          <span className="text-xs text-ink-muted ml-1">Khoảng ngày:</span>
-          <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); }}
-            className="text-xs px-2 py-1.5 rounded-lg border border-line bg-canvas text-ink" />
-          <span className="text-xs text-ink-muted">→</span>
-          <input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(0); }}
-            className="text-xs px-2 py-1.5 rounded-lg border border-line bg-canvas text-ink" />
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Ngày</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(0); }}
+              className="w-[104px] border-0 bg-transparent p-0 text-xs text-ink outline-none"
+            />
+            <span className="text-[11px] text-ink-muted">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={e => { setDateTo(e.target.value); setPage(0); }}
+              className="w-[104px] border-0 bg-transparent p-0 text-xs text-ink outline-none"
+            />
+          </label>
+
           {(dateFrom || dateTo) && (
-            <button type="button" className="text-[11px] text-accent underline" onClick={() => { setDateFrom(''); setDateTo(''); setPage(0); }}>Xoá lọc ngày</button>
+            <button
+              type="button"
+              onClick={() => { setDateFrom(''); setDateTo(''); setPage(0); }}
+              className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[10px] border border-line px-3 text-xs font-semibold text-ink-secondary hover:border-line-hover"
+            >
+              <X className="h-3 w-3" />
+              Xoá lọc ngày
+            </button>
           )}
         </div>
 
-        <div className="text-xs text-ink-muted">
-          <div className="text-[11px] text-ink-muted">
-            Quota: đi muộn {quota.lateUsed}/{quota.lateMax} · bổ sung {quota.adjustUsed}/{quota.adjustMax} · WFH đã gửi tuần này {quota.wfhWeekUsed}/{quota.wfhMax}
-          </div>
-          Tổng cộng: <strong className="text-ink">{totalElements}</strong> đơn
+        {/* Chip lọc trạng thái + tổng số đơn (mobile cuộn ngang) */}
+        <div className="mt-2.5 -mx-3 flex items-center gap-1.5 overflow-x-auto px-3 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+          {STATUS_CHIPS.map(c => {
+            const active = filterStatus === c.key;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => { setFilterStatus(c.key); setPage(0); }}
+                aria-pressed={active}
+                className={`inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                  active
+                    ? 'border-ink bg-ink text-canvas'
+                    : 'border-line bg-surface text-ink-secondary hover:border-line-hover'
+                }`}
+              >
+                {c.dot && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-canvas' : c.dot}`} />}
+                {c.label}
+              </button>
+            );
+          })}
+          <span className="hidden flex-1 md:block" />
+          <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-ink-muted md:block">
+            Tổng cộng: <strong className="text-ink">{totalElements}</strong> đơn
+          </span>
+          <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-ink-muted md:hidden">
+            <strong className="text-ink">{totalElements}</strong> đơn
+          </span>
         </div>
       </div>
 
-      {/* Requests Table */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[1180px] text-left border-collapse text-xs">
+      {/* Requests list — mockup `.panel` (desktop bảng · mobile danh sách 2 dòng) */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Danh sách đơn</h2>
+          <span className="ml-auto font-mono text-[10.5px] text-ink-muted">
+            {totalElements > 0 ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, totalElements)} / ${totalElements}` : '0 đơn'}
+          </span>
+        </div>
+
+        {/* Desktop: bảng */}
+        <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[1120px] text-left border-collapse text-[11.5px]">
           <thead>
-            <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-              <th className="py-3 px-4">Mã Đơn</th>
-              <th className="py-3 px-4">Loại Đơn Yêu Cầu</th>
-              <th className="py-3 px-4">Ngày áp dụng</th>
-              <th className="py-3 px-4">Ngày tạo</th>
-              <th className="py-3 px-4">Thời Lượng</th>
-              <th className="py-3 px-4">Lý Do</th>
-              <th className="py-3 px-4">Người Phê Duyệt</th>
-              <th className="py-3 px-4">Trạng Thái</th>
-              <th className="py-3 px-4 text-right">Thao Tác</th>
+            <tr className="bg-canvas text-ink-secondary">
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Mã Đơn</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Loại Đơn Yêu Cầu</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Ngày áp dụng</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Ngày tạo</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thời Lượng</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Lý Do</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Người Phê Duyệt</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Trạng Thái</th>
+              <th className="border-b border-line px-3 py-2.5 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -736,33 +862,32 @@ export const RequestsPage: React.FC = () => {
             ) : (
               filtered.map(req => (
                 <tr key={req.id} className="hover:bg-canvas/40 transition-colors">
-                  <td className="py-3 px-4 font-mono font-medium text-ink">{req.id}</td>
-                  <td className="py-3 px-4 min-w-[180px]">
-                    <span className="font-semibold text-ink whitespace-normal leading-snug block">{req.typeName}</span>
+                  <td className="px-3 py-2.5 font-mono font-medium text-ink">{req.id.slice(0, 8)}</td>
+                  <td className="min-w-[180px] px-3 py-2.5">
+                    <span className="block whitespace-normal font-semibold leading-snug text-ink">{req.typeName}</span>
                   </td>
-                  <td className="py-3 px-4 font-mono text-ink-secondary whitespace-nowrap">
+                  <td className="whitespace-nowrap px-3 py-2.5 font-mono text-ink-secondary">
                     {fmtDate(req.startDate)}{req.startDate !== req.endDate ? ` → ${fmtDate(req.endDate)}` : ''}
                   </td>
-                  <td className="py-3 px-4 text-ink-secondary whitespace-nowrap">{req.createdAt || '—'}</td>
-                  <td className="py-3 px-4 font-medium text-ink">{req.durationText}</td>
-                  <td className="py-3 px-4 text-ink-secondary max-w-xs">
-                    <div>{req.reason}</div>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-ink-secondary">{req.createdAt || '—'}</td>
+                  <td className="px-3 py-2.5 font-medium text-ink">{req.durationText}</td>
+                  <td className="max-w-xs px-3 py-2.5 text-ink-secondary">
+                    <div className="truncate">{req.reason}</div>
                     {req.approverComment && (
-                      <div className="text-[11px] text-accent mt-0.5 font-medium">
-                        💬 Phản hồi: {req.approverComment}
+                      <div className="mt-0.5 flex items-start gap-1 text-[11px] font-medium text-accent-dark">
+                        <MessageSquare className="mt-px h-3 w-3 shrink-0" />
+                        <span className="truncate">{req.approverComment}</span>
                       </div>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-ink-secondary">{req.approver}</td>
-                  <td className="py-3 px-4">
-                    {req.status === 'DRAFT' && <Badge variant="gray">Nháp — chưa gửi</Badge>}
-                    {req.status === 'PENDING' && <Badge variant="warn">Chờ duyệt</Badge>}
-                    {req.status === 'APPROVED' && <Badge variant="ok">Đã duyệt</Badge>}
-                    {req.status === 'REJECTED' && <Badge variant="danger">Bị từ chối</Badge>}
-                    {req.status === 'WITHDRAWN' && <Badge variant="gray">Đã hủy</Badge>}
+                  <td className="whitespace-nowrap px-3 py-2.5 text-ink-secondary">{req.approver}</td>
+                  <td className="px-3 py-2.5">
+                    {STATUS_BADGE[req.status] && (
+                      <Badge variant={STATUS_BADGE[req.status].variant}>{STATUS_BADGE[req.status].label}</Badge>
+                    )}
                   </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <Link to={`/attendance/requests/${req.id}`} className="inline-block mr-2 text-[11px] px-2 py-1 rounded border border-line text-accent-dark hover:bg-accent-soft">
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                    <Link to={`/attendance/requests/${req.id}`} className="mr-1.5 inline-flex h-7 items-center rounded-lg border border-line px-2 text-[11px] font-semibold text-accent-dark hover:bg-accent-soft">
                       Xem chi tiết
                     </Link>
                     {req.status === 'DRAFT' ? (
@@ -787,13 +912,66 @@ export const RequestsPage: React.FC = () => {
           </tbody>
         </table>
         </div>
-        <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-xs text-ink-secondary">
+
+        {/* Mobile: danh sách 2 dòng — loại đơn + trạng thái · ngày + thời lượng · lý do · thao tác */}
+        <div className="flex flex-col gap-2 p-3 md:hidden">
+          {filtered.length === 0 ? (
+            <p className="px-1 py-6 text-center text-[11.5px] text-ink-muted">
+              Không có đơn yêu cầu nào phù hợp điều kiện lọc.
+            </p>
+          ) : (
+            filtered.map(req => (
+              <div key={req.id} className="rounded-xl border border-line bg-surface p-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-[12.5px] font-bold leading-snug text-ink">{req.typeName}</span>
+                  <span className="ml-auto shrink-0">
+                    {STATUS_BADGE[req.status] && (
+                      <Badge variant={STATUS_BADGE[req.status].variant}>{STATUS_BADGE[req.status].label}</Badge>
+                    )}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-secondary">
+                  <span className="font-mono text-[10.5px] text-ink-muted">
+                    {fmtDate(req.startDate)}{req.startDate !== req.endDate ? ` → ${fmtDate(req.endDate)}` : ''}
+                  </span>
+                  <span className="font-semibold text-ink">{req.durationText}</span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-secondary">
+                  {req.reason}
+                  {req.approverComment ? ` · Phản hồi: ${req.approverComment}` : ''}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Link to={`/attendance/requests/${req.id}`} className="inline-flex h-7 items-center rounded-lg border border-line px-2.5 text-[11.5px] font-semibold text-accent-dark">
+                    Xem chi tiết
+                  </Link>
+                  {req.status === 'DRAFT' && (
+                    <>
+                      <Button variant="primary" size="sm" onClick={() => handleSubmitDraft(req.id)}>Gửi duyệt</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy</Button>
+                    </>
+                  )}
+                  {req.status === 'PENDING' && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa đơn</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleCancelRequest(req.id)} className="text-status-danger">Hủy đơn</Button>
+                    </>
+                  )}
+                  {req.status === 'REJECTED' && (
+                    <Button variant="outline" size="sm" onClick={() => openEditRequest(req)}>Sửa &amp; gửi lại</Button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2.5 text-xs text-ink-secondary">
           <span>Trang <b>{page + 1}</b> / {totalPages} · {totalElements} đơn</span>
           <div className="flex items-center gap-1.5">
             <button type="button" disabled={page <= 0} onClick={() => setPage(p => Math.max(0, p - 1))}
-              className="px-2.5 py-1 rounded border border-line disabled:opacity-40">← Trước</button>
+              className="rounded-lg border border-line px-2.5 py-1 disabled:opacity-40">← Trước</button>
             <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              className="px-2.5 py-1 rounded border border-line disabled:opacity-40">Sau →</button>
+              className="rounded-lg border border-line px-2.5 py-1 disabled:opacity-40">Sau →</button>
           </div>
         </div>
       </div>
@@ -814,10 +992,10 @@ export const RequestsPage: React.FC = () => {
               onChange={e => handleTypeChange(e.target.value as any)}
               className="w-full p-2 border border-line rounded-lg bg-surface font-medium text-ink"
             >
-              <option value="LATE_EARLY">🕘 Đi muộn / Về sớm</option>
-              <option value="LEAVE">🌴 Nghỉ phép</option>
-              <option value="WFH">🏡 Làm việc từ xa (WFH)</option>
-              <option value="ADJUST">⏱️ Bổ sung chấm công</option>
+              <option value="LATE_EARLY">Đi muộn / Về sớm</option>
+              <option value="LEAVE">Nghỉ phép</option>
+              <option value="WFH">Làm việc từ xa (WFH)</option>
+              <option value="ADJUST">Bổ sung chấm công</option>
             </select>
             {newReq.type === 'LEAVE' && (
               <div className="mt-2">
@@ -919,7 +1097,10 @@ export const RequestsPage: React.FC = () => {
                   <ul className="mt-1 space-y-0.5">
                     {attachments.map((f, i) => (
                       <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
-                        <span>📎 {f.name} ({Math.round(f.size / 1024)} KB)</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          {f.name} ({Math.round(f.size / 1024)} KB)
+                        </span>
                         <button type="button" className="text-status-danger" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>Bỏ</button>
                       </li>
                     ))}

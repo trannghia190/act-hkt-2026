@@ -60,7 +60,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ⬜ | ⬜ | ⬜ |
 | T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ⬜ | ⬜ | ⬜ |
 | T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
-| T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ⬜ | ⬜ | ⬜ |
+| T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ⬜ | ⬜ | ⬜ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ⬜ | ⬜ | ⬜ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
@@ -173,3 +173,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   không tràn ngang, 0 lỗi JS; lọc loại + năm lọc đúng số dòng; xuất CSV tải được;
   nút Xin nghỉ phép mở đúng form và form hiện số dư phép còn lại; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **T4 · Đơn của tôi** ✅ (2026-11-26) — mockup `screens/requests.html` (3 theme × desktop
+  1440 + mobile 390). Áp vào `RequestsPage`: đầu trang eyebrow + `h1` "Đơn của tôi" +
+  nút "Tạo đơn mới"; **dải quota** dạng chip có thanh tiến trình (đi muộn 2/2 · bổ sung
+  công 1/5 · WFH 0/2) + chip "Hạn nộp đơn: 3 ngày" — quota đọc từ API thật, hết lượt thì
+  chip chuyển sang cảnh báo; bộ lọc gộp 1 panel (tìm kiếm trong ô fld · Loại · khoảng
+  ngày) + **chip lọc trạng thái** (Tất cả / Chờ duyệt / Đã duyệt / Bị từ chối) có chấm
+  màu trạng thái; bảng đơn: mã đơn rút gọn 8 ký tự, tiêu đề viết tắt 9.5px, cột hành
+  động gọn — **vừa khung 1440 không phải cuộn ngang**; **mobile đổi sang danh sách 2
+  dòng** (loại đơn + trạng thái · ngày + thời lượng · lý do · nút thao tác) thay vì
+  bảng 9 cột làm UUID tràn 3 dòng; bỏ hết emoji (option loại đơn, phản hồi, đính kèm,
+  toast). Không đổi nghiệp vụ (lọc, phân trang, tạo/sửa/hủy/gửi duyệt). Verify: 3
+  theme × 320/360/390/414/768/1440 không tràn ngang, 0 lỗi JS; chip trạng thái + lọc loại
+  + tìm kiếm đổi đúng tổng số đơn (200 → 6 / 2 / 102 / 92); phân trang chuyển trang đúng;
+  nút Tạo đơn mới mở form; `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.
