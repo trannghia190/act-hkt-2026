@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A1 · Đăng nhập — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* Logo mobile: nền sáng dùng bản màu, bento (tối) dùng bản trắng */
+    .logo-light { display: inline-block; }
+    .logo-white { display: none; }
+    [data-theme='bento-studio'] .logo-light { display: none; }
+    [data-theme='bento-studio'] .logo-white { display: inline-block; }
+
+    .login-desktop { display: grid; grid-template-columns: 1fr 1fr; min-height: 900px; background: rgb(var(--canvas)); }
+    .brand-panel { position: relative; overflow: hidden; background: #101114; padding: 48px; display: flex; flex-direction: column; }
+    .brand-glow { position: absolute; inset: 0; opacity: .6; pointer-events: none;
+      background:
+        radial-gradient(600px 300px at 15% 12%, rgba(227,29,26,.34), transparent 65%),
+        radial-gradient(500px 320px at 85% 88%, rgba(227,29,26,.16), transparent 62%); }
+    .form-col { display: flex; align-items: center; justify-content: center; background: rgb(var(--surface)); padding: 32px; }
+    .form-inner { width: 100%; max-width: 448px; }
+    .stat b { display: block; font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-size: 21px; font-weight: 800; color: #fff; }
+    .stat span { font-size: 11.5px; color: #7C7C88; }
+
+    .login-mobile { min-height: 844px; background: rgb(var(--surface)); display: flex; flex-direction: column; justify-content: center; padding: 20px; }
+  </style>
+</head>
+<body data-title="A1 · Đăng nhập">
+  <div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+    <!-- ============ DESKTOP 1440 ============ -->
+    <div class="frame frame-desktop">
+      <div class="login-desktop">
+        <!-- Panel thương hiệu -->
+        <aside class="brand-panel">
+          <div class="brand-glow"></div>
+          <img src="../assets/ascend_logo_2_white.png" alt="Ascend Technology" style="position:relative;height:40px;width:auto;align-self:flex-start" />
+          <div style="position:relative;margin-top:auto">
+            <h2 class="font-display" style="font-size:31px;font-weight:800;line-height:1.16;letter-spacing:-.02em;color:#fff;margin:0">
+              Quản trị nhân sự<br />chuẩn doanh nghiệp.
+            </h2>
+            <p style="margin:14px 0 0;max-width:38ch;font-size:14px;line-height:1.6;color:#A0A0A8">
+              Chấm công, quản lý phép, đánh giá OKR và giải quyết khiếu nại — trong một hệ thống duy nhất.
+            </p>
+            <div style="margin-top:28px;display:flex;gap:24px;border-top:1px solid #212127;padding-top:24px">
+              <div class="stat"><b>58</b><span>nhân viên</span></div>
+              <div class="stat"><b>5</b><span>phòng ban</span></div>
+              <div class="stat"><b>3.1k</b><span>dòng công/tháng</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Cột form -->
+        <div class="form-col">
+          <div class="form-inner">
+            <h2 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em;color:rgb(var(--ink))">Đăng nhập tài khoản</h2>
+            <p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:rgb(var(--ink-muted))">
+              Dùng tài khoản công ty do HR cấp · demo:
+              <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">01HR</code> (HR),
+              <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">05ACT</code> (Manager),
+              <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">136ACT</code> (Nhân viên)
+              — mật khẩu <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">123456</code>
+            </p>
+
+            <form style="margin-top:20px;display:flex;flex-direction:column;gap:16px">
+              <div>
+                <label style="display:block;font-size:12.5px;font-weight:600;color:rgb(var(--ink));margin-bottom:6px">Mã nhân viên hoặc Email</label>
+                <input class="field" value="136ACT" />
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <label style="font-size:12.5px;font-weight:600;color:rgb(var(--ink))">Mật khẩu</label>
+                  <a href="#" style="font-size:11px;font-weight:500;color:rgb(var(--accent));text-decoration:none">Quên mật khẩu?</a>
+                </div>
+                <input class="field" type="password" value="123456" />
+              </div>
+              <button class="btn btn-primary" style="width:100%;height:44px;font-size:14px">Đăng Nhập Vào Hệ Thống</button>
+              <div style="display:flex;align-items:center;gap:8px;color:rgb(var(--ink-muted))">
+                <span style="flex:1;height:1px;background:rgb(var(--line))"></span>
+                <span style="font-size:10px;text-transform:uppercase;letter-spacing:.04em">hoặc</span>
+                <span style="flex:1;height:1px;background:rgb(var(--line))"></span>
+              </div>
+              <button class="btn btn-outline" style="width:100%;height:42px;font-size:12px">🔐 Đăng nhập bằng Passkey (Vân tay / Face ID)</button>
+            </form>
+
+            <div style="margin-top:22px;text-align:center;font-size:11px;line-height:1.7;color:rgb(var(--ink-muted))">
+              <p style="margin:0">Hệ thống hỗ trợ gửi thông báo và mã kích hoạt qua Gmail / Mailpit.</p>
+              <p style="margin:0">Xem hộp thư giả lập SMTP tại: <a href="#" style="color:rgb(var(--accent));text-decoration:underline">http://localhost:8025</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MOBILE 390 ============ -->
+    <div class="frame frame-mobile">
+      <div class="login-mobile">
+        <div style="width:100%">
+          <!-- Logo: lockup + khối chữ "ACT HR / ASCEND TECH" (giống ActHktLogo) -->
+          <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:18px;min-width:0">
+            <img class="logo-light" src="../assets/ascend_lockup.png" alt="Ascend Technology" style="height:28px;width:auto;object-fit:contain" />
+            <img class="logo-white" src="../assets/ascend_lockup_white.png" alt="" style="height:28px;width:auto;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;line-height:1.15;min-width:0">
+              <b class="font-display" style="font-size:13.5px;font-weight:800;letter-spacing:-.01em;color:rgb(var(--ink))">ACT HR</b>
+              <span style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgb(var(--ink-muted))">Ascend Tech</span>
+            </div>
+          </div>
+
+          <h2 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em;color:rgb(var(--ink))">Đăng nhập tài khoản</h2>
+          <p style="margin:6px 0 0;font-size:12.5px;line-height:1.5;color:rgb(var(--ink-muted))">
+            Dùng tài khoản công ty do HR cấp · demo:
+            <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">01HR</code> (HR),
+            <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">05ACT</code> (Manager),
+            <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">136ACT</code> (Nhân viên)
+            — mật khẩu <code class="font-mono" style="font-weight:700;color:rgb(var(--accent))">123456</code>
+          </p>
+
+          <form style="margin-top:16px;display:flex;flex-direction:column;gap:14px">
+            <div>
+              <label style="display:block;font-size:12.5px;font-weight:600;color:rgb(var(--ink));margin-bottom:6px">Mã nhân viên hoặc Email</label>
+              <input class="field" value="136ACT" />
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:12.5px;font-weight:600;color:rgb(var(--ink))">Mật khẩu</label>
+                <a href="#" style="font-size:11px;font-weight:500;color:rgb(var(--accent));text-decoration:none">Quên mật khẩu?</a>
+              </div>
+              <input class="field" type="password" value="123456" />
+            </div>
+            <button class="btn btn-primary" style="width:100%;height:44px;font-size:14px">Đăng Nhập Vào Hệ Thống</button>
+            <div style="display:flex;align-items:center;gap:8px;color:rgb(var(--ink-muted))">
+              <span style="flex:1;height:1px;background:rgb(var(--line))"></span>
+              <span style="font-size:10px;text-transform:uppercase;letter-spacing:.04em">hoặc</span>
+              <span style="flex:1;height:1px;background:rgb(var(--line))"></span>
+            </div>
+            <button class="btn btn-outline" style="width:100%;height:42px;font-size:12px">🔐 Đăng nhập bằng Passkey (Vân tay / Face ID)</button>
+          </form>
+
+          <div style="margin-top:20px;text-align:center;font-size:11px;line-height:1.7;color:rgb(var(--ink-muted))">
+            <p style="margin:0">Hệ thống hỗ trợ gửi thông báo và mã kích hoạt qua Gmail / Mailpit.</p>
+            <p style="margin:0">Xem hộp thư giả lập SMTP tại: <a href="#" style="color:rgb(var(--accent));text-decoration:underline">http://localhost:8025</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="_kit.js"></script>
+</body>
+</html>

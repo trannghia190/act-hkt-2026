@@ -1,0 +1,292 @@
+/* ── A · Ascend Clean (sáng toàn bộ) ─────────────────────────────────────── */
+:root,
+[data-theme='ascend-clean'] {
+  --canvas: 250 250 251;
+  --canvas-subtle: 246 246 248;
+  --surface: 255 255 255;
+  --surface-2: 246 246 248;
+  --ink: 23 23 26;
+  --ink-2: 74 74 82;
+  --ink-muted: 107 108 111;
+  --line: 236 236 239;
+  --line-soft: 244 244 246;
+  --line-hover: 217 217 223;
+  --line-focus: 248 200 196;
+
+  --accent: 227 29 26;
+  --accent-hover: 194 24 21;
+  --accent-dark: 194 24 21;
+  --accent-soft: 253 236 234;
+  --accent-line: 248 200 196;
+
+  --ok: 17 106 58;
+  --ok-soft: 232 246 238;
+  --ok-line: 191 227 206;
+  --warn: 154 91 0;
+  --warn-soft: 254 244 230;
+  --warn-line: 240 217 174;
+  --danger: 180 35 24;
+  --danger-soft: 253 236 234;
+  --danger-line: 245 196 191;
+  --info: 29 78 216;
+  --info-soft: 234 240 254;
+  --info-line: 195 212 251;
+  --wfh: 126 34 206;
+  --wfh-soft: 243 232 255;
+  --wfh-line: 221 198 251;
+
+  /* Rail trắng */
+  --rail-bg: 255 255 255;
+  --rail-ink: 23 23 26;
+  --rail-ink-2: 74 74 82;
+  --rail-muted: 107 108 111;
+  --rail-line: 236 236 239;
+  --rail-hover: 246 246 248;
+  --rail-active: 194 24 21;
+  --rail-active-bg: 253 236 234;
+  /* Badge số trong menu — đỏ accent như mockup (không dùng màu xanh) */
+  --rail-badge-bg: 253 236 234;
+  --rail-badge-ink: 194 24 21;
+
+  --shadow: 20 20 25;
+  --on-accent: 255 255 255;
+  --on-ok: 255 255 255;
+  --on-warn: 255 255 255;
+  --on-danger: 255 255 255;
+  --on-info: 255 255 255;
+  --on-wfh: 255 255 255;
+
+  /* Nút secondary — nền tối đậm (nổi trên nền sáng) */
+  --btn-secondary-bg: 20 28 26;
+  --btn-secondary-ink: 255 255 255;
+  --btn-secondary-hover: 31 43 40;
+  --danger-hover: 153 27 27;
+}
+
+/* ── B · Midnight Rail (MẶC ĐỊNH — rail tối, nội dung sáng) ──────────────── */
+[data-theme='midnight-rail'] {
+  --canvas: 247 247 249;
+  --canvas-subtle: 243 243 246;
+  --surface: 255 255 255;
+  --surface-2: 244 244 246;
+  --ink: 23 23 26;
+  --ink-2: 74 74 82;
+  --ink-muted: 107 108 111;
+  --line: 230 230 234;
+  --line-soft: 241 241 244;
+  --line-hover: 213 213 220;
+  --line-focus: 248 200 196;
+
+  --accent: 227 29 26;
+  --accent-hover: 194 24 21;
+  --accent-dark: 194 24 21;
+  --accent-soft: 253 236 234;
+  --accent-line: 248 200 196;
+
+  --ok: 17 106 58;
+  --ok-soft: 232 246 238;
+  --ok-line: 191 227 206;
+  --warn: 154 91 0;
+  --warn-soft: 254 244 230;
+  --warn-line: 240 217 174;
+  --danger: 180 35 24;
+  --danger-soft: 253 236 234;
+  --danger-line: 245 196 191;
+  --info: 29 78 216;
+  --info-soft: 234 240 254;
+  --info-line: 195 212 251;
+  --wfh: 126 34 206;
+  --wfh-soft: 243 232 255;
+  --wfh-line: 221 198 251;
+
+  /* Rail tối neutral */
+  --rail-bg: 16 17 20;
+  --rail-ink: 244 244 246;
+  --rail-ink-2: 185 185 194;
+  --rail-muted: 138 144 153;
+  --rail-line: 33 33 39;
+  --rail-hover: 26 26 32;
+  --rail-active: 255 107 99;
+  --rail-active-bg: 42 20 22;
+  --rail-badge-bg: 58 20 22;
+  --rail-badge-ink: 255 128 120;
+
+  --shadow: 20 20 25;
+  --on-accent: 255 255 255;
+  --on-ok: 255 255 255;
+  --on-warn: 255 255 255;
+  --on-danger: 255 255 255;
+  --on-info: 255 255 255;
+  --on-wfh: 255 255 255;
+
+  /* Nút secondary — nền tối đậm (nổi trên nền sáng) */
+  --btn-secondary-bg: 20 28 26;
+  --btn-secondary-ink: 255 255 255;
+  --btn-secondary-hover: 31 43 40;
+  --danger-hover: 153 27 27;
+}
+
+/* ── C · Bento Studio (tối toàn bộ) ──────────────────────────────────────── */
+[data-theme='bento-studio'] {
+  --canvas: 12 13 16;
+  --canvas-subtle: 17 19 24;
+  --surface: 20 21 25;
+  --surface-2: 23 25 31;
+  --ink: 242 243 245;
+  --ink-2: 180 183 190;
+  --ink-muted: 138 144 153;
+  --line: 30 32 38;
+  --line-soft: 25 27 32;
+  --line-hover: 43 46 54;
+  --line-focus: 60 32 32;
+
+  /* Đỏ sáng hơn: #E31D1A trên nền tối chỉ đạt 3.22:1 với chữ trắng */
+  --accent: 255 81 71;
+  --accent-hover: 255 106 97;
+  --accent-dark: 255 128 120;
+  --accent-soft: 52 35 38;
+  --accent-line: 149 79 77;
+
+  --ok: 61 214 140;
+  --ok-soft: 25 48 41;
+  --ok-line: 40 117 82;
+  --warn: 245 165 36;
+  --warn-soft: 51 41 26;
+  --warn-line: 132 93 30;
+  --danger: 255 128 120;
+  --danger-soft: 52 35 38;
+  --danger-line: 149 79 77;
+  --info: 122 165 255;
+  --info-soft: 34 41 57;
+  --info-line: 76 100 151;
+  --wfh: 196 162 255;
+  --wfh-soft: 44 40 57;
+  --wfh-line: 108 91 140;
+
+  --rail-bg: 10 11 14;
+  --rail-ink: 242 243 245;
+  --rail-ink-2: 180 183 190;
+  --rail-muted: 138 144 153;
+  --rail-line: 30 32 38;
+  --rail-hover: 23 25 31;
+  --rail-active: 255 128 120;
+  --rail-active-bg: 52 35 38;
+  --rail-badge-bg: 52 35 38;
+  --rail-badge-ink: 255 128 120;
+
+  --shadow: 0 0 0;
+  --on-accent: 26 11 10;
+  --on-ok: 6 26 16;
+  --on-warn: 38 24 4;
+  --on-danger: 26 11 10;
+  --on-info: 8 16 38;
+  --on-wfh: 26 16 46;
+
+  /* Nút secondary — nền nâng cao so với surface để nổi trên nền tối */
+  --btn-secondary-bg: 30 33 40;
+  --btn-secondary-ink: 242 243 245;
+  --btn-secondary-hover: 42 46 54;
+  --danger-hover: 255 106 97;
+}
+
+
+/* ============================================================================
+   MOCKUP KIT — base + component classes (dùng token ở trên)
+   Mỗi file screens/<slug>.html chỉ cần:
+     <div id="stage" data-theme="midnight-rail" data-vp="desktop">
+       <div class="frame frame-desktop">…</div>
+       <div class="frame frame-mobile">…</div>
+     </div>
+   _kit.js tự chèn thanh chọn theme + khổ ở trên cùng.
+   ============================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: #0b0c0f;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.font-display { font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+
+/* ── Stage + frames ─────────────────────────────────────────────────────── */
+#stage { padding: 64px 24px 48px; display: flex; justify-content: flex-start; }
+.frame {
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  overflow: hidden;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+}
+.frame-desktop { width: 1440px; min-height: 900px; }
+.frame-mobile  { width: 390px;  min-height: 844px; }
+#stage[data-vp="desktop"] .frame-mobile  { display: none; }
+#stage[data-vp="mobile"]  .frame-desktop { display: none; }
+#stage[data-vp="mobile"]  { justify-content: center; }
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+.h1 { font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+.muted { color: rgb(var(--ink-muted)); }
+.ink2  { color: rgb(var(--ink-2)); }
+
+/* ── Surfaces ───────────────────────────────────────────────────────────── */
+.card {
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: 14px;
+}
+.card-soft { background: rgb(var(--surface-2)); border: 1px solid rgb(var(--line-soft)); border-radius: 14px; }
+.hair { border: 1px solid rgb(var(--line)); }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 700; font-size: 13px; border-radius: 11px; padding: 10px 16px;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.btn-primary { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+.btn-outline { background: rgb(var(--surface)); color: rgb(var(--ink)); border-color: rgb(var(--line)); }
+.btn-ghost   { background: transparent; color: rgb(var(--ink-2)); }
+.btn-inverse { background: rgb(var(--ink)); color: rgb(var(--canvas)); }
+.btn-secondary { background: rgb(var(--btn-secondary-bg)); color: rgb(var(--btn-secondary-ink)); }
+
+/* ── Chips / badges / pills ─────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 8px; border: 1px solid transparent; white-space: nowrap;
+}
+.chip-ok     { color: rgb(var(--ok));     background: rgb(var(--ok-soft));     border-color: rgb(var(--ok-line)); }
+.chip-warn   { color: rgb(var(--warn));   background: rgb(var(--warn-soft));   border-color: rgb(var(--warn-line)); }
+.chip-danger { color: rgb(var(--danger)); background: rgb(var(--danger-soft)); border-color: rgb(var(--danger-line)); }
+.chip-info   { color: rgb(var(--info));   background: rgb(var(--info-soft));   border-color: rgb(var(--info-line)); }
+.chip-wfh    { color: rgb(var(--wfh));    background: rgb(var(--wfh-soft));    border-color: rgb(var(--wfh-line)); }
+.chip-muted  { color: rgb(var(--ink-muted)); background: rgb(var(--surface-2)); border-color: rgb(var(--line)); }
+.badge-dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+.field {
+  width: 100%; height: 44px; padding: 0 14px; font-size: 14px; font-weight: 500;
+  color: rgb(var(--ink)); background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line)); border-radius: 11px; outline: none;
+}
+.field::placeholder { color: rgb(var(--ink-muted)); }
+
+/* ── Toolbar (chèn bởi _kit.js) ─────────────────────────────────────────── */
+.kit-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 10px 20px; background: rgba(10,11,14,.92);
+  border-bottom: 1px solid #26262e; backdrop-filter: blur(8px);
+  color: #e9e9ec; font-size: 12px;
+}
+.kit-bar .grp { display: flex; gap: 6px; align-items: center; }
+.kit-bar .lbl { color: #8a9099; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.kit-bar button {
+  font: inherit; font-weight: 600; color: #c7c9d1; background: #16171c;
+  border: 1px solid #2b2c34; border-radius: 8px; padding: 6px 11px; cursor: pointer;
+}
+.kit-bar button[data-active="true"] { background: #E31D1A; border-color: #E31D1A; color: #fff; }
+.kit-bar .title { font-weight: 700; color: #fff; margin-right: 6px; }
