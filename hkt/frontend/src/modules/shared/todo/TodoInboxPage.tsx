@@ -119,6 +119,8 @@ export const TodoInboxPage: React.FC = () => {
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [activeActionModal, setActiveActionModal] = useState<'approve' | 'reject' | null>(null);
   const [actionReason, setActionReason] = useState('');
+  /** Số đơn hiển thị trong tab Duyệt đơn — danh sách thật có thể >100 đơn. */
+  const [visibleApprovals, setVisibleApprovals] = useState(20);
   /** Menu "⋯" của một việc — chỉ mở khi bấm, để mỗi dòng chỉ có 1 nút hành động. */
   const [openTaskMenu, setOpenTaskMenu] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -369,27 +371,19 @@ export const TodoInboxPage: React.FC = () => {
    * icon + nội dung (tiêu đề xuống dòng thay vì bị cắt "B…"), dòng 2 là chip
    * nguồn + hạn + nút hành động. Nút hành động luôn nằm ở góc phải dòng 2.
    */
+
   const renderTaskCard = (task: PersonalTask) => {
-    const isOverdue = task.urgency === 'overdue';
-    const isSoon = task.urgency === 'soon';
-    const isToday = task.urgency === 'today' || task.urgency === 'normal';
-    const accentClass = isOverdue
-      ? 'border-l-status-danger'
-      : isSoon
-        ? 'border-l-status-warn'
-        : isToday
-          ? 'border-l-accent'
-          : 'border-l-status-ok';
-    const iconClass = isOverdue
-      ? 'bg-status-danger-soft text-status-danger'
-      : isSoon
-        ? 'bg-status-warn-soft text-status-warn'
-        : isToday
-          ? 'bg-accent-soft text-accent-dark'
-          : 'bg-status-ok-soft text-status-ok';
+    const tone =
+      task.urgency === 'overdue'
+        ? { tile: 'bg-status-danger-soft text-status-danger', tag: 'bg-status-danger-soft text-status-danger border-status-danger-line', bar: 'bg-status-danger', text: 'text-status-danger', soft: 'bg-status-danger-soft text-status-danger' }
+        : task.urgency === 'soon'
+          ? { tile: 'bg-status-warn-soft text-status-warn', tag: 'bg-status-warn-soft text-status-warn border-status-warn-line', bar: 'bg-status-warn', text: 'text-status-warn', soft: 'bg-status-warn-soft text-status-warn' }
+          : task.urgency === 'info'
+            ? { tile: 'bg-status-info-soft text-status-info', tag: 'bg-status-info-soft text-status-info border-status-info-line', bar: 'bg-status-info', text: 'text-status-info', soft: 'bg-status-info-soft text-status-info' }
+            : { tile: 'bg-status-ok-soft text-status-ok', tag: 'bg-status-ok-soft text-status-ok border-status-ok-line', bar: 'bg-status-ok', text: 'text-status-ok', soft: 'bg-status-ok-soft text-status-ok' };
 
     // Nhãn nút hành động rút gọn trên mobile ("Xem Đơn Của Tôi" → "Xem Đơn") để
-    // dòng 2 không tràn ngang — nhưng nhãn đầy đủ vẫn nằm trong title/aria-label.
+    // dòng cuối không tràn ngang — nhãn đầy đủ vẫn nằm trong title/aria-label.
     const shortLabel = SHORT_ACTION_LABELS[task.actionLabel] ?? task.actionLabel;
 
     const actionButton = (
@@ -397,13 +391,12 @@ export const TodoInboxPage: React.FC = () => {
         variant="primary"
         size="sm"
         onClick={() => navigate(task.actionUrl)}
-        className="shrink-0"
+        className="shrink-0 h-8 px-3 text-[12px] font-semibold rounded-[9px]"
         title={task.actionLabel}
         aria-label={task.actionLabel}
       >
         <span className="hidden sm:inline">{task.actionLabel}</span>
         <span className="sm:hidden">{shortLabel}</span>
-        <ArrowRight className="w-3.5 h-3.5 ml-1" />
       </Button>
     );
 
@@ -412,14 +405,14 @@ export const TodoInboxPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setOpenTaskMenu((prev) => (prev === task.id ? null : task.id))}
-          className="w-7 h-7 grid place-items-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink transition-colors cursor-pointer"
+          className="w-8 h-8 grid place-items-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink transition-colors cursor-pointer"
           title="Tuỳ chọn khác"
           aria-label={`Tuỳ chọn khác cho ${task.title}`}
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
         {openTaskMenu === task.id && (
-          <div className="absolute right-0 top-8 z-20 w-44 bg-surface border border-line rounded-lg shadow-lg py-1">
+          <div className="absolute right-0 top-9 z-20 w-44 bg-surface border border-line rounded-lg shadow-lg py-1">
             {task.completable !== false && (
               <button
                 type="button"
@@ -434,7 +427,7 @@ export const TodoInboxPage: React.FC = () => {
               </button>
             )}
             {!task.completable && (
-              <div className="px-3 py-2 text-[11px] text-ink-muted">
+              <div className="px-3 py-2 text-[11px] text-ink-muted leading-relaxed">
                 Mục tổng hợp — tự cập nhật theo dữ liệu thật.
               </div>
             )}
@@ -446,494 +439,600 @@ export const TodoInboxPage: React.FC = () => {
     return (
       <div
         key={task.id}
-        className={`relative bg-surface border border-line border-l-[3px] ${accentClass} rounded-xl px-3 sm:px-4 py-3 transition-shadow hover:shadow-sm`}
+        data-testid="todo-card"
+        className="bg-surface border border-line rounded-[14px] px-3.5 py-3 sm:px-4 sm:py-3.5 transition-shadow hover:shadow-xs"
       >
         {/* MOBILE: 2 dòng — nội dung trên, hành động dưới */}
         <div className="sm:hidden">
           <div className="flex items-start gap-3">
-            <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
+            <div className={`w-9 h-9 rounded-[10px] grid place-items-center shrink-0 ${tone.tile}`}>
               {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-semibold text-ink leading-snug">{task.title}</div>
-              <div className="text-xs text-ink-muted mt-1 leading-relaxed">{task.description}</div>
+              <p className="text-[12px] text-ink-muted mt-1 leading-relaxed line-clamp-2">{task.description}</p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span className="text-[10.5px] px-2 py-0.5 rounded-full border border-line bg-surface-secondary text-ink-secondary font-semibold">
+                  {MODULE_LABELS[task.module] ?? 'Hệ thống'}
+                </span>
+                <span className="text-[10.5px] px-2 py-0.5 rounded-full border border-line bg-surface-secondary text-ink-muted font-mono">
+                  {task.dueTime}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
-              {MODULE_LABELS[task.module] ?? 'Hệ thống'}
-            </span>
-            <span className="text-[11px] text-ink-muted font-mono truncate min-w-0">{task.dueTime}</span>
-            <div className="ml-auto flex items-center gap-1.5 shrink-0">
-              {menuButton}
-              {actionButton}
-            </div>
+          <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-line-soft">
+            {actionButton}
+            <span className="ml-auto text-[10.5px] text-ink-muted font-mono truncate max-w-[110px]">{task.dueTime}</span>
+            {menuButton}
           </div>
         </div>
 
-        {/* DESKTOP: 1 hàng ngang */}
-        <div className="hidden sm:flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${iconClass}`}>
+        {/* DESKTOP: icon · nội dung · hành động */}
+        <div className="hidden sm:flex items-start gap-3">
+          <div className={`w-9 h-9 rounded-[10px] grid place-items-center shrink-0 ${tone.tile}`}>
             {MODULE_ICONS[task.module] ?? <Calendar className="w-4 h-4" />}
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold text-ink truncate">{task.title}</div>
-            <div className="text-xs text-ink-muted mt-0.5 truncate">{task.description}</div>
+            <div className="text-[13.5px] font-semibold text-ink leading-snug">{task.title}</div>
+            <p className="text-[12.5px] text-ink-muted mt-1 leading-relaxed line-clamp-2">{task.description}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[10.5px] px-2 py-0.5 rounded-full border border-line bg-surface-secondary text-ink-secondary font-semibold">
+                {MODULE_LABELS[task.module] ?? 'Hệ thống'}
+              </span>
+              <span className={`text-[10.5px] px-2 py-0.5 rounded-full border font-mono ${tone.tag}`}>{task.dueTime}</span>
+            </div>
           </div>
 
-          <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-medium shrink-0">
-            {MODULE_LABELS[task.module] ?? 'Hệ thống'}
-          </span>
-
-          <span className="text-[11px] text-ink-muted font-mono shrink-0">{task.dueTime}</span>
-
-          {menuButton}
-          {actionButton}
+          <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
+            {actionButton}
+            {menuButton}
+          </div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="space-y-4 max-w-[840px] mx-auto px-3 sm:px-0 pb-10">
-      {/* Page Header — đúng mockup S02: tiêu đề + ngày giờ + số đang chờ/đã xong */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-[19px] font-bold tracking-tight text-ink">Cần làm</h1>
-            <Badge variant="accent">Trang Mặc Định</Badge>
+  /** Nhãn mục (Quá hạn / Sắp tới / Hôm nay / Lưu ý) — vạch màu + số lượng. */
+  const renderSectionHeader = (
+    label: string,
+    count: number,
+    tone: 'danger' | 'warn' | 'ok' | 'info',
+  ) => {
+    if (count === 0) return null;
+    const cls =
+      tone === 'danger'
+        ? { bar: 'bg-status-danger', text: 'text-status-danger', soft: 'bg-status-danger-soft text-status-danger' }
+        : tone === 'warn'
+          ? { bar: 'bg-status-warn', text: 'text-status-warn', soft: 'bg-status-warn-soft text-status-warn' }
+          : tone === 'info'
+            ? { bar: 'bg-status-info', text: 'text-status-info', soft: 'bg-status-info-soft text-status-info' }
+            : { bar: 'bg-status-ok', text: 'text-status-ok', soft: 'bg-status-ok-soft text-status-ok' };
+    return (
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`w-[3px] h-3.5 rounded-full ${cls.bar}`} />
+        <h4 className={`text-[10.5px] font-extrabold uppercase tracking-[0.1em] ${cls.text}`}>{label}</h4>
+        <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md leading-none ${cls.soft}`}>{count}</span>
+      </div>
+    );
+  };
+
+  const tabChipClass = (active: boolean) =>
+    `inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-full border text-[11.5px] sm:text-[12px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+      active
+        ? 'bg-accent-soft border-accent-line text-accent-dark'
+        : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
+    }`;
+  const tabCountClass = (active: boolean) =>
+    `text-[10.5px] font-mono font-semibold px-1.5 py-0.5 rounded-md leading-none ${
+      active ? 'bg-accent text-on-accent' : 'bg-canvas border border-line text-ink-muted'
+    }`;
+
+  const formatDays = (n: number) =>
+    Number(n || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+  /** Số dư âm = đã dùng vượt quỹ → tô màu cảnh báo thay vì để số âm vô nghĩa. */
+  const remainClass = (n: number) => (n < 0 ? 'text-status-danger' : 'text-ink');
+  /** Tỷ lệ quỹ phép năm đã dùng (0–100) — dùng cho thanh tiến độ. */
+  const annualUsedPct = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        ((leaveSummary.annualUsed ?? 0) /
+          Math.max(1, leaveSummary.annualEntitlement || leaveSummary.granted || 1)) *
+          100,
+      ),
+    ),
+  );
+
+  /** Panel phép còn lại — hiện cột phải trên desktop, full-width trên mobile. */
+  const leavePanel = (
+    <div className="bg-surface border border-line rounded-[14px] overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-3 border-b border-line-soft">
+        <Sun className="w-4 h-4 text-accent" />
+        <h4 className="text-[12.5px] font-bold text-ink">Phép còn lại</h4>
+      </div>
+
+      <div className="px-3.5 pt-1 pb-2">
+        <div className="flex items-center gap-2.5 py-2">
+          <div className="w-[30px] h-[30px] rounded-[9px] grid place-items-center shrink-0 bg-accent-soft text-accent-dark">
+            <CalendarDays className="w-4 h-4" />
           </div>
-          <div className="text-xs text-ink-muted mt-0.5">{todayLabel}</div>
+          <div className="min-w-0 flex-1">
+            <b className="block text-[12px] font-semibold text-ink truncate">
+              Phép năm {leaveSummary.annualYear ?? new Date().getFullYear()}
+            </b>
+            <span className="block text-[10.5px] text-ink-muted truncate">
+              Đã dùng {formatDays(leaveSummary.annualUsed ?? 0)} / {formatDays(leaveSummary.annualEntitlement ?? leaveSummary.granted ?? 0)} ngày
+            </span>
+          </div>
+          <div className="text-right shrink-0">
+            <b className={`block font-mono text-[14px] font-bold ${remainClass(leaveSummary.annualRemaining)}`}>
+              {formatDays(leaveSummary.annualRemaining)}
+            </b>
+            <span className="text-[9.5px] text-ink-muted">ngày</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {personalTasks.length > 0 && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full border border-line bg-canvas text-ink-secondary font-semibold">
-              {personalTasks.length} đang chờ
+        <div className="flex items-center gap-2.5 py-2 border-t border-line-soft">
+          <div className="w-[30px] h-[30px] rounded-[9px] grid place-items-center shrink-0 bg-status-warn-soft text-status-warn">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <b className="block text-[12px] font-semibold text-ink truncate">
+              Phép tồn {leaveSummary.carriedYear ?? new Date().getFullYear() - 1}
+            </b>
+            <span className="block text-[10.5px] text-ink-muted truncate">
+              {leaveSummary.carriedRemaining > 0
+                ? leaveSummary.carriedExpiryDate
+                  ? `Hết hạn ${leaveSummary.carriedExpiryDate}`
+                  : 'Theo quy chế'
+                : 'Không còn phép tồn'}
             </span>
-          )}
-          {completedTodayCount > 0 && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full border border-status-ok-line bg-status-ok-soft text-status-ok font-semibold">
-              {completedTodayCount} đã xong hôm nay
-            </span>
-          )}
-          {activeTab === 'APPROVALS' && (
-            <Button variant="primary" size="sm" onClick={handleBulkApproveGreen}>
-              <CheckCheck className="w-3.5 h-3.5 mr-1" />
-              Duyệt Nhanh Mục Xanh ({greenCount})
+          </div>
+          <div className="text-right shrink-0">
+            <b className={`block font-mono text-[14px] font-bold ${remainClass(leaveSummary.carriedRemaining)}`}>
+              {formatDays(leaveSummary.carriedRemaining)}
+            </b>
+            <span className="text-[9.5px] text-ink-muted">ngày</span>
+          </div>
+        </div>
+
+        <div
+          className="h-1.5 rounded-full bg-canvas overflow-hidden mt-1.5"
+          title={`Đã dùng ${annualUsedPct}% quỹ phép năm`}
+        >
+          <div
+            className={`h-full rounded-full ${annualUsedPct >= 100 ? 'bg-status-danger' : 'bg-accent'}`}
+            style={{ width: `${annualUsedPct}%` }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2.5 py-2 mt-1">
+          <div className="w-[30px] h-[30px] rounded-[9px] grid place-items-center shrink-0 bg-status-ok-soft text-status-ok">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <b className="block text-[12px] font-semibold text-ink truncate">Tổng còn lại</b>
+            <span className="text-[10.5px] text-ink-muted">Theo ngày onboard</span>
+          </div>
+          <div className="text-right shrink-0">
+            <b
+              className={`block font-mono text-[14px] font-bold ${
+                leaveSummary.totalRemaining < 0 ? 'text-status-danger' : 'text-status-ok'
+              }`}
+            >
+              {formatDays(leaveSummary.totalRemaining)}
+            </b>
+            <span className="text-[9.5px] text-ink-muted">ngày</span>
+          </div>
+        </div>
+
+        {leaveSummary.policyNotice && (
+          <p className="text-[10.5px] leading-relaxed text-ink-muted mt-1 line-clamp-2">
+            {leaveSummary.policyNotice}
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2 px-3.5 py-3 border-t border-line-soft">
+        <Button variant="outline" size="sm" className="flex-1 h-8 text-[12px]" onClick={() => navigate('/attendance/leaves')}>
+          Xem Sổ Phép
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          className="flex-1 h-8 text-[12px]"
+          onClick={() => navigate('/attendance/requests', { state: { openCreate: 'LEAVE' } })}
+        >
+          + Tạo Đơn
+        </Button>
+      </div>
+    </div>
+  );
+
+  /** Tóm tắt hôm nay — panel cột phải. */
+  const summaryPanel = (
+    <div className="bg-surface border border-line rounded-[14px] overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-3 border-b border-line-soft">
+        <CheckCheck className="w-4 h-4 text-status-ok" />
+        <h4 className="text-[12.5px] font-bold text-ink">Tóm tắt hôm nay</h4>
+      </div>
+      <div className="p-3.5 grid grid-cols-2 gap-2">
+        {[
+          {
+            value: personalTasks.length,
+            label: 'việc đang chờ',
+            cls: personalTasks.length > 0 ? 'text-status-danger' : 'text-ink',
+          },
+          { value: canApprove ? approvals.length : 0, label: 'đơn chờ duyệt', cls: 'text-ink' },
+          { value: completedTodayCount, label: 'đã xong hôm nay', cls: 'text-status-ok' },
+          { value: overdueTasks.length, label: 'việc quá hạn', cls: 'text-status-danger' },
+        ].map((s) => (
+          <div key={s.label} className="bg-canvas border border-line rounded-[10px] px-2.5 py-2.5">
+            <b className={`block font-display text-xl font-extrabold leading-none ${s.cls}`}>{s.value}</b>
+            <span className="text-[10.5px] text-ink-muted">{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const personalList =
+    searchedTasks.length === 0 ? (
+      <div className="bg-surface border border-line rounded-[14px] py-14 px-6 text-center">
+        <div className="w-11 h-11 mx-auto rounded-full bg-status-ok-soft text-status-ok grid place-items-center mb-3">
+          <CheckCircle2 className="w-5 h-5" />
+        </div>
+        <div className="text-[13px] font-semibold text-ink">
+          {searchTerm ? 'Không tìm thấy việc phù hợp' : 'Tuyệt vời — không còn việc nào chờ bạn!'}
+        </div>
+        <p className="text-[12px] text-ink-muted mt-1">
+          {searchTerm ? 'Thử từ khóa khác hoặc xoá bộ lọc tìm kiếm.' : 'Hệ thống sẽ tự nhắc bạn khi có việc mới.'}
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {overdueTasks.length > 0 && (
+          <section>
+            {renderSectionHeader('Quá hạn', overdueTasks.length, 'danger')}
+            <div className="space-y-2">{overdueTasks.map(renderTaskCard)}</div>
+          </section>
+        )}
+        {soonTasks.length > 0 && (
+          <section>
+            {renderSectionHeader('Sắp tới', soonTasks.length, 'warn')}
+            <div className="space-y-2">{soonTasks.map(renderTaskCard)}</div>
+          </section>
+        )}
+        {todayTasks.length > 0 && (
+          <section>
+            {renderSectionHeader('Hôm nay', todayTasks.length, 'ok')}
+            <div className="space-y-2">{todayTasks.map(renderTaskCard)}</div>
+          </section>
+        )}
+        {infoTasks.length > 0 && (
+          <section>
+            {renderSectionHeader('Lưu ý', infoTasks.length, 'info')}
+            <div className="space-y-2">{infoTasks.map(renderTaskCard)}</div>
+          </section>
+        )}
+      </div>
+    );
+
+  return (
+    <div className="space-y-4 max-w-[1180px] mx-auto px-3 sm:px-0 pb-24 lg:pb-10">
+      {/* Page Header — tiêu đề + ngày giờ + lối tắt tạo đơn */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">Cần làm</h1>
+          <div className="text-[12.5px] text-ink-muted mt-1">{todayLabel}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {activeTab === 'APPROVALS' && canApprove && greenCount > 0 && (
+            <Button variant="outline" size="sm" onClick={handleBulkApproveGreen} className="h-9 text-[12px]">
+              <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
+              Duyệt nhanh {greenCount} mục xanh
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            Làm mới (F5)
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-[12px]"
+            onClick={() => document.getElementById('todo-search')?.focus()}
+          >
+            <Search className="w-3.5 h-3.5 mr-1.5" />
+            Tìm việc
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="h-9 text-[12px]"
+            onClick={() => navigate('/attendance/requests', { state: { openCreate: 'LEAVE' } })}
+          >
+            + Tạo đơn
           </Button>
         </div>
       </div>
 
+      {/* Toast */}
       {toastMessage && (
-        <div className="p-3 bg-status-ok-soft border border-status-ok-line rounded-xl text-status-ok text-xs font-semibold animate-in fade-in flex items-center gap-2 shadow-2xs">
-          <CheckCircle2 className="w-4 h-4 text-status-ok" />
+        <div className="p-3 rounded-xl bg-status-ok-soft border border-status-ok-line text-status-ok text-xs font-medium animate-in fade-in slide-in-from-top-1">
           {toastMessage}
         </div>
       )}
 
-      {/* Main Tabs (Việc Của Tôi vs Đơn Chờ Duyệt vs Lịch Sử) — cuộn ngang trên mobile */}
-      <div className="flex border-b border-line gap-2 text-xs font-bold overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('PERSONAL')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === 'PERSONAL'
-              ? 'border-accent text-accent font-bold'
-              : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span className="hidden sm:inline">Việc Cần Làm Của Tôi</span>
-          <span className="sm:hidden">Việc Của Tôi</span>
-          {personalTasks.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-accent-soft text-accent-dark font-extrabold">
-              {personalTasks.length}
-            </span>
+      {/* Tabs dạng chip + ô tìm kiếm */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-0.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('PERSONAL')}
+            className={tabChipClass(activeTab === 'PERSONAL')}
+          >
+            <Clock className="hidden sm:block w-3.5 h-3.5" />
+            Việc của tôi
+            <span className={tabCountClass(activeTab === 'PERSONAL')}>{personalTasks.length}</span>
+          </button>
+          {canApprove && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('APPROVALS')}
+              className={tabChipClass(activeTab === 'APPROVALS')}
+            >
+              <Inbox className="hidden sm:block w-3.5 h-3.5" />
+              Duyệt đơn
+              <span className={tabCountClass(activeTab === 'APPROVALS')}>{approvals.length}</span>
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('DONE')}
+            className={tabChipClass(activeTab === 'DONE')}
+          >
+            <CheckCheck className="hidden sm:block w-3.5 h-3.5" />
+            Đã xong
+            <span className={tabCountClass(activeTab === 'DONE')}>{completedList.length}</span>
+          </button>
+        </div>
 
-        {canApprove && (
-        <button
-          type="button"
-          onClick={() => setActiveTab('APPROVALS')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === 'APPROVALS'
-              ? 'border-accent text-accent font-bold'
-              : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          <Inbox className="w-4 h-4" />
-          <span className="hidden sm:inline">Đơn Cần Phê Duyệt</span>
-          <span className="sm:hidden">Duyệt Đơn</span>
-          {approvals.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-status-danger-soft text-status-danger border border-status-danger-line font-extrabold">
-              {approvals.length}
-            </span>
-          )}
-        </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('DONE')}
-          className={`pb-3 px-3 transition-colors border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === 'DONE'
-              ? 'border-accent text-accent font-bold'
-              : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Đã Hoàn Tất</span>
-          <span className="sm:hidden">Đã Xong</span>
-          <span className="font-mono">({completedList.length})</span>
-        </button>
-      </div>
-
-      {/* Search Bar & Action Controls */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+        <div className="relative w-full sm:w-[300px] shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-muted pointer-events-none" />
           <input
+            id="todo-search"
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm kiếm công việc, mã đơn, người gửi..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-surface border border-line rounded-lg text-ink focus:outline-none focus:border-accent"
+            placeholder="Tìm việc, đơn từ, người gửi..."
+            className="w-full h-9 pl-9 pr-3 text-[12px] rounded-[10px] border border-line bg-surface text-ink placeholder:text-ink-muted focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/20 transition"
           />
         </div>
       </div>
 
-      {/* TAB 1: VIỆC CẦN LÀM CỦA TÔI (Gom cả 2 module: Chấm công + OKR) */}
-      {activeTab === 'PERSONAL' && (
-        <div className="space-y-3">
-          {personalTasks.length === 0 ? (
-            /* Empty State có CTA (Criteria G1-#7) */
-            <div className="p-12 text-center bg-surface rounded-xl border border-line space-y-3 shadow-2xs">
-              <div className="text-4xl">🎉</div>
-              <div className="font-bold text-base text-ink">Hôm nay không còn việc gì cần làm!</div>
-              <p className="text-xs text-ink-muted max-w-md mx-auto">
-                Bạn đã hoàn thành đủ chỉ tiêu chấm công và cập nhật OKR. Xem lịch làm việc tháng này hoặc số dư phép năm.
-              </p>
-              <div className="pt-2">
-                <Button variant="primary" size="sm" onClick={() => navigate('/attendance/calendar')}>
-                  Xem Lịch Công Tháng Này →
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {/* BUCKET 1: QUÁ HẠN (OVERDUE) */}
-              {overdueTasks.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-status-danger" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-status-danger">
-                      Quá hạn ({overdueTasks.length})
-                    </span>
-                  </div>
-                  {overdueTasks.map(renderTaskCard)}
-                </>
-              )}
+      {/* Nội dung + panel phải */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
+        <div className="min-w-0">
+          {activeTab === 'PERSONAL' && personalList}
 
-              {/* BUCKET 2: SẮP ĐẾN HẠN (SOON) */}
-              {soonTasks.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <Clock className="w-3.5 h-3.5 text-status-warn" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-status-warn">
-                      Sắp đến hạn ({soonTasks.length})
-                    </span>
-                  </div>
-                  {soonTasks.map(renderTaskCard)}
-                </>
-              )}
-
-              {/* BUCKET 3: HÔM NAY (TODAY) */}
-              {todayTasks.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <CalendarDays className="w-3.5 h-3.5 text-accent" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                      Hôm nay ({todayTasks.length})
-                    </span>
-                  </div>
-                  {todayTasks.map(renderTaskCard)}
-                </>
-              )}
-
-              {/* BUCKET 4: LƯU Ý (INFO) */}
-              {infoTasks.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <Info className="w-3.5 h-3.5 text-status-info" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-status-info">
-                      Lưu ý ({infoTasks.length})
-                    </span>
-                  </div>
-                  {infoTasks.map(renderTaskCard)}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: HỘP THƯ PHÊ DUYỆT CẤP DƯỚI (Cho Quản lý / HR) */}
-      {activeTab === 'APPROVALS' && (
-        <div className="space-y-4">
-          {/* Priority Filters Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={() => setFilterPriority('all')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                filterPriority === 'all'
-                  ? 'bg-canvas border-status-ok shadow-xs'
-                  : 'bg-surface border-line hover:border-line-focus'
-              }`}
-            >
-              <div className="text-[11px] font-medium text-ink-secondary">Tất cả nhiệm vụ</div>
-              <div className="text-2xl font-bold text-ink mt-0.5">{approvals.length}</div>
-              <div className="text-[10px] text-ink-muted leading-tight">Tổng việc đang chờ duyệt</div>
-            </button>
-
-            <button
-              onClick={() => setFilterPriority('red')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                filterPriority === 'red'
-                  ? 'bg-status-danger-soft border-status-danger shadow-xs'
-                  : 'bg-surface border-line hover:border-status-danger-line shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-status-danger">
-                  <span className="hidden sm:inline">Khẩn cấp (Red Bucket)</span>
-                  <span className="sm:hidden">Khẩn cấp</span>
-                </span>
-                <span className="w-2 h-2 rounded-full bg-status-danger animate-pulse" />
-              </div>
-              <div className="text-2xl font-bold text-status-danger mt-0.5">{redCount}</div>
-              <div className="text-[10px] text-ink-muted leading-tight">&lt; 24h hoặc ca hôm nay</div>
-            </button>
-
-            <button
-              onClick={() => setFilterPriority('yellow')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                filterPriority === 'yellow'
-                  ? 'bg-status-warn-soft border-status-warn shadow-xs'
-                  : 'bg-surface border-line hover:border-status-warn-line shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-status-warn">
-                  <span className="hidden sm:inline">Cần làm sớm (Yellow)</span>
-                  <span className="sm:hidden">Cần làm sớm</span>
-                </span>
-                <span className="w-2 h-2 rounded-full bg-status-warn" />
-              </div>
-              <div className="text-2xl font-bold text-status-warn mt-0.5">{yellowCount}</div>
-              <div className="text-[10px] text-ink-muted leading-tight">Hạn 1 - 3 ngày tới</div>
-            </button>
-
-            <button
-              onClick={() => setFilterPriority('green')}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                filterPriority === 'green'
-                  ? 'bg-accent-soft border-accent shadow-xs'
-                  : 'bg-surface border-line hover:border-accent-line shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-accent">
-                  <span className="hidden sm:inline">Theo lịch (Green)</span>
-                  <span className="sm:hidden">Theo lịch</span>
-                </span>
-                <span className="w-2 h-2 rounded-full bg-accent" />
-              </div>
-              <div className="text-2xl font-bold text-accent mt-0.5">{greenCount}</div>
-              <div className="text-[10px] text-ink-muted leading-tight">Kế hoạch dài hạn &gt; 3 ngày</div>
-            </button>
-          </div>
-
-          {/* List of Approval Requests */}
-          <Card title={`Danh Sách Đơn Cần Phê Duyệt (${filteredApprovals.length})`}>
-            {filteredApprovals.length === 0 ? (
-              <div className="py-12 text-center text-ink-muted text-xs">
-                🎉 Không có đơn nào đang chờ bạn phê duyệt.
-              </div>
-            ) : (
-              <div className="divide-y divide-line">
-                {filteredApprovals.map((item) => (
-                  <div
-                    key={item.id}
-                    className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-canvas/40 px-2 rounded-lg transition-colors cursor-pointer"
-                    onClick={() => setSelectedApproval(item)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1">
-                        {item.priority === 'red' && <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-danger" />}
-                        {item.priority === 'yellow' && <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-warn" />}
-                        {item.priority === 'green' && <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-ok" />}
+          {activeTab === 'APPROVALS' && (
+            <div className="space-y-4">
+              {/* Bộ lọc ưu tiên */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { key: 'all' as const, label: 'Tất cả', sub: 'Mọi đơn chờ duyệt', count: approvals.length, dot: 'bg-ink-muted' },
+                  { key: 'red' as const, label: 'Khẩn cấp', sub: 'Cần duyệt ngay', count: redCount, dot: 'bg-status-danger' },
+                  { key: 'yellow' as const, label: 'Sớm', sub: 'Hạn 1–3 ngày tới', count: yellowCount, dot: 'bg-status-warn' },
+                  { key: 'green' as const, label: 'Theo lịch', sub: 'Kế hoạch dài hạn', count: greenCount, dot: 'bg-status-ok' },
+                ].map((p) => {
+                  const active = filterPriority === p.key;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => {
+                        setFilterPriority(p.key);
+                        setVisibleApprovals(20);
+                      }}
+                      className={`text-left rounded-xl border p-3 transition-colors cursor-pointer ${
+                        active
+                          ? 'bg-accent-soft border-accent shadow-xs'
+                          : 'bg-surface border-line hover:border-line-hover'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[11px] font-semibold ${active ? 'text-accent-dark' : 'text-ink-secondary'}`}>
+                          {p.label}
+                        </span>
+                        <span className={`w-2 h-2 rounded-full ${p.dot}`} />
                       </div>
+                      <div className={`font-display text-2xl font-extrabold leading-none mt-1 ${active ? 'text-accent-dark' : 'text-ink'}`}>
+                        {p.count}
+                      </div>
+                      <div className="text-[10px] text-ink-muted leading-tight mt-0.5">{p.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-ink">{item.title}</span>
-                          <Badge variant={item.priority === 'red' ? 'danger' : item.priority === 'yellow' ? 'warn' : 'ok'}>
-                            {item.badgeText}
-                          </Badge>
-                          <span className="text-[10px] font-mono text-accent font-semibold">{item.id}</span>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+                  Đơn cần phê duyệt
+                </h4>
+                <span className="text-[11px] text-ink-muted">{filteredApprovals.length} đơn</span>
+              </div>
+
+              {filteredApprovals.length === 0 ? (
+                <div className="bg-surface border border-line rounded-[14px] py-14 px-6 text-center">
+                  <div className="w-11 h-11 mx-auto rounded-full bg-status-ok-soft text-status-ok grid place-items-center mb-3">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div className="text-[13px] font-semibold text-ink">Không có đơn nào đang chờ bạn</div>
+                  <p className="text-[12px] text-ink-muted mt-1">Đơn mới sẽ xuất hiện ở đây ngay khi nhân viên gửi.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredApprovals.slice(0, visibleApprovals).map((item) => {
+                    const pri =
+                      item.priority === 'red'
+                        ? { tile: 'bg-status-danger-soft text-status-danger', badge: 'bg-status-danger-soft text-status-danger border-status-danger-line', label: 'Khẩn cấp' }
+                        : item.priority === 'yellow'
+                          ? { tile: 'bg-status-warn-soft text-status-warn', badge: 'bg-status-warn-soft text-status-warn border-status-warn-line', label: 'Sớm' }
+                          : { tile: 'bg-status-ok-soft text-status-ok', badge: 'bg-status-ok-soft text-status-ok border-status-ok-line', label: 'Theo lịch' };
+                    return (
+                      <div
+                        key={item.id}
+                        data-testid="approval-card"
+                        className="bg-surface border border-line rounded-[14px] px-3.5 py-3 sm:px-4 sm:py-3.5 hover:shadow-xs transition-shadow cursor-pointer"
+                        onClick={() => setSelectedApproval(item)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-9 h-9 rounded-[10px] grid place-items-center shrink-0 ${pri.tile}`}>
+                            {item.category === 'okr' ? <Target className="w-4 h-4" /> : item.category === 'system' ? <Info className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[13px] sm:text-[13.5px] font-semibold text-ink">{item.title}</span>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${pri.badge}`}>
+                                {item.badgeText}
+                              </span>
+                              <span className="text-[10px] font-mono text-accent font-semibold" title={String(item.id)}>
+                                #{String(item.id).slice(0, 8).toUpperCase()}
+                              </span>
+                            </div>
+                            <p className="text-[12px] text-ink-secondary mt-0.5 leading-relaxed">{item.subtitle}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted mt-1.5">
+                              <span className="inline-flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-ink-muted" />
+                                {item.requester}
+                              </span>
+                              <span>{item.dept}</span>
+                              <span className="font-mono">{item.submittedAt}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-ink-secondary mt-1">{item.subtitle}</div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted mt-1.5">
-                          <span>👤 <strong>{item.requester}</strong></span>
-                          <span>🏢 {item.dept}</span>
-                          <span>⏱️ {item.submittedAt}</span>
+
+                        <div
+                          className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-line-soft"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="text-[10.5px] font-mono text-ink-muted sm:ml-0">{pri.label}</span>
+                          <div className="ml-auto flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-[12px] rounded-[9px]"
+                              onClick={() => {
+                                setSelectedApproval(item);
+                              }}
+                            >
+                              Chi tiết
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-[12px] rounded-[9px] text-status-danger border-status-danger-line hover:bg-status-danger-soft"
+                              onClick={() => {
+                                setSelectedApproval(item);
+                                setActiveActionModal('reject');
+                              }}
+                            >
+                              Từ chối
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="h-8 text-[12px] rounded-[9px]"
+                              onClick={() => {
+                                setSelectedApproval(item);
+                                setActiveActionModal('approve');
+                              }}
+                            >
+                              Phê duyệt
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
 
-                    <div className="flex items-center gap-2 self-stretch md:self-center" onClick={(e) => e.stopPropagation()}>
+                  {filteredApprovals.length > visibleApprovals && (
+                    <div className="pt-1 text-center">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setSelectedApproval(item);
-                          setActiveActionModal('reject');
-                        }}
-                        className="flex-1 md:flex-none"
+                        className="h-9 text-[12px]"
+                        onClick={() => setVisibleApprovals((n) => n + 20)}
                       >
-                        Từ chối
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedApproval(item);
-                          setActiveActionModal('approve');
-                        }}
-                        className="flex-1 md:flex-none"
-                      >
-                        Phê duyệt
+                        Xem thêm 20 đơn (còn {filteredApprovals.length - visibleApprovals})
                       </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
-      {/* TAB 3: LỊCH SỬ ĐÃ HOÀN TẤT */}
-      {activeTab === 'DONE' && (
-        <Card title="Nhật Ký Các Việc Đã Xử Lý Gần Đây">
-          {completedList.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">Chưa có bản ghi nào.</div>
-          ) : (
-            <div className="divide-y divide-line text-xs">
-              {completedList.map((log) => (
-                <div key={log.id} className="py-3 flex items-center justify-between gap-3 text-ink-secondary">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CheckCircle2 className="w-4 h-4 text-status-ok shrink-0" />
-                    <span className="truncate">{log.title}</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-ink-muted shrink-0">
-                    {formatCompletedAt(log.completedAt)}
-                  </span>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
           )}
-        </Card>
-      )}
 
-      {/* Card "Phép còn lại" — đặt dưới danh sách theo mockup S02 */}
-      <Card
-        title="Phép còn lại"
-        subtitle="Số dư phép năm của bạn"
-        className="mt-2"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-ink-secondary">
-                Phép năm {leaveSummary.annualYear ?? new Date().getFullYear()}
-              </span>
-              <span className="font-semibold text-ink font-mono">
-                {leaveSummary.annualRemaining} ngày
-              </span>
-            </div>
-            <div className="h-1.5 bg-canvas rounded-full mt-1.5 overflow-hidden">
-              <div
-                className="h-full bg-accent rounded-full"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.max(
-                      0,
-                      ((leaveSummary.annualEntitlement ?? 0) - (leaveSummary.annualUsed ?? 0)) /
-                        Math.max(1, leaveSummary.annualEntitlement ?? 0) * 100
-                    )
-                  )}%`,
-                }}
-              />
-            </div>
-            <div className="text-[11px] text-ink-muted mt-1.5">
-              Cộng thêm 1 ngày vào ngày 15 hàng tháng
-            </div>
-          </div>
+          {activeTab === 'DONE' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-ink-muted">
+                  Nhật ký đã xử lý
+                </h4>
+                <span className="text-[11px] text-ink-muted">{completedList.length} mục</span>
+              </div>
 
-          <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-ink-secondary">
-                Phép tồn {leaveSummary.carriedYear ?? new Date().getFullYear() - 1}
-              </span>
-              <span className="font-semibold text-ink font-mono">
-                {leaveSummary.carriedRemaining} ngày
-              </span>
+              {completedList.length === 0 ? (
+                <div className="bg-surface border border-line rounded-[14px] py-14 px-6 text-center">
+                  <div className="w-11 h-11 mx-auto rounded-full bg-surface-secondary text-ink-muted grid place-items-center mb-3">
+                    <CheckCheck className="w-5 h-5" />
+                  </div>
+                  <div className="text-[13px] font-semibold text-ink">Chưa có việc nào hoàn tất</div>
+                  <p className="text-[12px] text-ink-muted mt-1">Các việc bạn đánh dấu xong sẽ được lưu ở đây.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {completedList.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-surface border border-line rounded-[14px] px-3.5 py-3 flex items-center gap-3"
+                    >
+                      <div className="w-9 h-9 rounded-[10px] bg-status-ok-soft text-status-ok grid place-items-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold text-ink leading-snug">{item.title}</div>
+                        <div className="text-[10.5px] text-ink-muted font-mono mt-0.5">
+                          {formatCompletedAt(item.completedAt)}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-status-ok-soft text-status-ok border border-status-ok-line shrink-0">
+                        Hoàn tất
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="h-1.5 bg-canvas rounded-full mt-1.5 overflow-hidden">
-              <div
-                className="h-full bg-status-warn rounded-full"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    (leaveSummary.carriedRemaining / Math.max(1, leaveSummary.totalRemaining || 1)) * 100
-                  )}%`,
-                }}
-              />
-            </div>
-            <div className="text-[11px] text-ink-muted mt-1.5">
-              {leaveSummary.policyNotice ?? 'Phép tồn được bảo lưu theo quy chế'}
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
-          <Button variant="outline" size="sm" onClick={() => navigate('/attendance/leaves')}>
-            Xem Sổ Phép
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/attendance/requests')}>
-            + Tạo Đơn Nghỉ Phép
-          </Button>
-          <span className="text-[11px] text-ink-muted sm:ml-auto w-full sm:w-auto">
-            Tổng còn lại: <strong className="text-ink">{leaveSummary.totalRemaining} ngày</strong>
-          </span>
-        </div>
-      </Card>
+        {/* Panel phụ chỉ hiện trên desktop rộng */}
+        <aside className="hidden xl:block space-y-3">
+          {leavePanel}
+          {summaryPanel}
+        </aside>
+      </div>
 
-      {/* Detail Modal */}
+      {/* Panel phép cho tablet/mobile (cột phải bị ẩn dưới xl) */}
+      <div className="xl:hidden space-y-3">{leavePanel}</div>
+
+      {/* Modal chi tiết đơn */}
       {selectedApproval && !activeActionModal && (
         <Modal
           isOpen={true}
           onClose={() => setSelectedApproval(null)}
-          title={`Hồ Sơ Yêu Cầu: ${selectedApproval.id}`}
+          title={`Hồ Sơ Yêu Cầu · #${String(selectedApproval.id).slice(0, 8).toUpperCase()}`}
         >
           <div className="space-y-4 text-xs">
             <div>
@@ -977,17 +1076,18 @@ export const TodoInboxPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Approval / Rejection Reason Confirmation Modal */}
-      {activeActionModal && selectedApproval && (
+      {/* Modal xác nhận duyệt / từ chối */}
+      {selectedApproval && activeActionModal && (
         <Modal
           isOpen={true}
           onClose={() => setActiveActionModal(null)}
-          title={activeActionModal === 'approve' ? 'Xác Nhận Phê Duyệt' : 'Xác Nhận Từ Chối'}
+          title={activeActionModal === 'approve' ? 'Xác Nhận Phê Duyệt Đơn' : 'Xác Nhận Từ Chối Đơn'}
         >
           <div className="space-y-4 text-xs">
             <p className="text-ink">
               Bạn đang chuẩn bị {activeActionModal === 'approve' ? 'chấp thuận' : 'từ chối'} đơn{' '}
-              <strong>{selectedApproval.id}</strong> của <strong>{selectedApproval.requester}</strong>.
+              <strong>{selectedApproval.title}</strong> của <strong>{selectedApproval.requester}</strong>{' '}
+              <span className="font-mono text-ink-muted">#{String(selectedApproval.id).slice(0, 8).toUpperCase()}</span>.
             </p>
 
             <div>

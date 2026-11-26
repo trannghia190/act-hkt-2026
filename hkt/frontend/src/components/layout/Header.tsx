@@ -41,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/todo')}>
-          <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent-dark border border-accent-line font-mono">
+        <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => navigate('/todo')}>
+          <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent-dark border border-accent-line font-mono whitespace-nowrap">
             ACT-HKT
           </span>
           <span className="text-[11px] text-ink-muted hidden md:inline font-medium">
@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Tài khoản chưa đăng ký khuôn mặt — bấm để đăng ký"
           >
             <Camera className="w-3.5 h-3.5 text-accent" />
-            <span>Chưa ĐK Mặt</span>
+            <span className="hidden lg:inline">Chưa ĐK Mặt</span>
           </button>
         )}
 
