@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>O7 · Review giữa năm — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 14px; }
+    .wrap { width: 100%; max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      font-weight: 700; font-size: 13px; border-radius: 10px; padding: 0 15px; height: 36px;
+      border: 1px solid transparent; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .btn svg { width: 14px; height: 14px; stroke-width: 2; }
+    .btn-outline { background: rgb(var(--surface)); color: rgb(var(--ink-secondary)); border-color: rgb(var(--line)); }
+    .btn-primary { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+    .btn-danger { background: rgb(var(--danger)); color: rgb(var(--on-danger)); }
+    .btn-ghost { background: transparent; color: rgb(var(--ink-secondary)); }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; border-radius: 9px; }
+    .btn-sm svg { width: 13px; height: 13px; }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-h .t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+    .panel-h .c { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+
+    .tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    .tbl thead th { border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
+      text-transform: uppercase; text-align: left; padding: 9px 12px; white-space: nowrap; }
+    .tbl tbody td { border-bottom: 1px solid rgb(var(--line-soft)); padding: 11px 12px; color: rgb(var(--ink-2)); vertical-align: top; }
+    .tbl tbody tr:last-child td { border-bottom: 0; }
+    .tbl tbody tr:hover td { background: rgb(var(--canvas) / .6); }
+    .tbl .yr { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: rgb(var(--ink)); white-space: nowrap; }
+    .tbl .nm { font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); }
+    .tbl .badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+    .tbl .acts { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      padding: 2.5px 8px; border-radius: 6px; white-space: nowrap; }
+    .tag.ok { background: rgb(var(--ok-soft)); color: rgb(var(--ok)); }
+    .tag.warn { background: rgb(var(--warn-soft)); color: rgb(var(--warn)); }
+    .tag.gray { background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .tag.accent { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+
+    .phase-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .phase-row + .phase-row { margin-top: 4px; }
+    .phase-row .pn { width: 92px; flex: 0 0 92px; font-size: 12px; color: rgb(var(--ink-secondary)); }
+    .phase-row .pm { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgb(var(--ink-muted)); }
+
+    .rules { border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--canvas));
+      padding: 14px; font-size: 11px; line-height: 1.7; color: rgb(var(--ink-muted)); }
+    .rules b { color: rgb(var(--ink-secondary)); }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .m-acts .btn { flex: 1; min-width: 140px; }
+    .m-card { border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--surface)); padding: 12px; }
+    .m-card .yr { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: rgb(var(--ink)); }
+    .m-card .nm { font-size: 13px; font-weight: 700; color: rgb(var(--ink)); margin-top: 3px; }
+    .m-card .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .m-phase { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 11px; }
+    .m-phase + .m-phase { margin-top: 6px; }
+    .m-phase .pn { width: 88px; flex: 0 0 88px; color: rgb(var(--ink-secondary)); }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+
+    /* ── Form / điểm ──────────────────────────────────────────────────── */
+    .field { width: 100%; border-radius: 10px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); color: rgb(var(--ink)); font-family: inherit; font-size: 12.5px; padding: 9px 11px; resize: vertical; line-height: 1.55; }
+    .field::placeholder { color: rgb(var(--ink-muted)); }
+    .flabel { display: block; font-size: 12px; font-weight: 650; color: rgb(var(--ink)); margin-bottom: 6px; }
+    .infogrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .infocell { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas)); padding: 10px; }
+    .infocell .l { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .infocell .v { font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); margin-top: 3px; }
+    .score-pick { display: flex; gap: 6px; }
+    .score-pick i { width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: grid; place-items: center; font-style: normal;
+      font-size: 12px; font-weight: 700; color: rgb(var(--ink-secondary)); }
+    .score-pick i.on { background: rgb(var(--accent)); border-color: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+    .scorebox { border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--canvas)); padding: 12px; }
+    .scorebox.hl { border: 2px solid rgb(var(--accent)); background: rgb(var(--accent-soft) / .3); }
+    .scorebox .lbl { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .scorebox .big { font-size: 34px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.035em; line-height: 1; margin-top: 8px; color: rgb(var(--ink)); }
+    .scorebox.hl .big { color: rgb(var(--accent)); }
+    .scorebox .sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 6px; }
+    details.gbox { border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--canvas)); padding: 12px; }
+    details.gbox summary { cursor: pointer; font-size: 12px; font-weight: 700; color: rgb(var(--ink)); }
+    details.gbox summary span { font-weight: 400; color: rgb(var(--ink-muted)); margin-left: 4px; }
+    .obj-item { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); padding: 10px; }
+    .obj-item .t { font-size: 12px; font-weight: 650; color: rgb(var(--ink)); }
+    .obj-item .bar { margin-top: 8px; height: 6px; border-radius: 999px; background: rgb(var(--line)); overflow: hidden; }
+    .obj-item .bar i { display: block; height: 100%; border-radius: 999px; background: rgb(var(--accent)); }
+    .obj-item .p { margin-top: 5px; font-size: 11px; color: rgb(var(--ink-muted)); }
+
+    .nvc { width: 100%; text-align: left; border: 1px solid rgb(var(--line)); border-radius: 10px;
+      background: rgb(var(--surface)); padding: 10px; cursor: pointer; font-family: inherit; }
+    .nvc.on { border-color: rgb(var(--accent)); background: rgb(var(--accent-soft) / .3); }
+    .nvc-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .warn { display: flex; align-items: flex-start; gap: 6px; }
+  </style>
+</head>
+<body data-title="O7 · Review giữa năm">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Tổng quan OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>OKR của tôi</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Review giữa năm</div>
+        </div>
+        <div class="side-user">
+          <div class="av">NT</div>
+          <div><div style="font-size:11.5px;font-weight:650">Nguyễn Thị Thu Hà</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">01HR · Nhân sự</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">NT</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  Coaching 1-on-1
+                </div>
+                <h1 class="h1">Review &amp; coaching giữa năm</h1>
+                <div class="sub">Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.</div>
+              </div>
+              <button class="btn btn-outline" style="flex:0 0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Mở cho nhân viên sửa</button>
+            </div>
+
+            <!-- 2 cột: danh sách NV | chi tiết -->
+            <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start">
+              <section class="panel">
+                <div class="panel-h"><span class="t">Nhân viên (3)</span></div>
+                <div class="panel-b" style="display:flex;flex-direction:column;gap:8px">
+                  <button class="nvc on">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span style="font-size:12px;font-weight:650;color:rgb(var(--ink))">VŨ VĂN LUẬN</span>
+                      <span class="tag warn">2 cảnh báo</span>
+                    </div>
+                    <div class="nvc-sub">136ACT · Tiến độ 72%</div>
+                    <div class="nvc-sub">Tự chấm: 3.5 · Đề xuất: 3.5</div>
+                  </button>
+                  <button class="nvc">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span style="font-size:12px;font-weight:650;color:rgb(var(--ink))">TRẦN THỊ HẢI</span>
+                    </div>
+                    <div class="nvc-sub">05ACT · Tiến độ 55%</div>
+                    <div class="nvc-sub">Tự chấm: 2.5 · Đề xuất: 3.0</div>
+                  </button>
+                  <button class="nvc">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span style="font-size:12px;font-weight:650;color:rgb(var(--ink))">LÊ THỊ HÀ NHI</span>
+                    </div>
+                    <div class="nvc-sub">07ACT · Tiến độ 88%</div>
+                    <div class="nvc-sub">Tự chấm: 4.5 · Đề xuất: 4.5</div>
+                  </button>
+                </div>
+              </section>
+
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                <section class="panel">
+                  <div class="panel-h">
+                    <div>
+                      <div class="t">VŨ VĂN LUẬN · 136ACT</div>
+                      <div class="s">Sirius Backend Architecture · Kỹ sư Phần mềm Cao cấp · Chờ QL chấm</div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <span class="tag accent">Tự chấm (dự kiến) TB: 3.5</span>
+                      <span class="tag warn">Đề xuất theo tiến độ: 3.5</span>
+                      <span class="tag ok">Lệch: 0.0</span>
+                    </div>
+                  </div>
+                  <div class="panel-b" style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                      <div class="infocell"><div class="l">Business</div><div class="v">72%</div></div>
+                      <div class="infocell"><div class="l">People</div><div class="v">60%</div></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <div class="warn" style="display:flex;align-items:flex-start;gap:6px;border-radius:10px;border:1px solid rgb(var(--warn-line));background:rgb(var(--warn-soft));padding:7px 10px;font-size:11px;color:rgb(var(--warn))">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex:0 0 12px;margin-top:1px"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                        <span>Tiến độ thấp hơn 60%</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-h"><span class="t">Business</span><span style="width:10px;height:10px;border-radius:99px;background:rgb(var(--accent));display:inline-block"></span></div>
+                  <div class="panel-b" style="display:flex;flex-direction:column;gap:8px">
+                    <div class="obj-item">
+                      <div class="t">Tăng tốc độ phản hồi API lên dưới 200ms</div>
+                      <div class="bar"><i style="width:82%"></i></div>
+                      <div class="p">Tiến độ: <b style="color:rgb(var(--ink))">82%</b> · Hạn: 2026-12-31</div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
+                        <span class="tag gray">Q4 2026: 60% → 82%</span>
+                        <span class="tag gray">Q3 2026: 40% → 60%</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-h"><span class="t">Biên bản coaching 1-on-1</span></div>
+                  <div class="panel-b" style="display:flex;flex-direction:column;gap:12px">
+                    <div>
+                      <label class="flabel">Nhân viên chia sẻ thuận lợi / khó khăn</label>
+                      <textarea class="field" rows="3" placeholder="Nhân viên chia sẻ..."></textarea>
+                    </div>
+                    <div>
+                      <label class="flabel">Định hướng &amp; coaching của Quản lý</label>
+                      <textarea class="field" rows="3" placeholder="Định hướng coaching..."></textarea>
+                    </div>
+                    <div>
+                      <label class="flabel">Cam kết / kế hoạch H2</label>
+                      <textarea class="field" rows="3" placeholder="Cam kết cho H2..."></textarea>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end">
+                      <button class="btn btn-primary btn-sm">Lưu biên bản coaching</button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-h"><span class="t">Audit trail (2)</span></div>
+                  <div class="panel-b" style="display:flex;flex-direction:column;gap:8px">
+                    <div class="obj-item">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <span style="font-size:11.5px;font-weight:650;color:rgb(var(--ink))">NGUYỄN THANH TÙNG · ADJUST_PROGRESS</span>
+                        <span style="font-size:10.5px;color:rgb(var(--ink-muted))">26/11/2026 10:22</span>
+                      </div>
+                      <div class="p">Trường: <b style="color:rgb(var(--ink))">progress</b> · 60 → 82</div>
+                      <div class="p">Lý do: Đã xong milestone API gateway</div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Coaching 1-on-1</div>
+          <div class="m-h1 h1">Review &amp; coaching giữa năm</div>
+          <div class="m-sub">Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.</div>
+        </div>
+
+        <button class="btn btn-outline" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Mở cho nhân viên sửa</button>
+
+        <section class="panel">
+          <div class="m-panel-h"><span class="t" style="font-size:12.5px">Nhân viên (3)</span></div>
+          <div class="m-panel-b" style="display:flex;flex-direction:column;gap:8px">
+            <button class="nvc on">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-size:12px;font-weight:650;color:rgb(var(--ink))">VŨ VĂN LUẬN</span>
+                <span class="tag warn">2 cảnh báo</span>
+              </div>
+              <div class="nvc-sub">136ACT · Tiến độ 72%</div>
+              <div class="nvc-sub">Tự chấm: 3.5 · Đề xuất: 3.5</div>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="m-panel-h">
+            <div>
+              <div class="t" style="font-size:12.5px">VŨ VĂN LUẬN · 136ACT</div>
+              <div class="s" style="font-size:10.5px;margin-top:2px">Sirius Backend Architecture · Chờ QL chấm</div>
+            </div>
+          </div>
+          <div class="m-panel-b" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="tag accent">Tự chấm: 3.5</span>
+              <span class="tag warn">Đề xuất: 3.5</span>
+              <span class="tag ok">Lệch: 0.0</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="infocell"><div class="l">Business</div><div class="v">72%</div></div>
+              <div class="infocell"><div class="l">People</div><div class="v">60%</div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="m-panel-h"><span class="t" style="font-size:12.5px">Biên bản coaching 1-on-1</span></div>
+          <div class="m-panel-b" style="display:flex;flex-direction:column;gap:11px">
+            <div>
+              <label class="flabel" style="font-size:11.5px">Nhân viên chia sẻ</label>
+              <textarea class="field" rows="2" style="font-size:12px" placeholder="Nhân viên chia sẻ..."></textarea>
+            </div>
+            <div>
+              <label class="flabel" style="font-size:11.5px">Coaching của Quản lý</label>
+              <textarea class="field" rows="2" style="font-size:12px" placeholder="Định hướng coaching..."></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm">Lưu biên bản</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>OKR</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
+import { AlertTriangle, Lock, LockOpen, MessagesSquare } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -279,13 +280,10 @@ export const MidYearReviewPage: React.FC = () => {
   const canWrite = detail?.midYearWritable !== false;
 
   const renderItems = (title: string, items: ItemRow[], group: 'BUSINESS' | 'PEOPLE') => (
-    <Card className="space-y-3">
-      <div className="flex items-center justify-between border-b border-line pb-2">
-        <h3 className="text-sm font-bold text-ink flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />
-          {title}
-        </h3>
-      </div>
+    <Panel
+      title={title}
+      action={<span className={`h-2.5 w-2.5 rounded-full ${group === 'BUSINESS' ? 'bg-accent' : 'bg-status-ok'}`} />}
+    >
       {items.length === 0 ? (
         <div className="text-xs text-ink-muted py-4 text-center bg-canvas rounded-lg border border-dashed border-line">Chưa có mục tiêu.</div>
       ) : (
@@ -304,7 +302,7 @@ export const MidYearReviewPage: React.FC = () => {
                 {canWrite && (
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button className="text-[11px] font-semibold text-accent hover:underline" onClick={() => openEdit(item)}>Điều chỉnh</button>
-                    <button className="text-[11px] font-semibold text-danger hover:underline" onClick={() => { setDeleteItem(item); setDeleteReason(''); }}>Bớt</button>
+                    <button className="text-[11px] font-semibold text-status-danger hover:underline" onClick={() => { setDeleteItem(item); setDeleteReason(''); }}>Bớt</button>
                   </div>
                 )}
               </div>
@@ -324,7 +322,7 @@ export const MidYearReviewPage: React.FC = () => {
           ))}
         </div>
       )}
-    </Card>
+    </Panel>
   );
 
   return (
@@ -333,20 +331,30 @@ export const MidYearReviewPage: React.FC = () => {
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Review &amp; Coaching Giữa Năm</h1>
-          <p className="text-xs text-ink-muted mt-1">Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.</p>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <MessagesSquare className="h-3.5 w-3.5" />
+            Coaching 1-on-1
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Review &amp; coaching giữa năm
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Xem tiến độ check-in, nhận xét riêng từng người, điều chỉnh mục tiêu có lý do + audit trail.
+          </p>
         </div>
         {detail && canWrite && (
-          <Button size="sm" variant="outline" onClick={openReopen}>🔓 Mở cho nhân viên sửa</Button>
+          <Button size="md" variant="outline" onClick={openReopen} className="shrink-0">
+            <LockOpen className="h-3.5 w-3.5" /> Mở cho nhân viên sửa
+          </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
-        <Card className="space-y-2 lg:sticky lg:top-4">
-          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider pb-2 border-b border-line">Nhân viên ({rows.length})</div>
-          {loading ? <div className="text-xs text-ink-muted p-3">Đang tải...</div> : rows.length === 0 ? <div className="text-xs text-ink-muted p-3">Không có nhân viên trong phạm vi quản lý.</div> : rows.map((r) => (
+        <Panel title={`Nhân viên (${rows.length})`} className="lg:sticky lg:top-4">
+          {loading ? <div className="p-3 text-xs text-ink-muted">Đang tải...</div> : rows.length === 0 ? <div className="p-3 text-xs text-ink-muted">Không có nhân viên trong phạm vi quản lý.</div> : rows.map((r) => (
             <button
               key={r.reviewId}
               onClick={() => setSelectedId(r.reviewId)}
@@ -360,32 +368,32 @@ export const MidYearReviewPage: React.FC = () => {
               <div className="text-[11px] text-ink-muted">Tự chấm: {r.selfAverage ?? '—'} · Đề xuất: {r.proposedScore}</div>
             </button>
           ))}
-        </Card>
+        </Panel>
 
         <div className="space-y-4">
           {detailLoading ? (
-            <Card><div className="text-xs text-ink-muted p-6 text-center">Đang tải chi tiết...</div></Card>
+            <Panel hideHeader bodyClassName="p-6"><div className="text-center text-xs text-ink-muted">Đang tải chi tiết...</div></Panel>
           ) : !detail ? (
-            <Card><div className="text-xs text-ink-muted p-6 text-center">Chọn một nhân viên để review.</div></Card>
+            <Panel hideHeader bodyClassName="p-6"><div className="text-center text-xs text-ink-muted">Chọn một nhân viên để review.</div></Panel>
           ) : (
             <>
               {detail.midYearWritable === false && (
-                <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-3 text-xs text-status-warn">
-                  🔒 Chỉ xem: {detail.midYearLockReason}
+                <div className="flex items-start gap-2 rounded-lg border border-status-warn-line bg-status-warn-soft p-3 text-xs text-status-warn">
+                  <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Chỉ xem: {detail.midYearLockReason}</span>
                 </div>
               )}
-              <Card className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-bold text-ink">{detail.fullName} <span className="text-xs font-normal text-ink-muted">({detail.employeeCode})</span></h2>
-                    <div className="text-xs text-ink-muted mt-0.5">{detail.team || '—'} · {detail.jobTitle || '—'} · {statusLabel(detail.status)}</div>
-                  </div>
-                  <div className="flex gap-2">
+              <Panel
+                title={`${detail.fullName} · ${detail.employeeCode}`}
+                subtitle={`${detail.team || '—'} · ${detail.jobTitle || '—'} · ${statusLabel(detail.status)}`}
+                action={
+                  <div className="flex flex-wrap gap-2">
                     <Badge variant="accent">Tự chấm (dự kiến) TB: {detail.selfAverage ?? '—'}</Badge>
                     <Badge variant="warn">Đề xuất theo tiến độ: {Number(detail.proposedScore).toFixed(1)}</Badge>
                     {detail.gap != null && <Badge variant={Math.abs(detail.gap) > 0.2 ? 'danger' : 'ok'}>Lệch: {detail.gap > 0 ? '+' : ''}{detail.gap}</Badge>}
                   </div>
-                </div>
+                }
+              >
                 {detail.midYearManagerWindowOpen && (
                   <label className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink cursor-pointer">
                     <input
@@ -413,39 +421,38 @@ export const MidYearReviewPage: React.FC = () => {
                 {detail.warnings.length > 0 && (
                   <div className="space-y-1">
                     {detail.warnings.map((w, idx) => (
-                      <div key={idx} className="rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 py-1.5 text-[11px] text-status-warn">
-                        ⚠️ {w.message}
+                      <div key={idx} className="flex items-start gap-1.5 rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 py-1.5 text-[11px] text-status-warn">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                        <span>{w.message}</span>
                       </div>
                     ))}
                   </div>
                 )}
-              </Card>
+              </Panel>
 
               {renderItems('Business', detail.businessItems, 'BUSINESS')}
               {renderItems('People', detail.peopleItems, 'PEOPLE')}
 
-              <Card className="space-y-3">
-                <div className="text-sm font-bold text-ink border-b border-line pb-2">Biên bản coaching 1-on-1</div>
+              <Panel title="Biên bản coaching 1-on-1">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">Nhân viên chia sẻ thuận lợi / khó khăn</label>
-                  <textarea rows={3} disabled={!canWrite} value={notes.employeeFeedback} onChange={(e) => setNotes({ ...notes, employeeFeedback: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                  <textarea rows={3} disabled={!canWrite} value={notes.employeeFeedback} onChange={(e) => setNotes({ ...notes, employeeFeedback: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">Định hướng &amp; coaching của Quản lý</label>
-                  <textarea rows={3} disabled={!canWrite} value={notes.managerCoaching} onChange={(e) => setNotes({ ...notes, managerCoaching: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                  <textarea rows={3} disabled={!canWrite} value={notes.managerCoaching} onChange={(e) => setNotes({ ...notes, managerCoaching: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">Cam kết / kế hoạch H2</label>
-                  <textarea rows={3} disabled={!canWrite} value={notes.h2Commitment} onChange={(e) => setNotes({ ...notes, h2Commitment: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent" />
+                  <textarea rows={3} disabled={!canWrite} value={notes.h2Commitment} onChange={(e) => setNotes({ ...notes, h2Commitment: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted" />
                 </div>
                 <div className="flex justify-end">
                   <Button size="sm" variant="primary" onClick={saveNotes} disabled={savingNotes || !canWrite}>{savingNotes ? 'Đang lưu...' : 'Lưu biên bản coaching'}</Button>
                 </div>
-              </Card>
+              </Panel>
 
-              <Card className="space-y-2">
-                <div className="text-sm font-bold text-ink border-b border-line pb-2">Audit trail ({detail.auditTrail.length})</div>
-                {detail.auditTrail.length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có thay đổi nào.</div> : detail.auditTrail.map((a) => (
+              <Panel title={`Audit trail (${detail.auditTrail.length})`}>
+                {detail.auditTrail.length === 0 ? <div className="py-3 text-xs text-ink-muted">Chưa có thay đổi nào.</div> : detail.auditTrail.map((a) => (
                   <div key={a.id} className="rounded-lg border border-line bg-surface p-2.5 text-[11px] space-y-0.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-ink">{a.actorName || 'Hệ thống'} · {a.action}</span>
@@ -455,7 +462,7 @@ export const MidYearReviewPage: React.FC = () => {
                     {a.reason && <div className="text-ink-muted">Lý do: {a.reason}</div>}
                   </div>
                 ))}
-              </Card>
+              </Panel>
             </>
           )}
         </div>

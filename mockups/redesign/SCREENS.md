@@ -90,7 +90,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ✅ | ✅ | ✅ |
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ✅ | ✅ | ✅ |
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ✅ | ✅ | ✅ |
-| O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ⬜ | ⬜ | ⬜ |
+| O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ✅ | ✅ | ✅ |
 | O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ⬜ | ⬜ | ⬜ |
 | O9 | Báo cáo OKR | `/okr/summary-report` | `OKRReportsPage` | ⬜ | ⬜ | ⬜ |
 
@@ -403,4 +403,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   **tự tính (không có ô nhập tay)**, điểm Quản lý lưu song song để đối chiếu.
   Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang
   **không còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.
+- **O7 · Review & coaching giữa năm** ✅ (2026-11-27) — mockup
+  `screens/okr-mid-year-review.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `MidYearReviewPage`: tiêu đề → **đầu trang eyebrow + `h1` + sub**, nút "Mở cho
+  nhân viên sửa" có icon `LockOpen` thay emoji 🔓; 7 `Card` → **component `Panel`
+  dùng chung** (danh sách NV sticky · chi tiết NV · Business · People · biên bản
+  coaching · audit trail · trạng thái tải); **bỏ hết 2 emoji làm icon** (🔒 ⚠️) sang
+  icon lucide (Lock / AlertTriangle); tiêu đề nhóm Business/People nay là `action` của
+  panel (chấm màu 10px) thay vì chữ trong header; textarea bo 10px + focus ring accent;
+  nút "Bớt" dùng `text-status-danger`. Không đổi nghiệp vụ: cùng API review giữa năm,
+  **điều chỉnh mục tiêu bắt buộc có lý do + audit trail**, biên bản coaching 3 ý
+  (NV chia sẻ · coaching của QL · cam kết H2), mở lại cho NV sửa có ghi audit. Verify:
+  3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang **không
+  còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
