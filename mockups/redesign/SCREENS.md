@@ -88,7 +88,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ✅ | ✅ | ✅ |
 | O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ✅ | ✅ | ✅ |
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ✅ | ✅ | ✅ |
-| O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ⬜ | ⬜ | ⬜ |
+| O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ✅ | ✅ | ✅ |
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ⬜ | ⬜ | ⬜ |
 | O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ⬜ | ⬜ | ⬜ |
 | O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ⬜ | ⬜ | ⬜ |
@@ -374,3 +374,19 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; cả `/okr/cycles/new` và
   `/okr/cycles/:id` đều render đúng; `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **O5 · Review OKR cả nhóm** ✅ (2026-11-27) — mockup `screens/okr-team-review.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `TeamReviewPage`: tiêu đề → **đầu
+  trang eyebrow + `h1` "Review OKR cả nhóm" + sub**; nút "Tải lại" / "Chấm hàng loạt"
+  có icon lucide (`RefreshCw` / `CheckCheck`) thay emoji ↻; `Card` → **panel 13px**;
+  ô tìm kiếm + 2 select bo 10px cao 38px có `aria-label` + focus ring accent;
+  **header bảng 10 cột viết tắt 9.5px uppercase `font-extrabold`** theo spec;
+  **bỏ emoji ⚠️** trong cột cảnh báo → icon `AlertTriangle`; `text-danger` →
+  `text-status-danger`; empty state có icon `Users` + giải thích "chỉ xuất hiện sau
+  khi đã gửi bộ mục tiêu"; **mobile đổi từ bảng 10 cột sang danh sách card 2 dòng**
+  (dòng 1 = NV + trạng thái · dòng 2 = 3 nhóm điểm Business/People/TB + QL ·
+  dòng 3 = cảnh báo · dòng 4 = link mở form) — bảng 10 cột không vừa 390px. Không
+  đổi nghiệp vụ: cùng API `/okr/team-review` + `/okr/reviews/{id}/manager-assess`,
+  chấm hàng loạt **bắt buộc nhận xét**, sắp xếp theo rủi ro giảm dần. Verify: 3
+  theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang **không
+  còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/common/Card';
+import { AlertTriangle, CheckCheck, RefreshCw, Users } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -146,35 +147,48 @@ export const TeamReviewPage: React.FC = () => {
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Review OKR Cả Nhóm</h1>
-          <p className="text-xs text-ink-muted mt-1">1 bảng thay vì mở từng objective · điểm đề xuất theo rule · cảnh báo rủi ro · chấm hàng loạt. Sau khi chấm xong, cột điểm hiện thêm <b>QL</b> — điểm quản lý đã chấm.</p>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Users className="h-3.5 w-3.5" />
+            Review OKR
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Review OKR cả nhóm
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            1 bảng thay vì mở từng objective · điểm đề xuất theo rule · cảnh báo rủi ro · chấm hàng loạt. Sau khi
+            chấm xong, cột điểm hiện thêm <b className="text-ink-secondary">QL</b> — điểm quản lý đã chấm.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load}>↻ Tải lại</Button>
-          <Button size="sm" variant="primary" onClick={() => setBulkOpen(true)} disabled={selected.size === 0}>
-            Chấm hàng loạt ({selected.size})
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="md" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Tải lại
+          </Button>
+          <Button size="md" variant="primary" onClick={() => setBulkOpen(true)} disabled={selected.size === 0}>
+            <CheckCheck className="h-3.5 w-3.5" /> Chấm hàng loạt ({selected.size})
           </Button>
         </div>
       </div>
 
-      <Card className="space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+      <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-col gap-3 border-b border-line px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm tên, mã NV, nhóm..."
-              className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent w-full sm:w-64"
+              aria-label="Tìm nhân viên"
+              className="w-full rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 sm:w-64"
             />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Lọc theo trạng thái" className="cursor-pointer rounded-[10px] border border-line bg-canvas px-2.5 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
               <option value="ALL">Tất cả trạng thái</option>
               <option value="CHUA_TU_DANH_GIA">Chưa tự đánh giá</option>
               <option value="CHO_QL_CHAM">Chờ QL chấm</option>
               <option value="DA_HOAN_TAT">Đã chấm xong</option>
             </select>
-            <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink">
+            <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} aria-label="Lọc theo nhóm" className="cursor-pointer rounded-[10px] border border-line bg-canvas px-2.5 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
               <option value="ALL">Tất cả nhóm</option>
               {teams.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -183,18 +197,31 @@ export const TeamReviewPage: React.FC = () => {
               Chỉ có cảnh báo
             </label>
           </div>
-          <div className="text-xs text-ink-muted">Sắp xếp theo rủi ro giảm dần · {displayed.length} nhân viên</div>
+          <span className="shrink-0 font-mono text-[10.5px] text-ink-muted">
+            Sắp xếp theo rủi ro giảm dần · {displayed.length} nhân viên
+          </span>
         </div>
+        <div className="p-4">
 
         {loading ? (
           <div className="p-8 text-center text-xs text-ink-muted">Đang tải bảng review...</div>
         ) : displayed.length === 0 ? (
-          <div className="p-8 text-center text-xs text-ink-muted">Không có nhân viên phù hợp.</div>
+          <div className="py-10 text-center">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-ink-muted">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="mt-3 text-[13px] font-semibold text-ink">Không có nhân viên phù hợp</div>
+            <p className="mt-1 text-xs text-ink-muted">
+              Nhân viên chỉ xuất hiện sau khi đã gửi bộ mục tiêu lên để Quản lý review.
+            </p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Desktop: bảng 10 cột · Mobile: mỗi NV 1 card 2 dòng */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="bg-canvas text-ink-secondary">
+                <tr className="border-b border-line bg-canvas">
                   <th className="p-2.5 text-left">
                     <input
                       type="checkbox"
@@ -202,15 +229,15 @@ export const TeamReviewPage: React.FC = () => {
                       onChange={toggleAll}
                     />
                   </th>
-                  <th className="p-2.5 text-left">Nhân viên</th>
-                  <th className="p-2.5 text-center">Business</th>
-                  <th className="p-2.5 text-center">People</th>
-                  <th className="p-2.5 text-center">TB tự chấm / QL</th>
-                  <th className="p-2.5 text-center">Đề xuất</th>
-                  <th className="p-2.5 text-center">Lệch</th>
-                  <th className="p-2.5 text-left">Cảnh báo</th>
-                  <th className="p-2.5 text-center">Trạng thái</th>
-                  <th className="p-2.5 text-right">Thao tác</th>
+                  <th className="p-2.5 text-left text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nhân viên</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Business</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">People</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">TB tự chấm / QL</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Đề xuất</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Lệch</th>
+                  <th className="p-2.5 text-left text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Cảnh báo</th>
+                  <th className="p-2.5 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Trạng thái</th>
+                  <th className="p-2.5 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -249,13 +276,16 @@ export const TeamReviewPage: React.FC = () => {
                     </td>
                     <td className="p-2.5 text-center"><Badge variant="accent">{Number(r.proposedScore).toFixed(1)}</Badge></td>
                     <td className="p-2.5 text-center">
-                      {r.gap == null ? '—' : <span className={Math.abs(r.gap) > 0.2 ? 'font-bold text-danger' : 'text-ink-secondary'}>{r.gap > 0 ? '+' : ''}{r.gap}</span>}
+                      {r.gap == null ? '—' : <span className={Math.abs(r.gap) > 0.2 ? 'font-bold text-status-danger' : 'text-ink-secondary'}>{r.gap > 0 ? '+' : ''}{r.gap}</span>}
                     </td>
                     <td className="p-2.5">
                       {r.warningCount === 0 ? <span className="text-ink-muted">—</span> : (
                         <div className="space-y-0.5">
                           {r.warnings.slice(0, 2).map((w, idx) => (
-                            <div key={idx} className="text-[10px] text-status-warn" title={w.message}>⚠️ {w.message}</div>
+                            <div key={idx} className="flex items-start gap-1 text-[10px] text-status-warn" title={w.message}>
+                              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                              <span>{w.message}</span>
+                            </div>
                           ))}
                           {r.warningCount > 2 && <div className="text-[10px] text-ink-muted">+{r.warningCount - 2} cảnh báo khác</div>}
                         </div>
@@ -275,8 +305,70 @@ export const TeamReviewPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile — danh sách 2 dòng: dòng 1 = NV + trạng thái, dòng 2 = 3 nhóm điểm, dòng 3 = cảnh báo */}
+          <div className="divide-y divide-line-soft md:hidden">
+            {displayed.map((r) => (
+              <div key={r.reviewId} className="p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-ink">{r.fullName}</div>
+                    <div className="mt-0.5 text-[11px] text-ink-muted">{r.employeeCode} · {r.team || '—'}</div>
+                  </div>
+                  <Badge variant={statusVariant(r.status) as any} className="shrink-0">{statusLabel(r.status)}</Badge>
+                </div>
+
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <div>
+                    <div className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">Business</div>
+                    <div className="mt-0.5 text-[15px] font-bold text-ink">{r.selfBusiness ?? '—'}</div>
+                    <div className="text-[10px] text-ink-muted">{r.businessProgress}%</div>
+                    {r.managerBusiness != null && <div className="text-[10px] font-bold text-accent">QL: {r.managerBusiness}</div>}
+                  </div>
+                  <div>
+                    <div className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">People</div>
+                    <div className="mt-0.5 text-[15px] font-bold text-ink">{r.selfPeople ?? '—'}</div>
+                    <div className="text-[10px] text-ink-muted">{r.peopleProgress}%</div>
+                    {r.managerPeople != null && <div className="text-[10px] font-bold text-accent">QL: {r.managerPeople}</div>}
+                  </div>
+                  <div>
+                    <div className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">TB tự chấm</div>
+                    <div className="mt-0.5 text-[15px] font-bold text-ink">{r.selfAverage ?? '—'}</div>
+                    {r.managerAverage != null && (
+                      <div className="text-[10px] font-bold text-accent">QL: {r.managerAverage.toFixed(1)}</div>
+                    )}
+                  </div>
+                </div>
+
+                {r.warningCount > 0 && (
+                  <div className="mt-2 space-y-0.5">
+                    {r.warnings.slice(0, 2).map((w, idx) => (
+                      <div key={idx} className="flex items-start gap-1 text-[10px] text-status-warn">
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                        <span>{w.message}</span>
+                      </div>
+                    ))}
+                    {r.warningCount > 2 && (
+                      <div className="text-[10px] text-ink-muted">+{r.warningCount - 2} cảnh báo khác</div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-2.5 border-t border-line-soft pt-2.5">
+                  <button
+                    className="text-[11px] font-bold text-accent hover:underline"
+                    onClick={() => navigate(`/okr/assessment?employeeCode=${encodeURIComponent(r.employeeCode)}`)}
+                  >
+                    Mở form đánh giá →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
-      </Card>
+        </div>
+      </section>
 
       <Modal isOpen={bulkOpen} onClose={() => setBulkOpen(false)} title={`Chấm hàng loạt ${selected.size} nhân viên`} maxWidth="md">
         <div className="space-y-3">
@@ -298,7 +390,7 @@ export const TeamReviewPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Nhận xét <span className="text-danger">*</span></label>
+            <label className="block text-xs font-semibold text-ink mb-1">Nhận xét <span className="text-status-danger">*</span></label>
             <textarea rows={3} value={bulk.comment} onChange={(e) => setBulk({ ...bulk, comment: e.target.value })} className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas" />
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-line">
