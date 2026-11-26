@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
+import { Check, ClipboardCheck, Eye, LockOpen, Undo2 } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -154,71 +155,71 @@ export const OKRApprovalsPage: React.FC = () => {
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Duyệt Mục Tiêu OKR Cấp Dưới</h1>
-          <p className="text-xs text-ink-muted mt-1">
-            Phê duyệt hoặc trả lại bộ mục tiêu 2 nhóm (Business & People) của nhân viên thuộc phạm vi quản lý trực tiếp.
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            Duyệt OKR
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Duyệt mục tiêu OKR cấp dưới
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Phê duyệt hoặc trả lại bộ mục tiêu 2 nhóm (Business &amp; People) của nhân viên thuộc phạm vi quản lý trực tiếp.
           </p>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line text-xs">
-          <button
-            onClick={() => setActiveTab('SUBMITTED')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'SUBMITTED' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            Chờ duyệt ({items.filter((i) => i.status === 'SUBMITTED').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('LOCKED')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'LOCKED' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            Đã duyệt ({items.filter((i) => i.status === 'LOCKED').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              activeTab === 'ALL' ? 'bg-accent text-on-accent shadow-xs' : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            Tất cả ({items.length})
-          </button>
+        {/* Segmented control — đúng spec design system: ô 34px, đang chọn bg-ink text-canvas */}
+        <div role="group" aria-label="Trạng thái duyệt" className="grid w-full max-w-[420px] grid-cols-3 gap-1 rounded-xl border border-line bg-canvas p-1">
+          {([
+            { key: 'SUBMITTED', label: 'Chờ duyệt', cnt: items.filter((i) => i.status === 'SUBMITTED').length },
+            { key: 'LOCKED', label: 'Đã duyệt', cnt: items.filter((i) => i.status === 'LOCKED').length },
+            { key: 'ALL', label: 'Tất cả', cnt: items.length },
+          ] as const).map((t) => {
+            const on = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-bold transition-colors ${
+                  on ? 'bg-ink text-canvas' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
+                }`}
+              >
+                {t.label}
+                <span className="font-mono text-[10.5px] opacity-65">{t.cnt}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {loading ? (
         <div className="p-12 text-center text-xs text-ink-muted">Đang tải danh sách mục tiêu cấp dưới...</div>
       ) : displayedItems.length === 0 ? (
-        <Card className="p-12 text-center text-ink-muted text-xs">
-          Không có nhân viên nào trong danh sách {activeTab === 'SUBMITTED' ? 'chờ duyệt' : 'này'}.
-        </Card>
+        <Panel hideHeader bodyClassName="p-12">
+          <div className="text-center text-xs text-ink-muted">
+            Không có nhân viên nào trong danh sách {activeTab === 'SUBMITTED' ? 'chờ duyệt' : 'này'}.
+          </div>
+        </Panel>
       ) : (
         <div className="space-y-4">
           {displayedItems.map((item) => (
-            <Card key={item.reviewId} className="space-y-4 hover:border-line-hover transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-ink text-sm">{item.employeeName}</span>
-                    <span className="text-xs text-ink-muted font-mono">({item.employeeCode})</span>
-                    {getStatusBadge(item.status)}
-                  </div>
-                  <div className="text-xs text-ink-secondary">
-                    {item.department} · {item.position} · Ngày nộp: {item.submittedDate || '—'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
+            <Panel
+              key={item.reviewId}
+              title={`${item.employeeName} · ${item.employeeCode}`}
+              subtitle={`${item.department} · ${item.position} · Ngày nộp: ${item.submittedDate || '—'}`}
+              action={
+                <div className="flex flex-wrap items-center gap-2">
+                  {getStatusBadge(item.status)}
                   <Button size="sm" variant="outline" onClick={() => setSelectedItem(item)}>
-                    Xem chi tiết 2 nhóm
+                    <Eye className="h-3 w-3" /> Xem chi tiết 2 nhóm
                   </Button>
                 </div>
-              </div>
+              }
+            >
 
               {/* Tóm tắt 2 nhóm Business & People */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -270,21 +271,22 @@ export const OKRApprovalsPage: React.FC = () => {
                       setFeedbackModal({ isOpen: true, action: 'REOPEN' });
                     }}
                   >
-                    🔓 {item.status === 'LOCKED' ? 'Mở lại để nhân viên sửa' : 'Mở cho nhân viên sửa'}
+                    <LockOpen className="h-3 w-3" />
+                    {item.status === 'LOCKED' ? 'Mở lại để nhân viên sửa' : 'Mở cho nhân viên sửa'}
                   </Button>
                   {item.status === 'SUBMITTED' && (
                     <>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-danger border-danger/40 hover:bg-danger-soft"
+                        className="text-status-danger border-status-danger-line hover:bg-status-danger-soft"
                         onClick={() => {
                           setSelectedItem(item);
                           setManagerComment('');
                           setFeedbackModal({ isOpen: true, action: 'RETURN' });
                         }}
                       >
-                        ↩️ Trả lại kèm góp ý
+                        <Undo2 className="h-3 w-3" /> Trả lại kèm góp ý
                       </Button>
                       <Button
                         size="sm"
@@ -295,13 +297,13 @@ export const OKRApprovalsPage: React.FC = () => {
                           setFeedbackModal({ isOpen: true, action: 'APPROVE' });
                         }}
                       >
-                        ✅ Phê duyệt OKR
+                        <Check className="h-3 w-3" /> Phê duyệt OKR
                       </Button>
                     </>
                   )}
                 </div>
               )}
-            </Card>
+            </Panel>
           ))}
         </div>
       )}

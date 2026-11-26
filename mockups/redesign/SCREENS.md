@@ -91,7 +91,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ✅ | ✅ | ✅ |
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ✅ | ✅ | ✅ |
 | O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ✅ | ✅ | ✅ |
-| O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ⬜ | ⬜ | ⬜ |
+| O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ✅ | ✅ | ✅ |
 | O9 | Báo cáo OKR | `/okr/summary-report` | `OKRReportsPage` | ⬜ | ⬜ | ⬜ |
 
 ## 5 · Shell & Modal dùng chung
@@ -418,3 +418,17 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang **không
   còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
+- **O8 · Duyệt mục tiêu OKR cấp dưới** ✅ (2026-11-27) — mockup
+  `screens/okr-approvals.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `OKRApprovalsPage`: tiêu đề → **đầu trang eyebrow + `h1` + sub**; **3 nút tab cũ →
+  segmented control đúng spec design system** (ô 34px trong khung p-4px, đang chọn
+  `bg-ink text-canvas`, đếm bằng font-mono) — trước là 3 nút bo góc dùng
+  `bg-accent`; `Card` → **component `Panel` dùng chung** (tiêu đề NV + mã ở header,
+  badge trạng thái + nút "Xem chi tiết 2 nhóm" ở action); **bỏ hết 4 emoji làm icon**
+  (🔓 ↩️ ✅) sang icon lucide (LockOpen / Undo2 / Check) + thêm icon `Eye` cho nút xem;
+  nút "Trả lại" dùng `text-status-danger` + `border-status-danger-line` (trước dùng
+  `border-danger/40` — token không tồn tại). Không đổi nghiệp vụ: cùng API duyệt OKR,
+  **phê duyệt / trả lại kèm góp ý / mở lại cho NV sửa** với 3 hành động đúng trạng
+  thái, modal xem chi tiết 2 nhóm. Verify: 3 theme × 320/360/390/414/768/1024/1440
+  không tràn ngang, 0 lỗi JS; trang **không còn emoji**; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
