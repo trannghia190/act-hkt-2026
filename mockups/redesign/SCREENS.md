@@ -62,7 +62,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
-| T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ⬜ | ⬜ | ⬜ |
+| T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ✅ | ✅ | ✅ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
@@ -203,3 +203,23 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   duyệt) kèm người duyệt + thời điểm; link quay lại và link xem bảng công điều hướng
   đúng; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
+- **T6 · Duyệt đơn** ✅ (2026-11-26) — mockup `screens/approvals.html` (3 theme × desktop
+  1440 + mobile 390). Áp vào `ApprovalsPage`: đầu trang eyebrow + `h1` "Duyệt đơn" +
+  nút "Duyệt N đơn đã chọn" / "Tải lại" (icon lucide, có tooltip nói rõ chỉ ghi 1 dòng
+  audit cho cả lô); **3 tab cũ → segmented control** đúng spec design system (ô 34px
+  trong khung p-4px, đang chọn `bg-ink text-canvas`, đếm bằng font-mono) — trước là 3
+  nút bo góc có emoji ⏳/✓/✕; bộ lọc gộp 1 panel (tìm kiếm trong ô fld · Loại · Ngày);
+  bảng: mã đơn rút gọn 8 ký tự, tiêu đề viết tắt 9.5px, **chip điều kiện ✅/❌ vẫn hiện
+  ngay trên dòng** (tiêu chí D1) nhưng đổi từ emoji sang icon lucide, cột Điều kiện
+  `whitespace-nowrap` để không vỡ từng chữ; **mobile đổi sang danh sách 2 dòng** (NV +
+  badge quá hạn/tự duyệt · thời gian + loại đơn · chip điều kiện · nút Từ chối / Duyệt
+  / Chi tiết) — trước là bảng 9 cột bị tràn; bỏ hết emoji (⏳ quá hạn, 📎 đính kèm, 💬
+  ý kiến, ✓ toast); chuẩn hoá nhãn về sentence case (Từ chối / Duyệt / Xác nhận từ
+  chối). Không đổi nghiệp vụ: duyệt đơn / từ chối bắt buộc lý do / duyệt hàng loạt 1
+  audit log, cùng API `/requests/inbox` + `/history` + `/approve` + `/reject` +
+  `/bulk-approve`. Verify: 3 theme × 320/360/390/414/768/1440 không tràn ngang, 0 lỗi
+  JS; segmented tab chuyển đúng số dòng (131 / 26 / 5); lọc loại + tìm kiếm lọc đúng;
+  **nút "Xác nhận từ chối" disable khi bỏ trống lý do và bật khi đã nhập** (tiêu chí D1);
+  nút duyệt hàng loạt hiện đúng số đơn đã chọn (3); bảng vừa khung 1440 — trước là
+  1150px trong khung 1138px nên cắt mất nút thao tác; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.

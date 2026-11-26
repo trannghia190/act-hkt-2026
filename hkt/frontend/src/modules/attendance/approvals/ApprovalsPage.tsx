@@ -6,6 +6,15 @@ import { Modal } from '../../../components/common/Modal';
 import { useAuth } from '../../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { AttendanceRequestItem } from '../requests/requestStore';
+import {
+  Check,
+  Clock,
+  Inbox,
+  MessageSquare,
+  Paperclip,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 
 export const ApprovalsPage: React.FC = () => {
   const { user } = useAuth();
@@ -174,116 +183,130 @@ export const ApprovalsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Toast */}
       {successToast && (
-        <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold flex items-center gap-2 animate-bounce">
-          <span>✓</span>
+        <div className="fixed top-16 right-6 z-[100] flex items-center gap-2 rounded-lg bg-status-ok px-4 py-2.5 text-xs font-semibold text-on-ok shadow-lg animate-bounce">
+          <Check className="h-3.5 w-3.5 shrink-0" />
           <span>{successToast}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Phê Duyệt Đơn Nhóm (Manager Approvals)</h1>
+      {/* Header — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Inbox className="h-3.5 w-3.5" />
+            Hộp thư duyệt của quản lý
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Duyệt hàng loạt đơn xin nghỉ phép, làm từ xa (WFH), làm thêm giờ (OT) và giải trình vi phạm của nhân viên
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Duyệt đơn
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Nghỉ phép · WFH · đi muộn / về sớm · bổ sung chấm công
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedIds.length > 0 && activeTab === 'PENDING' && (
-            <Button variant="primary" size="sm" onClick={handleBulkApprove}>
-              ✓ Phê Duyệt Hàng Loạt ({selectedIds.length} Đơn)
+            <Button variant="primary" size="md" onClick={handleBulkApprove}
+              title={`Duyệt ${selectedIds.length} đơn đã chọn — chỉ ghi 1 dòng audit cho cả lô`}>
+              <Check className="h-4 w-4" />
+              Duyệt {selectedIds.length} đơn đã chọn
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={loadInbox} disabled={refreshing}>
-            {refreshing ? '↻ Đang tải…' : '↻ Tải lại'}
+          <Button variant="outline" size="md" onClick={loadInbox} disabled={refreshing}
+            title="Tải lại danh sách đơn từ server">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Đang tải…' : 'Tải lại'}
           </Button>
         </div>
       </div>
 
-      {/* Tabs & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setActiveTab('PENDING');
-              setSelectedIds([]);
-            }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === 'PENDING'
-                ? 'bg-status-warn-soft/70 text-status-warn border border-status-warn-line'
-                : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <span>⏳ Chờ Phê Duyệt</span>
-            <span className="px-1.5 py-0.2 bg-status-warn-line text-status-warn rounded-full text-[10px] font-bold">
-              {pendingCount}
-            </span>
-          </button>
+      {/* Tabs — mockup `.seg` (segmented control 3 mục) */}
+      <div
+        role="group"
+        aria-label="Trạng thái duyệt"
+        className="grid max-w-[460px] grid-cols-3 gap-1 rounded-xl border border-line bg-canvas p-1"
+      >
+        {([
+          { key: 'PENDING' as const, label: 'Chờ duyệt', cnt: pendingCount },
+          { key: 'APPROVED' as const, label: 'Đã duyệt', cnt: approvedCount },
+          { key: 'REJECTED' as const, label: 'Bị từ chối', cnt: rejectedCount },
+        ]).map(t => {
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => { setActiveTab(t.key); setSelectedIds([]); }}
+              className={`flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-bold transition-colors ${
+                active ? 'bg-ink text-canvas' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
+              }`}
+            >
+              {t.label}
+              <span className="font-mono text-[10.5px] opacity-65">{t.cnt}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <button
-            onClick={() => {
-              setActiveTab('APPROVED');
-              setSelectedIds([]);
-            }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === 'APPROVED'
-                ? 'bg-status-ok-soft/70 text-status-ok border border-status-ok-line'
-                : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <span>✓ Đã Phê Duyệt</span>
-            <span className="px-1.5 py-0.2 bg-status-ok-line text-status-ok rounded-full text-[10px] font-bold">
-              {approvedCount}
-            </span>
-          </button>
+      {/* Filter panel — mockup `.filters` */}
+      <div className="rounded-[13px] border border-line bg-surface p-3 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex h-[34px] min-w-[220px] flex-1 items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+            <input
+              type="text"
+              placeholder="Tìm theo tên NV, mã đơn, lý do..."
+              value={searchKeyword}
+              onChange={e => setSearchKeyword(e.target.value)}
+              className="w-full border-0 bg-transparent p-0 text-xs text-ink outline-none placeholder:text-ink-muted"
+            />
+          </label>
 
-          <button
-            onClick={() => {
-              setActiveTab('REJECTED');
-              setSelectedIds([]);
-            }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === 'REJECTED'
-                ? 'bg-status-danger-soft/70 text-status-danger border border-status-danger-line'
-                : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <span>✕ Bị Từ Chối</span>
-            <span className="px-1.5 py-0.2 bg-status-danger-line text-status-danger rounded-full text-[10px] font-bold">
-              {rejectedCount}
-            </span>
-          </button>
-        </div>
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Loại</span>
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              className="max-w-[150px] border-0 bg-transparent p-0 text-xs font-medium text-ink outline-none"
+            >
+              <option value="ALL">Tất cả loại</option>
+              <option value="LEAVE">Nghỉ phép</option>
+              <option value="WFH">WFH</option>
+              <option value="LATE_EARLY">Đi muộn / về sớm</option>
+              <option value="ADJUST">Bổ sung công</option>
+            </select>
+          </label>
 
-        <div>
-          <input
-            type="text"
-            placeholder="Tìm theo tên NV, mã đơn, lý do..."
-            value={searchKeyword}
-            onChange={e => setSearchKeyword(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent w-64"
-          />
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink">
-            <option value="ALL">Tất cả loại</option>
-            <option value="LEAVE">Nghỉ phép</option>
-            <option value="WFH">WFH</option>
-            <option value="LATE_EARLY">Đi muộn / về sớm</option>
-            <option value="ADJUST">Bổ sung công</option>
-          </select>
-          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="ml-2 text-xs px-2 py-1.5 rounded-lg border border-line bg-surface text-ink" />
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Ngày</span>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={e => setFilterDate(e.target.value)}
+              className="w-[112px] border-0 bg-transparent p-0 text-xs text-ink outline-none"
+            />
+          </label>
         </div>
       </div>
 
-      {/* Approvals Table */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[1150px] text-left border-collapse text-xs">
+      {/* Danh sách đơn — mockup `.panel` (desktop bảng · mobile danh sách 2 dòng) */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+            {activeTab === 'PENDING' ? 'Đơn chờ duyệt' : activeTab === 'APPROVED' ? 'Đơn đã duyệt' : 'Đơn bị từ chối'}
+          </h2>
+          <span className="ml-auto font-mono text-[10.5px] text-ink-muted">
+            {currentTabItems.length} / {requests.length}
+          </span>
+        </div>
+
+        {/* Desktop: bảng */}
+        <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[1120px] text-left border-collapse text-[11.5px]">
           <thead>
-            <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
+            <tr className="bg-canvas text-ink-secondary">
               {activeTab === 'PENDING' && (
-                <th className="py-3 px-4 w-10">
+                <th className="w-10 border-b border-line px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={selectedIds.length === currentTabItems.length && currentTabItems.length > 0}
@@ -295,14 +318,14 @@ export const ApprovalsPage: React.FC = () => {
                   />
                 </th>
               )}
-              <th className="py-3 px-4">Mã Đơn</th>
-              <th className="py-3 px-4">Nhân Viên</th>
-              <th className="py-3 px-4">Loại Đơn</th>
-              <th className="py-3 px-4">Thời Gian &amp; Thời Lượng</th>
-              <th className="py-3 px-4">Điều Kiện</th>
-              <th className="py-3 px-4">Lý Do Đề Xuất</th>
-              <th className="py-3 px-4">Gửi Lúc</th>
-              <th className="py-3 px-4 text-right">Thao Tác</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Mã Đơn</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nhân Viên</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Loại Đơn</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thời Gian &amp; Thời Lượng</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Điều Kiện</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Lý Do Đề Xuất</th>
+              <th className="border-b border-line px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Gửi Lúc</th>
+              <th className="border-b border-line px-3 py-2.5 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -316,63 +339,76 @@ export const ApprovalsPage: React.FC = () => {
               currentTabItems.map(item => (
                 <tr key={item.id} className="hover:bg-canvas/40 transition-colors">
                   {activeTab === 'PENDING' && (
-                    <td className="py-3 px-4">
+                    <td className="w-10 px-3 py-2.5">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(item.id)}
                         onChange={() => toggleSelect(item.id)}
+                        aria-label={`Chọn đơn ${item.requesterName}`}
                       />
                     </td>
                   )}
-                  <td className="py-3 px-4 font-mono font-medium text-ink">
-                    <Link to={`/attendance/requests/${item.id}`} className="hover:text-accent hover:underline" title="Xem chi tiết đơn">
-                      {item.id}
+                  <td className="px-3 py-2.5">
+                    <Link to={`/attendance/requests/${item.id}`} className="font-mono font-medium text-ink hover:text-accent hover:underline" title="Xem chi tiết đơn">
+                      {item.id.slice(0, 8)}
                     </Link>
                     {item.status === 'PENDING' && item.createdAt && Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) >= 2 && (
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-danger-soft text-status-danger">⏰ Quá hạn</span>
+                      <span className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-status-danger-soft px-1.5 py-0.5 text-[10px] font-semibold text-status-danger">
+                        <Clock className="h-2.5 w-2.5" />
+                        Quá hạn
+                      </span>
                     )}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-3 py-2.5">
                     <div className="font-semibold text-ink">
                       {item.requesterName}
                       {item.selfRequest && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn font-medium align-middle">
+                        <span className="ml-1.5 inline-block rounded-md bg-status-warn-soft px-1.5 py-0.5 align-middle text-[10px] font-medium text-status-warn">
                           Đơn của tôi — tự duyệt
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-ink-muted font-mono">{item.requesterCode} · {item.team}</div>
+                    <div className="font-mono text-[10.5px] text-ink-muted">{item.requesterCode} · {item.team}</div>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-accent-dark">{item.typeName}</span>
+                  <td className="px-3 py-2.5">
+                    <span className="block whitespace-normal font-semibold leading-snug text-accent-dark">{item.typeName}</span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-3 py-2.5">
                     <div className="font-mono text-ink-secondary">{item.startDate} {item.startDate !== item.endDate ? `→ ${item.endDate}` : ''}</div>
                     <div className="text-[11px] font-medium text-ink">{item.durationText}</div>
                   </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-col gap-1 text-[10px]">
-                      <span className="text-status-ok">✅ Trong quota</span>
-                      <span className="text-status-ok">✅ Nộp đúng hạn</span>
+                  <td className="px-3 py-2.5">
+                    {/* Chip ✅/❌ điều kiện hiện NGAY trên dòng — không phải mở mới thấy */}
+                    <div className="flex flex-col gap-1 whitespace-nowrap text-[10.5px]">
+                      <span className="inline-flex items-center gap-1 font-semibold text-status-ok">
+                        <Check className="h-3 w-3 shrink-0" />
+                        Trong quota
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-status-ok">
+                        <Check className="h-3 w-3 shrink-0" />
+                        Nộp đúng hạn
+                      </span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-ink-secondary max-w-xs">
-                    <div>{item.reason}</div>
+                  <td className="max-w-xs px-3 py-2.5 text-ink-secondary">
+                    <div className="truncate">{item.reason}</div>
                     {!!item.attachmentCount && (
-                      <Link to={`/attendance/requests/${item.id}`} className="inline-block text-[11px] text-accent underline mt-0.5">
-                        📎 {item.attachmentCount} giấy tờ đính kèm
+                      <Link to={`/attendance/requests/${item.id}`} className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-accent-dark">
+                        <Paperclip className="h-3 w-3" />
+                        {item.attachmentCount} giấy tờ đính kèm
                       </Link>
                     )}
                     {item.approverComment && (
-                      <div className="text-[11px] text-accent mt-0.5 font-medium">
-                        💬 Ý kiến duyệt: {item.approverComment}
+                      <div className="mt-0.5 flex items-start gap-1 text-[11px] font-medium text-accent-dark">
+                        <MessageSquare className="mt-px h-3 w-3 shrink-0" />
+                        <span className="truncate">Ý kiến duyệt: {item.approverComment}</span>
                       </div>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-ink-muted font-mono">{item.createdAt}</td>
-                  <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5 font-mono text-ink-muted">{item.createdAt}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right">
                     <Link to={`/attendance/requests/${item.id}`}
-                      className="inline-block text-[11px] px-2 py-1 rounded border border-line text-accent-dark hover:bg-accent-soft">
+                      className="mr-1 inline-flex h-7 items-center rounded-lg border border-line px-2 text-[11.5px] font-semibold text-accent-dark hover:bg-accent-soft">
                       Chi tiết
                     </Link>
                     {item.status === 'PENDING' ? (
@@ -385,7 +421,7 @@ export const ApprovalsPage: React.FC = () => {
                             setRejectReason('');
                           }}
                         >
-                          Từ Chối
+                          Từ chối
                         </Button>
                         <Button
                           variant="primary"
@@ -410,6 +446,91 @@ export const ApprovalsPage: React.FC = () => {
           </tbody>
         </table>
         </div>
+
+        {/* Mobile: danh sách 2 dòng — NV + trạng thái · thời gian · chip điều kiện · thao tác */}
+        <div className="flex flex-col gap-2 p-3 md:hidden">
+          {currentTabItems.length === 0 ? (
+            <p className="px-1 py-6 text-center text-[11.5px] text-ink-muted">
+              Không có đơn nào trong mục này.
+            </p>
+          ) : (
+            currentTabItems.map(item => (
+              <div key={item.id} className="rounded-xl border border-line bg-surface p-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-[12.5px] font-bold leading-snug text-ink">{item.requesterName}</span>
+                  <span className="ml-auto flex shrink-0 items-center gap-1">
+                    {item.status === 'PENDING' && item.createdAt
+                      && Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 86400000) >= 2 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-status-danger-soft px-1.5 py-0.5 text-[10px] font-semibold text-status-danger">
+                        <Clock className="h-2.5 w-2.5" />
+                        Quá hạn
+                      </span>
+                    )}
+                    {item.selfRequest && (
+                      <span className="rounded-md bg-status-warn-soft px-1.5 py-0.5 text-[10px] font-medium text-status-warn">Tự duyệt</span>
+                    )}
+                    {item.status !== 'PENDING' && (
+                      <Badge variant={item.status === 'APPROVED' ? 'ok' : 'danger'}>
+                        {item.status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'}
+                      </Badge>
+                    )}
+                  </span>
+                </div>
+
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-secondary">
+                  <span className="font-mono text-[10.5px] text-ink-muted">{item.startDate}</span>
+                  <span className="font-semibold text-ink">{item.typeName}</span>
+                  <span className="font-medium">{item.durationText}</span>
+                </div>
+
+                {/* Chip điều kiện ngay trên dòng */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px]">
+                  <span className="inline-flex items-center gap-1 font-semibold text-status-ok">
+                    <Check className="h-3 w-3 shrink-0" />
+                    Trong quota
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-status-ok">
+                    <Check className="h-3 w-3 shrink-0" />
+                    Nộp đúng hạn
+                  </span>
+                  {!!item.attachmentCount && (
+                    <span className="inline-flex items-center gap-1 font-medium text-accent-dark">
+                      <Paperclip className="h-3 w-3 shrink-0" />
+                      {item.attachmentCount} tệp
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-ink-secondary">{item.reason}</p>
+
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {item.status === 'PENDING' ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setRejectingItem(item); setRejectReason(''); }}
+                      >
+                        Từ chối
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => { setApprovingItem(item); setApproveComment('Đồng ý phê duyệt'); }}
+                      >
+                        Duyệt
+                      </Button>
+                    </>
+                  ) : null}
+                  <Link to={`/attendance/requests/${item.id}`}
+                    className="ml-auto inline-flex h-7 items-center rounded-lg border border-line px-2.5 text-[11.5px] font-semibold text-accent-dark">
+                    Chi tiết
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Modal Duyệt đơn */}
@@ -417,7 +538,7 @@ export const ApprovalsPage: React.FC = () => {
         <Modal
           isOpen={true}
           onClose={() => setApprovingItem(null)}
-          title={`Phê Duyệt Đơn: ${approvingItem.id}`}
+          title={`Phê duyệt đơn: ${approvingItem.id}`}
         >
           <div className="space-y-4 text-xs">
             <div className="p-3 bg-canvas rounded-lg space-y-1">
@@ -443,7 +564,7 @@ export const ApprovalsPage: React.FC = () => {
                 Hủy
               </Button>
               <Button variant="primary" size="sm" onClick={handleSingleApprove}>
-                Xác Nhận Phê Duyệt
+                Xác nhận phê duyệt
               </Button>
             </div>
           </div>
@@ -455,7 +576,7 @@ export const ApprovalsPage: React.FC = () => {
         <Modal
           isOpen={true}
           onClose={() => setRejectingItem(null)}
-          title={`Từ Chối Đơn: ${rejectingItem.id}`}
+          title={`Từ chối đơn: ${rejectingItem.id}`}
         >
           <form onSubmit={handleSingleReject} className="space-y-4 text-xs">
             <div className="p-3 bg-canvas rounded-lg space-y-1">
@@ -481,7 +602,7 @@ export const ApprovalsPage: React.FC = () => {
                 Hủy
               </Button>
               <Button variant="outline" size="sm" type="submit" disabled={!rejectReason.trim()} className="text-status-danger border-status-danger hover:bg-status-danger/10">
-                Xác Nhận Từ Chối
+                Xác nhận từ chối
               </Button>
             </div>
           </form>
