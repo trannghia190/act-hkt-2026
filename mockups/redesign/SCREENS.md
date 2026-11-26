@@ -84,7 +84,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
-| O1 | Tổng quan OKR | `/okr/dashboard` | `OKRDashboardPage` | 🟡 | ⬜ | ⬜ |
+| O1 | Tổng quan OKR | `/okr/dashboard` | `OKRDashboardPage` | ✅ | ✅ | ✅ |
 | O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ⬜ | ⬜ | ⬜ |
 | O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ⬜ | ⬜ | ⬜ |
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ⬜ | ⬜ | ⬜ |
@@ -311,3 +311,21 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   toggle = 3 × 25 sự kiện API trả về; đổi 1 toggle → **lưu thẳng DB** và hiện nút
   Hoàn tác; bấm Hoàn tác → DB trở lại giá trị cũ; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **O1 · Tổng quan OKR** ✅ (2026-11-27) — mockup `screens/okr-dashboard.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `OKRDashboardPage`: tiêu đề cũ "Bảng Điều Khiển Mục
+  Tiêu & Hiệu Suất (OKR Dashboard)" → **đầu trang eyebrow + `h1` "Tổng quan OKR" + sub**;
+  select chu kỳ cao 36px bo 10px có `aria-label`; **banner phase** đổi từ gradient cứng
+  sang gradient mềm theo token `accent-line`/`accent-soft`, pill phase bo tròn có icon
+  `Target`, **bỏ emoji ⏱ / ✓ / ⏳ / 🚀** sang icon lucide (`Timer`, `CheckCircle2`,
+  `Clock`, `Rocket`); trạng thái check-in `CLOSED` nay hiện dạng pill xám có nhãn đầy
+  đủ (trước không hiện gì — mất thông tin); nút "Xem nội dung" thành nút có icon
+  `ChevronRight`; **3 thẻ điểm** dùng chung layout `.stats`: nhãn 10px uppercase
+  `font-extrabold`, số `font-display` 28px, thanh tiến độ 6px bo tròn, badge "Tiến độ
+  0%" chuyển `ok` → `gray` (0% không phải đạt); card mục tiêu công ty chuyển sang panel
+  13px + khối `status-info-soft` thay emoji 📌; **mobile header panel `flex-wrap`** để
+  tiêu đề dài không đẩy số đếm ra ngoài. Không đổi nghiệp vụ: cùng API
+  `/okr/dashboard` + `/okr/cycles`, cùng công thức điểm TB (Business + People)/2,
+  mục tiêu công ty 20% vẫn tách riêng. Verify: 3 theme × 320/360/390/414/768/1024/1440
+  không tràn ngang, 0 lỗi JS; phase/đếm ngược/điểm/việc cần làm/đề xuất khớp API cho
+  cả `136ACT` (nhân viên) và `05ACT` (quản lý); `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.
