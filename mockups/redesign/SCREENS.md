@@ -86,7 +86,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 |---|---|---|---|---|---|---|
 | O1 | Tổng quan OKR | `/okr/dashboard` | `OKRDashboardPage` | ✅ | ✅ | ✅ |
 | O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ✅ | ✅ | ✅ |
-| O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ⬜ | ⬜ | ⬜ |
+| O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ✅ | ✅ | ✅ |
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ⬜ | ⬜ | ⬜ |
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ⬜ | ⬜ | ⬜ |
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ⬜ | ⬜ | ⬜ |
@@ -347,3 +347,17 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   API `isLocked=true` → nút Gửi/Lưu **ẩn** và banner khoá sửa **hiện**; `tsc` +
   `build` + `check-consistency` + `test_theme_responsive` + `test_mockup_responsive`
   sạch.
+- **O3 · Chu kỳ OKR** ✅ (2026-11-27) — mockup `screens/okr-cycles.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `OKRCyclesPage`: tiêu đề "Quản Lý Chu Kỳ OKR" →
+  **đầu trang eyebrow + `h1` "Chu kỳ OKR" + sub**, nút "Làm mới" / "Chu kỳ mới" có
+  icon lucide (`RefreshCw` / `Plus`) thay emoji ↻ / +; `Card` → **panel 13px** có header
+  "Danh sách chu kỳ" + số đếm; header bảng viết tắt 9.5px uppercase `font-extrabold`
+  theo spec, ô `px-3` (trước `px-4` khiến bảng rộng dần), cột Năm dùng `font-mono`;
+  nút "Cập nhật" / "Xoá" có icon `Pencil` / `Trash2`; khối quy tắc bo 13px + đậm nhãn
+  hành động; **mobile đổi từ bảng 4 cột sang danh sách card 2 dòng** (dòng 1 = năm +
+  tên + badge · dòng 2 = 3 phase NV/QL · dòng 3 = nút hành động) — bảng 4 cột không
+  vừa 390px. Không đổi nghiệp vụ: cùng API `/okr/cycles` + `activate` / `deactivate` /
+  `DELETE` (kèm modal xoá cứng 409), giữ nguyên luật "1 chu kỳ active" và các nhãn
+  trạng thái NV/QL. Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang,
+  0 lỗi JS; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.

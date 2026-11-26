@@ -5,6 +5,7 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { Cycle, cycleStatusMeta, monthsLabel, PHASE_STATUS_LABEL } from './cycleTypes';
+import { CalendarRange, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 export const OKRCyclesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -118,29 +119,47 @@ export const OKRCyclesPage: React.FC = () => {
     <div className="space-y-5 max-w-6xl mx-auto pb-12">
       {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Quản Lý Chu Kỳ OKR</h1>
-          <p className="text-xs text-ink-muted mt-1">Danh sách các chu kỳ theo năm · tạo bản nháp, cấu hình 3 phase, kích hoạt để đưa vào sử dụng, chốt &amp; khoá khi kết thúc.</p>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <CalendarRange className="h-3.5 w-3.5" />
+            Quản trị OKR
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Chu kỳ OKR
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Danh sách các chu kỳ theo năm · tạo bản nháp, cấu hình 3 phase, kích hoạt để đưa vào sử dụng, chốt &amp; khoá khi kết thúc.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={load}>↻ Làm mới</Button>
-          <Button size="sm" variant="primary" onClick={() => navigate('/okr/cycles/new')}>+ Chu kỳ mới</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="md" variant="outline" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+          </Button>
+          <Button size="md" variant="primary" onClick={() => navigate('/okr/cycles/new')}>
+            <Plus className="h-3.5 w-3.5" /> Chu kỳ mới
+          </Button>
         </div>
       </div>
 
       {cycles.length === 0 ? (
         <Card><div className="p-8 text-center text-xs text-ink-muted">Chưa có chu kỳ OKR. Bấm “+ Chu kỳ mới” để tạo bản nháp đầu tiên.</div></Card>
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
+        <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+            <span className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Danh sách chu kỳ</span>
+            <span className="font-mono text-[10.5px] text-ink-muted">{cycles.length} chu kỳ</span>
+          </div>
+          {/* Desktop: bảng 4 cột · Mobile: mỗi chu kỳ 1 card 2 dòng */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-line bg-canvas">
-                  <th className="px-4 py-2.5 font-semibold">Năm</th>
-                  <th className="px-4 py-2.5 font-semibold">Chu kỳ</th>
-                  <th className="px-4 py-2.5 font-semibold">Timeline 3 phase</th>
-                  <th className="px-4 py-2.5 font-semibold text-right">Thao tác</th>
+                <tr className="border-b border-line bg-canvas text-left">
+                  <th className="px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Năm</th>
+                  <th className="px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Chu kỳ</th>
+                  <th className="px-3 py-2.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Timeline 3 phase</th>
+                  <th className="px-3 py-2.5 text-right text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,8 +167,8 @@ export const OKRCyclesPage: React.FC = () => {
                   const meta = cycleStatusMeta(c.status);
                   return (
                     <tr key={c.id} className="border-b border-line last:border-0 align-top hover:bg-canvas/60">
-                      <td className="px-4 py-3 font-bold text-ink whitespace-nowrap">{c.year}</td>
-                      <td className="px-4 py-3 min-w-[190px]">
+                      <td className="whitespace-nowrap px-3 py-3 font-mono text-[12px] font-bold text-ink">{c.year}</td>
+                      <td className="min-w-[190px] px-3 py-3">
                         <div className="font-semibold text-ink">{c.name}</div>
                         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                           <Badge variant={meta.variant}>{meta.label}</Badge>
@@ -158,7 +177,7 @@ export const OKRCyclesPage: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 min-w-[280px]">
+                      <td className="min-w-[280px] px-3 py-3">
                         <div className="space-y-1">
                           {(c.phases || []).slice(0, 3).map((p) => {
                             const eff = p.effective_status || 'upcoming';
@@ -179,11 +198,13 @@ export const OKRCyclesPage: React.FC = () => {
                           })}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-2 flex-wrap">
                           <Button size="sm" variant="ghost" onClick={() => navigate(`/okr/cycles/${c.id}?mode=view`)}>Xem</Button>
                           {c.status !== 'closed' && (
-                            <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${c.id}`)}>Cập nhật</Button>
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${c.id}`)}>
+                              <Pencil className="h-3 w-3" /> Cập nhật
+                            </Button>
                           )}
                           {c.status === 'draft' && (
                             <Button
@@ -214,6 +235,7 @@ export const OKRCyclesPage: React.FC = () => {
                             disabled={deletingId === c.id}
                             title={`Xoá chu kỳ và toàn bộ dữ liệu OKR của năm ${c.year} — sau đó có thể tạo lại chu kỳ cùng năm`}
                           >
+                            <Trash2 className="h-3 w-3" />
                             {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
                           </Button>
                         </div>
@@ -224,15 +246,94 @@ export const OKRCyclesPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </Card>
+
+          {/* Mobile — danh sách 2 dòng: dòng 1 = năm + tên + badge, dòng 2 = phase + nút */}
+          <div className="divide-y divide-line-soft md:hidden">
+            {cycles.map((c) => {
+              const meta = cycleStatusMeta(c.status);
+              return (
+                <div key={c.id} className="p-3.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-mono text-[11px] font-bold text-ink">{c.year}</div>
+                      <div className="text-[13px] font-bold text-ink">{c.name}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                        {c.status === 'active' && c.year === new Date().getFullYear() && (
+                          <Badge variant="accent">Chu kỳ hiện tại</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1">
+                    {(c.phases || []).slice(0, 3).map((p) => {
+                      const eff = p.effective_status || 'upcoming';
+                      return (
+                        <div key={p.key} className="flex flex-wrap items-center gap-1.5">
+                          <span className="w-[88px] shrink-0 text-[11px] text-ink-secondary">{p.name || p.key}</span>
+                          <Badge variant={eff === 'active' ? 'ok' : eff === 'locked' ? 'gray' : 'warn'}>
+                            NV: {PHASE_STATUS_LABEL[eff] || eff}
+                          </Badge>
+                          {p.review_start && p.review_due && (
+                            <Badge variant={(p.manager_status || 'upcoming') === 'active' ? 'ok' : p.manager_status === 'locked' ? 'gray' : 'warn'}>
+                              QL: {PHASE_STATUS_LABEL[p.manager_status || 'upcoming']}
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line-soft pt-2.5">
+                    <Button size="sm" variant="ghost" onClick={() => navigate(`/okr/cycles/${c.id}?mode=view`)}>Xem</Button>
+                    {c.status !== 'closed' && (
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${c.id}`)}>Cập nhật</Button>
+                    )}
+                    {c.status === 'draft' && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => changeStatus(c, 'activate')}
+                        disabled={busyId === c.id || Boolean(activeCycle)}
+                        title={activeCycle ? `Đang có chu kỳ hoạt động: ${activeCycle.name} — tạm ẩn hoặc chốt & khoá chu kỳ đó trước` : undefined}
+                      >
+                        {busyId === c.id ? 'Đang xử lý...' : 'Kích hoạt'}
+                      </Button>
+                    )}
+                    {c.status === 'active' && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus(c, 'deactivate')} disabled={busyId === c.id}>
+                        {busyId === c.id ? 'Đang xử lý...' : 'Tạm ẩn'}
+                      </Button>
+                    )}
+                    {c.status === 'closed' && (
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${c.id}`)}>Mở lại</Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => removeCycle(c)}
+                      disabled={deletingId === c.id}
+                      title={`Xoá chu kỳ và toàn bộ dữ liệu OKR của năm ${c.year} — sau đó có thể tạo lại chu kỳ cùng năm`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
-      <div className="rounded-lg border border-line bg-canvas p-3 text-[11px] text-ink-muted">
-        <b>Quy tắc</b>: mỗi năm chỉ có 1 chu kỳ OKR (không tạo trùng năm), và toàn hệ thống chỉ 1 chu kỳ hoạt động tại một thời điểm.
-        <b> Kích hoạt</b>: chu kỳ nháp trở thành chu kỳ đang hoạt động.
-        <b> Tạm ẩn</b>: đưa chu kỳ về nháp, giữ nguyên dữ liệu, dùng khi cấu hình nhầm hoặc chuẩn bị trước.
-        <b> Xoá</b>: xoá vĩnh viễn chu kỳ cùng toàn bộ OKR/hồ sơ của năm — sau đó có thể tạo lại cùng năm.
-        <b> Chốt &amp; khoá</b>: kết thúc chu kỳ, mọi màn chuyển sang chỉ đọc; chỉ HR mở lại được kèm lý do (ghi audit).
+      {/* Quy tắc quản lý chu kỳ */}
+      <div className="rounded-[13px] border border-line bg-canvas p-3.5 text-[11px] leading-relaxed text-ink-muted">
+        <span className="font-bold text-ink-secondary">Quy tắc:</span> mỗi năm chỉ có 1 chu kỳ OKR (không tạo trùng năm), và toàn hệ thống chỉ 1 chu kỳ hoạt động tại một thời điểm.{' '}
+        <span className="font-bold text-ink-secondary">Kích hoạt:</span> chu kỳ nháp trở thành chu kỳ đang hoạt động.{' '}
+        <span className="font-bold text-ink-secondary">Tạm ẩn:</span> đưa chu kỳ về nháp, giữ nguyên dữ liệu, dùng khi cấu hình nhầm hoặc chuẩn bị trước.{' '}
+        <span className="font-bold text-ink-secondary">Xoá:</span> xoá vĩnh viễn chu kỳ cùng toàn bộ OKR/hồ sơ của năm — sau đó có thể tạo lại cùng năm.{' '}
+        <span className="font-bold text-ink-secondary">Chốt &amp; khoá:</span> kết thúc chu kỳ, mọi màn chuyển sang chỉ đọc; chỉ HR mở lại được kèm lý do (ghi audit).
       </div>
 
       {/* Ô hỏi xoá cứng: chu kỳ đang bị vướng dữ liệu nên cần HR xác nhận thêm */}
