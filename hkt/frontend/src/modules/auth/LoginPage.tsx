@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
-import { ActHktLogo } from '../../components/common/ActHktLogo';
 import { isWebAuthnSupported, loginWithPasskey as requestPasskeyLogin } from '../../utils/webauthn';
 
 export const LoginPage: React.FC = () => {
@@ -182,16 +182,34 @@ export const LoginPage: React.FC = () => {
         </aside>
 
         {/* ── Cột form ───────────────────────────────────────────────────── */}
-        <div className="flex min-h-screen items-center justify-center bg-surface p-5 sm:p-8 lg:min-h-0">
-          <div className="w-full max-w-md space-y-5">
-            {/* Logo chỉ hiện trên mobile — desktop đã có panel thương hiệu */}
-            <div className="flex justify-center pb-1 lg:hidden">
-              <ActHktLogo size="md" />
-            </div>
+        <div className="flex min-h-screen flex-col bg-surface lg:min-h-0 lg:flex-row lg:items-center lg:justify-center lg:p-8">
+          {/* Mobile hero — panel thương hiệu thu gọn (desktop đã có aside) */}
+          <div className="relative overflow-hidden bg-[#101114] px-[22px] pb-[28px] pt-[34px] lg:hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-60"
+              style={{
+                background:
+                  'radial-gradient(420px 220px at 12% 8%, rgba(227,29,26,.34), transparent 65%), radial-gradient(360px 240px at 92% 96%, rgba(227,29,26,.16), transparent 62%)',
+              }}
+            />
+            <img
+              src="/brand/ascend_logo_2_white.png"
+              alt="Ascend Technology"
+              className="relative h-[30px] w-auto"
+            />
+            <h2 className="relative mt-[22px] font-display text-[23px] font-extrabold leading-[1.2] tracking-[-0.03em] text-white">
+              Quản trị nhân sự<br />chuẩn doanh nghiệp.
+            </h2>
+            <p className="relative mt-[9px] text-[13px] leading-[1.55] text-[#9AA0AA]">
+              Chấm công, quản lý phép, đánh giá OKR và giải quyết khiếu nại — trong một hệ thống duy nhất.
+            </p>
+          </div>
 
+          <div className="flex w-full flex-1 flex-col gap-5 px-5 pb-6 pt-[22px] sm:px-8 sm:pt-8 lg:max-w-md lg:flex-none lg:p-0">
             <div className="space-y-5">
           <div>
-            <h2 className="text-[22px] font-extrabold tracking-tight text-ink">Đăng nhập tài khoản</h2>
+            <h2 className="text-[19px] font-extrabold tracking-tight text-ink lg:text-[22px]">Đăng nhập tài khoản</h2>
             <p className="text-[13px] text-ink-muted mt-1.5">
               Dùng tài khoản công ty do HR cấp · demo: <code className="font-mono font-bold text-accent">01HR</code> (HR), <code className="font-mono font-bold text-accent">05ACT</code> (Manager), <code className="font-mono font-bold text-accent">136ACT</code> (Nhân viên) — mật khẩu <code className="font-mono font-bold text-accent">123456</code>
             </p>
@@ -251,7 +269,7 @@ export const LoginPage: React.FC = () => {
               size="md"
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 font-bold"
+              className="w-full h-12 rounded-xl font-bold"
             >
               {loading ? 'Đang xác thực...' : 'Đăng Nhập Vào Hệ Thống'}
             </Button>
@@ -267,9 +285,9 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={handlePasskeyLogin}
                   disabled={passkeyLoading}
-                  className="w-full py-2.5 rounded-lg border border-line bg-surface text-xs font-bold text-ink hover:border-accent hover:text-accent transition disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-xl border border-line bg-surface text-xs font-bold text-ink hover:border-accent hover:text-accent transition disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  <span aria-hidden>🔐</span>
+                  <KeyRound className="h-4 w-4" aria-hidden="true" />
                   {passkeyLoading ? 'Đang xác thực vân tay/Face ID...' : 'Đăng nhập bằng Passkey (Vân tay / Face ID)'}
                 </button>
               </>
@@ -278,7 +296,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Footer info */}
-        <div className="text-center text-[11px] text-ink-muted space-y-1">
+        <div className="mt-auto text-center text-[11px] text-ink-muted space-y-1 lg:mt-0">
           <p>Hệ thống hỗ trợ gửi thông báo và mã kích hoạt qua Gmail / Mailpit.</p>
           <p>
             Xem hộp thư giả lập SMTP tại: <a href="http://localhost:8025" target="_blank" rel="noreferrer" className="text-accent underline">http://localhost:8025</a>

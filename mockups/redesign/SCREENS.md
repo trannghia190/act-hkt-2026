@@ -133,3 +133,9 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 - **A1 · Login** ✅ — mockup `screens/login.html`; app `LoginPage` khớp mockup ở
   Midnight desktop + Bento mobile (logo ACT HR/ASCEND TECH, đủ 3 mã demo, divider
   "hoặc", passkey, footer 2 dòng). App vốn đã đúng nên bước 2 không cần sửa code.
+- **A1 · mobile hero** ✅ (2026-11-26) — nâng cấp theo `index.html`: **hero gradient
+  tối** (logo trắng + tiêu đề) trên mobile, form token bên dưới; giữ mã demo để
+  thao tác. Đã sửa cả mockup lẫn `LoginPage`. Passkey đổi emoji 🔐 → icon `KeyRound`;
+  nút chính/passkey 48px bo12. Kit: toolbar `fixed`→`sticky` (hết che đỉnh hero khi
+  khổ hẹp). Verify: desktop1440 + mobile390 × Bento/Midnight, không tràn, desktop
+  không regression. `tsc` + `build` sạch.

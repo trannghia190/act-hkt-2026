@@ -212,7 +212,7 @@ body {
 .font-mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
 
 /* ── Stage + frames ─────────────────────────────────────────────────────── */
-#stage { padding: 64px 24px 48px; display: flex; justify-content: flex-start; }
+#stage { padding: 24px 24px 48px; display: flex; justify-content: flex-start; }
 .frame {
   background: rgb(var(--canvas));
   color: rgb(var(--ink));
@@ -276,7 +276,7 @@ body {
 
 /* ── Toolbar (chèn bởi _kit.js) ─────────────────────────────────────────── */
 .kit-bar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  position: sticky; top: 0; left: 0; right: 0; z-index: 100;
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
   padding: 10px 20px; background: rgba(10,11,14,.92);
   border-bottom: 1px solid #26262e; backdrop-filter: blur(8px);
