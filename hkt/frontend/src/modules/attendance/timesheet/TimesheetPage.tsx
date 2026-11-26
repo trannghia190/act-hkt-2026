@@ -1,9 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { buildTimesheetXlsx } from './timesheetXlsx';
-import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bookmark,
+  CheckCircle2,
+  Download,
+  Link2,
+  Lock,
+  Megaphone,
+  Search,
+  Table2,
+  Users,
+  X,
+  Zap,
+} from 'lucide-react';
 
 interface TimesheetRow {
   id: string;
@@ -45,6 +59,8 @@ export const TimesheetPage: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [allowAfterLock, setAllowAfterLock] = useState(false);
   const [disputeWindowDays, setDisputeWindowDays] = useState(2);
+  // Ngày chốt kỳ (payroll_period.close_day) — API trả về, mặc định 1.
+  const [closeDay, setCloseDay] = useState(1);
   const [disputeDeadline, setDisputeDeadline] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
@@ -98,6 +114,7 @@ export const TimesheetPage: React.FC = () => {
         setIsLocked(d.status === 'locked');
         setAllowAfterLock(d.allowAdjustAfterLock === true);
         setDisputeWindowDays(Number(d.disputeWindowDays ?? 2));
+        setCloseDay(Number(d.closeDay ?? 1));
         setDisputeDeadline(d.disputeDeadline ?? null);
         const mapped: TimesheetRow[] = (d.rows || []).map((r: any, i: number) => ({
           id: String(i + 1), code: r.employeeCode, fullName: r.fullName, department: r.teamName || '—',
@@ -366,21 +383,45 @@ export const TimesheetPage: React.FC = () => {
     // NL đã có ở nhóm ký hiệu cố định phía trên — bỏ khỏi danh sách loại nghỉ để không lặp.
     ...leaveTypes.filter(t => t.code !== 'NL').map(t => ({ code: t.code, label: `${t.name} (thêm /0.50 nếu nghỉ nửa ngày)` })),
   ];
-  const legendRows: ({ code: string; label: string } | undefined)[][] = [];
-  for (let i = 0; i < symbolLegend.length; i += 2) legendRows.push([symbolLegend[i], symbolLegend[i + 1]]);
+  // Chỉ số tổng hợp cho stat row (mockup `.stats3`).
+  const departmentCount = new Set(rows.map(r => r.department).filter(d => d && d !== '—')).size;
+  // Tỉ lệ nhân viên ĐÃ có dữ liệu chấm công trong kỳ — đo được từ dữ liệu thật,
+  // không suy đoán theo "công chuẩn" (kỳ đang chạy thì phần lớn NV chưa chấm đủ).
+  const loggedDaysCount = rows.filter(r => r.actualWorkDays > 0).length;
+  const loggedDaysPct = rows.length ? Math.round((loggedDaysCount / rows.length) * 100) : 0;
+  // NV chưa có bất kỳ log công nào trong kỳ — cần HR rà soát.
+  const missingLogCount = rows.length - loggedDaysCount;
+  // Ngày chốt kỳ — đọc từ cấu hình payroll_period.close_day (API trả về cùng response).
+  const closeDayOfMonth = closeDay;
+  // Kỳ chốt là tháng kế tiếp của kỳ đang xem — hiển thị "đầu tháng sau" theo đúng kỳ.
+  const closeYm = (() => {
+    const [y, m] = selectedYm.split('-').map(Number);
+    const d = new Date(y, m, 1); // tháng kế tiếp: tháng gốc là chỉ số m (0-based) → tháng m+1
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const closeYmLabel = (() => {
+    const [y, m] = closeYm.split('-').map(Number);
+    return `${String(closeDayOfMonth).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+  })();
+
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">
-              Bảng Tổng Hợp Công &amp; Chốt Lương{' '}
-              <span className="whitespace-nowrap">(Master Timesheet)</span>
+      {/* Header — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Table2 className="h-3.5 w-3.5" />
+            Bảng công &amp; chốt lương
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Bảng công &amp; chốt
             </h1>
-            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'} className="shrink-0">{sheetStatus === 'locked' ? 'Đã khoá (hết hạn khiếu nại)' : sheetStatus === 'published' ? 'Đã chốt — đang nhận khiếu nại' : 'Đang mở (đang chạy)'}</Badge>
-            <span className="text-[11px] text-ink-muted ml-2">
+            <Badge variant={sheetStatus === 'locked' ? 'gray' : sheetStatus === 'published' ? 'warn' : 'ok'} className="shrink-0">
+              {sheetStatus === 'locked' ? 'Đã khoá' : sheetStatus === 'published' ? 'Đã chốt' : 'Đang mở'}
+            </Badge>
+            <span className="text-[11px] text-ink-muted">
               {sheetStatus === 'draft'
                 ? 'Nhân viên khiếu nại được ngay khi kỳ còn mở'
                 : sheetStatus === 'published'
@@ -394,35 +435,105 @@ export const TimesheetPage: React.FC = () => {
                   : allowAfterLock ? 'HR vẫn điều chỉnh được (lý do + audit)' : 'Chỉ đọc'}
             </span>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Bảng điều khiển 45 chỉ tiêu công, tự động tính trừ chuyên cần theo luật, cộng công thêm giờ (OT) và cho phép HR điều chỉnh kèm lưu vết
+          <p className="mt-1 text-xs text-ink-muted">
+            Kỳ {selectedMonth} · {rows.length} nhân viên ·{' '}
+            {monthDays.filter(d => d <= daysInSelectedMonth).length} cột ngày ·{' '}
+            {isCurrentOrFuture
+              ? 'Kỳ đang chạy — tự chốt ở đầu tháng sau'
+              : `Chu kỳ đóng ${closeYmLabel}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePublish} disabled={isLocked || sheetStatus === 'published' || isCurrentOrFuture}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="md"
+            className="hidden sm:inline-flex"
+            onClick={handleExportExcel}
+            disabled={displayedRows.length === 0}
+            title="Tải Excel 53 cột đúng các dòng đang hiển thị (bộ lọc nhóm, tìm kiếm, lọc nhanh)"
+          >
+            <Download className="h-4 w-4" />
+            Xuất Excel
+          </Button>
+          <Button variant="outline" size="md" onClick={handlePublish} disabled={isLocked || sheetStatus === 'published' || isCurrentOrFuture}
             title={isCurrentOrFuture
               ? 'Chỉ chốt được kỳ đã kết thúc — kỳ đang chạy tự chốt theo ngày chốt cấu hình ở đầu tháng sau'
               : sheetStatus === 'draft' ? 'Chốt kỳ đã kết thúc để mở cửa sổ khiếu nại' : 'Kỳ đã chốt/khoá'}>
-            📣 {sheetStatus === 'published' ? 'Đã chốt' : isCurrentOrFuture ? 'Chưa thể chốt' : 'Chốt bảng công'}
+            <Megaphone className="h-4 w-4" />
+            {sheetStatus === 'published' ? 'Đã chốt' : isCurrentOrFuture ? 'Chưa thể chốt' : 'Chốt bảng công'}
           </Button>
           <Button
-            variant={isLocked ? 'secondary' : 'primary'}
-            size="sm"
+            variant={isLocked ? 'secondary' : 'danger'}
+            size="md"
             onClick={handleLockPayroll}
             disabled={isLocked || sheetStatus !== 'published'}
             title={sheetStatus === 'draft' ? 'Phải chốt bảng công trước khi khoá' : (isLocked ? 'Kỳ đã khoá' : 'Khoá ngay sau khi xử lý xong khiếu nại (còn đơn mở sẽ hỏi khoá cưỡng bức, có ghi audit)')}
           >
-            {isLocked ? (allowAfterLock ? '🔒 Đã khoá (cho phép sửa theo cấu hình)' : '🔒 Đã Khóa Kỳ Công Tháng') : '🔒 Khóa Bảng Công Tháng'}
+            <Lock className="h-4 w-4" />
+            {isLocked ? 'Đã khoá kỳ công' : 'Khoá kỳ công'}
           </Button>
         </div>
       </div>
+
+      {/* Stat row — mockup `.stats3` */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs sm:p-[15px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <Users className="h-3.5 w-3.5 text-accent" />
+            Nhân viên
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {rows.length}
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-ink-muted">
+            {departmentCount} phòng ban · {displayedRows.length} dòng đang lọc
+          </div>
+        </div>
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs sm:p-[15px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+            Đã chấm công
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {loggedDaysPct}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">%</small>
+          </div>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-status-ok">
+            <ArrowUpRight className="h-3 w-3" />
+            {loggedDaysCount}/{rows.length} nhân viên có dữ liệu công
+          </div>
+          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line">
+            <div className="h-full rounded-full bg-status-ok" style={{ width: `${loggedDaysPct}%` }} />
+          </div>
+        </div>
+
+        <div className="col-span-2 rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs sm:col-span-1 sm:p-[15px]">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <AlertTriangle className="h-3.5 w-3.5 text-accent" />
+            Chưa có log công
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {missingLogCount}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">NV</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-status-warn">
+            {missingLogCount === 0
+              ? 'Mọi nhân viên đều đã có dữ liệu chấm công'
+              : `Cần rà soát log chấm công trước ${closeYmLabel}`}
+          </div>
+        </div>
+      </div>
+
 
       {conflictMsg && <div className="p-3 bg-status-danger-soft border border-status-danger-line rounded-xl text-xs text-status-danger">{conflictMsg}</div>}
 
       {/* Toast Alert */}
       {toastMsg && (
-        <div className="p-3 bg-status-ok/10 border border-status-ok/30 rounded-xl text-status-ok text-xs font-bold animate-in fade-in">
-          ✓ {toastMsg}
+        <div className="flex items-start gap-2 rounded-xl border border-status-ok-line bg-status-ok-soft p-3 text-xs font-bold text-status-ok animate-in fade-in">
+          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{toastMsg}</span>
         </div>
       )}
 
@@ -430,7 +541,10 @@ export const TimesheetPage: React.FC = () => {
       {selectedIds.length > 0 && (
         <div className="p-3 bg-status-ok-soft border border-status-ok-line rounded-xl flex items-center justify-between text-xs text-status-ok shadow-lg animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-2 font-bold">
-            <span>⚡ Đã chọn <strong>{selectedIds.length}</strong> nhân sự</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5" />
+              Đã chọn <strong>{selectedIds.length}</strong> nhân sự
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="primary" size="sm" onClick={() => setIsBulkEditOpen(true)}>
@@ -443,45 +557,46 @@ export const TimesheetPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Toolbar (Feature C5) */}
-      <Card>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div>
-            <label className="text-ink-muted mr-2">Kỳ tính công:</label>
+      {/* Filter Toolbar (Feature C5) — mockup `.filters` */}
+      <div className="rounded-[13px] border border-line bg-surface p-3 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Kỳ</span>
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(e.target.value)}
-              className="p-1.5 border border-line rounded-lg bg-canvas font-medium"
+              className="border-0 bg-transparent p-0 text-xs font-medium text-ink outline-none"
             >
               <option value="11/2026">Tháng 11 / 2026 (Hiện tại)</option>
               <option value="10/2026">Tháng 10 / 2026</option>
               <option value="09/2026">Tháng 09 / 2026</option>
             </select>
-          </div>
+          </label>
 
-          <div>
-            <label className="text-ink-muted mr-2">Nhóm:</label>
+          <label className="inline-flex h-[34px] items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <span className="text-[11px] font-semibold text-ink-muted">Nhóm</span>
             <select
               value={filterDept}
               onChange={e => setFilterDept(e.target.value)}
-              className="p-1.5 border border-line rounded-lg bg-canvas font-medium"
+              className="max-w-[160px] border-0 bg-transparent p-0 text-xs font-medium text-ink outline-none"
             >
               <option value="ALL">Tất cả nhóm</option>
               {Array.from(new Set(rows.map(r => r.team).filter(t => t && t !== '—'))).map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div className="flex-1 min-w-[200px]">
+          <label className="inline-flex h-[34px] min-w-[200px] flex-1 items-center gap-2 rounded-[9px] border border-line bg-canvas px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
             <input
               type="text"
               placeholder="Tìm theo tên hoặc mã NV..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full p-1.5 border border-line rounded-lg bg-canvas text-xs"
+              className="w-full border-0 bg-transparent p-0 text-xs text-ink outline-none placeholder:text-ink-muted"
             />
-          </div>
+          </label>
 
           {/* Quick Filter Chips (C5) — mockup `.chip`: cao 31px, pill, active nền ink */}
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -498,67 +613,106 @@ export const TimesheetPage: React.FC = () => {
                   type="button"
                   onClick={() => setQuickFilter(chip.key)}
                   aria-pressed={active}
-                  className={`inline-flex items-center gap-1.5 h-[31px] px-3 rounded-full border text-[12.5px] font-semibold transition-colors ${
+                  className={`inline-flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
                     active
-                      ? 'bg-ink border-ink text-canvas'
-                      : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
+                      ? 'border-ink bg-ink text-canvas'
+                      : 'border-line bg-surface text-ink-secondary hover:border-line-hover'
                   }`}
                 >
-                  {chip.dot && <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`} />}
+                  {chip.dot && <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
                   {chip.label}
                 </button>
               );
             })}
           </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-            {searchQuery && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Từ khoá: {searchQuery} <button onClick={() => setSearchQuery('')}>✕</button></span>}
-            {filterDept !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Nhóm: {filterDept} <button onClick={() => setFilterDept('ALL')}>✕</button></span>}
-            {quickFilter !== 'ALL' && <span className="px-2 py-1 rounded-full bg-accent-soft text-accent-dark border border-accent-line">Lọc: {quickFilter} <button onClick={() => setQuickFilter('ALL')}>✕</button></span>}
-            <button onClick={saveView} className="px-2 py-1 rounded-full border border-line">💾 Lưu view</button>
-            <button onClick={shareView} className="px-2 py-1 rounded-full border border-line">🔗 Chia sẻ</button>
-            <select onChange={e => { const v = savedViews.find(x => x.name === e.target.value); if (v) applyView(v.f); }}
-              className="px-2 py-1 rounded-full border border-line bg-surface" defaultValue="">
-              <option value="" disabled>View đã lưu…</option>
-              {savedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-            </select>
-          </div>
-
-          {/* Xuất Excel nằm ngay dưới bộ lọc và xuất đúng phạm vi đang lọc (nhóm + kỳ). */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-            <span className="text-[11px] text-ink-muted">
-              Xuất Excel theo bộ lọc hiện tại:{' '}
-              <strong className="text-ink">{filterDept === 'ALL' ? 'Tất cả nhóm' : `Nhóm ${filterDept}`}</strong>
-              {' · '}kỳ <strong className="text-ink">{selectedMonth}</strong>
-              {' · '}{displayedRows.length}/{rows.length} nhân viên
-            </span>
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={displayedRows.length === 0}
-              title="Tải CSV 53 cột đúng các dòng đang hiển thị (bộ lọc nhóm, tìm kiếm, lọc nhanh)">
-              📥 Xuất Excel ({displayedRows.length} NV)
-            </Button>
-          </div>
         </div>
-      </Card>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-line bg-accent-soft px-2 py-1 text-accent-dark">
+              Từ khoá: {searchQuery}
+              <button type="button" onClick={() => setSearchQuery('')} title="Xoá từ khoá" className="cursor-pointer">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {filterDept !== 'ALL' && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-line bg-accent-soft px-2 py-1 text-accent-dark">
+              Nhóm: {filterDept}
+              <button type="button" onClick={() => setFilterDept('ALL')} title="Xoá lọc nhóm" className="cursor-pointer">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {quickFilter !== 'ALL' && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-line bg-accent-soft px-2 py-1 text-accent-dark">
+              Lọc: {quickFilter}
+              <button type="button" onClick={() => setQuickFilter('ALL')} title="Xoá lọc nhanh" className="cursor-pointer">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          <button type="button" onClick={saveView} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-ink-secondary hover:border-line-hover">
+            <Bookmark className="h-3 w-3" />
+            Lưu view
+          </button>
+          <button type="button" onClick={shareView} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-ink-secondary hover:border-line-hover">
+            <Link2 className="h-3 w-3" />
+            Chia sẻ
+          </button>
+          <select
+            onChange={e => { const v = savedViews.find(x => x.name === e.target.value); if (v) applyView(v.f); }}
+            className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] text-ink-secondary"
+            defaultValue=""
+          >
+            <option value="" disabled>View đã lưu…</option>
+            {savedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+          </select>
+        </div>
+
+        {/* Xuất Excel nằm ngay dưới bộ lọc và xuất đúng phạm vi đang lọc (nhóm + kỳ). */}
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2.5 text-[11px] text-ink-muted">
+          <span>
+            Xuất Excel theo bộ lọc hiện tại:{' '}
+            <strong className="text-ink">{filterDept === 'ALL' ? 'Tất cả nhóm' : `Nhóm ${filterDept}`}</strong>
+            {' · '}kỳ <strong className="text-ink">{selectedMonth}</strong>
+            {' · '}<strong className="text-ink">{displayedRows.length}</strong>/{rows.length} nhân viên
+          </span>
+          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={displayedRows.length === 0}
+            title="Tải Excel 53 cột đúng các dòng đang hiển thị (bộ lọc nhóm, tìm kiếm, lọc nhanh)">
+            <Download className="h-3.5 w-3.5" />
+            Xuất Excel ({displayedRows.length} NV)
+          </Button>
+        </div>
+      </div>
+
 
       {/* Bảng công 53 cột: 5 thông tin + 31 cột ngày + 17 cột tổng hợp */}
-      <div className="bg-surface rounded-xl border border-line shadow-2xs overflow-hidden">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 border-b border-line text-[11px] text-ink-muted">
+      <div className="rounded-[13px] border border-line bg-surface shadow-2xs overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Dữ liệu bảng công</h2>
+          <span className="ml-auto font-mono text-[10.5px] text-ink-muted">
+            {displayedRows.length}/{rows.length} NV
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2.5 text-[11px] text-ink-muted">
           <span className="font-semibold text-ink-secondary">Màu cột ngày:</span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-line-hover/70 bg-line/80" />
+            <span className="h-2.5 w-2.5 rounded-[3px] border border-line-hover/70 bg-line/80" />
             Cuối tuần
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-status-warn-line bg-status-warn-soft" />
+            <span className="h-2.5 w-2.5 rounded-[3px] border border-status-warn-line bg-status-warn-soft" />
             Ngày lễ
           </span>
           <span className="ml-auto hidden sm:inline">Nhấp đúp ô để sửa ký hiệu</span>
+          <span className="sm:hidden">Vuốt ngang để xem thêm cột — cột Mã NV cố định</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+          <table className="w-full border-collapse text-left text-[11.5px] whitespace-nowrap">
             <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-3 px-2 text-center sticky left-0 bg-canvas z-20 border-r border-line">
+              <tr className="bg-canvas border-b border-line text-ink-secondary">
+                <th className="py-2.5 px-2 text-center sticky left-0 bg-canvas z-20 border-r border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
                   <input
                     type="checkbox"
                     checked={selectedIds.length === displayedRows.length && displayedRows.length > 0}
@@ -566,11 +720,11 @@ export const TimesheetPage: React.FC = () => {
                     className="rounded cursor-pointer"
                   />
                 </th>
-                <th className="py-3 px-2 text-center sticky left-[32px] bg-canvas z-10 border-r border-line">STT</th>
-                <th className="py-3 px-2 sticky left-[64px] bg-canvas z-10 border-r border-line">Mã NV</th>
-                <th className="py-3 px-2 sticky left-[136px] bg-canvas z-10 border-r border-line">Họ Tên</th>
-                <th className="py-3 px-2">Chức vụ</th>
-                <th className="py-3 px-2 border-r border-line">Nhóm</th>
+                <th className="py-2.5 px-2 text-center sticky left-[32px] bg-canvas z-10 border-r border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">STT</th>
+                <th className="py-2.5 px-2 sticky left-[64px] bg-canvas z-10 border-r border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Mã NV</th>
+                <th className="py-2.5 px-2 sticky left-[136px] bg-canvas z-10 border-r border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Họ Tên</th>
+                <th className="py-2.5 px-2 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Chức vụ</th>
+                <th className="py-2.5 px-2 border-r border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nhóm</th>
                 {monthDays.map((d) => (
                   <th
                     key={d}
@@ -580,23 +734,23 @@ export const TimesheetPage: React.FC = () => {
                     {d}
                   </th>
                 ))}
-                <th className="py-3 px-2 text-center bg-surface-secondary border-x border-line">Công chuẩn</th>
-                <th className="py-3 px-2 text-center">Công thực tế</th>
-                <th className="py-3 px-2 text-center">Nghỉ phép (AL)</th>
-                <th className="py-3 px-2 text-center">WFH (R)</th>
-                <th className="py-3 px-2 text-center">Đi muộn</th>
-                <th className="py-3 px-2 text-center text-status-danger">Trừ đi muộn</th>
-                <th className="py-3 px-2 text-center">OT ngày thường</th>
-                <th className="py-3 px-2 text-center">OT cuối tuần</th>
-                <th className="py-3 px-2 text-center">Tổng công QĐ lương</th>
-                <th className="py-3 px-2 text-center">Trạng thái</th>
-                <th className="py-3 px-2 text-center">Nghỉ lễ (NL)</th>
-                <th className="py-3 px-2 text-center">Nghỉ không lương (UP)</th>
-                <th className="py-3 px-2 text-center">Nghỉ ốm (S)</th>
-                <th className="py-3 px-2 text-center">Nghỉ bù (RO)</th>
-                <th className="py-3 px-2 text-center">Thai sản (ML)</th>
-                <th className="py-3 px-2 text-center">Tổng ngày nghỉ</th>
-                <th className="py-3 px-2 text-center">Phép còn lại</th>
+                <th className="py-2.5 px-2 text-center bg-surface-secondary border-x border-line text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Công chuẩn</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Công thực tế</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghỉ phép (AL)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">WFH (R)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Đi muộn</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-status-danger">Trừ đi muộn</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">OT ngày thường</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">OT cuối tuần</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Tổng công QĐ lương</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Trạng thái</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghỉ lễ (NL)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghỉ không lương (UP)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghỉ ốm (S)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Nghỉ bù (RO)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Thai sản (ML)</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Tổng ngày nghỉ</th>
+                <th className="py-2.5 px-2 text-center text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">Phép còn lại</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -661,35 +815,23 @@ export const TimesheetPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Chú thích ký hiệu dùng trong 31 cột ngày */}
-      <Card>
-        <div className="flex flex-wrap items-baseline gap-2 mb-3">
-          <h2 className="text-sm font-bold text-ink">Chú thích ký hiệu</h2>
-          <span className="text-[11px] text-ink-muted">Ô nghỉ nửa ngày hiển thị thêm hậu tố <span className="font-mono">/0.50</span></span>
+      {/* Chú thích ký hiệu dùng trong 31 cột ngày — mockup `.legend-grid` */}
+      <div className="rounded-[13px] border border-line bg-surface shadow-2xs overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Chú thích ký hiệu</h2>
+          <span className="ml-auto text-[10.5px] text-ink-muted">
+            Ô nghỉ nửa ngày thêm hậu tố <span className="font-mono">/0.50</span>
+          </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-canvas border-b border-line text-ink-secondary font-medium">
-                <th className="py-1.5 px-2 w-24">Ký hiệu</th>
-                <th className="py-1.5 px-2">Ý nghĩa</th>
-                <th className="py-1.5 px-2 w-24 border-l border-line">Ký hiệu</th>
-                <th className="py-1.5 px-2">Ý nghĩa</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {legendRows.map((pair, i) => (
-                <tr key={i} className="hover:bg-canvas/40">
-                  <td className="py-1.5 px-2 font-mono font-semibold text-ink whitespace-nowrap">{pair[0]?.code ?? ''}</td>
-                  <td className="py-1.5 px-2 text-ink-secondary">{pair[0]?.label ?? ''}</td>
-                  <td className="py-1.5 px-2 font-mono font-semibold text-ink whitespace-nowrap border-l border-line">{pair[1]?.code ?? ''}</td>
-                  <td className="py-1.5 px-2 text-ink-secondary">{pair[1]?.label ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 gap-x-5 px-4 py-3 sm:grid-cols-2">
+          {symbolLegend.map((item) => (
+            <div key={item.code} className="flex items-baseline gap-2.5 border-b border-dashed border-line-soft py-1.5 text-[11.5px]">
+              <code className="w-[58px] shrink-0 font-mono text-[11px] font-bold text-ink">{item.code}</code>
+              <span className="text-ink-secondary">{item.label}</span>
+            </div>
+          ))}
         </div>
-      </Card>
+      </div>
 
       {/* Bulk Edit Modal (Feature C4) */}
       <Modal

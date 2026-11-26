@@ -66,7 +66,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ⬜ | ⬜ | ⬜ |
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
-| T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | 🟡 | ⬜ | ⬜ |
+| T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
 | T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ⬜ | ⬜ | ⬜ |
 | T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ⬜ | ⬜ | ⬜ |
@@ -148,3 +148,16 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   Không đổi nghiệp vụ (khiếu nại, in, đổi kỳ). Verify: 3 theme × 320/390/1440 không
   tràn, cột Ngày dính đúng, modal khiếu nại mở/đóng được, `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` sạch.
+- **T10 · Bảng công & chốt lương (HR)** ✅ (2026-11-26) — mockup `screens/timesheet.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `TimesheetPage`: đầu trang eyebrow +
+  `h1` + badge trạng thái + 3 nút (Xuất Excel / Chốt bảng công / Khoá kỳ công, icon
+  lucide thay emoji); dải 3 chỉ số **đo từ dữ liệu thật** (37 NV · 16% đã chấm công =
+  6/37 NV có log · 31 NV chưa có log công) — bỏ chỉ số "đủ công" suy đoán sai cho kỳ
+  đang chạy; bộ lọc gộp 1 panel (Kỳ · Nhóm · tìm kiếm trong ô fld, chip lọc nhanh,
+  pill bộ lọc đang áp dụng có nút X, Lưu view / Chia sẻ); bảng 53 cột: tiêu đề viết
+  tắt 9.5px, chú giải màu cột ngày + hint "vuốt ngang" cho mobile; chú thích ký hiệu
+  chuyển từ bảng 4 cột sang lưới 2 cột. Ngày chốt kỳ đọc từ `payroll_period.close_day`
+  (API trả về) thay vì hardcode `1/12/2026`, tính theo đúng kỳ đang xem. Verify: 3
+  theme × 320/360/390/414/1440 không tràn ngang, 0 lỗi JS, đổi kỳ 10/2026 hiện
+  "Chu kỳ đóng 01/11/2026" đúng, `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` sạch.

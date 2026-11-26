@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T10 · Bảng công &amp; chốt (HR) — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+    .wrap { width: 100%; max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 5px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+    .phead .actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+    .ibtn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 13px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface));
+      color: rgb(var(--ink)); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .ibtn:hover { background: rgb(var(--canvas-subtle)); }
+    .ibtn.primary { background: rgb(var(--accent)); border-color: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+    .ibtn.danger { background: rgb(var(--danger)); border-color: rgb(var(--danger)); color: rgb(var(--on-danger)); }
+    .ibtn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* ── Stat row ──────────────────────────────────────────────────────── */
+    .stats3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .stat { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px;
+      padding: 13px 15px; box-shadow: 0 1px 2px rgb(var(--shadow) / .05); position: relative; overflow: hidden; }
+    .stat .lbl { font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); display: flex; align-items: center; gap: 6px; }
+    .stat .lbl svg { width: 13px; height: 13px; stroke-width: 2; color: rgb(var(--accent)); }
+    .stat .val { font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-size: 24px; font-weight: 800;
+      letter-spacing: -.035em; margin-top: 7px; line-height: 1; color: rgb(var(--ink)); }
+    .stat .val small { font-size: 12px; font-weight: 600; color: rgb(var(--ink-muted)); letter-spacing: 0; }
+    .stat .delta { margin-top: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; color: rgb(var(--ink-muted)); }
+    .stat .delta.ok { color: rgb(var(--ok)); }
+    .stat .delta.warn { color: rgb(var(--warn)); }
+    .stat .delta svg { width: 12px; height: 12px; }
+    .pbar { height: 6px; border-radius: 99px; background: rgb(var(--line)); overflow: hidden; margin-top: 10px; }
+    .pbar i { display: block; height: 100%; border-radius: 99px; background: rgb(var(--ok)); }
+
+    /* ── Filter panel ──────────────────────────────────────────────────── */
+    .filters { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px;
+      padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .fld { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; background: rgb(var(--canvas));
+      font-size: 12px; color: rgb(var(--ink)); }
+    .fld .k { color: rgb(var(--ink-muted)); font-size: 11px; font-weight: 600; }
+    .fld input { border: 0; background: transparent; outline: 0; font-family: inherit; font-size: 12px; color: rgb(var(--ink)); width: 160px; }
+    .fld input::placeholder { color: rgb(var(--ink-muted)); }
+    .chip { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px;
+      border-radius: 999px; border: 1px solid rgb(var(--line)); background: rgb(var(--surface));
+      font-size: 12px; font-weight: 600; color: rgb(var(--ink-secondary)); }
+    .chip.on { background: rgb(var(--ink)); border-color: rgb(var(--ink)); color: rgb(var(--canvas)); }
+    .chip .dot { width: 6px; height: 6px; border-radius: 99px; }
+    .fsp { flex: 1; }
+    .fmeta { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border-top: 1px solid rgb(var(--line)); padding-top: 10px; margin-top: 2px; font-size: 11px; color: rgb(var(--ink-muted)); }
+    .fmeta b { color: rgb(var(--ink)); }
+
+    /* ── Data panel ────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-h h4 { margin: 0; font-size: 13.5px; font-weight: 750; letter-spacing: -.01em; }
+    .panel-h .cnt { margin-left: auto; font-size: 10.5px; color: rgb(var(--ink-muted)); font-family: 'JetBrains Mono', monospace; }
+    .panel-b { overflow-x: auto; }
+    table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tbl th { text-align: left; font-size: 9.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      color: rgb(var(--ink-muted)); padding: 9px 10px; border-bottom: 1px solid rgb(var(--line)); white-space: nowrap;
+      background: rgb(var(--canvas)); position: sticky; top: 0; }
+    .tbl td { padding: 9px 10px; border-bottom: 1px solid rgb(var(--line-soft)); color: rgb(var(--ink-secondary)); white-space: nowrap; }
+    .tbl tr:last-child td { border-bottom: 0; }
+    .tbl tbody tr:hover td { background: rgb(var(--canvas) / .7); }
+    .tbl .num { font-family: 'JetBrains Mono', monospace; font-weight: 500; letter-spacing: -.02em; }
+    .tbl .sticky-l { position: sticky; left: 0; z-index: 2; background: rgb(var(--surface)); }
+    .tbl th.sticky-l { z-index: 3; background: rgb(var(--canvas)); }
+    .tbl .nm { color: rgb(var(--ink)); font-weight: 600; }
+    .tbl .wknd { background: rgb(var(--surface-secondary) / .8); }
+    .tbl .hol { background: rgb(var(--warn-soft) / .8); }
+    .tbl .cell { color: rgb(var(--accent-dark)); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+      padding: 2px 8px; border-radius: 7px; }
+    .tag.ok { color: rgb(var(--ok)); background: rgb(var(--ok-soft)); }
+    .tag.warn { color: rgb(var(--warn)); background: rgb(var(--warn-soft)); }
+    .tag.danger { color: rgb(var(--danger)); background: rgb(var(--danger-soft)); }
+    .tag.gray { color: rgb(var(--ink-secondary)); background: rgb(var(--surface-secondary)); }
+    .tbl-foot { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-top: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas) / .55); font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .lg { display: inline-flex; align-items: center; gap: 5px; }
+    .lg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; border: 1px solid rgb(var(--line-hover) / .7); }
+
+    /* ── Legend ────────────────────────────────────────────────────────── */
+    .legend-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+    .legend-grid .row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0;
+      border-bottom: 1px dashed rgb(var(--line-soft)); font-size: 11.5px; }
+    .legend-grid .row code { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+      color: rgb(var(--ink)); min-width: 52px; }
+    .legend-grid .row span { color: rgb(var(--ink-secondary)); }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .burger { width: 32px; height: 32px; border: 1px solid rgb(var(--line)); border-radius: 9px;
+      display: grid; place-items: center; color: rgb(var(--ink-2)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 3px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .m-stat { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; padding: 10px 11px; }
+    .m-stat .lbl { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .m-stat .val { font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-size: 19px; font-weight: 800;
+      letter-spacing: -.03em; margin-top: 4px; }
+    .m-stat .val small { font-size: 9.5px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .m-stat .dlt { font-size: 10px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .m-stat .pbar { height: 4px; border-radius: 99px; background: rgb(var(--line)); overflow: hidden; margin-top: 7px; }
+    .m-stat .pbar i { display: block; height: 100%; border-radius: 99px; background: rgb(var(--ok)); }
+    .m-filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .m-filters .chip { height: 28px; padding: 0 10px; font-size: 11.5px; white-space: nowrap; }
+    .m-tbl { overflow-x: auto; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); }
+    .m-tbl table.tbl { min-width: 560px; }
+    .m-hint { font-size: 10px; color: rgb(var(--ink-muted)); display: flex; align-items: center; gap: 5px; }
+    .m-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .m-actions .ibtn { width: 100%; justify-content: center; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+  </style>
+</head>
+<body data-title="T10 · Bảng công &amp; chốt (HR)">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sgroup-t">HR</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công &amp; chốt</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Khiếu nại</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Bảng phép</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.7 1.7 0 008 19.4a1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H2a2 2 0 110-4h.1A1.7 1.7 0 003.6 8a1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H8a1.7 1.7 0 001-1.5V2a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V8a1.7 1.7 0 001.5 1H22a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>Cấu hình quy định</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Quản lý nhân viên</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VL</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Văn Luân</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · HR_ADMIN</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">99+</span></button>
+          <div class="tb-avatar">VL</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                  Bảng công &amp; chốt lương
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                  <h1 class="h1" style="margin:5px 0 0">Bảng công &amp; chốt</h1>
+                  <span class="tag ok">Đang mở</span>
+                </div>
+                <div class="sub">Kỳ 11/2026 · 37 nhân viên · 30 cột ngày · Kỳ đang chạy — tự chốt ở đầu tháng sau</div>
+              </div>
+              <div class="actions">
+                <button class="ibtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                  Xuất Excel
+                </button>
+                <button class="ibtn primary">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+                  Chốt bảng công
+                </button>
+                <button class="ibtn danger">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  Khoá kỳ công
+                </button>
+              </div>
+            </div>
+
+            <!-- Stat row -->
+            <div class="stats3">
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Nhân viên</div>
+                <div class="val">37</div>
+                <div class="delta">9 phòng ban · 37 dòng đang lọc</div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>Đã chấm công</div>
+                <div class="val">16<small>%</small></div>
+                <div class="delta ok">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                  6/37 nhân viên có dữ liệu công
+                </div>
+                <div class="pbar"><i style="width:16%"></i></div>
+              </div>
+              <div class="stat">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Chưa có log công</div>
+                <div class="val">31<small> NV</small></div>
+                <div class="delta warn">Cần rà soát log chấm công trước 01/12/2026</div>
+              </div>
+            </div>
+
+            <!-- Filter panel -->
+            <div class="filters">
+              <span class="fld"><span class="k">Kỳ</span>Tháng 11 / 2026</span>
+              <span class="fld"><span class="k">Nhóm</span>Tất cả nhóm</span>
+              <span class="fld">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input placeholder="Tìm theo tên hoặc mã NV…" />
+              </span>
+              <span class="chip on">Tất cả (37)</span>
+              <span class="chip"><i class="dot" style="background:rgb(var(--warn))"></i>Đi muộn</span>
+              <span class="chip"><i class="dot" style="background:rgb(var(--info))"></i>Có OT</span>
+              <span class="chip"><i class="dot" style="background:rgb(var(--danger))"></i>Thiếu công</span>
+              <span class="fsp"></span>
+              <span class="fmeta">
+                <span>Xuất Excel theo bộ lọc hiện tại: <b>Tất cả nhóm</b> · kỳ <b>11/2026</b> · <b>37/37</b> nhân viên</span>
+                <span class="ibtn" style="height:32px">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                  Xuất Excel (37 NV)
+                </span>
+              </span>
+            </div>
+
+            <!-- Data panel -->
+            <div class="panel">
+              <div class="panel-h">
+                <h4>Dữ liệu bảng công</h4>
+                <span class="cnt">37/37 NV</span>
+              </div>
+              <div class="panel-b">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th class="sticky-l">Mã NV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức vụ</th>
+                      <th style="text-align:center">1</th><th style="text-align:center">2</th><th style="text-align:center">3</th>
+                      <th style="text-align:center">4</th><th style="text-align:center">5</th><th style="text-align:center">6</th>
+                      <th style="text-align:center">7</th>
+                      <th style="text-align:center">Công chuẩn</th><th style="text-align:center">Công thực tế</th>
+                      <th style="text-align:center">Tổng công QĐ lương</th><th style="text-align:center">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="num sticky-l">01HR</td><td class="nm">Nguyễn Thị Thu Hà</td><td>Nhân sự</td><td>Trưởng phòng</td>
+                      <td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td>
+                      <td class="cell" style="text-align:center">R</td><td class="cell" style="text-align:center">AL</td><td class="cell" style="text-align:center">1.00</td><td class="wknd" style="text-align:center">—</td>
+                      <td class="num" style="text-align:center">20</td><td class="num" style="text-align:center">18.5</td>
+                      <td class="num" style="text-align:center;font-weight:700">24.5</td>
+                      <td style="text-align:center"><span class="tag ok">Đang mở</span></td>
+                    </tr>
+                    <tr>
+                      <td class="num sticky-l">ACT257</td><td class="nm">Nguyễn Thị Diễm A</td><td>Phần mềm</td><td>Kỹ sư</td>
+                      <td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td>
+                      <td class="cell" style="text-align:center">R</td><td class="cell" style="text-align:center">AL</td><td class="cell" style="text-align:center">1.00</td><td class="wknd" style="text-align:center">—</td>
+                      <td class="num" style="text-align:center">20</td><td class="num" style="text-align:center">17.0</td>
+                      <td class="num" style="text-align:center;font-weight:700">23.0</td>
+                      <td style="text-align:center"><span class="tag ok">Đang mở</span></td>
+                    </tr>
+                    <tr>
+                      <td class="num sticky-l">05ACT</td><td class="nm">NGUYỄN THANH TÙNG</td><td>Kỹ thuật</td><td>Trưởng nhóm</td>
+                      <td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td>
+                      <td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="hol" style="text-align:center">NL</td>
+                      <td class="num" style="text-align:center">20</td><td class="num" style="text-align:center">20.0</td>
+                      <td class="num" style="text-align:center;font-weight:700">21.0</td>
+                      <td style="text-align:center"><span class="tag warn">Cần rà soát</span></td>
+                    </tr>
+                    <tr>
+                      <td class="num sticky-l">136ACT</td><td class="nm">VŨ VĂN LUÂN</td><td>Phần mềm</td><td>Kỹ sư cao cấp</td>
+                      <td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td>
+                      <td class="cell" style="text-align:center">S</td><td class="cell" style="text-align:center">1.00</td><td class="cell" style="text-align:center">1.00</td><td class="wknd" style="text-align:center">—</td>
+                      <td class="num" style="text-align:center">20</td><td class="num" style="text-align:center">19.0</td>
+                      <td class="num" style="text-align:center;font-weight:700">22.0</td>
+                      <td style="text-align:center"><span class="tag danger">Có khiếu nại</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="tbl-foot">
+                <span class="lg"><i style="background:rgb(var(--surface-secondary))"></i>Cuối tuần</span>
+                <span class="lg"><i style="background:rgb(var(--warn-soft));border-color:rgb(var(--warn-line))"></i>Ngày lễ</span>
+                <span class="fsp" style="flex:1"></span>
+                <span>Nhấp đúp ô để sửa ký hiệu · Vuốt ngang để xem thêm cột</span>
+              </div>
+            </div>
+
+            <!-- Chú thích ký hiệu -->
+            <div class="panel">
+              <div class="panel-h">
+                <h4>Chú thích ký hiệu</h4>
+                <span class="cnt">Ô nghỉ nửa ngày thêm hậu tố /0.50</span>
+              </div>
+              <div style="padding:12px 14px">
+                <div class="legend-grid">
+                  <div class="row"><code>1.00</code><span>Đủ công — đúng giờ, hoặc đi muộn có đơn duyệt</span></div>
+                  <div class="row"><code>0.50</code><span>Nửa công — thiếu giờ vào hoặc giờ ra</span></div>
+                  <div class="row"><code>R</code><span>Làm việc từ xa (WFH) cả ngày</span></div>
+                  <div class="row"><code>R/0.50</code><span>Làm việc từ xa nửa ngày</span></div>
+                  <div class="row"><code>NL</code><span>Nghỉ lễ, tết (hưởng lương)</span></div>
+                  <div class="row"><code>V</code><span>Vắng mặt — ngày làm việc không có log chấm công</span></div>
+                  <div class="row"><code>AL</code><span>Nghỉ phép năm (trừ vào quỹ phép)</span></div>
+                  <div class="row"><code>RO</code><span>Nghỉ bù — không trừ phép năm</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="burger"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span class="badge">99+</span>
+        </div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Bảng công &amp; chốt lương</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="m-h1 h1">Bảng công &amp; chốt</div>
+            <span class="tag ok">Đang mở</span>
+          </div>
+          <div class="m-sub">Kỳ 11/2026 · 37 nhân viên · 30 cột ngày · Kỳ đang chạy — tự chốt ở đầu tháng sau</div>
+        </div>
+
+        <div class="m-stats">
+          <div class="m-stat">
+            <div class="lbl">Nhân viên</div>
+            <div class="val">37</div>
+            <div class="dlt">9 phòng ban</div>
+          </div>
+          <div class="m-stat">
+            <div class="lbl">Đã chấm công</div>
+            <div class="val">16<small>%</small></div>
+            <div class="dlt" style="color:rgb(var(--ok))">6/37 NV có dữ liệu</div>
+            <div class="pbar"><i style="width:16%"></i></div>
+          </div>
+          <div class="m-stat" style="grid-column:1 / -1">
+            <div class="lbl">Chưa có log công</div>
+            <div class="val">31<small> NV</small></div>
+            <div class="dlt" style="color:rgb(var(--warn))">Cần rà soát log chấm công trước 01/12/2026</div>
+          </div>
+        </div>
+
+        <div class="m-filters">
+          <span class="chip on">Tất cả (37)</span>
+          <span class="chip"><i class="dot" style="background:rgb(var(--warn))"></i>Đi muộn</span>
+          <span class="chip"><i class="dot" style="background:rgb(var(--info))"></i>Có OT</span>
+          <span class="chip"><i class="dot" style="background:rgb(var(--danger))"></i>Thiếu công</span>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="width:3px;height:14px;border-radius:2px;background:rgb(var(--accent))"></span>
+            <span style="font-size:12.5px;font-weight:700">Dữ liệu bảng công</span>
+            <span style="margin-left:auto;font-size:10px;color:rgb(var(--ink-muted));font-family:'JetBrains Mono',monospace">37/37 NV</span>
+          </div>
+          <div class="m-tbl">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th class="sticky-l">NV</th><th>Phòng ban</th>
+                  <th style="text-align:center">Đủ</th><th style="text-align:center">Trễ</th>
+                  <th style="text-align:center">Phép</th><th style="text-align:center">Tổng</th><th style="text-align:center">TT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="num sticky-l">01HR</td><td>Nhân sự</td>
+                  <td class="num" style="text-align:center">18.5</td><td class="num" style="text-align:center">0</td>
+                  <td class="num" style="text-align:center">1</td><td class="num" style="text-align:center;font-weight:700">24.5</td>
+                  <td style="text-align:center"><span class="tag ok">Mở</span></td>
+                </tr>
+                <tr>
+                  <td class="num sticky-l">05ACT</td><td>Kỹ thuật</td>
+                  <td class="num" style="text-align:center">20</td><td class="num" style="text-align:center">2</td>
+                  <td class="num" style="text-align:center">0</td><td class="num" style="text-align:center;font-weight:700">21</td>
+                  <td style="text-align:center"><span class="tag warn">Rà soát</span></td>
+                </tr>
+                <tr>
+                  <td class="num sticky-l">136ACT</td><td>Phần mềm</td>
+                  <td class="num" style="text-align:center">19</td><td class="num" style="text-align:center">4</td>
+                  <td class="num" style="text-align:center">1</td><td class="num" style="text-align:center;font-weight:700">22</td>
+                  <td style="text-align:center"><span class="tag danger">Khiếu nại</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="m-hint" style="margin-top:7px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Vuốt ngang để xem thêm cột — cột Mã NV cố định
+          </div>
+        </div>
+
+        <div class="m-actions">
+          <button class="ibtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Xuất Excel
+          </button>
+          <button class="ibtn primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+            Chốt bảng công
+          </button>
+          <button class="ibtn danger" style="grid-column:1 / -1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Khoá kỳ công
+          </button>
+        </div>
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Bảng công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>
