@@ -77,10 +77,27 @@ Token đã map 1–1 sang `hkt/frontend/tailwind.config.js` — xem khối code 
 - **Plus Jakarta Sans** — heading, số KPI (`font-display`)
 - **JetBrains Mono** — số liệu bảng, mã, badge (thay `font-mono`)
 
+## Responsive
+
+Mockup có **hai bộ layout riêng biệt** — mobile KHÔNG phải bản thu nhỏ của desktop:
+
+| | Desktop | Mobile (390×844) |
+|---|---|---|
+| Điều hướng | Sidebar 252px + topbar | Header gọn (hamburger) + **bottom nav 5 mục** + drawer trượt |
+| Card việc | 1 hàng ngang (icon · nội dung · chip · nút) | **2 dòng**: tiêu đề xuống dòng (không cắt), nút + hạn ở dòng 2 |
+| Tab/filter | Wrap dọc | Cuộn ngang (`overflow-x-auto`) |
+
+Đây là cùng pattern đã áp dụng ở trang "Cần làm" của app hiện tại — xem memory
+`responsive-ui-pattern`.
+
+Xem phần **"Responsive — bố cục riêng cho mobile"** trong mockup (mục `▤`).
+
 ## Đã kiểm tra
 
 - Tương phản WCAG AA (4.5:1 body / 3:1 large) — audit tự động trên cả 3 hướng ✓
-- Không tràn ngang trong khung mockup (1440px và 390px) ✓
+- **Responsive ở 320 / 360 / 390 / 414 / 768 / 1024 / 1440 px** — không phần tử nào
+  tràn ngang viewport, tiêu đề không bị cắt, bottom nav ≤ 5 mục ✓
+  → `tests/ui/test_mockup_responsive.mjs` (chạy: `node tests/ui/test_mockup_responsive.mjs`)
 - Không phải emoji làm icon — toàn bộ SVG inline ✓
 - Tap target ≥ 32px ✓
 

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ACT HR — Modern UI Directions (Ascend Technology)</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -105,6 +106,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
 .frame-label b{color:#d4d4da;font-weight:500}
 
 .frames2{display:grid;grid-template-columns:1fr;gap:26px}
+.frames2 > *{min-width:0}
 .frames2.pair{grid-template-columns:1fr 1fr}
 @media(max-width:1180px){.frames2,.frames2.pair{grid-template-columns:1fr}}
 
@@ -355,11 +357,20 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
   --sd-line:#ECECEF;--sd-line-strong:#D9D9DF;--sd-hover:#F6F6F8;
   --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
   --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
-  --mc-bg:#FAFAFB;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.82);
+  --mc-bg:#FAFAFB;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.82);--bottom-bg:rgba(255,255,255,.94);
   --focus-ring:rgba(227,29,26,.13);--sh-1:0 1px 2px rgba(20,20,25,.04);--sh-2:0 4px 14px rgba(20,20,25,.07),0 1px 2px rgba(20,20,25,.04);
   --ok:#116A3A;--warn:#9A5B00;--danger:#B42318;--info:#1D4ED8;
 }
 .dir-a .side{background:#fff}
+/* Khung mobile hướng A — nền sáng */
+.dir-a .phone-screen{
+  --sd-bg:#FFFFFF;--sd-ink:#17171A;--sd-ink-2:#4A4A52;--sd-muted:#6B6C6F;
+  --sd-line:#ECECEF;--sd-line-strong:#D9D9DF;--sd-hover:#F6F6F8;
+  --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
+  --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
+  --mc-bg:#FAFAFB;--card-bg:#FFFFFF;--bottom-bg:rgba(255,255,255,.94);
+  color:var(--sd-ink);
+}
 .dir-a .sitem.on::before{left:-12px}
 .dir-a .topbar{background:rgba(255,255,255,.85)}
 .dir-a .task-ico.t-red{background:#FDECEA;color:#C21815}
@@ -378,7 +389,7 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
    ================================================================ */
 .dir-b{
   --brand:#E31D1A;--brand-h:#C21815;--brand-ink:#C21815;--brand-soft:#FDECEA;--brand-line:#F8C8C4;
-  --mc-bg:#F7F7F9;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.84);
+  --mc-bg:#F7F7F9;--card-bg:#FFFFFF;--top-bg:rgba(255,255,255,.84);--bottom-bg:rgba(255,255,255,.96);
   --focus-ring:rgba(227,29,26,.14);--sh-1:0 1px 2px rgba(20,20,25,.05);--sh-2:0 6px 18px rgba(20,20,25,.09),0 1px 2px rgba(20,20,25,.04);
   --ok:#116A3A;--warn:#9A5B00;--danger:#B42318;--info:#1D4ED8;
 }
@@ -390,13 +401,22 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
   --sd-badge-bg:#24242C;--sd-badge-ink:#B9B9C2;
 }
 /* Vùng nội dung sáng (kể cả màn đăng nhập) */
-.dir-b .app{
+.dir-b .app,.dir-b .phone-screen{
   --sd-bg:#FFFFFF;--sd-ink:#17171A;--sd-ink-2:#4A4A52;--sd-muted:#6B6C6F;
   --sd-line:#E6E6EA;--sd-line-strong:#D5D5DC;--sd-hover:#F4F4F6;
   --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
   --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
 }
 .dir-b .side{border-right:0}
+/* Khung mobile của hướng B: vùng nội dung sáng, chỉ drawer mới tối */
+.dir-b .phone-screen{
+  --sd-bg:#FFFFFF;--sd-ink:#17171A;--sd-ink-2:#4A4A52;--sd-muted:#6B6C6F;
+  --sd-line:#E6E6EA;--sd-line-strong:#D5D5DC;--sd-hover:#F4F4F6;
+  --sd-active-bg:#FDECEA;--sd-active-ink:#C21815;
+  --sd-badge-bg:#F0F0F2;--sd-badge-ink:#5A5A63;
+  --mc-bg:#F7F7F9;--card-bg:#FFFFFF;--bottom-bg:rgba(255,255,255,.96);
+  color:var(--sd-ink);
+}
 .dir-b .side-brand{border-bottom-color:var(--sd-line)}
 .dir-b .side-brand img{filter:none}
 .dir-b .sitem.on::before{background:var(--brand)}
@@ -421,12 +441,21 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
   --sd-line:#1E2026;--sd-line-strong:#2B2E36;--sd-hover:#15171C;
   --sd-active-bg:rgba(255,81,71,.15);--sd-active-ink:#FF8078;
   --sd-badge-bg:#1E2026;--sd-badge-ink:#B4B7BE;
-  --mc-bg:#0C0D10;--card-bg:#141519;--top-bg:rgba(12,13,16,.86);
+  --mc-bg:#0C0D10;--card-bg:#141519;--top-bg:rgba(12,13,16,.9);--bottom-bg:rgba(10,11,14,.96);
   --focus-ring:rgba(255,81,71,.18);
   --sh-1:0 1px 2px rgba(0,0,0,.3);--sh-2:0 8px 24px rgba(0,0,0,.42);
   --ok:#3DD68C;--warn:#F5A524;--danger:#FF6B63;--info:#7AA5FF;
 }
 .dir-c .side{background:#0A0B0E}
+/* Khung mobile hướng C — nền tối */
+.dir-c .phone-screen{
+  --sd-bg:#0C0D10;--sd-ink:#F2F3F5;--sd-ink-2:#B4B7BE;--sd-muted:#8A9099;
+  --sd-line:#1E2026;--sd-line-strong:#2B2E36;--sd-hover:#15171C;
+  --sd-active-bg:rgba(255,81,71,.15);--sd-active-ink:#FF8078;
+  --sd-badge-bg:#1E2026;--sd-badge-ink:#B4B7BE;
+  --mc-bg:#0C0D10;--card-bg:#141519;--bottom-bg:rgba(10,11,14,.96);
+  color:var(--sd-ink);
+}
 .dir-c .side-brand img{filter:none}
 .dir-c .topbar{border-bottom-color:var(--sd-line)}
 .dir-c .content{background:#0C0D10}
@@ -455,6 +484,10 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
 .dir-c .btn-sec{background:#17191E;border-color:#262931;color:#E6E7EA}
 .dir-c .btn-sec:hover{background:#1C1F25;border-color:#33363F}
 .dir-c .btn-quiet:hover{background:#17191E}
+.dir-c .mcard{border-color:#1E2026;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.dir-c .mcard-foot{border-top-color:#191B20}
+.dir-c .mhead .burger{background:#17191F;border-color:#262931;color:#E6E7EA}
+.dir-c .bnav{background:rgba(10,11,14,.96);border-top-color:#1E2026}
 
 /* Bento */
 .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
@@ -500,13 +533,137 @@ code{font-family:'JetBrains Mono',monospace;font-size:.86em}
 /* Footer note */
 .foot{max-width:1360px;margin:0 auto;padding:60px 28px 100px;color:#77777f;font-size:13px;text-align:center;line-height:1.7}
 .foot b{color:#a5a5ad}
+
+/* ================================================================
+   MOBILE — khung điện thoại thật (390×844)
+   Không phải thu nhỏ bản desktop: layout riêng — header gọn,
+   bottom nav 5 mục, drawer menu trượt, card tách 2 dòng.
+   ================================================================ */
+.phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px}
+.phones > *{min-width:0}
+/* .dir lồng trong .phones: bỏ padding/gap của .dir cha (đã có trong .phones) */
+.phones > .dir{padding:0;margin:0}
+.phone{
+  width:100%;max-width:390px;margin:0 auto;background:#fff;border-radius:32px;
+  border:1px solid rgba(255,255,255,.14);overflow:hidden;position:relative;
+  box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 0 0 6px #101114;
+}
+.phone-bar{
+  height:26px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px 0 20px;background:#0b0b0d;color:#8a8a92;font-size:11px;font-weight:600;
+}
+.phone-screen{position:relative;height:760px;overflow:hidden;background:#fff}
+
+/* header mobile */
+.mhead{
+  height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;
+  border-bottom:1px solid var(--sd-line);background:var(--top-bg);position:relative;z-index:5;
+}
+.mhead .burger{
+  width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;
+  color:var(--sd-ink-2);border:1px solid var(--sd-line);background:var(--sd-bg);
+}
+.mhead .burger svg{width:18px;height:18px;stroke-width:2}
+.mhead .brand{display:flex;align-items:center;gap:7px;min-width:0}
+.mhead .brand img{height:22px;width:auto}
+.mhead .brand .bn{font-size:11.5px;font-weight:700;color:var(--sd-muted);letter-spacing:.06em;text-transform:uppercase}
+.mhead .act{margin-left:auto;display:flex;align-items:center;gap:4px}
+.mhead .act .iconbtn{width:36px;height:36px}
+
+/* body scroll */
+.mbody{
+  height:calc(760px - 56px - 64px);overflow-y:auto;padding:16px 14px 20px;background:var(--mc-bg);
+}
+.mbody::-webkit-scrollbar{width:0}
+.mbody h3.pg{font-size:20px;font-weight:750;letter-spacing:-.025em}
+.mbody .pg-sub{font-size:12.5px;color:var(--sd-muted);margin-top:3px}
+
+/* chips row ngang — cuộn được */
+.chips-row{display:flex;gap:7px;overflow-x:auto;padding:14px 0 12px;margin:0 -14px;padding-left:14px;padding-right:14px;scrollbar-width:none}
+.chips-row::-webkit-scrollbar{height:0}
+.chips-row .chip{flex:0 0 auto;white-space:nowrap}
+
+/* card tách 2 dòng trên mobile (theo pattern đã áp dụng ở TodoInbox) */
+.mcard{
+  background:var(--card-bg);border:1px solid var(--sd-line);border-radius:14px;
+  padding:12px 13px;margin-bottom:10px;box-shadow:var(--sh-1);
+}
+.mcard-top{display:flex;gap:11px;align-items:flex-start}
+.mcard-top .task-ico{width:32px;height:32px;flex:0 0 32px;border-radius:9px}
+.mcard-top .task-ico svg{width:15px;height:15px}
+.mcard .mc-t{flex:1;min-width:0}
+.mcard .mc-t h5{
+  font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;letter-spacing:-.012em;
+  line-height:1.4;margin:0 0 3px;white-space:normal;   /* KHÔNG truncate */
+}
+.mcard .mc-t p{font-size:12px;color:var(--sd-muted);line-height:1.45}
+.mcard .task-meta{margin-top:9px}
+.mcard-foot{
+  display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:10px;
+  border-top:1px solid var(--sd-line-soft, var(--sd-line));
+}
+.mcard-foot .btn{height:34px;flex:1;justify-content:center;font-size:12.5px;border-radius:9px}
+.mcard-foot .more{width:30px;height:30px;flex:0 0 30px;border-radius:8px;display:grid;place-items:center;color:var(--sd-muted)}
+.mcard-foot .more svg{width:16px;height:16px}
+.mcard-foot .due{margin-left:auto;font-size:11px;color:var(--sd-muted);font-family:'JetBrains Mono',monospace}
+
+/* bottom nav */
+.bnav{
+  height:64px;display:flex;align-items:center;justify-content:space-around;
+  padding:0 4px;background:var(--bottom-bg);border-top:1px solid var(--sd-line);
+  position:absolute;left:0;right:0;bottom:0;z-index:5;
+}
+.bnav a{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:5px 4px;color:var(--sd-muted);font-size:9.5px;font-weight:600;flex:1;min-width:0;
+}
+.bnav a svg{width:19px;height:19px;stroke-width:1.9}
+.bnav a.on{color:var(--brand-ink)}
+.bnav a.on svg{stroke-width:2.3}
+.bnav a .fab{
+  width:40px;height:40px;margin-top:-16px;border-radius:50%;display:grid;place-items:center;
+  background:var(--brand);color:#fff;box-shadow:0 4px 14px rgba(227,29,26,.35);
+}
+.bnav a .fab svg{width:19px;height:19px;stroke-width:2.3}
+.dir-c .bnav a .fab{color:#1A0B0A}
+
+/* drawer menu */
+.drawer{
+  position:absolute;inset:0;z-index:20;display:none;
+}
+.drawer.on{display:block}
+.drawer .backdrop{position:absolute;inset:0;background:rgba(10,10,12,.5);backdrop-filter:blur(2px)}
+.drawer .sheet{
+  position:absolute;top:0;bottom:0;left:0;width:78%;max-width:290px;
+  background:var(--sd-bg);border-right:1px solid var(--sd-line);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.drawer .sheet .side-scroll{padding-top:12px}
+.drawer .sheet .side-brand{border-bottom:1px solid var(--sd-line)}
+.drawer .sheet .side-foot{margin-top:auto}
+
 @media(max-width:900px){
-  /* Khung mockup là bản desktop — cho phép cuộn ngang để không bị cắt nội dung */
+  /* Khung mockup là bản desktop — cho phép cuộn ngang để không bị cắt nội dung.
+     overflow:hidden trên .frame + min-width trên .app: phần tử con tràn ra ngoài
+     khung nhưng BỊ CHẶN bởi overflow của khung → trang ngoài không bị tràn. */
   .frame{overflow-x:auto;overflow-y:hidden}
   .frame > .app{min-width:1040px}
+  /* Bảo đảm khung không làm giãn container cha */
+  .frame{max-width:100%}
+}
+@media(max-width:900px){
+  /* Khung mockup là bản desktop — cho phép cuộn ngang để không bị cắt nội dung.
+     overflow:hidden trên .frame + min-width trên .app: phần tử con tràn ra ngoài
+     khung nhưng BỊ CHẶN bởi overflow của khung → trang ngoài không bị tràn. */
+  .frame{overflow-x:auto;overflow-y:hidden}
+  .frame > .app{min-width:1040px}
+  /* Bảo đảm khung không làm giãn container cha */
+  .frame{max-width:100%}
 }
 @media(max-width:820px){
   .mocknav-in{padding:0 16px;gap:12px}
+  .dir{padding-left:16px;padding-right:16px}
+  .phones{padding-left:0;padding-right:0}
   .mocknav-links{display:none}
   .mockhero,.dir,.foot{padding-left:16px;padding-right:16px}
   .dir{padding-top:56px;padding-bottom:56px}
@@ -1474,6 +1631,252 @@ ascend_logo_2_white.png <span style="color:#5E6675">// lockup "ascend TECHNOLOGY
       <li><b>Logo 2</b> (lockup ngang "ascend TECHNOLOGY") — dùng ở <b>màn đăng nhập</b>, <b>trang trắng</b>, <b>PDF xuất ra</b>.</li>
       <li><b>Trên nền tối</b> — dùng bản đơn trắng (CSS <code>filter: brightness(0) invert(1)</code>) để giữ độ tương phản.</li>
       <li><b>Tỷ lệ</b> — mark chiếm ~40% chiều cao header; wordmark đặt cách mark 8–10px.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     MOBILE — bố cục riêng cho điện thoại (390×844)
+     ═══════════════════════════════════════════════ -->
+<section class="dir" id="mobile">
+  <div class="dir-head">
+    <div class="dir-num">▤</div>
+    <div>
+      <h2>Responsive — bố cục riêng cho mobile</h2>
+      <p>
+        Mobile <b>không phải bản thu nhỏ của desktop</b>. Mỗi hướng thiết kế dưới đây
+        dùng layout riêng ở 390×844: header gọn (hamburger + logo + thông báo),
+        thanh điều hướng dưới 5 mục, menu trượt (drawer), và card tách 2 dòng —
+        tiêu đề <b>không bị cắt</b>, dòng hành động <b>không tràn ngang</b>.
+        Đây cũng là pattern đã dùng ở trang "Cần làm" của app hiện tại.
+      </p>
+      <div class="dir-swatches">
+        <span class="sw"><i style="background:#E31D1A"></i>Nút chính / FAB <b>#E31D1A</b></span>
+        <span class="sw"><i style="background:#C21815"></i>Nút chính (dark) <b>#C21815</b></span>
+        <span class="sw"><i style="background:#6B6C6F"></i>Text phụ <b>#6B6C6F</b></span>
+        <span class="sw"><i style="background:#ECECEF"></i>Divider <b>#ECECEF</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phones">
+
+    <!-- ── A · Ascend Clean ── -->
+    <div class="dir dir-a" style="padding:0;max-width:none">
+      <div class="phone">
+        <div class="phone-bar"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-screen">
+          <div class="mhead">
+            <button class="burger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+            <div class="brand"><img src="assets/ascend_mark.png" alt=""><span class="bn">ACT HR</span></div>
+            <div class="act">
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">9</span></button>
+              <button class="iconbtn" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(140deg,#C21815,#8A0F0C);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center">VL</button>
+            </div>
+          </div>
+          <div class="mbody">
+            <h3 class="pg">Cần làm</h3>
+            <div class="pg-sub">Thứ Năm, 26/11/2026 · 10:45 sáng</div>
+            <div class="chips-row">
+              <span class="chip on">Tất cả <span class="n">5</span></span>
+              <span class="chip">Của tôi <span class="n">3</span></span>
+              <span class="chip">Quá hạn <span class="n">2</span></span>
+              <span class="chip">Hôm nay <span class="n">2</span></span>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#E31D1A;margin:4px 0 9px;display:flex;align-items:center;gap:7px">
+              <span style="width:3px;height:13px;border-radius:2px;background:#E31D1A;display:block"></span>Quá hạn
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#FDECEA;color:#C21815;border-radius:5px;padding:1px 5px">2</span>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+                <div class="mc-t">
+                  <h5>Bạn có 2 đơn bị từ chối cần phản hồi kịp giờ</h5>
+                  <p>Admin đã từ chối 2 đơn của bạn — cần phản hồi lại hoặc tạo đơn mới.</p>
+                  <div class="task-meta"><span class="tag tag-red">Đơn bị từ chối</span><span class="tag tag-gray">Hết hạn 26/11</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Xem đơn</button>
+                <span class="due">26/11</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/><path d="M12 6v6l4 2"/></svg></div>
+                <div class="mc-t">
+                  <h5>Chấm công việc cả hôm nay (Ca 08:00 – 17:00)</h5>
+                  <p>Check-in muộn hơn khoảng 15 phút so với ca.</p>
+                  <div class="task-meta"><span class="tag tag-green">Chấm công</span><span class="tag tag-gray">09:36</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Chấm công</button>
+                <span class="due">Hôm nay</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <nav class="bnav">
+            <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm</a>
+            <a><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg></span>Chấm công</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn tôi</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>OKR</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</a>
+          </nav>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:12.5px;color:#8a8a92">A · Ascend Clean — mobile</div>
+    </div>
+
+    <!-- ── B · Midnight Rail ── -->
+    <div class="dir dir-b" style="padding:0;max-width:none">
+      <div class="phone">
+        <div class="phone-bar"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-screen">
+          <div class="mhead">
+            <button class="burger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+            <div class="brand"><img src="assets/ascend_mark.png" alt=""><span class="bn">ACT HR</span></div>
+            <div class="act">
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">9</span></button>
+              <button class="iconbtn" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(140deg,#C21815,#8A0F0C);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center">VL</button>
+            </div>
+          </div>
+          <div class="mbody">
+            <h3 class="pg">Cần làm</h3>
+            <div class="pg-sub">Thứ Năm, 26/11/2026 · 10:45 sáng</div>
+            <div class="chips-row">
+              <span class="chip on">Tất cả <span class="n">5</span></span>
+              <span class="chip">Của tôi <span class="n">3</span></span>
+              <span class="chip">Quá hạn <span class="n">2</span></span>
+              <span class="chip">Hôm nay <span class="n">2</span></span>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C21815;margin:4px 0 9px;display:flex;align-items:center;gap:7px">
+              <span style="width:3px;height:13px;border-radius:2px;background:#C21815;display:block"></span>Quá hạn
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:#FDECEA;color:#C21815;border-radius:5px;padding:1px 5px">2</span>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+                <div class="mc-t">
+                  <h5>Bạn có 2 đơn bị từ chối cần phản hồi kịp giờ</h5>
+                  <p>Admin đã từ chối 2 đơn của bạn — cần phản hồi lại hoặc tạo đơn mới.</p>
+                  <div class="task-meta"><span class="tag tag-red">Đơn bị từ chối</span><span class="tag tag-gray">Hết hạn 26/11</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Xem đơn</button>
+                <span class="due">26/11</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/><path d="M12 6v6l4 2"/></svg></div>
+                <div class="mc-t">
+                  <h5>Chấm công việc cả hôm nay (Ca 08:00 – 17:00)</h5>
+                  <p>Check-in muộn hơn khoảng 15 phút so với ca.</p>
+                  <div class="task-meta"><span class="tag tag-green">Chấm công</span><span class="tag tag-gray">09:36</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Chấm công</button>
+                <span class="due">Hôm nay</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <nav class="bnav">
+            <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm</a>
+            <a><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg></span>Chấm công</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn tôi</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>OKR</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</a>
+          </nav>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:12.5px;color:#8a8a92">B · Midnight Rail — mobile</div>
+    </div>
+
+    <!-- ── C · Bento Studio ── -->
+    <div class="dir dir-c" style="padding:0;max-width:none">
+      <div class="phone">
+        <div class="phone-bar"><span>9:41</span><span>● ● ●</span></div>
+        <div class="phone-screen">
+          <div class="mhead">
+            <button class="burger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+            <div class="brand"><img src="assets/ascend_mark_white.png" alt=""><span class="bn">ACT HR</span></div>
+            <div class="act">
+              <button class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="dot">9</span></button>
+              <button class="iconbtn" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(140deg,#C21815,#7A0E0B);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center">VL</button>
+            </div>
+          </div>
+          <div class="mbody">
+            <h3 class="pg">Cần làm</h3>
+            <div class="pg-sub">Thứ Năm, 26/11/2026 · 10:45 sáng</div>
+            <div class="chips-row">
+              <span class="chip on">Tất cả <span class="n">5</span></span>
+              <span class="chip">Của tôi <span class="n">3</span></span>
+              <span class="chip">Quá hạn <span class="n">2</span></span>
+              <span class="chip">Hôm nay <span class="n">2</span></span>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FF8078;margin:4px 0 9px;display:flex;align-items:center;gap:7px">
+              <span style="width:3px;height:13px;border-radius:2px;background:#FF5147;display:block"></span>Quá hạn
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(255,81,71,.16);color:#FF8078;border-radius:5px;padding:1px 5px">2</span>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+                <div class="mc-t">
+                  <h5>Bạn có 2 đơn bị từ chối cần phản hồi kịp giờ</h5>
+                  <p>Admin đã từ chối 2 đơn của bạn — cần phản hồi lại hoặc tạo đơn mới.</p>
+                  <div class="task-meta"><span class="tag tag-red">Đơn bị từ chối</span><span class="tag tag-gray">Hết hạn 26/11</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Xem đơn</button>
+                <span class="due">26/11</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+            <div class="mcard">
+              <div class="mcard-top">
+                <div class="task-ico t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/><path d="M12 6v6l4 2"/></svg></div>
+                <div class="mc-t">
+                  <h5>Chấm công việc cả hôm nay (Ca 08:00 – 17:00)</h5>
+                  <p>Check-in muộn hơn khoảng 15 phút so với ca.</p>
+                  <div class="task-meta"><span class="tag tag-green">Chấm công</span><span class="tag tag-gray">09:36</span></div>
+                </div>
+              </div>
+              <div class="mcard-foot">
+                <button class="btn btn-primary">Chấm công</button>
+                <span class="due">Hôm nay</span>
+                <span class="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <nav class="bnav">
+            <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cần làm</a>
+            <a><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 0 1 2-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 1 0 8 0v-1"/></svg></span>Chấm công</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Đơn tôi</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/></svg>OKR</a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</a>
+          </nav>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:12.5px;color:#8a8a92">C · Bento Studio — mobile</div>
+    </div>
+  </div>
+
+  <div class="dir-note">
+    <h4>Quy tắc responsive đã áp dụng</h4>
+    <ul>
+      <li><b>Layout riêng, không phải thu nhỏ</b> — desktop giữ sidebar 252px, mobile đổi sang bottom nav + drawer.</li>
+      <li><b>Card tách 2 dòng</b> — tiêu đề xuống dòng (không <code>truncate</code>), nút hành động + hạn ở dòng 2.</li>
+      <li><b>Bottom nav ≤ 5 mục</b> — Cần làm · Chấm công (FAB) · Đơn tôi · OKR · Menu.</li>
+      <li><b>Tab strip cuộn ngang</b> — <code>overflow-x-auto</code> + <code>white-space:nowrap</code>, không làm tràn trang.</li>
+      <li><b>Đã kiểm</b> ở 320 / 360 / 390 / 414 / 768 / 1024 / 1440 px — không phần tử nào tràn ngang viewport.</li>
     </ul>
   </div>
 </section>
