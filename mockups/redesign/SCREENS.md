@@ -89,7 +89,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ✅ | ✅ | ✅ |
 | O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ✅ | ✅ | ✅ |
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ✅ | ✅ | ✅ |
-| O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ⬜ | ⬜ | ⬜ |
+| O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ✅ | ✅ | ✅ |
 | O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ⬜ | ⬜ | ⬜ |
 | O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ⬜ | ⬜ | ⬜ |
 | O9 | Báo cáo OKR | `/okr/summary-report` | `OKRReportsPage` | ⬜ | ⬜ | ⬜ |
@@ -389,4 +389,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   chấm hàng loạt **bắt buộc nhận xét**, sắp xếp theo rủi ro giảm dần. Verify: 3
   theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang **không
   còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.
+- **O6 · Đánh giá OKR (chấm điểm)** ✅ (2026-11-27) — mockup
+  `screens/okr-assessment.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `OKRAssessmentPage` + `OkrSelfAssessmentSection`: **tạo component dùng chung
+  `components/common/Panel.tsx`** (header tách viền + tiêu đề/mô tả + action, bo 13px,
+  body 16px) — thay cho `Card` cũ ở 6 khối; đầu trang → **eyebrow + `h1` + badge +
+  sub**, select chọn nhân viên cao 36px có `aria-label`; **bỏ hết 3 emoji làm icon**
+  (🔒 👋) sang icon lucide (Lock / UserPlus); textarea bo 10px + focus ring accent;
+  `text-danger` → `text-status-danger`. Không đổi nghiệp vụ: cùng form 4 Box
+  (Box 1 tự điền · Box 2 Business · Box 3 People · Box 4 định hướng), chấm điểm
+  **không có điểm lẻ**, **kết quả bắt buộc khi nộp bản cuối năm**, điểm trung bình
+  **tự tính (không có ô nhập tay)**, điểm Quản lý lưu song song để đối chiếu.
+  Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang
+  **không còn emoji**; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
+import { ClipboardCheck, Lock } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../../context/AuthContext';
@@ -57,43 +58,53 @@ export const OKRAssessmentPage: React.FC = () => {
 
       {hasActiveCycle === false && <NoActiveCycleNotice role="manager" />}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Chấm điểm &amp; nhận xét OKR cuối năm</h1>
-          <p className="text-xs text-ink-muted mt-1">
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            Đánh giá OKR
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Chấm điểm &amp; nhận xét OKR cuối năm
+            </h1>
+            {form.status && (
+              <Badge variant={form.status === 'DA_HOAN_TAT' ? 'ok' : 'warn'}>{statusLabel(form.status)}</Badge>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
             Xem bản tự đánh giá của nhân viên và chấm điểm {scaleText} độc lập cho từng nhóm — điểm trung bình hệ thống tự tính.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {form.status && <Badge variant={form.status === 'DA_HOAN_TAT' ? 'ok' : 'warn'}>{statusLabel(form.status)}</Badge>}
-          {isManager && (
+        {isManager && (
+          <div className="shrink-0">
             <select
               value={selectedCode}
               onChange={(e) => setSelectedCode(e.target.value)}
-              className="text-xs p-2 border border-line rounded-lg bg-surface font-semibold text-ink"
+              aria-label="Chọn nhân viên để chấm"
+              className="h-9 w-full cursor-pointer rounded-[10px] border border-line bg-surface px-3 text-[12.5px] font-semibold text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 sm:w-auto"
             >
               <option value={user?.employeeCode}>{user?.fullName} (Tôi)</option>
               {teamRows.map((r) => <option key={r.reviewId} value={r.employeeCode}>{r.fullName} ({r.employeeCode})</option>)}
             </select>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
-        <Card><div className="p-8 text-center text-xs text-ink-muted">Đang tải form đánh giá...</div></Card>
+        <Panel hideHeader bodyClassName="p-8"><div className="text-center text-xs text-ink-muted">Đang tải form đánh giá...</div></Panel>
       ) : (
         <>
           <OkrSelfAssessmentSection assessment={assessment} />
 
           {isManager && (
-            <Card className="space-y-3 border-accent/40">
-              <div className="flex items-center justify-between border-b border-line pb-2">
-                <div>
-                  <h2 className="text-sm font-bold text-ink">Quản lý chấm điểm độc lập</h2>
-                  <div className="text-[11px] text-ink-muted">Lưu song song điểm tự chấm và điểm Quản lý để đối chiếu.</div>
-                </div>
-                {!isSelf && form.reviewId && <Badge variant="accent">{scaleText} nguyên</Badge>}
-              </div>
+            <Panel
+              title="Quản lý chấm điểm độc lập"
+              subtitle="Lưu song song điểm tự chấm và điểm Quản lý để đối chiếu."
+              action={!isSelf && form.reviewId ? <Badge variant="accent">{scaleText} nguyên</Badge> : undefined}
+              className="border-accent-line"
+            >
               {!isSelf && form.reviewId && form.finalManagerWindowOpen && (
                 <label className="flex items-start gap-2 rounded-lg border border-line bg-canvas p-2.5 text-xs text-ink cursor-pointer">
                   <input
@@ -153,13 +164,16 @@ export const OKRAssessmentPage: React.FC = () => {
                   />
                   <div className="flex justify-end">
                     {!canEditManager && form.managerLockReason && !isSelf && (
-                      <span className="text-[11px] text-ink-muted mr-2">🔒 {form.managerLockReason}</span>
+                      <span className="mr-2 inline-flex items-center gap-1 text-[11px] text-ink-muted">
+                        <Lock className="h-3 w-3" />
+                        {form.managerLockReason}
+                      </span>
                     )}
                     <Button size="sm" variant="primary" onClick={submitManager} disabled={saving || !canEditManager}>{saving ? 'Đang lưu...' : 'Lưu điểm Quản lý'}</Button>
                   </div>
                 </>
               )}
-            </Card>
+            </Panel>
           )}
         </>
       )}

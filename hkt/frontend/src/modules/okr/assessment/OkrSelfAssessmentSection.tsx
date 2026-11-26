@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
+import { Lock, UserPlus } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { ScorePicker } from './ScorePicker';
@@ -15,12 +16,8 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
   return (
         <>
           {/* Box 1 — Thông tin cá nhân: hệ thống tự điền từ hồ sơ nhân sự */}
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between border-b border-line pb-2">
-              <h2 className="text-sm font-bold text-ink">Thông tin nhân viên</h2>
-              <Badge variant="gray">Tự điền từ hồ sơ</Badge>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <Panel title="Thông tin nhân viên" action={<Badge variant="gray">Tự điền từ hồ sơ</Badge>}>
+            <div className="grid grid-cols-2 gap-3 text-xs md:grid-cols-4">
               {([
                 ['Họ và tên', form.box1?.fullName ?? form.employeeName],
                 ['Mã nhân viên', form.box1?.employeeCode ?? form.employeeCode],
@@ -38,27 +35,24 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
               ))}
             </div>
             {form.box1?.newJoiner && (
-              <div className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn">
-                👋 {form.box1.seniorityNote || `Nhân viên mới — đánh giá theo ${form.box1.monthsWorked ?? '—'} tháng thực tế.`}
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn">
+                <UserPlus className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {form.box1.seniorityNote || `Nhân viên mới — đánh giá theo ${form.box1.monthsWorked ?? '—'} tháng thực tế.`}
               </div>
             )}
-          </Card>
+          </Panel>
 
           {/* Box 2 Business / Box 3 People — mục tiêu + tiến độ check-in + điểm tự chấm / quản lý chấm */}
           {([
             { box: 2 as const, title: 'Thành tựu công việc (Business)', scoreKey: 'box2BusinessScore' as const, managerScore: form.managerBusinessScore, progress: form.box2?.progress, items: form.box2Items, badge: 'accent' as const },
             { box: 3 as const, title: 'Thành tựu con người (People)', scoreKey: 'box3PeopleScore' as const, managerScore: form.managerPeopleScore, progress: form.box3?.progress, items: form.box3Items, badge: 'ok' as const },
           ]).map(({ box, title, scoreKey, managerScore, progress, items, badge }) => (
-            <Card key={box} className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-2">
-                <div>
-                  <h2 className="text-sm font-bold text-ink">{title}</h2>
-                  {typeof progress === 'number' && (
-                    <div className="text-[11px] text-ink-muted">Tiến độ check-in của nhóm: {progress}%</div>
-                  )}
-                </div>
-                <Badge variant={badge}>Chấm {scaleText} · không điểm lẻ</Badge>
-              </div>
+            <Panel
+              key={box}
+              title={title}
+              subtitle={typeof progress === 'number' ? `Tiến độ check-in của nhóm: ${progress}%` : undefined}
+              action={<Badge variant={badge}>Chấm {scaleText} · không điểm lẻ</Badge>}
+            >
 
               {/* Mục tiêu + tiến độ — hiển thị giống màn check-in */}
               <div className="rounded-xl border border-line bg-canvas p-3 space-y-2">
@@ -109,7 +103,7 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
                       <div key={String(key)}>
                         <label className="block text-xs font-semibold text-ink mb-1">
                           {label}
-                          {required && <span className="text-danger"> *</span>}
+                          {required && <span className="text-status-danger"> *</span>}
                         </label>
                         <textarea
                           rows={3}
@@ -117,7 +111,7 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
                           value={(selfDraft[key] as string | null | undefined) || ''}
                           onChange={(e) => setSelfDraft({ ...selfDraft, [key]: e.target.value })}
                           placeholder={placeholder}
-                          className="w-full border border-line rounded-lg p-2.5 text-xs bg-surface disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+                          className="w-full rounded-[10px] border border-line bg-surface p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted"
                         />
                       </div>
                     );
@@ -173,15 +167,11 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
                   </div>
                 </div>
               </div>
-            </Card>
+            </Panel>
           ))}
 
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between border-b border-line pb-2">
-              <h2 className="text-sm font-bold text-ink">Điểm trung bình tự tính</h2>
-              <Badge variant="accent">Không có ô nhập tay</Badge>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Panel title="Điểm trung bình tự tính" action={<Badge variant="accent">Không có ô nhập tay</Badge>}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-line bg-canvas p-3">
                 <div className="text-[11px] text-ink-muted">Tự chấm (Business + People) / 2</div>
                 <div className="text-2xl font-black text-ink">{selfAverage == null ? '—' : selfAverage.toFixed(1)}</div>
@@ -205,21 +195,20 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
               </div>
             </div>
             {isSelf && !canEditSelf && form.selfLockReason && (
-              <div className="text-[11px] text-ink-muted">🔒 {form.selfLockReason}</div>
+              <div className="mt-3 flex items-start gap-1.5 text-[11px] text-ink-muted">
+                <Lock className="mt-0.5 h-3 w-3 shrink-0" />
+                {form.selfLockReason}
+              </div>
             )}
             {canEditSelf && (
-              <div className="flex justify-end">
+              <div className="mt-3 flex justify-end">
                 <Button size="sm" variant="primary" onClick={submitSelf} disabled={saving}>{saving ? 'Đang lưu...' : 'Nộp bản tự đánh giá'}</Button>
               </div>
             )}
-          </Card>
+          </Panel>
 
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between border-b border-line pb-2">
-              <h2 className="text-sm font-bold text-ink">Định hướng &amp; đề xuất phát triển</h2>
-              <Badge variant="warn">Tuỳ chọn</Badge>
-            </div>
-            <div className="space-y-1.5">
+          <Panel title="Định hướng &amp; đề xuất phát triển" action={<Badge variant="warn">Tuỳ chọn</Badge>}>
+            <div className="space-y-3">
               <label className="block text-xs font-semibold text-ink">Định hướng phát triển</label>
               <textarea
                 rows={2}
@@ -249,10 +238,10 @@ export const OkrSelfAssessmentSection: React.FC<{ assessment: Form4BoxState }> =
                 value={selfDraft.box4ImprovementArea || ''}
                 onChange={(e) => setSelfDraft({ ...selfDraft, box4ImprovementArea: e.target.value })}
                 placeholder="Điểm cần cải thiện..."
-                className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas disabled:bg-surface disabled:text-ink-muted focus:outline-none focus:border-accent"
+                className="w-full rounded-[10px] border border-line bg-canvas p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:bg-surface disabled:text-ink-muted"
               />
             </div>
-          </Card>
+          </Panel>
         </>
   );
 };
