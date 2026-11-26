@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T2 · Lịch chấm công — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+    .wrap { width: 100%; max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+
+    /* Nút ‹ › + nhãn tháng */
+    .monthnav { display: flex; align-items: center; gap: 6px; }
+    .mnav-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px;
+      border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); color: rgb(var(--ink));
+      cursor: pointer; }
+    .mnav-btn:hover { background: rgb(var(--canvas-subtle)); }
+    .mnav-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+    .mnav-lab { height: 36px; display: flex; align-items: center; padding: 0 12px; border-radius: 10px;
+      border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); color: rgb(var(--ink));
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+
+    /* ── Stat row 5 ô ──────────────────────────────────────────────────── */
+    .stats5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .st { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 14px; }
+    .st .lbl { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .st .lbl svg { width: 14px; height: 14px; stroke-width: 2; color: rgb(var(--accent)); }
+    .st .val { margin-top: 8px; font-size: 24px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.035em; line-height: 1; color: rgb(var(--ink)); }
+    .st .val small { font-size: 12px; font-weight: 600; color: rgb(var(--ink-muted)); margin-left: 4px; letter-spacing: 0; }
+    .st .sub { margin-top: 6px; font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .st.ok .val { color: rgb(var(--ok)); } .st.ok .sub { color: rgb(var(--ok)); }
+    .st.warn .val { color: rgb(var(--warn)); } .st.warn .sub { color: rgb(var(--warn)); }
+    .st.acc .val { color: rgb(var(--accent)); } .st.acc .sub { color: rgb(var(--accent-dark)); }
+    .st.wfh .val { color: rgb(var(--wfh)); } .st.wfh .sub { color: rgb(var(--wfh)); }
+
+    /* ── Panel lịch ────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-h .t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+    .panel-h .c { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .panel-b { padding: 14px 16px 16px; }
+
+    .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+    .cal-h { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); padding-bottom: 2px; }
+    .cal-cell { min-height: 82px; border: 1px solid rgb(var(--line)); border-radius: 10px;
+      background: rgb(var(--surface)); padding: 6px 7px; display: flex; flex-direction: column;
+      align-items: flex-start; position: relative; }
+    .cal-cell .d { font-size: 11.5px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: rgb(var(--ink)); }
+    .cal-cell .io { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgb(var(--ink-2)); }
+    .cal-cell .io b { color: rgb(var(--ink)); }
+    .cal-cell .sy { margin-top: auto; font-size: 10.5px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .cal-cell .hr { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgb(var(--ink-muted)); }
+    .cal-cell .dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 99px;
+      background: rgb(var(--danger)); }
+    /* Nhãn KN — đã có khiếu nại (chip hổ phách, khớp màn Bảng công của tôi) */
+    .cal-cell .kn { position: absolute; top: 5px; right: 5px; font-size: 8px; font-weight: 800;
+      padding: 1px 4px; border-radius: 4px; background: rgb(var(--warn)); color: rgb(var(--on-warn)); }
+    .cal-cell.ok  { background: rgb(var(--ok-soft) / .6); border-color: rgb(var(--ok-line)); color: rgb(var(--ok)); }
+    .cal-cell.ok .d { color: rgb(var(--ok)); }
+    .cal-cell.late { background: rgb(var(--warn-soft)); border-color: rgb(var(--warn-line)); color: rgb(var(--warn)); }
+    .cal-cell.late .d { color: rgb(var(--warn)); }
+    .cal-cell.bad { background: rgb(var(--danger-soft)); border-color: rgb(var(--danger-line)); color: rgb(var(--danger)); }
+    .cal-cell.bad .d { color: rgb(var(--danger)); }
+    .cal-cell.leave { background: rgb(var(--info-soft)); border-color: rgb(var(--info-line)); color: rgb(var(--info)); }
+    .cal-cell.leave .d { color: rgb(var(--info)); }
+    .cal-cell.wfh { background: rgb(var(--wfh-soft)); border-color: rgb(var(--wfh-line)); color: rgb(var(--wfh)); }
+    .cal-cell.wfh .d { color: rgb(var(--wfh)); }
+    .cal-cell.hol { background: rgb(var(--ok-soft) / .4); border-color: rgb(var(--ok-line)); color: rgb(var(--ok)); }
+    .cal-cell.hol .d { color: rgb(var(--ok)); }
+    .cal-cell.abs { background: rgb(var(--canvas)); border-color: rgb(var(--line)); color: rgb(var(--danger)); }
+    .cal-cell.abs .d { color: rgb(var(--danger)); }
+    .cal-cell.we { background: rgb(var(--canvas-subtle)); border-color: rgb(var(--line-soft)); }
+    .cal-cell.we .d { color: rgb(var(--ink-muted)); }
+    .cal-cell.fut { background: rgb(var(--surface)); border-color: rgb(var(--line)); }
+    .cal-cell.fut .d { color: rgb(var(--ink-muted)); }
+    /* Ô đang chọn — viền accent 2px */
+    .cal-cell.sel { box-shadow: 0 0 0 2px rgb(var(--accent)); }
+
+    .legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px;
+      padding-top: 12px; border-top: 1px solid rgb(var(--line)); }
+    .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .lg i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+
+    /* ── Panel chi tiết ngày ──────────────────────────────────────────── */
+    .detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .dcell { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas)); padding: 12px; }
+    .dcell .l { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .dcell .v { margin-top: 4px; font-size: 14px; font-weight: 700; color: rgb(var(--ink)); }
+    .dcell .v.mono { font-family: 'JetBrains Mono', monospace; }
+    .dcell .v.ok { color: rgb(var(--ok)); }
+    .alert-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 12px;
+      border-radius: 10px; font-size: 12px; background: rgb(var(--warn-soft));
+      border: 1px solid rgb(var(--warn-line)); color: rgb(var(--warn)); }
+    .alert-row svg { width: 14px; height: 14px; flex: 0 0 14px; }
+    .alert-row .sp { flex: 1; }
+    .alert-row button { border: 0; border-radius: 9px; padding: 7px 12px; font-family: inherit;
+      font-size: 12px; font-weight: 650; background: rgb(var(--warn)); color: rgb(var(--on-warn)); cursor: pointer; }
+    .close-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; height: 28px;
+      padding: 0 10px; border-radius: 9px; border: 1px solid rgb(var(--line)); background: transparent;
+      color: rgb(var(--ink-2)); font-family: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer; }
+    .close-btn svg { width: 12px; height: 12px; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .m-stat { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; padding: 11px 12px; }
+    .m-stat.span2 { grid-column: span 2; }
+    .m-stat .lbl { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .m-stat .lbl svg { width: 13px; height: 13px; stroke-width: 2; color: rgb(var(--accent)); }
+    .m-stat .val { margin-top: 6px; font-size: 21px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.035em; line-height: 1; }
+    .m-stat .val small { font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); margin-left: 3px; letter-spacing: 0; }
+    .m-stat .sub { margin-top: 4px; font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .m-stat.ok .val, .m-stat.ok .sub { color: rgb(var(--ok)); }
+    .m-stat.warn .val, .m-stat.warn .sub { color: rgb(var(--warn)); }
+    .m-stat.acc .val { color: rgb(var(--accent)); } .m-stat.acc .sub { color: rgb(var(--accent-dark)); }
+    .m-stat.wfh .val, .m-stat.wfh .sub { color: rgb(var(--wfh)); }
+    .m-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .m-cal .cal-h { font-size: 8.5px; padding-bottom: 1px; }
+    .m-cal .cal-cell { min-height: 52px; padding: 4px; border-radius: 8px; }
+    .m-cal .cal-cell .d { font-size: 10.5px; }
+    .m-cal .cal-cell .sy { font-size: 8.5px; }
+    .m-cal .cal-cell .io { display: none; }
+    .m-cal .cal-cell .hr { display: none; }
+    .m-cal .cal-cell .dot { width: 5px; height: 5px; top: 4px; right: 4px; }
+    .m-cal .cal-cell .kn { font-size: 6.5px; padding: 0 3px; top: 3px; right: 3px; }
+    .m-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid rgb(var(--line)); }
+    .m-legend .lg { font-size: 10px; }
+    .m-detail { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; overflow: hidden; }
+    .m-detail-h { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-bottom: 1px solid rgb(var(--line)); }
+    .m-detail-h .t { font-size: 12.5px; font-weight: 700; }
+    .m-detail-b { padding: 12px; }
+    .m-dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .m-dcell { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas)); padding: 10px; }
+    .m-dcell .l { font-size: 10px; color: rgb(var(--ink-muted)); }
+    .m-dcell .v { margin-top: 3px; font-size: 13px; font-weight: 700; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+  </style>
+</head>
+<body data-title="T2 · Lịch chấm công">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  Lịch chấm công cá nhân
+                </div>
+                <h1 class="h1">Lịch công tháng</h1>
+                <div class="sub">Nhật ký ra vào, số giờ công tích lũy, lần dùng quota đi muộn và ngày phép</div>
+              </div>
+              <div class="monthnav">
+                <button class="mnav-btn" type="button" title="Xem tháng trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                <span class="mnav-lab">Tháng 11 / 2026</span>
+                <button class="mnav-btn" type="button" title="Xem tháng sau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+              </div>
+            </div>
+
+            <!-- 5 chỉ số -->
+            <div class="stats5">
+              <div class="st">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Công chuẩn tháng</div>
+                <div class="val">20<small>ngày</small></div>
+                <div class="sub">160 giờ quy định</div>
+              </div>
+              <div class="st ok">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 11.1V12a10 10 0 11-5.9-9.1"/><path d="M22 4L12 14l-3-3"/></svg>Công đã tích lũy</div>
+                <div class="val">1.5<small>ngày</small></div>
+                <div class="sub">Đạt 12.0h hợp lệ</div>
+              </div>
+              <div class="st warn">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đi muộn / về sớm</div>
+                <div class="val">0<small>lần</small></div>
+                <div class="sub">Trong hạn mức cho phép</div>
+              </div>
+              <div class="st acc">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2"/><path d="M16 3h5v5"/><path d="M21 3l-7 7"/></svg>Nghỉ phép năm</div>
+                <div class="val">1<small>ngày</small></div>
+                <div class="sub">Còn 11 ngày phép</div>
+              </div>
+              <div class="st wfh">
+                <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>Làm từ xa (WFH)</div>
+                <div class="val">0<small>ngày</small></div>
+                <div class="sub">Đã duyệt hợp lệ</div>
+              </div>
+            </div>
+
+            <!-- Lưới lịch -->
+            <section class="panel">
+              <div class="panel-h">
+                <span class="t">Lưới lịch tháng 11/2026</span>
+                <span class="c">30 ngày</span>
+              </div>
+              <div class="panel-b">
+                <div class="cal">
+                  <div class="cal-h">T2</div><div class="cal-h">T3</div><div class="cal-h">T4</div>
+                  <div class="cal-h">T5</div><div class="cal-h">T6</div><div class="cal-h">T7</div>
+                  <div class="cal-h">CN</div>
+
+                  <div class="cal-cell we"><span class="d">1</span><span class="sy">—</span></div>
+                  <div class="cal-cell abs"><span class="d">2</span><span class="kn">KN</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">3</span><span class="kn">KN</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">4</span><span class="kn">KN</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">5</span><span class="kn">KN</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">6</span><span class="kn">KN</span><span class="sy">V</span></div>
+                  <div class="cal-cell we"><span class="d">7</span><span class="sy">—</span></div>
+                  <div class="cal-cell we"><span class="d">8</span><span class="sy">—</span></div>
+                  <div class="cal-cell abs"><span class="d">9</span><span class="sy">V</span></div>
+                  <div class="cal-cell leave"><span class="d">10</span><span class="sy">S</span></div>
+                  <div class="cal-cell abs"><span class="d">11</span><span class="sy">V</span></div>
+                  <div class="cal-cell ok"><span class="d">12</span><span class="sy">1.00</span></div>
+                  <div class="cal-cell abs"><span class="d">13</span><span class="sy">V</span></div>
+                  <div class="cal-cell we"><span class="d">14</span><span class="sy">—</span></div>
+                  <div class="cal-cell we"><span class="d">15</span><span class="sy">—</span></div>
+                  <div class="cal-cell abs"><span class="d">16</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">17</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">18</span><span class="sy">V</span></div>
+                  <div class="cal-cell ok"><span class="d">19</span><span class="sy">0.50</span><span class="hr">7.6h</span></div>
+                  <div class="cal-cell abs"><span class="d">20</span><span class="sy">V</span></div>
+                  <div class="cal-cell ok"><span class="d">21</span><span class="sy">1.00</span></div>
+                  <div class="cal-cell we sel"><span class="d">22</span><span class="io">Vào: <b>17:20</b><br/>Ra: <b>--:--</b></span><span class="sy">—</span></div>
+                  <div class="cal-cell abs"><span class="d">23</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">24</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">25</span><span class="sy">V</span></div>
+                  <div class="cal-cell abs"><span class="d">26</span><span class="sy">V</span></div>
+                  <div class="cal-cell hol"><span class="d">27</span><span class="sy">NL</span></div>
+                  <div class="cal-cell we"><span class="d">28</span><span class="sy">—</span></div>
+                  <div class="cal-cell we"><span class="d">29</span><span class="sy">—</span></div>
+                  <div class="cal-cell fut"><span class="d">30</span><span class="sy">—</span></div>
+                </div>
+
+                <div class="legend">
+                  <span class="lg"><i style="background:rgb(var(--ok))"></i>Đúng giờ</span>
+                  <span class="lg"><i style="background:rgb(var(--warn))"></i>Đi muộn</span>
+                  <span class="lg"><i style="background:rgb(var(--wfh))"></i>Làm từ xa (WFH)</span>
+                  <span class="lg"><i style="background:rgb(var(--info))"></i>Nghỉ phép</span>
+                  <span class="lg"><i style="background:rgb(var(--danger))"></i>Thiếu giờ / Vắng</span>
+                  <span class="lg"><i style="background:rgb(var(--ink-muted))"></i>Cuối tuần / Lễ</span>
+                  <span class="lg"><i style="background:rgb(var(--warn));border-radius:3px;width:14px;height:9px"></i>KN — đã có khiếu nại</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Chi tiết ngày đã chọn -->
+            <section class="panel">
+              <div class="panel-h">
+                <span class="t">Chi tiết ngày 22/11/2026</span>
+                <span style="font-size:11px;color:rgb(var(--ink-muted))">(CN)</span>
+                <button class="close-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg>Đóng</button>
+              </div>
+              <div class="panel-b">
+                <div class="detail-grid">
+                  <div class="dcell">
+                    <div class="l">Trạng thái ghi nhận:</div>
+                    <div class="v" style="color:rgb(var(--ink-muted))">Ngày nghỉ</div>
+                  </div>
+                  <div class="dcell">
+                    <div class="l">Giờ check-in:</div>
+                    <div class="v mono">17:20</div>
+                  </div>
+                  <div class="dcell">
+                    <div class="l">Giờ check-out:</div>
+                    <div class="v mono">—</div>
+                  </div>
+                  <div class="dcell">
+                    <div class="l">Số giờ làm thực tế:</div>
+                    <div class="v ok">0 giờ</div>
+                  </div>
+                </div>
+                <div class="alert-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                  <span>Bạn đã check-in muộn <b>470 phút</b> so với ca chuẩn.</span>
+                  <span class="sp"></span>
+                  <button type="button">Tạo đơn giải trình đi muộn</button>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Lịch chấm công cá nhân</div>
+          <div class="m-h1 h1">Lịch công tháng</div>
+          <div class="m-sub">Nhật ký ra vào, số giờ công tích lũy, lần dùng quota đi muộn và ngày phép</div>
+        </div>
+
+        <div class="monthnav">
+          <button class="mnav-btn" type="button" style="width:34px;height:34px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="mnav-lab" style="height:34px;flex:1;justify-content:center">Tháng 11 / 2026</span>
+          <button class="mnav-btn" type="button" style="width:34px;height:34px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+
+        <div class="m-stats">
+          <div class="m-stat">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Công chuẩn tháng</div>
+            <div class="val">20<small>ngày</small></div>
+            <div class="sub">160 giờ quy định</div>
+          </div>
+          <div class="m-stat ok">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 11.1V12a10 10 0 11-5.9-9.1"/><path d="M22 4L12 14l-3-3"/></svg>Công đã tích lũy</div>
+            <div class="val">1.5<small>ngày</small></div>
+            <div class="sub">Đạt 12.0h hợp lệ</div>
+          </div>
+          <div class="m-stat warn">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đi muộn / về sớm</div>
+            <div class="val">0<small>lần</small></div>
+            <div class="sub">Trong hạn mức cho phép</div>
+          </div>
+          <div class="m-stat acc">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2"/><path d="M16 3h5v5"/><path d="M21 3l-7 7"/></svg>Nghỉ phép năm</div>
+            <div class="val">1<small>ngày</small></div>
+            <div class="sub">Còn 11 ngày phép</div>
+          </div>
+          <div class="m-stat wfh span2">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>Làm từ xa (WFH)</div>
+            <div class="val">0<small>ngày</small></div>
+            <div class="sub">Đã duyệt hợp lệ</div>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-h" style="padding:11px 12px">
+            <span class="t" style="font-size:12.5px">Lưới lịch tháng 11/2026</span>
+            <span class="c">30 ngày</span>
+          </div>
+          <div class="panel-b" style="padding:11px 12px 13px">
+            <div class="m-cal">
+              <div class="cal-h">T2</div><div class="cal-h">T3</div><div class="cal-h">T4</div>
+              <div class="cal-h">T5</div><div class="cal-h">T6</div><div class="cal-h">T7</div>
+              <div class="cal-h">CN</div>
+
+              <div class="cal-cell we"><span class="d">1</span><span class="sy">—</span></div>
+              <div class="cal-cell abs"><span class="d">2</span><span class="kn">KN</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">3</span><span class="kn">KN</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">4</span><span class="kn">KN</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">5</span><span class="kn">KN</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">6</span><span class="kn">KN</span><span class="sy">V</span></div>
+              <div class="cal-cell we"><span class="d">7</span><span class="sy">—</span></div>
+              <div class="cal-cell we"><span class="d">8</span><span class="sy">—</span></div>
+              <div class="cal-cell abs"><span class="d">9</span><span class="sy">V</span></div>
+              <div class="cal-cell leave"><span class="d">10</span><span class="sy">S</span></div>
+              <div class="cal-cell abs"><span class="d">11</span><span class="sy">V</span></div>
+              <div class="cal-cell ok"><span class="d">12</span><span class="sy">1.00</span></div>
+              <div class="cal-cell abs"><span class="d">13</span><span class="sy">V</span></div>
+              <div class="cal-cell we"><span class="d">14</span><span class="sy">—</span></div>
+              <div class="cal-cell we"><span class="d">15</span><span class="sy">—</span></div>
+              <div class="cal-cell abs"><span class="d">16</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">17</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">18</span><span class="sy">V</span></div>
+              <div class="cal-cell ok"><span class="d">19</span><span class="sy">0.50</span></div>
+              <div class="cal-cell abs"><span class="d">20</span><span class="sy">V</span></div>
+              <div class="cal-cell ok"><span class="d">21</span><span class="sy">1.00</span></div>
+              <div class="cal-cell we sel"><span class="d">22</span><span class="sy">—</span></div>
+              <div class="cal-cell abs"><span class="d">23</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">24</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">25</span><span class="sy">V</span></div>
+              <div class="cal-cell abs"><span class="d">26</span><span class="sy">V</span></div>
+              <div class="cal-cell hol"><span class="d">27</span><span class="sy">NL</span></div>
+              <div class="cal-cell we"><span class="d">28</span><span class="sy">—</span></div>
+              <div class="cal-cell we"><span class="d">29</span><span class="sy">—</span></div>
+              <div class="cal-cell fut"><span class="d">30</span><span class="sy">—</span></div>
+            </div>
+            <div class="m-legend">
+              <span class="lg"><i style="background:rgb(var(--ok))"></i>Đúng giờ</span>
+              <span class="lg"><i style="background:rgb(var(--warn))"></i>Đi muộn</span>
+              <span class="lg"><i style="background:rgb(var(--wfh))"></i>Làm từ xa (WFH)</span>
+              <span class="lg"><i style="background:rgb(var(--info))"></i>Nghỉ phép</span>
+              <span class="lg"><i style="background:rgb(var(--danger))"></i>Thiếu giờ / Vắng</span>
+              <span class="lg"><i style="background:rgb(var(--ink-muted))"></i>Cuối tuần / Lễ</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Chi tiết ngày (mobile) -->
+        <section class="m-detail">
+          <div class="m-detail-h">
+            <span class="t">Chi tiết ngày 22/11/2026</span>
+            <span style="font-size:10.5px;color:rgb(var(--ink-muted))">(CN)</span>
+            <button class="close-btn" type="button" style="height:26px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg>Đóng</button>
+          </div>
+          <div class="m-detail-b">
+            <div class="m-dgrid">
+              <div class="m-dcell"><div class="l">Trạng thái ghi nhận:</div><div class="v" style="color:rgb(var(--ink-muted));font-size:11.5px">Ngày nghỉ</div></div>
+              <div class="m-dcell"><div class="l">Giờ check-in:</div><div class="v mono" style="font-family:'JetBrains Mono',monospace">17:20</div></div>
+              <div class="m-dcell"><div class="l">Giờ check-out:</div><div class="v mono" style="font-family:'JetBrains Mono',monospace">—</div></div>
+              <div class="m-dcell"><div class="l">Số giờ làm thực tế:</div><div class="v" style="color:rgb(var(--ok))">0 giờ</div></div>
+            </div>
+            <div class="alert-row" style="margin-top:10px;font-size:11px;align-items:flex-start">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:1px"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              <span>Bạn đã check-in muộn <b>470 phút</b> so với ca chuẩn.</span>
+              <span class="sp"></span>
+              <button type="button" style="font-size:11px;padding:6px 10px">Tạo đơn giải trình đi muộn</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

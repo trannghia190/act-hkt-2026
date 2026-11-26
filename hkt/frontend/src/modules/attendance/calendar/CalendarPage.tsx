@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { useAuth } from '../../../context/AuthContext';
+import {
+  AlertTriangle,
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  House,
+  MessageSquareWarning,
+  Wallet,
+  X,
+} from 'lucide-react';
+
+/** Trạng thái khiếu nại → nhãn tiếng Việt (khớp trạng thái trả về từ API). */
+const DISPUTE_STATUS: Record<string, string> = {
+  PENDING: 'HR đang xử lý',
+  RESOLVED: 'HR đã xử lý',
+  REJECTED: 'bị từ chối',
+};
 
 interface DayAttendance {
   day: number;
@@ -121,230 +140,352 @@ export const CalendarPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-1">
-            <span>📅</span> Lịch Chấm Công Cá Nhân
+      {/* Header — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <CalendarDays className="h-3.5 w-3.5" />
+            Lịch chấm công cá nhân
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Lịch Công Tháng Cá Nhân</h1>
-          <p className="text-xs text-ink-muted mt-1">
-            Theo dõi chi tiết nhật ký ra vào, số giờ công tích lũy, các lần dùng quota đi muộn và ngày phép
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Lịch công tháng
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Nhật ký ra vào, số giờ công tích lũy, lần dùng quota đi muộn và ngày phép
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => changeMonth(-1)}>
-            ◀ Tháng trước
+
+        {/* Chuyển tháng — nút ‹ › gộp trong 1 khung */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => changeMonth(-1)}
+            aria-label="Tháng trước"
+            title="Xem tháng trước"
+            className="px-2.5"
+          >
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-xs font-bold px-3 py-1.5 bg-surface border border-line rounded-lg text-ink shadow-2xs font-mono">
+          <span className="rounded-[10px] border border-line bg-surface px-3 py-2 font-mono text-xs font-bold text-ink shadow-2xs">
             {displayMonthTitle}
           </span>
-          <Button variant="outline" size="sm" onClick={() => changeMonth(1)}>
-            Tháng sau ▶
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => changeMonth(1)}
+            aria-label="Tháng sau"
+            title="Xem tháng sau"
+            className="px-2.5"
+          >
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Monthly Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Công Chuẩn Tháng</div>
-          <div className="text-xl font-bold text-ink mt-0.5">{summary.standardDays} ngày</div>
-          <div className="text-[10px] text-ink-secondary">{summary.standardDays * 8} giờ quy định</div>
+      {/* Stat row — mockup `.stats5` */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <CalendarClock className="h-3.5 w-3.5 text-accent" />
+            Công chuẩn tháng
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {summary.standardDays}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">ngày</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-ink-muted">{summary.standardDays * 8} giờ quy định</div>
         </div>
-        <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Công Đã Tích Lũy</div>
-          <div className="text-xl font-bold text-status-ok mt-0.5">{summary.actualDays} ngày</div>
-          <div className="text-[10px] text-status-ok">Đạt {(summary.actualDays * 8).toFixed(1)}h hợp lệ</div>
-        </div>
-        <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Đi Muộn / Về Sớm</div>
-          <div className="text-xl font-bold text-status-warn mt-0.5">{summary.lateCount} lần</div>
-          <div className="text-[10px] text-status-warn">
-            {summary.lateCount > 2 ? '⚠️ Vượt quota miễn phạt' : 'Trong hạn mức cho phép'}
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+            Công đã tích lũy
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-status-ok">
+            {summary.actualDays}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">ngày</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-status-ok">
+            Đạt {(summary.actualDays * 8).toFixed(1)}h hợp lệ
           </div>
         </div>
-        <div className="p-3 bg-surface rounded-xl border border-line shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Nghỉ Phép Năm</div>
-          <div className="text-xl font-bold text-accent mt-0.5">{summary.leaveDays} ngày</div>
-          <div className="text-[10px] text-accent-dark">Còn {summary.remainingLeave} ngày phép</div>
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <Clock className="h-3.5 w-3.5 text-accent" />
+            Đi muộn / về sớm
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-status-warn">
+            {summary.lateCount}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">lần</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-status-warn">
+            {summary.lateCount > 2 ? 'Vượt quota miễn phạt' : 'Trong hạn mức cho phép'}
+          </div>
         </div>
-        <div className="p-3 bg-surface rounded-xl border border-line col-span-2 md:col-span-1 shadow-2xs">
-          <div className="text-[11px] text-ink-muted">Làm Từ Xa (WFH)</div>
-          <div className="text-xl font-bold text-status-info mt-0.5">{summary.wfhDays} ngày</div>
-          <div className="text-[10px] text-status-info">Đã duyệt hợp lệ</div>
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <Wallet className="h-3.5 w-3.5 text-accent" />
+            Nghỉ phép năm
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-accent">
+            {summary.leaveDays}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">ngày</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-accent-dark">Còn {summary.remainingLeave} ngày phép</div>
+        </div>
+
+        <div className="col-span-2 rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs lg:col-span-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+            <House className="h-3.5 w-3.5 text-accent" />
+            Làm từ xa (WFH)
+          </div>
+          <div className="mt-2 font-display text-2xl font-extrabold leading-none tracking-[-0.035em] text-status-wfh">
+            {summary.wfhDays}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">ngày</small>
+          </div>
+          <div className="mt-1.5 text-[11px] font-semibold text-status-wfh">Đã duyệt hợp lệ</div>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <Card title={`Lưới Lịch Tháng ${monthNum}/${yearNum}`}>
-        {loading ? (
-          <div className="py-12 text-center text-xs text-ink-muted">Đang tải dữ liệu lịch công...</div>
-        ) : (
-          <div className="grid grid-cols-7 gap-2 text-center text-xs">
-            {/* Day Headers (T2 to CN) */}
-            {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'].map((d) => (
-              <div key={d} className="py-1.5 font-semibold text-ink-secondary text-[11px] border-b border-line pb-2">
-                {d}
-              </div>
-            ))}
-
-            {/* Empty slots before first day */}
-            {Array.from({ length: startDayOfWeek }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="min-h-[75px] rounded-xl bg-canvas-subtle/30 border border-transparent" />
-            ))}
-
-            {/* Month Days */}
-            {days.map((d) => (
-              <div
-                key={d.day}
-                onClick={() => setSelectedDay(d)}
-                className={`min-h-[82px] p-2 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                  selectedDay?.day === d.day ? 'ring-2 ring-accent shadow-xs' : ''
-                } ${
-                  d.status === 'WEEKEND'
-                    ? 'bg-canvas/30 border-line/50 text-ink-muted'
-                    : d.status === 'ON_TIME'
-                    ? 'bg-status-ok-soft/40 border-status-ok-line hover:border-status-ok'
-                    : d.status === 'LATE'
-                    ? 'bg-status-warn-soft/50 border-status-warn-line hover:border-status-warn'
-                    : d.status === 'LEAVE'
-                    ? 'bg-status-info-soft/50 border-status-info-line hover:border-status-info'
-                    : d.status === 'WFH'
-                    ? 'bg-status-info-soft/50 border-status-info-line hover:border-status-info'
-                    : d.status === 'INCOMPLETE'
-                    ? 'bg-status-danger-soft/60 border-status-danger-line hover:border-status-danger'
-                    : d.status === 'ABSENT'
-                    ? 'bg-status-danger-soft/30 border-status-danger-line hover:border-status-danger'
-                    : d.status === 'HOLIDAY'
-                    ? 'bg-status-ok-soft/50 border-status-ok-line hover:border-status-ok'
-                    : 'bg-surface border-line hover:border-accent'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-bold text-xs text-ink">{d.day}</span>
-                  {d.status === 'ON_TIME' && <span className="w-2 h-2 rounded-full bg-status-ok" title="Đúng giờ" />}
-                  {d.status === 'LATE' && <span className="w-2 h-2 rounded-full bg-status-warn" title="Đi muộn" />}
-                  {d.status === 'LEAVE' && <span className="w-2 h-2 rounded-full bg-status-info" title="Nghỉ phép" />}
-                  {d.status === 'WFH' && <span className="w-2 h-2 rounded-full bg-status-info" title="WFH" />}
-                  {d.status === 'INCOMPLETE' && <span className="w-2 h-2 rounded-full bg-status-danger animate-pulse" title="Thiếu giờ" />}
-                </div>
-
-                {d.checkIn && (
-                  <div className="font-mono text-[10px] text-ink-secondary mt-1 space-y-0.5">
-                    <div>Vào: <strong className="text-ink">{d.checkIn}</strong></div>
-                    <div>Ra: <strong className="text-ink">{d.checkOut || '--:--'}</strong></div>
-                  </div>
-                )}
-
-                <div className="text-[10px] font-medium truncate text-ink-muted mt-1 flex items-center justify-between">
-                  <span>{d.symbol || d.statusText}</span>
-                  {d.hoursWorked ? <span className="text-status-ok font-mono">{d.hoursWorked}h</span> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center gap-4 text-[11px] text-ink-muted">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-status-ok" /> Đúng giờ
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-status-warn" /> Đi muộn
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-status-info" /> Làm từ xa (WFH)
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-status-info" /> Nghỉ phép
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-status-danger" /> Thiếu giờ / Vắng
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-ink-muted" /> Cuối tuần / Lễ
-          </div>
+      {/* Lưới lịch — mockup `.panel` */}
+      <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+            Lưới lịch tháng {monthNum}/{yearNum}
+          </h2>
+          <span className="ml-auto font-mono text-[10.5px] text-ink-muted">
+            {days.length} ngày
+          </span>
         </div>
-      </Card>
 
-      {/* Selected Day Modal Details */}
-      {selectedDay && (
-        <Card
-          title={`Chi tiết ngày ${selectedDay.day}/${monthNum}/${yearNum} (${selectedDay.weekday})`}
-          action={
-            <Button variant="ghost" size="sm" onClick={() => setSelectedDay(null)}>
-              Đóng
-            </Button>
-          }
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="p-3 bg-canvas rounded-lg border border-line">
-              <span className="text-ink-muted text-[11px]">Trạng thái ghi nhận:</span>
-              <div className="font-semibold text-ink mt-1 flex items-center gap-1.5">
-                <Badge
-                  variant={
-                    selectedDay.status === 'ON_TIME'
-                      ? 'accent'
-                      : selectedDay.status === 'LATE'
-                      ? 'warn'
-                      : selectedDay.status === 'INCOMPLETE' || selectedDay.status === 'ABSENT'
-                      ? 'danger'
-                      : 'gray'
-                  }
-                >
-                  {selectedDay.statusText}
-                </Badge>
-              </div>
-            </div>
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <div className="py-12 text-center text-xs text-ink-muted">Đang tải dữ liệu lịch công…</div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {/* Ô tiêu đề T2 → CN */}
+              {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
+                <div key={d} className="pb-1 text-center text-[10px] font-bold uppercase tracking-[0.06em] text-ink-muted">
+                  {d}
+                </div>
+              ))}
 
-            <div className="p-3 bg-canvas rounded-lg border border-line">
-              <span className="text-ink-muted text-[11px]">Giờ Check-In:</span>
-              <div className="font-mono font-bold text-sm text-ink mt-1">
-                {selectedDay.checkIn || '—'}
-              </div>
-            </div>
+              {/* Ô trống trước ngày 1 */}
+              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                <div key={`empty-${idx}`} aria-hidden="true" className="min-h-[52px] sm:min-h-[82px]" />
+              ))}
 
-            <div className="p-3 bg-canvas rounded-lg border border-line">
-              <span className="text-ink-muted text-[11px]">Giờ Check-Out:</span>
-              <div className="font-mono font-bold text-sm text-ink mt-1">
-                {selectedDay.checkOut || '—'}
-              </div>
-            </div>
+              {/* Các ngày trong tháng */}
+              {days.map((d) => {
+                // Vắng (ABSENT) chỉ tô chữ đỏ, không tô nền — tránh "biển đỏ" nuốt thông tin.
+                const hasIssue = d.status === 'LATE' || d.status === 'INCOMPLETE';
+                const cls =
+                  d.status === 'LEAVE'
+                    ? 'bg-status-info-soft border-status-info-line text-status-info'
+                    : d.status === 'WFH'
+                    ? 'bg-status-wfh-soft border-status-wfh-line text-status-wfh'
+                    : d.status === 'LATE'
+                    ? 'bg-status-warn-soft border-status-warn-line text-status-warn'
+                    : d.status === 'INCOMPLETE'
+                    ? 'bg-status-danger-soft border-status-danger-line text-status-danger'
+                    : d.status === 'ABSENT'
+                    ? 'bg-canvas border-line text-status-danger'
+                    : d.status === 'ON_TIME'
+                    ? 'bg-status-ok-soft/60 border-status-ok-line text-status-ok'
+                    : d.status === 'HOLIDAY'
+                    ? 'bg-status-ok-soft/40 border-status-ok-line text-status-ok'
+                    : d.status === 'WEEKEND'
+                    ? 'bg-canvas-subtle border-line-soft text-ink-muted'
+                    : 'bg-surface border-line text-ink-muted';
 
-            <div className="p-3 bg-canvas rounded-lg border border-line">
-              <span className="text-ink-muted text-[11px]">Số giờ làm thực tế:</span>
-              <div className="font-bold text-sm text-status-ok mt-1">
-                {selectedDay.hoursWorked ? `${selectedDay.hoursWorked} giờ` : '0 giờ'}
-              </div>
-            </div>
-          </div>
+                return (
+                  <button
+                    key={d.date}
+                    type="button"
+                    onClick={() => setSelectedDay(d)}
+                    title={`${d.date} (${d.weekday}): ${d.statusText}`}
+                    className={`flex min-h-[52px] flex-col justify-between rounded-lg border px-1 py-1 text-left transition-colors sm:min-h-[82px] sm:rounded-[10px] sm:px-1.5 sm:py-1.5 ${
+                      selectedDay?.day === d.day ? 'ring-2 ring-accent' : ''
+                    } ${cls}`}
+                  >
+                    <div className="flex w-full items-start justify-between gap-0.5">
+                      <span className="font-mono text-[10.5px] font-extrabold sm:text-[11.5px]">{d.day}</span>
+                      {d.dispute ? (
+                        <span
+                          className="rounded bg-status-warn px-1 text-[8px] font-bold leading-[1.4] text-on-warn sm:text-[9px]"
+                          title={`Đã có khiếu nại — ${d.dispute.status === 'RESOLVED' ? 'HR đã xử lý' : d.dispute.status === 'REJECTED' ? 'bị từ chối' : 'HR đang xử lý'}`}
+                        >
+                          KN
+                        </span>
+                      ) : hasIssue ? (
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-status-danger" title="Ngày có vấn đề" />
+                      ) : null}
+                    </div>
 
-          {selectedDay.lateMinutes ? (
-            <div className="mt-3 p-3 bg-status-warn-soft border border-status-warn-line rounded-lg text-xs text-status-warn flex items-center justify-between">
-              <span>⚠️ Bạn đã check-in muộn <strong>{selectedDay.lateMinutes} phút</strong> so với ca chuẩn.</span>
-              <button
-                onClick={() => navigate('/attendance/requests')}
-                className="px-3 py-1 rounded bg-status-warn text-on-warn font-semibold text-xs hover:bg-status-warn"
-              >
-                Tạo đơn giải trình đi muộn
-              </button>
-            </div>
-          ) : null}
+                    {/* Giờ vào/ra chỉ hiện từ sm lên — mobile ô quá hẹp */}
+                    {d.checkIn && (
+                      <div className="mt-1 hidden space-y-0.5 font-mono text-[10px] text-ink-secondary sm:block">
+                        <div>Vào: <strong className="text-ink">{d.checkIn}</strong></div>
+                        <div>Ra: <strong className="text-ink">{d.checkOut || '--:--'}</strong></div>
+                      </div>
+                    )}
 
-          {selectedDay.status === 'INCOMPLETE' && !selectedDay.checkOut && (
-            <div className="mt-3 p-3 bg-status-danger-soft border border-status-danger-line rounded-lg text-xs text-status-danger flex items-center justify-between">
-              <span>⚠️ Ngày này chưa có giờ check-out. Hãy tạo đơn bổ sung công để không bị trừ ngày công.</span>
-              <button
-                onClick={() => navigate('/attendance/requests')}
-                className="px-3 py-1 rounded bg-status-danger text-on-danger font-semibold text-xs hover:bg-status-danger"
-              >
-                Tạo đơn bổ sung công
-              </button>
+                    <div className="mt-1 flex w-full items-end justify-between gap-1">
+                      {/* Ô mobile quá hẹp → chỉ hiện ký hiệu 1–2 ký tự, không hiện statusText dài */}
+                      <span className="truncate font-mono text-[9.5px] font-bold sm:text-[10.5px]">
+                        {d.status === 'WEEKEND' ? '—' : d.symbol || d.statusText}
+                      </span>
+                      {d.hoursWorked ? (
+                        <span className="hidden font-mono text-[9px] text-ink-muted sm:inline">{d.hoursWorked}h</span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
-        </Card>
+
+          {/* Chú giải */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-3 text-[10.5px] text-ink-muted">
+            {[
+              { label: 'Đúng giờ', dot: 'bg-status-ok' },
+              { label: 'Đi muộn', dot: 'bg-status-warn' },
+              { label: 'Làm từ xa (WFH)', dot: 'bg-status-wfh' },
+              { label: 'Nghỉ phép', dot: 'bg-status-info' },
+              { label: 'Thiếu giờ / Vắng', dot: 'bg-status-danger' },
+              { label: 'Cuối tuần / Lễ', dot: 'bg-ink-muted' },
+            ].map(l => (
+              <span key={l.label} className="inline-flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${l.dot}`} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Chi tiết ngày đã chọn — mockup `.panel` */}
+      {selectedDay && (
+        <div className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+            <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+              Chi tiết ngày {selectedDay.day}/{monthNum}/{yearNum}
+            </h2>
+            <span className="text-[11px] text-ink-muted">({selectedDay.weekday})</span>
+            <button
+              type="button"
+              onClick={() => setSelectedDay(null)}
+              className="ml-auto inline-flex h-7 items-center gap-1 rounded-lg border border-line px-2.5 text-[11.5px] font-semibold text-ink-secondary hover:border-line-hover"
+            >
+              <X className="h-3 w-3" />
+              Đóng
+            </button>
+          </div>
+
+          <div className="p-4">
+            <div className="grid grid-cols-2 gap-2.5 text-xs md:grid-cols-4">
+              <div className="rounded-lg border border-line bg-canvas p-3">
+                <span className="text-[11px] text-ink-muted">Trạng thái ghi nhận:</span>
+                <div className="mt-1">
+                  <Badge
+                    variant={
+                      selectedDay.status === 'ON_TIME'
+                        ? 'accent'
+                        : selectedDay.status === 'LATE'
+                        ? 'warn'
+                        : selectedDay.status === 'INCOMPLETE' || selectedDay.status === 'ABSENT'
+                        ? 'danger'
+                        : 'gray'
+                    }
+                  >
+                    {selectedDay.statusText}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-line bg-canvas p-3">
+                <span className="text-[11px] text-ink-muted">Giờ check-in:</span>
+                <div className="mt-1 font-mono text-sm font-bold text-ink">{selectedDay.checkIn || '—'}</div>
+              </div>
+
+              <div className="rounded-lg border border-line bg-canvas p-3">
+                <span className="text-[11px] text-ink-muted">Giờ check-out:</span>
+                <div className="mt-1 font-mono text-sm font-bold text-ink">{selectedDay.checkOut || '—'}</div>
+              </div>
+
+              <div className="rounded-lg border border-line bg-canvas p-3">
+                <span className="text-[11px] text-ink-muted">Số giờ làm thực tế:</span>
+                <div className="mt-1 text-sm font-bold text-status-ok">
+                  {selectedDay.hoursWorked ? `${selectedDay.hoursWorked} giờ` : '0 giờ'}
+                </div>
+              </div>
+            </div>
+
+            {selectedDay.lateMinutes ? (
+              <div className="mt-3 flex flex-col items-start justify-between gap-2 rounded-lg border border-status-warn-line bg-status-warn-soft p-3 text-xs text-status-warn sm:flex-row sm:items-center">
+                <span className="inline-flex items-start gap-1.5">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Bạn đã check-in muộn <strong>{selectedDay.lateMinutes} phút</strong> so với ca chuẩn.
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/attendance/requests?create=LATE_EARLY&date=${selectedDay.date}`)
+                  }
+                  className="shrink-0 whitespace-nowrap rounded-lg bg-status-warn px-3 py-1.5 text-xs font-semibold text-on-warn"
+                >
+                  Tạo đơn giải trình đi muộn
+                </button>
+              </div>
+            ) : null}
+
+            {selectedDay.status === 'INCOMPLETE' && !selectedDay.checkOut && (
+              <div className="mt-3 flex flex-col items-start justify-between gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-xs text-status-danger sm:flex-row sm:items-center">
+                <span className="inline-flex items-start gap-1.5">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Ngày này chưa có giờ check-out. Hãy tạo đơn bổ sung công để không bị trừ ngày công.</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/attendance/requests?create=ADJUST&date=${selectedDay.date}`)
+                  }
+                  className="shrink-0 whitespace-nowrap rounded-lg bg-status-danger px-3 py-1.5 text-xs font-semibold text-on-danger"
+                >
+                  Tạo đơn bổ sung công
+                </button>
+              </div>
+            )}
+
+            {/* Khiếu nại đã gửi — HR đang xử lý / đã xử lý / bị từ chối */}
+            {selectedDay.dispute ? (
+              <div className="mt-3 flex flex-col items-start justify-between gap-2 rounded-lg border border-status-info-line bg-status-info-soft p-3 text-xs text-status-info sm:flex-row sm:items-center">
+                <span className="inline-flex items-start gap-1.5">
+                  <MessageSquareWarning className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Bạn đã gửi khiếu nại ngày này —{' '}
+                    <strong>{DISPUTE_STATUS[selectedDay.dispute.status] || selectedDay.dispute.status}</strong>
+                    . Lý do: {selectedDay.dispute.reason || '(không ghi lý do)'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/attendance/my-timesheet?month=${selectedDay.date.slice(0, 7)}`)
+                  }
+                  className="shrink-0 whitespace-nowrap rounded-lg bg-status-info px-3 py-1.5 text-xs font-semibold text-on-info"
+                >
+                  Xem trong bảng công của tôi
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
       )}
     </div>
   );

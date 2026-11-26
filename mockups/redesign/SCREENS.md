@@ -58,7 +58,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ✅ | ✅ | ✅ |
-| T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ⬜ | ⬜ | ⬜ |
+| T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ✅ | ✅ | ✅ |
 | T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
@@ -236,4 +236,24 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   đủ 5 lớp và hiện rõ **lý do bị chặn + cách khắc phục** ("Bạn đã dùng đủ 2 thiết
   bị — máy thứ 3 phải được HR duyệt" + nút "Thử lại lượt khác"); bật webcam thật với
   Chromium fake device; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.
+- **T2 · Lịch chấm công** ✅ (2026-11-27) — mockup `screens/calendar.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `CalendarPage`: đầu trang eyebrow + `h1` "Lịch công
+  tháng" + sub; **nút chuyển tháng ‹ ›** gộp trong 1 khung (icon lucide, nhãn tháng
+  font-mono) — trước là 2 nút bo góc có emoji ◀ ▶ và badge 📅; **dải 5 chỉ số** đo từ
+  API thật (công chuẩn 20 ngày · công tích lũy 1.5 ngày · đi muộn 0 lần · phép năm
+  1 ngày còn 11 · WFH 0 ngày) kèm icon; lưới lịch ô vuông 7 cột T2→CN — **mobile ô
+  nhỏ 52px, giờ vào/ra + số giờ chỉ hiện từ `sm`** (trước 7 cột trong 390px làm "Ngày
+  nghỉ" bị cắt thành "Ngà"); ô cuối tuần hiện "—" thay vì đoạn text dài; **nhãn KN**
+  cho 5 ngày đã có khiếu nại + chú giải thêm mục KN; panel chi tiết ngày chuyển từ `Card`
+  sang panel viền, lưới 4 ô (trạng thái · giờ vào · giờ ra · số giờ) + **dòng cảnh báo
+  đi muộn** và **dòng khiếu nại** (HR đang xử lý / đã xử lý / bị từ chối, kèm lý do) với
+  nút dẫn đúng chỗ — nút "Tạo đơn giải trình đi muộn" / "Tạo đơn bổ sung công" nay
+  mang `?create=…&date=…` để form mở sẵn đúng loại đơn và đúng ngày. Không đổi
+  nghiệp vụ (API `/attendance/my-timesheet`, chuyển tháng theo `?month=YYYY-MM`).
+  Verify: 3 theme × 320/390/768/1440 không tràn ngang, 0 lỗi JS, 0 request 4xx/5xx;
+  API trả 30 ngày = lưới vẽ 30 ô; bấm ‹ › đổi tháng **và URL** (`month=2026-11` →
+  `2026-12` → về `2026-11`); click ngày mở panel chi tiết rồi đóng được; 5 nhãn KN khớp
+  5 ngày có dispute trong API; form đơn mở đúng loại `LATE_EARLY` + ngày `2026-11-22`;
+  `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
