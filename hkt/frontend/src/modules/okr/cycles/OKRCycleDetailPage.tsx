@@ -5,6 +5,16 @@ import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import {
+  ArrowLeft,
+  BellRing,
+  Lock,
+  LockOpen,
+  PauseCircle,
+  Pencil,
+  Play,
+  Plus,
+} from 'lucide-react';
+import {
   addDaysIso,
   cycleStatusMeta,
   Cycle,
@@ -293,38 +303,61 @@ export const OKRCycleDetailPage: React.FC = () => {
     <div className="space-y-5 max-w-5xl mx-auto pb-12">
       {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <button className="text-xs font-semibold text-accent hover:underline" onClick={() => navigate('/okr/cycles')}>← Danh sách chu kỳ</button>
-          <h1 className="text-xl font-bold tracking-tight text-ink mt-1 flex items-center gap-2">
-            {isNew ? 'Thêm chu kỳ OKR' : form.name}
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <button
+            onClick={() => navigate('/okr/cycles')}
+            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-accent hover:underline"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Danh sách chu kỳ
+          </button>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              {isNew ? 'Thêm chu kỳ OKR' : form.name}
+            </h1>
             {!isNew && <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>}
-          </h1>
-          <p className="text-xs text-ink-muted mt-1">
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
             3 phase theo mốc thật · mỗi phase 2 cửa sổ (nhân viên cập nhật → quản lý duyệt) · thang điểm 1–5 · tần suất check-in.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {viewOnly && !isClosed && !isNew && (
-            <Button size="sm" variant="outline" onClick={() => navigate(`/okr/cycles/${id}`)}>✎ Chỉnh sửa</Button>
+            <Button size="md" variant="outline" onClick={() => navigate(`/okr/cycles/${id}`)}>
+              <Pencil className="h-3.5 w-3.5" /> Chỉnh sửa
+            </Button>
           )}
           {isDraft && editable && (
-            <Button size="sm" variant="outline" onClick={activate} disabled={busy}>▶ Kích hoạt</Button>
+            <Button size="md" variant="outline" onClick={activate} disabled={busy}>
+              <Play className="h-3.5 w-3.5" /> Kích hoạt
+            </Button>
           )}
           {isActive && (
-            <Button size="sm" variant="outline" onClick={sendReminders} disabled={busy} title="Nhắc những người còn việc chưa xong ở các phase sắp hết hạn (≤ 3 ngày)">🔔 Gửi nhắc hạn</Button>
+            <Button size="md" variant="outline" onClick={sendReminders} disabled={busy} title="Nhắc những người còn việc chưa xong ở các phase sắp hết hạn (≤ 3 ngày)">
+              <BellRing className="h-3.5 w-3.5" /> Gửi nhắc hạn
+            </Button>
           )}
           {isActive && (
-            <Button size="sm" variant="outline" onClick={deactivate} disabled={busy}>⏸ Tạm ẩn</Button>
+            <Button size="md" variant="outline" onClick={deactivate} disabled={busy}>
+              <PauseCircle className="h-3.5 w-3.5" /> Tạm ẩn
+            </Button>
           )}
           {isActive && (
-            <Button size="sm" variant="outline" onClick={lock} disabled={busy}>🔒 Chốt &amp; khoá</Button>
+            <Button size="md" variant="outline" onClick={lock} disabled={busy}>
+              <Lock className="h-3.5 w-3.5" /> Chốt &amp; khoá
+            </Button>
           )}
           {isClosed && (
-            <Button size="sm" variant="outline" onClick={() => openReopen('CYCLE')}>🔓 Mở lại chu kỳ</Button>
+            <Button size="md" variant="outline" onClick={() => openReopen('CYCLE')}>
+              <LockOpen className="h-3.5 w-3.5" /> Mở lại chu kỳ
+            </Button>
           )}
           {editable && (
-            <Button size="sm" variant="primary" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : isNew ? 'Tạo chu kỳ' : 'Lưu cấu hình'}</Button>
+            <Button size="md" variant="primary" onClick={save} disabled={saving}>
+              {saving ? 'Đang lưu...' : isNew ? 'Tạo chu kỳ' : 'Lưu cấu hình'}
+            </Button>
           )}
         </div>
       </div>
@@ -336,24 +369,27 @@ export const OKRCycleDetailPage: React.FC = () => {
       )}
 
       <fieldset disabled={!editable} className="space-y-5 min-w-0">
-        <Card className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
-            <div>
-              <h2 className="text-sm font-bold text-ink">{form.name}</h2>
-              <div className="text-[11px] text-ink-muted">Năm {form.year} · Thang điểm {form.scaleMin}–{form.scaleMax} · Check-in {form.checkinInterval}</div>
+        <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
+            <div className="min-w-0">
+              <h2 className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">{form.name}</h2>
+              <div className="mt-0.5 text-[11px] text-ink-muted">
+                Năm {form.year} · Thang điểm {form.scaleMin}–{form.scaleMax} · Check-in {form.checkinInterval}
+              </div>
             </div>
           </div>
+          <div className="space-y-3 p-4">
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">Tên chu kỳ</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">Năm</label>
-              <input type="number" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+              <input type="number" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
               {isNew && existingYears.length > 0 && (
-                <div className={`text-[10px] mt-0.5 ${existingYears.includes(form.year) ? 'text-danger font-semibold' : 'text-ink-muted'}`}>
+                <div className={`text-[10px] mt-0.5 ${existingYears.includes(form.year) ? 'text-status-danger font-semibold' : 'text-ink-muted'}`}>
                   {existingYears.includes(form.year)
                     ? `Năm ${form.year} đã có chu kỳ — mỗi năm chỉ có 1 chu kỳ OKR.`
                     : `Các năm đã có chu kỳ: ${existingYears.slice().sort((a, b) => a - b).join(', ')}`}
@@ -362,7 +398,7 @@ export const OKRCycleDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">Tần suất check-in</label>
-              <select value={form.checkinInterval} onChange={(e) => setForm({ ...form, checkinInterval: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas">
+              <select value={form.checkinInterval} onChange={(e) => setForm({ ...form, checkinInterval: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
                 <option value="MONTHLY">Hàng tháng</option>
                 <option value="QUARTERLY">Hàng quý</option>
               </select>
@@ -378,13 +414,13 @@ export const OKRCycleDetailPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">Điểm thấp nhất</label>
-              <select value={form.scaleMin} onChange={(e) => setForm({ ...form, scaleMin: Number(e.target.value) })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas">
+              <select value={form.scaleMin} onChange={(e) => setForm({ ...form, scaleMin: Number(e.target.value) })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
                 {[1, 2, 3, 4, 5].map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">Điểm cao nhất</label>
-              <select value={form.scaleMax} onChange={(e) => setForm({ ...form, scaleMax: Number(e.target.value) })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas">
+              <select value={form.scaleMax} onChange={(e) => setForm({ ...form, scaleMax: Number(e.target.value) })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
                 {[1, 2, 3, 4, 5].map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>
@@ -397,17 +433,21 @@ export const OKRCycleDetailPage: React.FC = () => {
                 type="date"
                 value={form.seniorityCutoffDate ? String(form.seniorityCutoffDate).substring(0, 10) : ''}
                 onChange={(e) => setForm({ ...form, seniorityCutoffDate: e.target.value || null })}
-                className="w-full border border-line rounded-lg p-2 text-xs bg-canvas"
+                className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
               />
               <div className="text-[10px] text-ink-muted mt-0.5">
                 Để trống = 31/12/{form.year}. Dùng cho cột "Thời gian công tác" của báo cáo tổng hợp.
               </div>
             </div>
           </div>
-        </Card>
+          </div>
+        </section>
 
-        <Card className="space-y-3">
-          <div className="text-sm font-bold text-ink border-b border-line pb-2">Timeline 3 phase — 2 cửa sổ mỗi phase</div>
+        <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="border-b border-line px-4 py-3 text-[13.5px] font-bold tracking-[-0.01em] text-ink">
+            Timeline 3 phase — 2 cửa sổ mỗi phase
+          </div>
+          <div className="space-y-3 p-4">
           <OKRPhaseTimeline year={form.year} phases={form.phases} />
           <div className="space-y-2">
             {form.phases.map((p, idx) => (
@@ -449,22 +489,22 @@ export const OKRCycleDetailPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-muted mb-1">Bắt đầu</label>
-                    <input type="date" value={p.start_date || ''} onChange={(e) => updatePhase(p.key, { start_date: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+                    <input type="date" value={p.start_date || ''} onChange={(e) => updatePhase(p.key, { start_date: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-muted mb-1">Hạn chót</label>
-                    <input type="date" value={p.due_date || ''} onChange={(e) => updatePhase(p.key, { due_date: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+                    <input type="date" value={p.due_date || ''} onChange={(e) => updatePhase(p.key, { due_date: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
                   </div>
                 </div>
                 <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Quản lý duyệt / nhận xét / chấm điểm</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-muted mb-1">Bắt đầu review</label>
-                    <input type="date" value={p.review_start || ''} onChange={(e) => updatePhase(p.key, { review_start: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+                    <input type="date" value={p.review_start || ''} onChange={(e) => updatePhase(p.key, { review_start: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-muted mb-1">Hạn review</label>
-                    <input type="date" value={p.review_due || ''} onChange={(e) => updatePhase(p.key, { review_due: e.target.value })} className="w-full border border-line rounded-lg p-2 text-xs bg-canvas" />
+                    <input type="date" value={p.review_due || ''} onChange={(e) => updatePhase(p.key, { review_due: e.target.value })} className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
                   </div>
                 </div>
                 {p.status === 'locked' && (
@@ -479,37 +519,40 @@ export const OKRCycleDetailPage: React.FC = () => {
             Hết cửa sổ quản lý thì phase tự khoá tới phase kế; phase đã khoá chỉ HR mở lại được, kèm lý do ghi audit.
             Hệ thống tự nhắc trước hạn 3 ngày (8:00 hằng ngày): gửi OKR, review giữa năm, tự đánh giá / chấm điểm cuối năm.
           </div>
-        </Card>
+          </div>
+        </section>
 
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between border-b border-line pb-2">
-            <div>
-              <div className="text-sm font-bold text-ink">Mục tiêu công ty (20%)</div>
-              <div className="text-[11px] text-ink-muted">Hiển thị trên Dashboard nhân viên để tham khảo — không tính vào điểm TB cá nhân.</div>
+        <section className="overflow-hidden rounded-[13px] border border-line bg-surface shadow-2xs">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">Mục tiêu công ty (20%)</div>
+              <div className="mt-0.5 text-[11px] text-ink-muted">Hiển thị trên Dashboard nhân viên để tham khảo — không tính vào điểm TB cá nhân.</div>
             </div>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setForm({ ...form, companyObjectives: [...form.companyObjectives, { title: '', category: 'BUSINESS', progress: 0 }] })}
             >
-              + Thêm mục tiêu
+              <Plus className="h-3 w-3" /> Thêm mục tiêu
             </Button>
           </div>
+          <div className="space-y-3 p-4">
           {form.companyObjectives.length === 0 && (
             <div className="text-xs text-ink-muted">Chưa có mục tiêu công ty.</div>
           )}
           {form.companyObjectives.map((o, idx) => (
             <div key={o.id || idx} className="grid grid-cols-1 sm:grid-cols-[1fr_130px_110px_auto] gap-2 items-center">
-              <input value={o.title} onChange={(e) => updateObjective(idx, { title: e.target.value })} placeholder="Tên mục tiêu công ty" className="border border-line rounded-lg p-2 text-xs bg-canvas" />
-              <select value={o.category} onChange={(e) => updateObjective(idx, { category: e.target.value as CompanyObjective['category'] })} className="border border-line rounded-lg p-2 text-xs bg-canvas">
+              <input value={o.title} onChange={(e) => updateObjective(idx, { title: e.target.value })} placeholder="Tên mục tiêu công ty" className="rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" />
+              <select value={o.category} onChange={(e) => updateObjective(idx, { category: e.target.value as CompanyObjective['category'] })} className="rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
                 <option value="BUSINESS">Business</option>
                 <option value="PEOPLE">People</option>
               </select>
-              <input type="number" min={0} max={100} value={o.progress} onChange={(e) => updateObjective(idx, { progress: Number(e.target.value) })} className="border border-line rounded-lg p-2 text-xs bg-canvas" title="Tiến độ %" />
-              <button type="button" className="text-[11px] font-semibold text-danger hover:underline" onClick={() => setForm({ ...form, companyObjectives: form.companyObjectives.filter((_, i) => i !== idx) })}>Xoá</button>
+              <input type="number" min={0} max={100} value={o.progress} onChange={(e) => updateObjective(idx, { progress: Number(e.target.value) })} className="rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" title="Tiến độ %" />
+              <button type="button" className="text-[11px] font-semibold text-status-danger hover:underline" onClick={() => setForm({ ...form, companyObjectives: form.companyObjectives.filter((_, i) => i !== idx) })}>Xoá</button>
             </div>
           ))}
-        </Card>
+          </div>
+        </section>
       </fieldset>
 
       <Modal
@@ -534,27 +577,27 @@ export const OKRCycleDetailPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">
-                  Hạn chót mới {isPhaseOverdue(reopenPhaseTarget) ? <span className="text-danger">*</span> : <span className="text-ink-muted font-normal">(để trống = giữ nguyên)</span>}
+                  Hạn chót mới {isPhaseOverdue(reopenPhaseTarget) ? <span className="text-status-danger">*</span> : <span className="text-ink-muted font-normal">(để trống = giữ nguyên)</span>}
                 </label>
                 <input
                   type="date"
                   value={reopenDueDate}
                   min={isoToday()}
                   onChange={(e) => setReopenDueDate(e.target.value)}
-                  className="w-full border border-line rounded-lg p-2 text-xs bg-canvas"
+                  className="w-full rounded-[10px] border border-line bg-canvas p-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
                 />
               </div>
             </>
           ) : null}
 
           <div>
-            <label className="block text-xs font-semibold text-ink mb-1">Lý do mở lại <span className="text-danger">*</span></label>
+            <label className="block text-xs font-semibold text-ink mb-1">Lý do mở lại <span className="text-status-danger">*</span></label>
             <textarea
               rows={2}
               value={reopenReason}
               onChange={(e) => setReopenReason(e.target.value)}
               placeholder="Ví dụ: HR mở lại để nhân viên bổ sung theo kế hoạch điều chỉnh..."
-              className="w-full border border-line rounded-lg p-2.5 text-xs bg-canvas"
+              className="w-full rounded-[10px] border border-line bg-canvas p-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             />
           </div>
 

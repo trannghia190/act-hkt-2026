@@ -87,7 +87,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O1 | Tổng quan OKR | `/okr/dashboard` | `OKRDashboardPage` | ✅ | ✅ | ✅ |
 | O2 | OKR của tôi | `/okr/my-okr` | `MyOKRPage` | ✅ | ✅ | ✅ |
 | O3 | Chu kỳ OKR | `/okr/cycles` | `OKRCyclesPage` | ✅ | ✅ | ✅ |
-| O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ⬜ | ⬜ | ⬜ |
+| O4 | Chi tiết / tạo chu kỳ | `/okr/cycles/new` · `/okr/cycles/:id` | `OKRCycleDetailPage` | ✅ | ✅ | ✅ |
 | O5 | Review OKR nhóm | `/okr/team-review` | `TeamReviewPage` | ⬜ | ⬜ | ⬜ |
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ⬜ | ⬜ | ⬜ |
 | O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ⬜ | ⬜ | ⬜ |
@@ -361,3 +361,16 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   trạng thái NV/QL. Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang,
   0 lỗi JS; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
   `test_mockup_responsive` sạch.
+- **O4 · Chi tiết / tạo chu kỳ OKR** ✅ (2026-11-27) — mockup
+  `screens/okr-cycle-detail.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `OKRCycleDetailPage`: link "← Danh sách chu kỳ" → **nút back có icon** `ArrowLeft`;
+  tiêu đề → **đầu trang eyebrow + `h1` + badge + sub**; **bỏ hết 7 emoji làm icon**
+  (✎ ▶ 🔔 ⏸ 🔒 🔓 +) sang icon lucide (Pencil / Play / BellRing / PauseCircle /
+  Lock / LockOpen / Plus); các `Card` → **panel 13px** (header tách viền, tiêu đề
+  13.5px); input/select/textarea bo 10px + focus ring accent; màu `text-danger` →
+  `text-status-danger`; dòng "Phase đã khoá cứng" nay có icon `Lock`. Không đổi
+  nghiệp vụ: cùng API cấu hình chu kỳ + 3 phase × 2 cửa sổ + mục tiêu công ty, kèm
+  modal **mở lại chu kỳ/phase bắt buộc nhập lý do** và ghi audit. Verify: 3 theme ×
+  320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; cả `/okr/cycles/new` và
+  `/okr/cycles/:id` đều render đúng; `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.
