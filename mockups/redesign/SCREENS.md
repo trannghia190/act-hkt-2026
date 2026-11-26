@@ -61,7 +61,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ⬜ | ⬜ | ⬜ |
 | T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
-| T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ⬜ | ⬜ | ⬜ |
+| T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ⬜ | ⬜ | ⬜ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
@@ -188,3 +188,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   + tìm kiếm đổi đúng tổng số đơn (200 → 6 / 2 / 102 / 92); phân trang chuyển trang đúng;
   nút Tạo đơn mới mở form; `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **T5 · Chi tiết đơn** ✅ (2026-11-26) — mockup `screens/request-detail.html` (3 theme ×
+  desktop 1440 + mobile 390). Áp vào `RequestDetailPage`: thêm **link "Về danh sách đơn"**
+  (trước không có đường quay lại); đầu trang eyebrow `Đơn #XXXX` + `h1` tên loại đơn +
+  badge trạng thái + sub 1 dòng — **trước tiêu đề là UUID thô**; bố cục 2 cột: trái =
+  Thông tin đơn (lưới nhãn/giá trị 2 cột, mã đơn full width) + Giấy tờ đính kèm, phải =
+  **timeline "Diễn biến"** dọc có chấm trạng thái (xanh = đã xong, hổ phách = đang chờ)
+  + lịch sử chỉnh sửa; điều kiện đơn chuyển từ emoji ✅ sang chip kiểm tra có icon
+  (Trong quota / Nộp đúng hạn / Ảnh hưởng); link "Xem bảng công bị tác động" thành nút
+  có icon thay cho link gạch chân. Bỏ emoji 📎 ở danh sách tệp. Không đổi nghiệp vụ
+  (cùng API `/requests/{id}` + `/attachments`, cùng luồng tải/tải file tệp). Verify: 3
+  theme × 320/360/390/414/768/1440 không tràn ngang, 0 lỗi JS; đơn chờ duyệt hiện 2
+  bước timeline (Gửi đơn → Chờ quản lý duyệt), đơn đã duyệt hiện 2 bước (Gửi đơn → Đã
+  duyệt) kèm người duyệt + thời điểm; link quay lại và link xem bảng công điều hướng
+  đúng; `tsc` + `build` + `check-consistency` + `test_theme_responsive` +
+  `test_mockup_responsive` sạch.
