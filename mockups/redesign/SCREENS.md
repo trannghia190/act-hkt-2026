@@ -92,7 +92,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | O6 | Đánh giá OKR | `/okr/assessment` | `AssessmentPageRoute` | ✅ | ✅ | ✅ |
 | O7 | Review giữa năm | `/okr/mid-year-review` | `MidYearReviewPage` | ✅ | ✅ | ✅ |
 | O8 | Duyệt OKR | `/okr/team-approvals` | `OKRApprovalsPage` | ✅ | ✅ | ✅ |
-| O9 | Báo cáo OKR | `/okr/summary-report` | `OKRReportsPage` | ⬜ | ⬜ | ⬜ |
+| O9 | Báo cáo OKR | `/okr/summary-report` | `OKRReportsPage` | ✅ | ✅ | ✅ |
 
 ## 5 · Shell & Modal dùng chung
 
@@ -430,5 +430,20 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   `border-danger/40` — token không tồn tại). Không đổi nghiệp vụ: cùng API duyệt OKR,
   **phê duyệt / trả lại kèm góp ý / mở lại cho NV sửa** với 3 hành động đúng trạng
   thái, modal xem chi tiết 2 nhóm. Verify: 3 theme × 320/360/390/414/768/1024/1440
+  không tràn ngang, 0 lỗi JS; trang **không còn emoji**; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **O9 · Báo cáo tổng hợp OKR (9 trường)** ✅ (2026-11-27) — mockup
+  `screens/okr-reports.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `OKRReportsPage`: tiêu đề → **đầu trang eyebrow + `h1` + sub**, input mốc tính
+  thời gian công tác có `aria-label` + bo 10px; **bỏ hết 3 emoji làm icon** (📥 🔒 📊)
+  sang icon lucide (Download / Lock / AlertTriangle); **4 widget** từ `Card` → card 13px
+  theo layout `.stats` (nhãn 10px uppercase `font-extrabold`, số `font-display` 24px);
+  các khối `Card` → **component `Panel` dùng chung** (tóm tắt C15 · tiến độ theo
+  nhóm · phân bố điểm · điểm TB theo nhóm · chưa tự đánh giá · danh sách rủi ro) với
+  `id` neo giữ nguyên cho link "→ xem nguồn"; **header bảng 13 cột viết tắt 9.5px
+  uppercase `font-extrabold`** theo spec; bộ lọc bo 10px có `aria-label`. Không đổi
+  nghiệp vụ: cùng API báo cáo HR + export Excel + **chốt & khoá chu kỳ** (có modal
+  xác nhận, chặn khi còn hồ sơ chưa chấm), 9 trường dữ liệu + 4 widget + tóm tắt
+  C15 + danh sách rủi ro theo rule. Verify: 3 theme × 320/360/390/414/768/1024/1440
   không tràn ngang, 0 lỗi JS; trang **không còn emoji**; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.

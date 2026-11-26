@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
+import { AlertTriangle, Download, FileBarChart, Lock } from 'lucide-react';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -211,41 +212,82 @@ export const OKRReportsPage: React.FC = () => {
     <div className="space-y-5 pb-12">
       {toast && <div className="fixed top-16 right-6 z-[100] bg-ink text-canvas px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg">{toast}</div>}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">Báo Cáo Tổng Hợp OKR — 9 Trường</h1>
-          <p className="text-xs text-ink-muted mt-1">Bảng tổng hợp HR · thời gian công tác tự tính · 4 widget · tóm tắt C15 · rủi ro · export Excel.</p>
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <FileBarChart className="h-3.5 w-3.5" />
+            Báo cáo OKR
+          </div>
+          <h1 className="mt-1.5 font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Báo cáo tổng hợp OKR — 9 trường
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            Bảng tổng hợp HR · thời gian công tác tự tính · 4 widget · tóm tắt C15 · rủi ro · export Excel.
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-[11px] text-ink-muted flex items-center gap-1.5" title="Thời gian công tác tính từ ngày vào làm tới mốc này. Để trống = theo cấu hình chu kỳ (mặc định 31/12).">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[11px] text-ink-muted" title="Thời gian công tác tính từ ngày vào làm tới mốc này. Để trống = theo cấu hình chu kỳ (mặc định 31/12).">
             Tính công tác tới
             <input
               type="date"
+              aria-label="Mốc tính thời gian công tác"
               value={cutoff || data?.seniorityCutoff || ''}
               onChange={(e) => setCutoff(e.target.value)}
-              className="border border-line rounded-lg p-1.5 text-xs bg-surface text-ink"
+              className="h-8 rounded-[10px] border border-line bg-surface px-2.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             />
           </label>
-          <Button size="sm" variant="outline" onClick={exportExcel}>📥 Xuất Excel</Button>
-          {data?.cycleStatus !== 'closed' && <Button size="sm" variant="outline" onClick={openLock} disabled={locking}>{locking ? 'Đang khoá...' : '🔒 Chốt & khoá chu kỳ'}</Button>}
+          <Button size="md" variant="outline" onClick={exportExcel}>
+            <Download className="h-3.5 w-3.5" /> Xuất Excel
+          </Button>
+          {data?.cycleStatus !== 'closed' && (
+            <Button size="md" variant="outline" onClick={openLock} disabled={locking}>
+              <Lock className="h-3.5 w-3.5" />
+              {locking ? 'Đang khoá...' : 'Chốt & khoá chu kỳ'}
+            </Button>
+          )}
         </div>
       </div>
 
       {loading ? (
-        <Card><div className="p-8 text-center text-xs text-ink-muted">Đang tải báo cáo...</div></Card>
+        <Panel hideHeader bodyClassName="p-8"><div className="text-center text-xs text-ink-muted">Đang tải báo cáo...</div></Panel>
       ) : !data ? (
-        <Card><div className="p-8 text-center text-xs text-ink-muted">Không có dữ liệu báo cáo.</div></Card>
+        <Panel hideHeader bodyClassName="p-8"><div className="text-center text-xs text-ink-muted">Không có dữ liệu báo cáo.</div></Panel>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="p-4"><div className="text-[11px] text-ink-muted">Tổng nhân sự{data.widgets.noOkr ? ` (${data.widgets.noOkr} chưa có OKR)` : ''}</div><div className="text-2xl font-black text-ink">{data.widgets.totalEmployees}</div></Card>
-            <Card className="p-4"><div className="text-[11px] text-ink-muted">Đã nộp / tự đánh giá</div><div className="text-2xl font-black text-accent">{data.widgets.submitted}/{data.widgets.totalEmployees}</div></Card>
-            <Card className="p-4"><div className="text-[11px] text-ink-muted">Quản lý đã chấm</div><div className="text-2xl font-black text-ink">{data.widgets.managerAssessed}</div></Card>
-            <Card className="p-4"><div className="text-[11px] text-ink-muted">Điểm TB toàn công ty</div><div className="text-2xl font-black text-accent">{data.widgets.companyAverage ?? '—'}</div></Card>
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+                Tổng nhân sự{data.widgets.noOkr ? ` (${data.widgets.noOkr} chưa có OKR)` : ''}
+              </div>
+              <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
+                {data.widgets.totalEmployees}
+              </div>
+            </div>
+            <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">Đã nộp / tự đánh giá</div>
+              <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-accent">
+                {data.widgets.submitted}/{data.widgets.totalEmployees}
+              </div>
+            </div>
+            <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">Quản lý đã chấm</div>
+              <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
+                {data.widgets.managerAssessed}
+              </div>
+            </div>
+            <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">Điểm TB toàn công ty</div>
+              <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-accent">
+                {data.widgets.companyAverage ?? '—'}
+              </div>
+            </div>
           </div>
 
-          <Card className="space-y-2 border-accent/40">
-            <div className="text-xs font-bold text-accent-dark">📊 Tóm tắt báo cáo (C15)</div>
+          <Panel
+            title="Tóm tắt báo cáo (C15)"
+            className="border-accent-line bg-accent-soft/25"
+          >
             <div className="text-xs text-ink-secondary leading-relaxed space-y-0.5">
               {(data.summaryParts && data.summaryParts.length > 0)
                 ? data.summaryParts.map((p, i) => (
@@ -266,11 +308,11 @@ export const OKRReportsPage: React.FC = () => {
               <a href="#report-table" className="text-accent hover:underline">→ Bảng 9 trường</a>
               <a href="#risk-list" className="text-accent hover:underline">→ Danh sách rủi ro ({data.risks.length})</a>
             </div>
-          </Card>
+          </Panel>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="space-y-2">
-              <div id="widget-progress" className="text-sm font-bold text-ink border-b border-line pb-2">Tiến độ nộp theo nhóm</div>
+            <div id="widget-progress">
+            <Panel title="Tiến độ nộp theo nhóm">
               {Object.entries(data.widgets.byDepartment).length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có dữ liệu.</div> : Object.entries(data.widgets.byDepartment).map(([dept, stat]) => (
                 <div key={dept} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -280,10 +322,11 @@ export const OKRReportsPage: React.FC = () => {
                   <div className="h-1.5 bg-line rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${stat.total ? (stat.submitted * 100 / stat.total) : 0}%` }} /></div>
                 </div>
               ))}
-            </Card>
+            </Panel>
+            </div>
 
-            <Card className="space-y-2">
-              <div id="widget-distribution" className="text-sm font-bold text-ink border-b border-line pb-2">Phân bố điểm TB (bản đã chốt)</div>
+            <div id="widget-distribution">
+            <Panel title="Phân bố điểm TB (bản đã chốt)">
               {[1, 2, 3, 4, 5].map((score) => {
                 const count = data.widgets.distribution[String(score)] || 0;
                 const max = Math.max(1, ...Object.values(data.widgets.distribution));
@@ -295,12 +338,13 @@ export const OKRReportsPage: React.FC = () => {
                   </div>
                 );
               })}
-            </Card>
+            </Panel>
+            </div>
           </div>
 
           {/* Widget 4 — Điểm TB theo nhóm (chỉ tính bản đã chốt) */}
-          <Card className="space-y-2">
-            <div id="widget-avg-by-team" className="text-sm font-bold text-ink border-b border-line pb-2">Điểm TB theo nhóm (bản đã chốt)</div>
+          <div id="widget-avg-by-team">
+          <Panel title="Điểm TB theo nhóm (bản đã chốt)">
             {Object.entries(data.widgets.byDepartment).length === 0 ? <div className="text-xs text-ink-muted py-3">Chưa có dữ liệu.</div> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {Object.entries(data.widgets.byDepartment)
@@ -318,23 +362,25 @@ export const OKRReportsPage: React.FC = () => {
             {data.widgets.companyAverage != null && (
               <div className="text-[11px] text-ink-muted">TB toàn công ty: <b className="text-ink">{data.widgets.companyAverage}</b></div>
             )}
-          </Card>
+          </Panel>
+          </div>
 
           {data.widgets.notSubmitted.length > 0 && (
-            <Card className="space-y-2">
-              <div id="widget-not-submitted" className="text-sm font-bold text-ink border-b border-line pb-2">Chưa tự đánh giá ({data.widgets.notSubmitted.length})</div>
+            <div id="widget-not-submitted">
+            <Panel title={`Chưa tự đánh giá (${data.widgets.notSubmitted.length})`}>
               <div className="flex flex-wrap gap-1.5">
                 {data.widgets.notSubmitted.map((e) => (
                   <span key={e.employeeCode} className="rounded-full border border-status-warn-line bg-status-warn-soft px-2 py-0.5 text-[11px] text-status-warn">{e.fullName} ({e.employeeCode})</span>
                 ))}
               </div>
-            </Card>
+            </Panel>
+            </div>
           )}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên, mã NV, phòng ban..." className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent w-full sm:w-64" />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-line bg-canvas text-ink">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên, mã NV, phòng ban..." aria-label="Tìm nhân viên" className="w-full rounded-[10px] border border-line bg-canvas px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 sm:w-64" />
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Lọc theo trạng thái" className="cursor-pointer rounded-[10px] border border-line bg-canvas px-2.5 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20">
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="CHUA_CO_OKR">Chưa có OKR được duyệt</option>
                 <option value="CHUA_TU_DANH_GIA">Chưa tự đánh giá</option>
@@ -342,14 +388,14 @@ export const OKRReportsPage: React.FC = () => {
                 <option value="DA_HOAN_TAT">Đã chấm xong</option>
               </select>
             </div>
-            <div className="text-xs text-ink-muted">{filtered.length} nhân sự</div>
+            <span className="font-mono text-[10.5px] text-ink-muted">{filtered.length} nhân sự</span>
           </div>
 
           <div id="report-table" className="bg-surface rounded-xl border border-line overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="bg-canvas border-b border-line text-ink-secondary">
+                  <tr className="border-b border-line bg-canvas">
                     <th className="py-3 px-3">STT</th>
                     <th className="py-3 px-3">Họ và tên</th>
                     <th className="py-3 px-3">Mã NV</th>
@@ -423,15 +469,21 @@ export const OKRReportsPage: React.FC = () => {
             </div>
           </div>
 
-          <Card className="space-y-2" >
-            <div id="risk-list" className="text-sm font-bold text-ink border-b border-line pb-2">Danh sách OKR rủi ro theo rule ({data.risks.length})</div>
-            {data.risks.length === 0 ? <div className="text-xs text-ink-muted py-2">Không có cảnh báo.</div> : data.risks.map((r) => (
-              <div key={r.reviewId} className="rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn space-y-0.5">
+          <div id="risk-list">
+          <Panel title={`Danh sách OKR rủi ro theo rule (${data.risks.length})`}>
+            {data.risks.length === 0 ? <div className="py-2 text-xs text-ink-muted">Không có cảnh báo.</div> : data.risks.map((r) => (
+              <div key={r.reviewId} className="space-y-0.5 rounded-lg border border-status-warn-line bg-status-warn-soft p-2.5 text-[11px] text-status-warn">
                 <div className="font-semibold">{r.fullName} ({r.employeeCode})</div>
-                {r.warnings.map((w, idx) => <div key={idx}>⚠️ {w.message}</div>)}
+                {r.warnings.map((w, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5">
+                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span>{w.message}</span>
+                  </div>
+                ))}
               </div>
             ))}
-          </Card>
+          </Panel>
+          </div>
         </>
       )}
 
