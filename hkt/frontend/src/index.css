@@ -2,36 +2,185 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --canvas: #f7f7f5;
-  --surface: #ffffff;
-  --surface-2: #fbfbfa;
-  --ink: #1a1a17;
-  --ink-secondary: #3f3f39;
-  --ink-muted: #73736b;
-  --line: #e6e5e0;
-  --line-soft: #efeeea;
-  --accent: #17604d;
-  --accent-hover: #0f4939;
-  --accent-soft: #e8f1ee;
-  --accent-line: #bcd9d0;
-  --ok: #15803d;
-  --ok-soft: #e8f5ec;
-  --warn: #a95c06;
-  --warn-soft: #fdf3e3;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-  --info: #1d4ed8;
-  --info-soft: #eef2ff;
+/* ============================================================================
+   THEME — 3 template màu, đổi runtime qua data-theme trên <html>
+   ----------------------------------------------------------------------------
+   Nguồn sự thật cho Tailwind: mỗi token trong tailwind.config.js đọc
+   `rgb(var(--x) / <alpha-value>)`. Biến ở đây lưu RGB KHÔNG alpha
+   (ví dụ `--accent: 227 29 26`) để <alpha-value> hoạt động.
+
+   Áp template:  <html data-theme="ascend-clean|midnight-rail|bento-studio">
+   Mặc định: midnight-rail (khai báo ở :root).
+
+   Toàn bộ giá trị đã đo tương phản WCAG AA (4.5:1 body / 3:1 large)
+   trên nền tương ứng — xem tests/ui/test_theme_responsive.mjs.
+   ============================================================================ */
+
+/* ── A · Ascend Clean (sáng toàn bộ) ─────────────────────────────────────── */
+:root,
+[data-theme='ascend-clean'] {
+  --canvas: 250 250 251;
+  --canvas-subtle: 246 246 248;
+  --surface: 255 255 255;
+  --surface-2: 246 246 248;
+  --ink: 23 23 26;
+  --ink-2: 74 74 82;
+  --ink-muted: 107 108 111;
+  --line: 236 236 239;
+  --line-soft: 244 244 246;
+  --line-hover: 217 217 223;
+  --line-focus: 248 200 196;
+
+  --accent: 227 29 26;
+  --accent-hover: 194 24 21;
+  --accent-dark: 194 24 21;
+  --accent-soft: 253 236 234;
+  --accent-line: 248 200 196;
+
+  --ok: 17 106 58;
+  --ok-soft: 232 246 238;
+  --ok-line: 191 227 206;
+  --warn: 154 91 0;
+  --warn-soft: 254 244 230;
+  --warn-line: 240 217 174;
+  --danger: 180 35 24;
+  --danger-soft: 253 236 234;
+  --danger-line: 245 196 191;
+  --info: 29 78 216;
+  --info-soft: 234 240 254;
+  --info-line: 195 212 251;
+  --wfh: 126 34 206;
+  --wfh-soft: 243 232 255;
+  --wfh-line: 221 198 251;
+
+  /* Rail trắng */
+  --rail-bg: 255 255 255;
+  --rail-ink: 23 23 26;
+  --rail-ink-2: 74 74 82;
+  --rail-muted: 107 108 111;
+  --rail-line: 236 236 239;
+  --rail-hover: 246 246 248;
+  --rail-active: 194 24 21;
+  --rail-active-bg: 253 236 234;
+
+  --shadow: 20 20 25;
+  --on-accent: 255 255 255;
+}
+
+/* ── B · Midnight Rail (MẶC ĐỊNH — rail tối, nội dung sáng) ──────────────── */
+[data-theme='midnight-rail'] {
+  --canvas: 247 247 249;
+  --canvas-subtle: 243 243 246;
+  --surface: 255 255 255;
+  --surface-2: 244 244 246;
+  --ink: 23 23 26;
+  --ink-2: 74 74 82;
+  --ink-muted: 107 108 111;
+  --line: 230 230 234;
+  --line-soft: 241 241 244;
+  --line-hover: 213 213 220;
+  --line-focus: 248 200 196;
+
+  --accent: 227 29 26;
+  --accent-hover: 194 24 21;
+  --accent-dark: 194 24 21;
+  --accent-soft: 253 236 234;
+  --accent-line: 248 200 196;
+
+  --ok: 17 106 58;
+  --ok-soft: 232 246 238;
+  --ok-line: 191 227 206;
+  --warn: 154 91 0;
+  --warn-soft: 254 244 230;
+  --warn-line: 240 217 174;
+  --danger: 180 35 24;
+  --danger-soft: 253 236 234;
+  --danger-line: 245 196 191;
+  --info: 29 78 216;
+  --info-soft: 234 240 254;
+  --info-line: 195 212 251;
+  --wfh: 126 34 206;
+  --wfh-soft: 243 232 255;
+  --wfh-line: 221 198 251;
+
+  /* Rail tối neutral */
+  --rail-bg: 16 17 20;
+  --rail-ink: 244 244 246;
+  --rail-ink-2: 185 185 194;
+  --rail-muted: 138 144 153;
+  --rail-line: 33 33 39;
+  --rail-hover: 26 26 32;
+  --rail-active: 255 107 99;
+  --rail-active-bg: 42 20 22;
+
+  --shadow: 20 20 25;
+  --on-accent: 255 255 255;
+}
+
+/* ── C · Bento Studio (tối toàn bộ) ──────────────────────────────────────── */
+[data-theme='bento-studio'] {
+  --canvas: 12 13 16;
+  --canvas-subtle: 17 19 24;
+  --surface: 20 21 25;
+  --surface-2: 23 25 31;
+  --ink: 242 243 245;
+  --ink-2: 180 183 190;
+  --ink-muted: 138 144 153;
+  --line: 30 32 38;
+  --line-soft: 25 27 32;
+  --line-hover: 43 46 54;
+  --line-focus: 60 32 32;
+
+  /* Đỏ sáng hơn: #E31D1A trên nền tối chỉ đạt 3.22:1 với chữ trắng */
+  --accent: 255 81 71;
+  --accent-hover: 255 106 97;
+  --accent-dark: 255 128 120;
+  --accent-soft: 52 35 38;
+  --accent-line: 149 79 77;
+
+  --ok: 61 214 140;
+  --ok-soft: 25 48 41;
+  --ok-line: 40 117 82;
+  --warn: 245 165 36;
+  --warn-soft: 51 41 26;
+  --warn-line: 132 93 30;
+  --danger: 255 128 120;
+  --danger-soft: 52 35 38;
+  --danger-line: 149 79 77;
+  --info: 122 165 255;
+  --info-soft: 34 41 57;
+  --info-line: 76 100 151;
+  --wfh: 196 162 255;
+  --wfh-soft: 44 40 57;
+  --wfh-line: 108 91 140;
+
+  --rail-bg: 10 11 14;
+  --rail-ink: 242 243 245;
+  --rail-ink-2: 180 183 190;
+  --rail-muted: 138 144 153;
+  --rail-line: 30 32 38;
+  --rail-hover: 23 25 31;
+  --rail-active: 255 128 120;
+  --rail-active-bg: 52 35 38;
+
+  --shadow: 0 0 0;
+  --on-accent: 26 11 10;
 }
 
 body {
   margin: 0;
-  background-color: var(--canvas);
-  color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Chuyển theme mượt — trừ khi user yêu cầu giảm chuyển động */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: background-color 180ms ease, color 180ms ease;
+  }
 }
 
 /* Custom subtle scrollbar */
@@ -39,16 +188,13 @@ body {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #d4d4cb;
+  background: rgb(var(--ink-muted) / 0.35);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a89f;
+  background: rgb(var(--ink-muted) / 0.55);
 }

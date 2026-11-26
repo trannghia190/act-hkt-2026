@@ -15,6 +15,8 @@ public class ProfileResponse {
     private String email;
     private String phone;
     private String avatarUrl;
+    /** Template giao diện: ascend-clean | midnight-rail | bento-studio. */
+    private String theme;
     private String role;
     private String teamName;
     private String departmentName;

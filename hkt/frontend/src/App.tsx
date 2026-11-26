@@ -11,6 +11,7 @@ import { FirstLoginChangePasswordModal } from './modules/auth/FirstLoginChangePa
 import { LoginPage } from './modules/auth/LoginPage';
 import { AppRoutes } from './routes/AppRoutes';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ThemeProvider } from './theme/ThemeContext';
 
 function MainLayout() {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -107,10 +108,12 @@ function RootApp() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <RootApp />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <RootApp />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

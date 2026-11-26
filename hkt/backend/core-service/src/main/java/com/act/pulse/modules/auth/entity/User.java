@@ -43,6 +43,16 @@ public class User extends BaseEntity {
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
+    /**
+     * Template giao diện người dùng chọn:
+     * {@code ascend-clean | midnight-rail | bento-studio}. Mặc định {@code midnight-rail}.
+     * <p>Đây là nguồn sự thật — frontend chỉ cache trong localStorage để áp ngay
+     * (chống nháy trắng), còn lưu lâu dài nằm ở đây để đồng bộ qua máy.</p>
+     */
+    @Column(name = "theme", nullable = false, length = 20)
+    @Builder.Default
+    private String theme = "midnight-rail";
+
     /** Chỉ lưu dạng băm (bcrypt cost 12) — không lưu bản thô. */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,6 +52,13 @@ public class AuthServiceImpl implements AuthService {
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int MAX_FAILED_ATTEMPTS_PERMANENT = 10;
     private static final int LOCK_MINUTES = 10;
+
+    /**
+     * Template giao diện hợp lệ. Thêm template mới chỉ cần sửa list này ở đây
+     * và khai báo thêm CSS trong {@code src/index.css} của frontend.
+     */
+    private static final List<String> ALLOWED_THEMES = List.of(
+            "ascend-clean", "midnight-rail", "bento-studio");
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -525,6 +533,15 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        if (req.getTheme() != null) {
+            String theme = req.getTheme().trim();
+            if (!ALLOWED_THEMES.contains(theme)) {
+                throw new RuntimeException("Template giao diện không hợp lệ (chỉ nhận: "
+                        + String.join(", ", ALLOWED_THEMES) + ")");
+            }
+            user.setTheme(theme);
+        }
+
         userRepository.save(user);
         log.info("Nhân viên {} cập nhật hồ sơ cá nhân", user.getEmployeeCode());
         return toProfileResponse(user);
@@ -563,6 +580,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatarUrl(user.getAvatarUrl())
+                .theme(user.getTheme())
                 .role(user.getRole())
                 .teamName(teamName)
                 .departmentName(departmentName)

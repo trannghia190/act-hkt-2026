@@ -1,9 +1,34 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="midnight-rail">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>ACT-HKT 2026 — Quản Trị Nhân Sự &amp; OKR Toàn Diện</title>
+
+    <!-- Font: Inter (UI) · Plus Jakarta Sans (heading) · JetBrains Mono (số liệu) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!--
+      Áp theme từ cache TRƯỚC khi React render — tránh nháy màn hình trắng.
+      Mặc định (midnight-rail) đã set trên <html> và trong :root của index.css.
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('act_theme');
+          if (t === 'ascend-clean' || t === 'midnight-rail' || t === 'bento-studio') {
+            document.documentElement.dataset.theme = t;
+          }
+        } catch (e) {
+          /* private mode — dùng theme mặc định */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
