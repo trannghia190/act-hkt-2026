@@ -35,7 +35,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | A1 | Đăng nhập | `/login` | `LoginPage` | ✅ | ✅ | ✅ |
-| A2 | Đăng ký khuôn mặt | `/auth/enroll-face` | `FaceEnrollmentPage` | ⬜ | ⬜ | ⬜ |
+| A2 | Đăng ký khuôn mặt | `/auth/enroll-face` | `FaceEnrollmentPage` | ✅ | ✅ | ✅ |
 
 ## 1 · Chung & Quản trị
 
@@ -687,3 +687,13 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   khi gỡ. Verify (NV 136ACT): 1 passkey thật render đúng, mobile 390 không tràn
   (`scrollWidth`=`clientWidth`=384), Bento mobile tương phản tốt, 0 lỗi JS
   (`tsc` + `build` sạch).
+- **A2 · Đăng ký khuôn mặt** ✅ (2026-11-27) — mockup `screens/face-enrollment.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `FaceEnrollmentPage`: nâng cấp
+  đầu trang + hero tối (4 hồ sơ đã nạp · 1 góc chụp · vector 128D); tab ngang
+  gọn (Đăng ký 1 góc · Thử nghiệm 1:N · Quản lý hồ sơ) có badge; camera khung
+  cố định 290px desktop / 220px mobile (sửa `aspect-4/3` không tồn tại → oval
+  gợi ý co theo khổ); panel phải gọn: mã NV + phòng ban dạng ô, họ tên/phòng ban
+  sửa được, chế độ 1 góc ⇄ 3 góc, checkbox đồng ý lưu vector (bắt buộc trước khi
+  gửi), ghi chú "ảnh gốc không lưu". Giữ nguyên API enroll + tab verify/profile.
+  Verify: Midnight desktop+mobile 390 không tràn; Bento desktop tương phản tốt;
+  tab verify render đúng; `tsc` + `build` sạch.
