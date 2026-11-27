@@ -78,7 +78,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | AC1 | Hồ sơ cá nhân (+ chọn theme) | `/account/profile` | `ProfilePage` | ✅ | ✅ | ✅ |
-| AC2 | Passkey & bảo mật | `/account/passkey` | `PasskeySettingsPage` | ⬜ | ⬜ | ⬜ |
+| AC2 | Passkey & bảo mật | `/account/passkey` | `PasskeySettingsPage` | ✅ | ✅ | ✅ |
 
 ## 4 · OKR
 
@@ -676,3 +676,14 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   dùng `ok-soft`. Giữ nguyên API `/devices/request` + header `X-Office-Network` +
   `wifiBssid`. Verify: tài khoản còn hạn mức render khối xanh và nút "Thêm thiết
   bị", mobile 390 không tràn, 0 lỗi JS; `tsc` + `build` sạch.
+
+- **AC2 · Passkey & bảo mật** ✅ (2026-11-27) — mockup `screens/passkey.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `PasskeySettingsPage`: đầu trang
+  gọn + badge AC2; bìa `bg-ink` "Private key không bao giờ rời thiết bị" + số
+  passkey / 100% an toàn phần cứng; Panel "Passkey của tài khoản" (nút `+ Thêm
+  passkey`, mỗi dòng có icon fingerprint, tên + badge "Đang dùng", giờ đăng ký &
+  dùng gần nhất, nút Gỡ) + empty/đang tải; Panel "Cách hoạt động" 3 bước đánh số
+  + ghi chú link "Thiết bị của tôi". Giữ nguyên API webauthn, xác nhận confirm
+  khi gỡ. Verify (NV 136ACT): 1 passkey thật render đúng, mobile 390 không tràn
+  (`scrollWidth`=`clientWidth`=384), Bento mobile tương phản tốt, 0 lỗi JS
+  (`tsc` + `build` sạch).

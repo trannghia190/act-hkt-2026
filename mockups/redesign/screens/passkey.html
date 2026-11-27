@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AC2 · Passkey &amp; bảo mật — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+    .wrap { width: 100%; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 14px;
+      padding: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+    .hero .av { width: 80px; height: 80px; border-radius: 16px; flex: 0 0 80px; display: grid; place-items: center;
+      background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-size: 30px; font-weight: 800; }
+    .hero .nm { font-size: 21px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.02em; color: rgb(var(--ink)); }
+    .hero .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 6px; }
+    .hero .code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: rgb(var(--ink-muted)); }
+    .hero .org { font-size: 12px; color: rgb(var(--ink-2)); margin-top: 5px; }
+    .hero .acts { margin-left: auto; display: flex; gap: 8px; flex: 0 0 auto; }
+
+    /* 4 ô hành động nhanh */
+    .quick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px;
+      padding-top: 18px; border-top: 1px solid rgb(var(--line-soft)); }
+    .quick a { display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface));
+      font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); text-decoration: none; }
+    .quick a:hover { background: rgb(var(--canvas-subtle)); }
+    .quick a svg { width: 15px; height: 15px; stroke-width: 2; color: rgb(var(--accent)); flex: 0 0 15px; }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 13px 16px 11px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; color: rgb(var(--ink)); }
+    .panel-s { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .panel-b { padding: 14px 16px 16px; }
+
+    .cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+    /* Dòng thông tin */
+    .irow { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+    .irow + .irow { border-top: 1px solid rgb(var(--line-soft)); }
+    .irow .ic { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; color: rgb(var(--ink-muted)); }
+    .irow .lbl { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .irow .val { font-size: 13px; font-weight: 600; color: rgb(var(--ink)); margin-top: 1px; }
+    .irow .hint { font-size: 10.5px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+
+    /* ── Theme picker ──────────────────────────────────────────────────── */
+    .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .theme { text-align: left; border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 10px;
+      background: rgb(var(--surface)); cursor: pointer; font-family: inherit; }
+    .theme:hover { border-color: rgb(var(--line-hover)); background: rgb(var(--canvas-subtle)); }
+    .theme.on { border-color: rgb(var(--accent)); box-shadow: 0 0 0 3px rgb(var(--accent) / .18);
+      background: rgb(var(--accent-soft)); }
+    /* Preview mini-mockup: rail + nội dung + chấm trạng thái + thanh brand */
+    .tpv { display: flex; height: 68px; border-radius: 9px; overflow: hidden; border: 1px solid rgb(var(--line)); }
+    .tpv .r { width: 26%; flex: 0 0 26%; padding: 7px 6px; display: flex; flex-direction: column; gap: 5px; }
+    .tpv .r i { height: 4px; border-radius: 99px; display: block; }
+    .tpv .c { flex: 1; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .tpv .c .h { height: 6px; width: 52%; border-radius: 99px; display: block; }
+    .tpv .c .l { height: 4px; width: 100%; border-radius: 99px; opacity: .22; display: block; }
+    .tpv .c .dots { margin-top: auto; display: flex; align-items: center; gap: 4px; }
+    .tpv .c .dots i { width: 7px; height: 7px; border-radius: 99px; display: block; flex: 0 0 7px; }
+    .tpv .c .dots .bar { flex: 1; height: 6px; border-radius: 99px; margin-left: 3px; }
+    .theme .nm { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .theme .nm b { font-size: 12.5px; font-weight: 700; color: rgb(var(--ink)); }
+    .theme.on .nm b { color: rgb(var(--accent-dark)); }
+    .theme .nm .tick { width: 14px; height: 14px; color: rgb(var(--accent)); }
+    .theme .nm .def { margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .theme .ds { font-size: 10.5px; line-height: 1.45; color: rgb(var(--ink-muted)); margin-top: 3px; }
+
+    /* ── Row bảo mật ───────────────────────────────────────────────────── */
+    .srow { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+    .srow + .srow { border-top: 1px solid rgb(var(--line-soft)); }
+    .srow .ic { width: 16px; height: 16px; flex: 0 0 16px; color: rgb(var(--ink-muted)); }
+    .srow .t { font-size: 12.5px; font-weight: 650; color: rgb(var(--ink)); display: flex; align-items: center; gap: 8px; }
+    .srow .d { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .srow .act { margin-left: auto; flex: 0 0 auto; }
+
+    .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      padding: 2.5px 8px; border-radius: 6px; }
+    .tag.ok { background: rgb(var(--ok-soft)); color: rgb(var(--ok)); }
+    .tag.warn { background: rgb(var(--warn-soft)); color: rgb(var(--warn)); }
+    .tag.gray { background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .tag.accent { background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+
+    .ibtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; background: rgb(var(--surface));
+      color: rgb(var(--ink-secondary)); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+      text-decoration: none; }
+    .ibtn:hover { background: rgb(var(--canvas-subtle)); color: rgb(var(--ink)); }
+    .ibtn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-hero { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 14px; }
+    .m-hero .top { display: flex; gap: 12px; align-items: center; }
+    .m-hero .av { width: 56px; height: 56px; border-radius: 14px; flex: 0 0 56px; display: grid; place-items: center;
+      background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-size: 21px; font-weight: 800; }
+    .m-hero .nm { font-size: 16px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.02em; }
+    .m-hero .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+    .m-hero .code { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .m-hero .org { font-size: 11px; color: rgb(var(--ink-2)); margin-top: 4px; }
+    .m-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 13px;
+      padding-top: 13px; border-top: 1px solid rgb(var(--line-soft)); }
+    .m-quick a { display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface));
+      font-size: 12px; font-weight: 650; color: rgb(var(--ink)); text-decoration: none; }
+    .m-quick a svg { width: 14px; height: 14px; stroke-width: 2; color: rgb(var(--accent)); flex: 0 0 14px; }
+    .m-themes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .m-theme { display: flex; gap: 12px; align-items: flex-start; border: 1px solid rgb(var(--line));
+      border-radius: 13px; padding: 10px; background: rgb(var(--surface)); cursor: pointer; font-family: inherit;
+      text-align: left; }
+    .m-theme.on { border-color: rgb(var(--accent)); box-shadow: 0 0 0 3px rgb(var(--accent) / .18);
+      background: rgb(var(--accent-soft)); }
+    .m-theme .tpv { width: 108px; flex: 0 0 108px; height: 56px; }
+    .m-theme .info { min-width: 0; flex: 1; }
+    .m-theme .nm { display: flex; align-items: center; gap: 5px; }
+    .m-theme .nm b { font-size: 12.5px; font-weight: 700; color: rgb(var(--ink)); }
+    .m-theme.on .nm b { color: rgb(var(--accent-dark)); }
+    .m-theme .nm .tick { width: 13px; height: 13px; color: rgb(var(--accent)); }
+    .m-theme .nm .def { margin-left: auto; font-size: 8.5px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); }
+    .m-theme .ds { font-size: 10.5px; line-height: 1.45; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+
+    /* ── AC2: passkey ─────────────────────────────────────────────── */
+    .pk-cover { border-radius: 16px; background: rgb(var(--ink)); color: rgb(var(--canvas));
+      padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .pk-cover .k { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+    .pk-cover .t { margin-top: 5px; font-size: 17px; font-weight: 800; }
+    .pk-cover p { margin: 7px 0 0; max-width: 560px; font-size: 12px; line-height: 1.6; opacity: .75; }
+    .pk-cover .stats { display: flex; gap: 32px; margin-left: auto; }
+    .pk-cover .stats .n { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; }
+    .pk-cover .stats .l { font-size: 11px; opacity: .6; }
+    .pk-row { display: flex; align-items: flex-start; gap: 11px; border: 1px solid rgb(var(--line));
+      border-radius: 12px; background: rgb(var(--surface)); padding: 12px 13px; }
+    .pk-row + .pk-row { margin-top: 8px; }
+    .pk-ic { width: 31px; height: 31px; flex: 0 0 31px; display: grid; place-items: center; border-radius: 9px;
+      border: 1px solid rgb(var(--line)); background: rgb(var(--surface-2)); color: rgb(var(--ink-secondary)); }
+    .pk-ic svg { width: 15px; height: 15px; stroke-width: 2; }
+    .pk-main { flex: 1; min-width: 0; }
+    .pk-name { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: rgb(var(--ink)); }
+    .pk-meta { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: rgb(var(--ink-muted)); }
+    .pk-meta svg { width: 11px; height: 11px; stroke-width: 2; }
+    .pk-step { display: flex; align-items: flex-start; gap: 10px; }
+    .pk-step + .pk-step { margin-top: 10px; }
+    .pk-num { width: 23px; height: 23px; flex: 0 0 23px; display: grid; place-items: center; border-radius: 99px;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+    .pk-step .t { font-size: 12px; font-weight: 650; color: rgb(var(--ink)); }
+    .pk-step .d { margin-top: 2px; font-size: 11px; line-height: 1.55; color: rgb(var(--ink-muted)); }
+    .pk-note { display: flex; align-items: flex-start; gap: 8px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); border-radius: 10px; padding: 10px 12px; font-size: 11px; line-height: 1.6; color: rgb(var(--ink-muted)); }
+    .pk-note svg { flex: 0 0 13px; width: 13px; height: 13px; margin-top: 1px; }
+    .pk-note b { color: rgb(var(--ink-secondary)); }
+    .pk-link { color: rgb(var(--accent-dark)); font-weight: 650; text-decoration: none; }
+    .m-pk-card { border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--surface)); padding: 12px 13px; }
+    .m-pk-card + .m-pk-card { margin-top: 8px; }
+    .m-pk-card .top { display: flex; align-items: flex-start; gap: 9px; }
+    .m-pk-card .nm { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: rgb(var(--ink)); }
+    .m-pk-card .meta { font-size: 10.5px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .m-pk-card .foot { display: flex; gap: 6px; margin-top: 9px; }
+    .m-pk-card .foot .btn-sm { flex: 1; }
+  </style>
+</head>
+<body data-title="AC2 · Passkey &amp; bảo mật">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">Cài đặt</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Hồ sơ cá nhân</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 11a2 2 0 012-2c0-1.7-1.3-3-3-3s-3 1.3-3 3v6a4 4 0 104 0v-1"/><path d="M16 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2"/></svg>Passkey &amp; bảo mật</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Tuỳ chỉnh thông báo</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        <div class="content">
+          <div class="wrap">
+            <div class="phead">
+              <div>
+                <div class="eyebrow"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 11-7.8 7.8 5.5 5.5 0 017.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg> Tuỳ chỉnh cá nhân</div>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px">
+                  <h1 class="h1">Passkey &amp; bảo mật</h1>
+                  <span class="tag accent">AC2</span>
+                </div>
+                <div class="sub">Đăng nhập nhanh bằng vân tay / Face ID / Windows Hello. Passkey không dùng để chấm công.</div>
+              </div>
+            </div>
+
+            <div class="pk-cover">
+              <div style="min-width:0">
+                <div class="k">Đăng nhập không mật khẩu</div>
+                <div class="t">Private key không bao giờ rời thiết bị</div>
+                <p>Passkey lưu trong Secure Enclave / KeyStore. Mất máy thì passkey trên máy đó không dùng được nữa; các máy khác vẫn đăng nhập bình thường.</p>
+              </div>
+              <div class="stats">
+                <div><div class="n">2</div><div class="l">passkey</div></div>
+                <div><div class="n">100%</div><div class="l">an toàn phần cứng</div></div>
+              </div>
+            </div>
+
+            <section class="panel" style="padding:0">
+              <div class="panel-h" style="padding:11px 16px">
+                <div>
+                  <div style="font-size:13.5px;font-weight:700">Passkey của tài khoản</div>
+                  <div style="font-size:11px;color:rgb(var(--ink-muted));margin-top:1px">Đã có 2 passkey</div>
+                </div>
+                <button class="btn btn-primary btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Thêm passkey</button>
+              </div>
+              <div style="padding:0 16px 14px"><div class="pk-row">
+      <span class="pk-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M2 19h20"/></svg></span>
+      <div class="pk-main">
+        <div class="pk-name">MacBook Pro · Touch ID <span class="tag accent">Đang dùng</span></div>
+        <div class="pk-meta"><span style="display:inline-flex;align-items:center;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đăng ký 12/09/2026</span><span>Dùng gần nhất: 5 phút trước</span></div>
+      </div>
+      <button class="btn-ghost sm" style="border:1px solid rgb(var(--line));background:rgb(var(--surface));color:rgb(var(--ink-secondary));height:29px;border-radius:8px;font-size:11.5px;font-weight:650"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>Gỡ</button>
+    </div>
+<div class="pk-row">
+      <span class="pk-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+      <div class="pk-main">
+        <div class="pk-name">iPhone 15 · Face ID <span class="tag accent">Đang dùng</span></div>
+        <div class="pk-meta"><span style="display:inline-flex;align-items:center;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đăng ký 02/11/2026</span><span>Dùng gần nhất: Hôm qua</span></div>
+      </div>
+      <button class="btn-ghost sm" style="border:1px solid rgb(var(--line));background:rgb(var(--surface));color:rgb(var(--ink-secondary));height:29px;border-radius:8px;font-size:11.5px;font-weight:650"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>Gỡ</button>
+    </div></div>
+            </section>
+
+            <section class="panel">
+              <div style="font-size:13.5px;font-weight:700">Cách hoạt động</div>
+              <div style="margin-top:10px">
+                <div class="pk-step"><span class="pk-num">1</span><div><div class="t">Đăng ký một lần cho mỗi thiết bị</div><div class="d">Touch ID, Face ID, Windows Hello hoặc khóa bảo mật USB (YubiKey).</div></div></div>
+                <div class="pk-step"><span class="pk-num">2</span><div><div class="t">Lần sau chỉ cần bấm “Đăng nhập bằng Passkey”</div><div class="d">Ở trang đăng nhập — xác thực bằng vân tay/Face ID, không gõ mật khẩu.</div></div></div>
+                <div class="pk-step"><span class="pk-num">3</span><div><div class="t">Gỡ passkey không ảnh hưởng gì khác</div><div class="d">Mật khẩu và thiết bị chấm công giữ nguyên — chỉ tắt đăng nhập nhanh trên máy đó.</div></div></div>
+              </div>
+              <div class="pk-note" style="margin-top:12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg><div>Passkey <b>không</b> dùng để chấm công. Thiết bị được phép chấm công quản lý ở <a class="pk-link" href="my-devices.html">Thiết bị của tôi</a>.</div></div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+    <div class="m-top">
+      <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+      <div class="bell"><span class="badge">17</span></div>
+    </div>
+    <div class="m-body">
+      <div>
+        <div class="m-sec-t">Tuỳ chỉnh cá nhân</div>
+        <div class="m-h1 h1">Passkey &amp; bảo mật</div>
+        <div class="m-sub">Đăng nhập nhanh bằng vân tay / Face ID</div>
+      </div>
+      <section class="m-hero" style="background:rgb(var(--ink));color:rgb(var(--canvas));border-radius:16px;padding:14px 16px">
+        <div style="font-size:16px;font-weight:800;margin-top:2px">Private key không bao giờ rời thiết bị</div>
+        <p style="font-size:11.5px;line-height:1.6;opacity:.75;margin-top:4px">Lưu trong Secure Enclave / KeyStore. Passkey không dùng để chấm công.</p>
+        <div style="display:flex;gap:18px;margin-top:10px">
+          <div><div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800">2</div><div style="font-size:10px;opacity:.6">passkey</div></div>
+          <div><div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800">100%</div><div style="font-size:10px;opacity:.6">an toàn phần cứng</div></div>
+        </div>
+      </section>
+      <section class="panel" style="padding:0">
+        <div style="padding:11px 13px;border-bottom:1px solid rgb(var(--line));display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+          <div><div style="font-size:13px;font-weight:700">Passkey của tài khoản</div><div style="font-size:10.5px;color:rgb(var(--ink-muted));margin-top:1px">Đã có 2 passkey</div></div>
+          <button class="btn btn-primary btn-sm" style="height:29px;font-size:11.5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Thêm</button>
+        </div>
+        <div style="padding:11px 13px"><div class="m-pk-card">
+      <div class="top"><span class="pk-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M2 19h20"/></svg></span>
+        <span class="nm">MacBook Pro · Touch ID<div class="meta">Đăng ký 12/09/2026 · dùng 5 phút trước</div></span>
+        <span class="tag accent">Đang dùng</span>
+      </div>
+      <div class="foot"><button class="btn-ghost sm" style="border:1px solid rgb(var(--line));background:rgb(var(--canvas));color:rgb(var(--ink-secondary));height:29px;border-radius:8px;font-size:11.5px;font-weight:650"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>Gỡ passkey</button></div>
+    </div>
+<div class="m-pk-card">
+      <div class="top"><span class="pk-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+        <span class="nm">iPhone 15 · Face ID<div class="meta">Đăng ký 02/11/2026 · dùng Hôm qua</div></span>
+        <span class="tag accent">Đang dùng</span>
+      </div>
+      <div class="foot"><button class="btn-ghost sm" style="border:1px solid rgb(var(--line));background:rgb(var(--canvas));color:rgb(var(--ink-secondary));height:29px;border-radius:8px;font-size:11.5px;font-weight:650"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>Gỡ passkey</button></div>
+    </div></div>
+      </section>
+      <section class="panel">
+        <div style="font-size:13px;font-weight:700">Cách hoạt động</div>
+        <div style="margin-top:9px">
+          <div class="pk-step"><span class="pk-num">1</span><div><div class="t">Đăng ký một lần mỗi thiết bị</div><div class="d">Touch ID, Face ID, Windows Hello hoặc YubiKey.</div></div></div>
+          <div class="pk-step"><span class="pk-num">2</span><div><div class="t">Lần sau chỉ cần bấm “Đăng nhập bằng Passkey”</div><div class="d">Xác thực vân tay/Face ID, không gõ mật khẩu.</div></div></div>
+          <div class="pk-step"><span class="pk-num">3</span><div><div class="t">Gỡ passkey không ảnh hưởng gì khác</div><div class="d">Mật khẩu và thiết bị chấm công giữ nguyên.</div></div></div>
+        </div>
+      </section>
+      <div class="pk-note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg><div>Passkey không dùng để chấm công — xem <a class="pk-link" href="my-devices.html">Thiết bị của tôi</a>.</div></div>
+    </div>
+    <div class="m-nav">
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>OKR</div>
+      <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Menu</div>
+    </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>
