@@ -41,7 +41,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
-| S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | 🟡 | ⬜ | ⬜ |
+| S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | ✅ | ✅ | ✅ |
 | S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ✅ | ✅ | ✅ |
 | S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
@@ -149,6 +149,13 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   Không đổi nghiệp vụ (khiếu nại, in, đổi kỳ). Verify: 3 theme × 320/390/1440 không
   tràn, cột Ngày dính đúng, modal khiếu nại mở/đóng được, `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` sạch.
+- **S1 · Cần làm** ✅ (2026-11-27) — mockup `screens/todo.html` bù 3 theme × desktop
+  1440 + mobile 390. Áp vào `TodoInboxPage`: tab đang chọn dùng nền `accent-soft` +
+  chữ `accent-dark` + badge đếm đỏ như mockup (thay chip đen); ô tìm kiếm việc nằm
+  cạnh chip trên desktop và **trên** chip ở mobile (giữ nguyên tính năng lọc); bỏ nút
+  "Tìm việc" trùng lặp ở đầu trang, giữ "+ Tạo đơn" cùng hàng tiêu đề ở cả 2 khổ.
+  Verify: 3 theme × 390/1440 không tràn, `test_todo_responsive` + `test_theme_responsive`
+  PASS, `tsc` + `build` + `check-consistency` sạch.
 - **T10 · Bảng công & chốt lương (HR)** ✅ (2026-11-26) — mockup `screens/timesheet.html`
   (3 theme × desktop 1440 + mobile 390). Áp vào `TimesheetPage`: đầu trang eyebrow +
   `h1` + badge trạng thái + 3 nút (Xuất Excel / Chốt bảng công / Khoá kỳ công, icon
