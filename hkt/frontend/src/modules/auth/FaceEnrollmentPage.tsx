@@ -6,7 +6,6 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import {
   Camera,
-  Upload,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -63,7 +62,6 @@ export const FaceEnrollmentPage: React.FC = () => {
   // Camera & Media stream state
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
@@ -203,32 +201,11 @@ export const FaceEnrollmentPage: React.FC = () => {
     }
   };
 
-  // Upload photo from file
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        if (activeTab === 'enroll') {
-          setCapturedImage(reader.result);
-          setEnrollStatus('idle');
-          setEnrollMessage(null);
-        } else if (activeTab === 'verify') {
-          setVerifyImage(reader.result);
-          setVerifyResult(null);
-        }
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
   // Submit enrollment — CHỈ đăng ký cho chính tài khoản đang đăng nhập.
   // Business: docs/01 "Hồ sơ khuôn mặt" + docs/08 B0 — không cho đăng ký hộ người khác.
   const handleEnrollSubmit = async () => {
     if (!capturedImage) {
-      setEnrollMessage('Vui lòng chụp ảnh khuôn mặt chính diện hoặc tải ảnh lên trước khi đăng ký.');
+      setEnrollMessage('Vui lòng chụp ảnh khuôn mặt chính diện từ camera trước khi đăng ký.');
       setEnrollStatus('error');
       return;
     }
@@ -312,7 +289,7 @@ export const FaceEnrollmentPage: React.FC = () => {
   const handleVerifySubmit = async () => {
     const targetImage = verifyImage || capturedImage;
     if (!targetImage) {
-      alert('Vui lòng chụp hoặc tải lên ảnh khuôn mặt để kiểm tra xác thực.');
+      alert('Vui lòng chụp ảnh khuôn mặt từ camera để kiểm tra xác thực.');
       return;
     }
 
@@ -414,15 +391,8 @@ export const FaceEnrollmentPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Hidden elements for capturing and uploading */}
+      {/* Hidden canvas for capturing — chỉ chụp từ camera, không cho tải ảnh từ file */}
       <canvas ref={canvasRef} className="hidden" />
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
 
       {/* Header Wizard Banner */}
       <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xs">
@@ -572,16 +542,6 @@ export const FaceEnrollmentPage: React.FC = () => {
                       Chụp Ảnh Chính Diện
                     </Button>
                   )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs flex items-center gap-1.5"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Tải Ảnh Từ File
-                  </Button>
                 </div>
 
                 <div className="text-[11px] text-ink-muted">
@@ -598,7 +558,8 @@ export const FaceEnrollmentPage: React.FC = () => {
               <ul className="list-disc list-inside space-y-1 pl-1 text-[11px]">
                 <li>Nhìn thẳng vào tâm camera, biểu cảm khuôn mặt thư giãn tự nhiên.</li>
                 <li>Đảm bảo ánh sáng đủ rõ, không bị ngược sáng hoặc bóng đổ quá tối.</li>
-                <li>Tháo khẩu trang, kính đen hoặc mũ che khuất đường viền khuôn mặt.</li>
+                <li><b>Bắt buộc tháo khẩu trang</b> khi đăng ký — hệ thống sẽ từ chối nếu mũi, miệng bị che.</li>
+                <li>Tháo kính đen hoặc mũ che khuất đường viền khuôn mặt.</li>
               </ul>
             </div>
           </div>
@@ -749,7 +710,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                   <UserCheck className="w-4 h-4 text-accent" />
                   Camera Nhận Diện Thử Nghiệm
                 </span>
-                <span className="text-[11px] text-ink-muted">Chụp hoặc tải ảnh để test matching</span>
+                <span className="text-[11px] text-ink-muted">Chụp ảnh từ camera để test matching</span>
               </div>
 
               <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-black border border-line flex items-center justify-center">
@@ -803,16 +764,6 @@ export const FaceEnrollmentPage: React.FC = () => {
                       Chụp Ảnh Thử Nghiệm
                     </Button>
                   )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs flex items-center gap-1.5"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Tải Ảnh Test
-                  </Button>
                 </div>
 
                 <Button
@@ -911,7 +862,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                 <div className="p-8 border border-dashed border-line rounded-xl text-center text-xs text-ink-muted space-y-2">
                   <UserCheck className="w-8 h-8 text-ink-muted mx-auto opacity-50" />
                   <div>Chưa có kết quả kiểm tra</div>
-                  <div className="text-[11px]">Chụp ảnh hoặc upload ảnh và bấm "Xác Thực Khuôn Mặt Ngay"</div>
+                  <div className="text-[11px]">Chụp ảnh từ camera và bấm "Xác Thực Khuôn Mặt Ngay"</div>
                 </div>
               )}
             </Card>

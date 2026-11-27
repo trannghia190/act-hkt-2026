@@ -632,7 +632,7 @@ export const CheckInPage: React.FC = () => {
         {deviceState === 'unknown' && (
           <span
             className="inline-flex h-[26px] w-fit shrink-0 items-center gap-1.5 rounded-lg border border-status-warn-line bg-status-warn-soft px-2.5 text-[11px] font-semibold text-status-warn"
-            title="Máy này chưa được đăng ký — lớp xác thực 'khóa thiết bị' sẽ chặn lần chấm nếu đã vượt hạn mức thiết bị"
+            title="Máy này chưa được đăng ký — không thể chấm công. Vào 'Thiết bị của tôi' để đăng ký máy trước."
           >
             <Smartphone className="h-3.5 w-3.5" />
             Máy này chưa đăng ký
