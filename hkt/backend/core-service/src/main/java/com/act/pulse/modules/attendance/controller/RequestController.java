@@ -10,9 +10,11 @@ import com.act.pulse.modules.attendance.entity.LeaveLedgerEntry;
 import com.act.pulse.modules.attendance.entity.Holiday;
 import com.act.pulse.modules.attendance.entity.LeaveType;
 import com.act.pulse.modules.attendance.entity.Shift;
+import com.act.pulse.modules.attendance.entity.Team;
 import com.act.pulse.modules.attendance.repository.RequestAttachmentRepository;
 import com.act.pulse.modules.attendance.repository.LeaveLedgerRepository;
 import com.act.pulse.modules.attendance.repository.HolidayRepository;
+import com.act.pulse.modules.attendance.repository.TeamRepository;
 import java.math.BigDecimal;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
@@ -63,8 +65,75 @@ public class RequestController {
     private final ShiftResolver shiftResolver;
     private final LeaveQuotaService leaveQuotaService;
     private final ObjectMapper objectMapper;
+    private final TeamRepository teamRepository;
     private final com.act.pulse.modules.attendance.repository.TimesheetRepository timesheetRepository;
     private final com.act.pulse.modules.attendance.repository.TimesheetCellRepository timesheetCellRepository;
+
+    /**
+     * Tìm người duyệt đang hoạt động (ACTIVE) cho nhân viên:
+     * 1. Quản lý trực tiếp (managerId)
+     * 2. Nếu không có/nghỉ việc -> Trưởng nhóm (Team.leaderId)
+     * 3. Nếu vẫn không có -> Quản trị nhân sự (HR_ADMIN / ADMIN)
+     */
+    private User resolveActiveApprover(User employee) {
+        if (employee == null) return null;
+        if (employee.getManagerId() != null) {
+            User m = userRepository.findById(employee.getManagerId()).orElse(null);
+            if (m != null && !"INACTIVE".equalsIgnoreCase(m.getStatus()) && !"LOCKED".equalsIgnoreCase(m.getStatus())) {
+                return m;
+            }
+        }
+        // Fallback: Trưởng nhóm
+        if (employee.getTeamId() != null) {
+            Team team = teamRepository.findById(employee.getTeamId()).orElse(null);
+            if (team != null && team.getLeaderId() != null) {
+                User leader = userRepository.findById(team.getLeaderId()).orElse(null);
+                if (leader != null && !"INACTIVE".equalsIgnoreCase(leader.getStatus())
+                        && !"LOCKED".equalsIgnoreCase(leader.getStatus())
+                        && !leader.getId().equals(employee.getId())) {
+                    return leader;
+                }
+            }
+        }
+        // Fallback: HR_ADMIN hoặc ADMIN
+        List<User> hrUsers = userRepository.findByRoleIn(List.of("HR_ADMIN", "ADMIN")).stream()
+                .filter(u -> !"INACTIVE".equalsIgnoreCase(u.getStatus()) && !"LOCKED".equalsIgnoreCase(u.getStatus())
+                        && !u.getId().equals(employee.getId()))
+                .toList();
+        return hrUsers.isEmpty() ? null : hrUsers.get(0);
+    }
+
+    private void notifyNewOrUpdatedRequest(RequestEntity req, User employee, boolean isUpdate) {
+        if (employee == null) return;
+        User approver = resolveActiveApprover(employee);
+        String actionVerb = isUpdate ? "cập nhật lại đơn " : "gửi đơn mới ";
+        String approverName = approver != null ? approver.getFullName() : "Phòng Nhân sự (HR)";
+
+        if (approver != null) {
+            notificationDispatcher.dispatch(
+                    "REQUEST_SUBMITTED",
+                    approver.getId(),
+                    isUpdate ? "Đơn đã được cập nhật gửi lại" : "Có đơn mới cần duyệt",
+                    employee.getFullName() + " (" + employee.getEmployeeCode() + ") đã " + actionVerb
+                            + req.getRequestType() + " cho ngày " + req.getWorkDate() + ". Vui lòng kiểm tra và phê duyệt.",
+                    "REQUEST",
+                    "MEDIUM",
+                    "/attendance/approvals",
+                    "request-" + (isUpdate ? "updated:" : "submitted:") + req.getId() + ":" + System.currentTimeMillis());
+        }
+
+        // Thông báo xác nhận cho người tạo đơn
+        notificationDispatcher.dispatch(
+                "REQUEST_SUBMITTED",
+                employee.getId(),
+                isUpdate ? "Đã cập nhật đơn thành công" : "Nộp đơn thành công",
+                "Đơn " + req.getRequestType() + " ngày " + req.getWorkDate() + " của bạn đã được gửi tới "
+                        + approverName + " và đang chờ phê duyệt.",
+                "REQUEST",
+                "LOW",
+                "/attendance/requests",
+                "my-request-sent:" + req.getId() + ":" + (isUpdate ? "updated" : "submitted") + ":" + System.currentTimeMillis());
+    }
 
     private String leaveTypeName(String code) {
         if (code == null) return null;
@@ -262,24 +331,15 @@ public class RequestController {
         entity.setUpdatedAt(LocalDateTime.now());
         RequestEntity saved = requestRepository.save(entity);
 
-        // Báo cho quản lý trực tiếp (trước đây KHÔNG ai được báo đơn mới).
+        // Gửi thông báo cho quản lý / người duyệt hợp lệ và thông báo xác nhận cho người nộp
         if (!Boolean.TRUE.equals(body.getDraft())) {
             User employee = userRepository.findById(userId).orElse(null);
-            User approver = employee != null && employee.getManagerId() != null
-                    ? userRepository.findById(employee.getManagerId()).orElse(null) : null;
+            User approver = resolveActiveApprover(employee);
             if (approver != null) {
-                notificationDispatcher.dispatch(
-                        "REQUEST_SUBMITTED",
-                        approver.getId(),
-                        "Có đơn mới cần duyệt",
-                        (employee == null ? "" : employee.getFullName() + " ("
-                                + employee.getEmployeeCode() + ")") + " gửi đơn "
-                                + saved.getRequestType() + " ngày " + saved.getWorkDate(),
-                        "REQUEST",
-                        "MEDIUM",
-                        "/attendance/approvals",
-                        "request-submitted:" + saved.getId());
+                saved.setDecidedBy(approver.getId());
+                saved = requestRepository.save(saved);
             }
+            notifyNewOrUpdatedRequest(saved, employee, false);
         }
 
         return ApiResponse.ok(saved,
@@ -537,6 +597,25 @@ public class RequestController {
             throw new RuntimeException("Không đọc được file tải lên");
         }
         requestAttachmentRepository.save(att);
+
+        // Thông báo cho người duyệt khi đơn có tài liệu minh chứng mới
+        try {
+            User employee = userRepository.findById(r.getUserId()).orElse(null);
+            User approver = resolveActiveApprover(employee);
+            if (approver != null) {
+                notificationDispatcher.dispatch(
+                        "REQUEST_ATTACHMENT_ADDED",
+                        approver.getId(),
+                        "Tài liệu minh chứng mới đính kèm đơn",
+                        (employee == null ? "Nhân viên" : employee.getFullName() + " (" + employee.getEmployeeCode() + ")")
+                                + " đã tải lên file minh chứng (" + name + ") cho đơn " + r.getRequestType() + " ngày " + r.getWorkDate() + ".",
+                        "REQUEST",
+                        "MEDIUM",
+                        "/attendance/approvals",
+                        "att-added:" + att.getId());
+            }
+        } catch (Exception ignored) {}
+
         Map<String, Object> out = new HashMap<>();
         out.put("id", att.getId().toString());
         out.put("fileName", att.getFileName());
@@ -610,7 +689,25 @@ public class RequestController {
             throw new RuntimeException("Chỉ rút/huỷ được đơn nháp hoặc đang chờ duyệt");
         }
         r.setStatus("WITHDRAWN");
-        return ApiResponse.ok(requestRepository.save(r), "Đã rút đơn");
+        r.setUpdatedAt(LocalDateTime.now());
+        RequestEntity saved = requestRepository.save(r);
+        try {
+            User employee = userRepository.findById(r.getUserId()).orElse(null);
+            User approver = resolveActiveApprover(employee);
+            if (approver != null) {
+                notificationDispatcher.dispatch(
+                        "REQUEST_WITHDRAWN",
+                        approver.getId(),
+                        "Đơn đã được rút / hủy",
+                        (employee == null ? "Nhân viên" : employee.getFullName() + " (" + employee.getEmployeeCode() + ")")
+                                + " đã rút đơn " + r.getRequestType() + " ngày " + r.getWorkDate() + ".",
+                        "REQUEST",
+                        "LOW",
+                        "/attendance/approvals",
+                        "withdrawn:" + r.getId());
+            }
+        } catch (Exception ignored) {}
+        return ApiResponse.ok(saved, "Đã rút đơn");
     }
 
     private String computedDuration(RequestEntity r) {
@@ -708,7 +805,16 @@ public class RequestController {
         r.setDecidedAt(null);
         r.setDecisionComment(null);
         r.setUpdatedAt(LocalDateTime.now());
-        return ApiResponse.ok(requestRepository.save(r), "Đã cập nhật đơn và gửi lại quản lý");
+        User employee = userRepository.findById(r.getUserId()).orElse(null);
+        User approver = resolveActiveApprover(employee);
+        if (approver != null) {
+            r.setDecidedBy(approver.getId());
+        }
+        RequestEntity saved = requestRepository.save(r);
+        try {
+            notifyNewOrUpdatedRequest(saved, employee, true);
+        } catch (Exception ignored) {}
+        return ApiResponse.ok(saved, "Đã cập nhật đơn và gửi lại quản lý");
     }
 
     /**
@@ -756,7 +862,16 @@ public class RequestController {
         }
         r.setStatus("PENDING_APPROVAL");
         r.setUpdatedAt(LocalDateTime.now());
-        return ApiResponse.ok(requestRepository.save(r), "Đã gửi đơn tới quản lý");
+        User employee = userRepository.findById(r.getUserId()).orElse(null);
+        User approver = resolveActiveApprover(employee);
+        if (approver != null) {
+            r.setDecidedBy(approver.getId());
+        }
+        RequestEntity saved = requestRepository.save(r);
+        try {
+            notifyNewOrUpdatedRequest(saved, employee, false);
+        } catch (Exception ignored) {}
+        return ApiResponse.ok(saved, "Đã gửi đơn tới quản lý");
     }
 
     @PostMapping("/bulk-approve")
@@ -985,16 +1100,19 @@ public class RequestController {
         // Nhân viên nhận thông báo kết quả duyệt/từ chối (từ chối luôn kèm lý do).
         // Đi qua dispatcher để TÔN TRỌNG cấu hình tuỳ chỉnh thông báo của người dùng
         // (tắt kênh / giờ yên lặng / dedupe / giới hạn push mỗi ngày).
+        String deciderName = userRepository.findById(CurrentUser.userId()).map(User::getFullName)
+                .orElse(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "Người phê duyệt");
         notificationDispatcher.dispatch(
                 approve ? "REQUEST_APPROVED" : "REQUEST_REJECTED",
                 owner.getId(),
-                approve ? "Đơn đã được duyệt" : "Đơn bị từ chối",
-                "Đơn " + r.getRequestType() + " ngày " + r.getWorkDate()
-                        + (comment == null || comment.isBlank() ? "" : " — Lý do: " + comment),
+                approve ? "Đơn của bạn đã được PHÊ DUYỆT" : "Đơn của bạn đã BỊ TỪ CHỐI",
+                "Đơn " + r.getRequestType() + " ngày " + r.getWorkDate() + " đã được "
+                        + (approve ? "chấp thuận" : "từ chối") + " bởi " + deciderName + "."
+                        + (comment == null || comment.isBlank() ? "" : (approve ? " Ghi chú: " : " — Lý do từ chối: ") + comment),
                 "REQUEST",
                 approve ? "MEDIUM" : "HIGH",
                 "/attendance/requests/" + r.getId(),
-                "request:" + r.getId() + ":" + (approve ? "approved" : "rejected"));
+                "request:" + r.getId() + ":" + (approve ? "approved" : "rejected") + ":" + System.currentTimeMillis());
 
         return ApiResponse.ok(saved, approve ? "Đã duyệt đơn" : "Đã từ chối đơn");
     }

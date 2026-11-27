@@ -3,7 +3,7 @@ import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X, RefreshCw } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -83,11 +83,29 @@ export const EmployeeManagementPage: React.FC = () => {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCreatingEmp, setIsCreatingEmp] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isChangeManagerModalOpen, setIsChangeManagerModalOpen] = useState(false);
   const [isChangeTeamModalOpen, setIsChangeTeamModalOpen] = useState(false);
 
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
+
+  const generateRandomPassword = (): string => {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '@#$!%*';
+    const all = upper + lower + digits + special;
+    let res = 'Act@';
+    res += upper[Math.floor(Math.random() * upper.length)];
+    res += lower[Math.floor(Math.random() * lower.length)];
+    res += digits[Math.floor(Math.random() * digits.length)];
+    res += special[Math.floor(Math.random() * special.length)];
+    for (let i = 0; i < 4; i++) {
+      res += all[Math.floor(Math.random() * all.length)];
+    }
+    return res;
+  };
 
   // Form states
   const [newEmp, setNewEmp] = useState({
@@ -97,7 +115,7 @@ export const EmployeeManagementPage: React.FC = () => {
     team: '',   // sẽ điền bằng nhóm đầu tiên nạp từ API
     positionName: 'Kỹ sư Phần mềm',
     role: 'EMPLOYEE' as const,
-    password: '123456',
+    password: generateRandomPassword(),
     joinedDate: todayISO(),
   });
   // Xem trước thâm niên & quỹ phép theo ngày onboard (tính ở backend, cùng rule với lúc tạo).
@@ -216,9 +234,29 @@ export const EmployeeManagementPage: React.FC = () => {
     setNewTeamName((n) => (n && teams.some((t) => t.name === n) ? n : teams[0].name));
   }, [teams]);
 
-  // Available managers for dropdown selection
-  const availableManagers = employees.filter(
-    (e) => (e.role === 'MANAGER' || e.role === 'ADMIN' || e.role === 'HR_ADMIN') && (!selectedEmp || e.id !== selectedEmp.id)
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+
+  const fetchActiveUsers = async () => {
+    try {
+      const res = await fetch('/api/v1/admin/users/active', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setActiveUsers(json.data);
+        }
+      }
+    } catch (e) {
+      console.warn('Cannot load active users', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveUsers();
+  }, []);
+
+  // Available managers for dropdown selection (Chỉ lấy quản lý đang hoạt động ACTIVE)
+  const availableManagers = (activeUsers.length > 0 ? activeUsers : employees).filter(
+    (e) => (e.status === 'ACTIVE' || !e.status) && (e.role === 'MANAGER' || e.role === 'ADMIN' || e.role === 'HR_ADMIN') && (!selectedEmp || e.id !== selectedEmp.id)
   );
 
   // Warning metrics
@@ -229,6 +267,8 @@ export const EmployeeManagementPage: React.FC = () => {
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
+    setIsCreatingEmp(true);
+    const pass = newEmp.password || generateRandomPassword();
     try {
       const res = await fetch('/api/v1/admin/users', {
         method: 'POST',
@@ -240,7 +280,7 @@ export const EmployeeManagementPage: React.FC = () => {
           team: newEmp.team,
           positionName: newEmp.positionName,
           role: newEmp.role,
-          password: newEmp.password || '123456',
+          password: pass,
           joinedDate: newEmp.joinedDate,
         }),
       });
@@ -255,11 +295,11 @@ export const EmployeeManagementPage: React.FC = () => {
           email: empData?.email || newEmp.email,
           team: empData?.team || newEmp.team,
           role: empData?.role || newEmp.role,
-          defaultPassword: empData?.defaultPassword || newEmp.password || '123456',
+          defaultPassword: empData?.defaultPassword || pass,
           emailSent: empData?.emailSent,
           emailStatusMessage: empData?.emailStatusMessage || json.message,
         });
-        showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || newEmp.password || '123456'}`);
+        showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || pass}`);
         // Reset code for next entry (giữ nhóm đang chọn, không hard-code tên nhóm)
         setNewEmp({
           code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
@@ -268,7 +308,7 @@ export const EmployeeManagementPage: React.FC = () => {
           team: newEmp.team,
           positionName: 'Kỹ sư Phần mềm',
           role: 'EMPLOYEE' as const,
-          password: '123456',
+          password: generateRandomPassword(),
           joinedDate: todayISO(),
         });
         fetchEmployees();
@@ -281,6 +321,8 @@ export const EmployeeManagementPage: React.FC = () => {
     } catch (err) {
       setAddError('Không kết nối được tới máy chủ — nhân viên chưa được tạo.');
       setIsAddModalOpen(false);
+    } finally {
+      setIsCreatingEmp(false);
     }
   };
 
@@ -392,8 +434,66 @@ export const EmployeeManagementPage: React.FC = () => {
       }
       showToast(json.message || `Đã đánh dấu ${emp.fullName} đã nghỉ việc.`);
       fetchEmployees();
+      fetchActiveUsers();
     } catch {
       setAddError('Không kết nối được tới máy chủ — nhân viên chưa được đánh dấu nghỉ việc.');
+    }
+  };
+
+  // Kích hoạt lại tài khoản nhân viên (từ trạng thái INACTIVE / LOCKED về ACTIVE)
+  const handleReactivate = async (emp: Employee) => {
+    if (!window.confirm(`Xác nhận kích hoạt lại tài khoản cho nhân viên ${emp.fullName} (${emp.employeeCode})?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/admin/users/${emp.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          status: 'ACTIVE',
+          reason: 'Kích hoạt lại tài khoản nhân sự từ giao diện quản lý',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        showToast(`Đã kích hoạt lại tài khoản cho ${emp.fullName} thành công!`);
+        fetchEmployees();
+        fetchActiveUsers();
+      } else {
+        alert(data.message || 'Lỗi khi kích hoạt lại tài khoản');
+      }
+    } catch {
+      alert('Không kết nối được tới máy chủ.');
+    }
+  };
+
+  // Vô hiệu hóa / Xóa mềm tài khoản nhân viên
+  const handleDeleteUser = async (emp: Employee) => {
+    const reason = window.prompt(
+      `Xác nhận vô hiệu hóa / xóa tài khoản nhân sự ${emp.fullName} (${emp.employeeCode})?\n\n`
+      + `Hệ thống sẽ:\n`
+      + `• Đánh dấu ngừng hoạt động (INACTIVE)\n`
+      + `• Tự động gỡ vị trí trưởng nhóm & chuyển giao toàn bộ đơn chờ duyệt sang quản lý kế tiếp\n`
+      + `• Thu hồi toàn bộ phiên đăng nhập\n\n`
+      + `Lý do (bắt buộc):`,
+      'Vô hiệu hóa nhân sự'
+    );
+    if (!reason || !reason.trim()) return;
+    try {
+      const res = await fetch(`/api/v1/admin/users/${emp.id}?reason=${encodeURIComponent(reason.trim())}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        showToast(data.message || `Đã vô hiệu hóa ${emp.fullName} thành công.`);
+        fetchEmployees();
+        fetchActiveUsers();
+      } else {
+        alert(data.message || 'Lỗi khi xóa nhân viên');
+      }
+    } catch {
+      alert('Không kết nối được tới máy chủ.');
     }
   };
 
@@ -408,17 +508,18 @@ export const EmployeeManagementPage: React.FC = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
+        const tempPassword = typeof data.data === 'string' && data.data ? data.data : 'Act@RandomPass';
         setCreatedAccount({
           fullName: emp.fullName,
           employeeCode: emp.employeeCode,
           email: emp.email,
           team: emp.team,
           role: emp.role,
-          defaultPassword: '123456',
+          defaultPassword: tempPassword,
           emailSent: true,
-          emailStatusMessage: data.message || 'Đã cấp lại mật khẩu tạm thời (123456) và phát lệnh gửi email kích hoạt qua Gmail.',
+          emailStatusMessage: data.message || `Đã cấp lại mật khẩu tạm thời (${tempPassword}) và phát lệnh gửi email kích hoạt qua Gmail.`,
         });
-        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName}! Mật khẩu tạm: 123456`);
+        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName}! Mật khẩu tạm: ${tempPassword}`);
         fetchEmployees();
       } else {
         alert(data.message || 'Lỗi khi cấp lại mật khẩu');
@@ -832,16 +933,37 @@ export const EmployeeManagementPage: React.FC = () => {
                           <Key className="w-3 h-3 text-status-warn group-hover:text-canvas" />
                           <span>Cấp lại pass</span>
                         </button>
-                        {emp.status !== 'INACTIVE' && (
+                        {emp.status === 'INACTIVE' || emp.status === 'LOCKED' ? (
                           <button
                             type="button"
-                            onClick={() => handleResign(emp)}
-                            className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-ink-muted hover:text-canvas text-ink border border-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
-                            title="Đánh dấu đã nghỉ việc: rời khỏi tổ chức nhưng giữ lịch sử chấm công. Mã nhân viên vẫn giữ (không cấp lại được), email thì có thể cấp cho nhân viên mới."
+                            onClick={() => handleReactivate(emp)}
+                            className="px-2.5 py-1 rounded-lg bg-status-ok-soft hover:bg-status-ok hover:text-on-ok text-status-ok border border-status-ok-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                            title="Kích hoạt lại tài khoản nhân sự sang trạng thái Hoạt động"
                           >
-                            <UserX className="w-3 h-3 text-ink-secondary group-hover:text-canvas" />
-                            <span>Đã nghỉ</span>
+                            <UserCheck className="w-3 h-3 text-status-ok group-hover:text-canvas" />
+                            <span>Kích hoạt lại</span>
                           </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleResign(emp)}
+                              className="px-2.5 py-1 rounded-lg bg-surface-secondary hover:bg-ink-muted hover:text-canvas text-ink border border-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                              title="Đánh dấu đã nghỉ việc: rời khỏi tổ chức nhưng giữ lịch sử chấm công. Mã nhân viên vẫn giữ (không cấp lại được), email thì có thể cấp cho nhân viên mới."
+                            >
+                              <UserX className="w-3 h-3 text-ink-secondary group-hover:text-canvas" />
+                              <span>Đã nghỉ</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(emp)}
+                              className="px-2.5 py-1 rounded-lg bg-status-danger-soft hover:bg-status-danger hover:text-white text-status-danger border border-status-danger-line text-[11px] font-semibold transition-all cursor-pointer shadow-2xs flex items-center gap-1 group"
+                              title="Vô hiệu hóa tài khoản nhân sự và tự động chuyển giao đơn chờ"
+                            >
+                              <X className="w-3 h-3 text-status-danger group-hover:text-white" />
+                              <span>Xóa</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -943,6 +1065,51 @@ export const EmployeeManagementPage: React.FC = () => {
                   >
                     <GitPullRequest className="h-3 w-3" /> Đổi sếp
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenChangeTeam(emp)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-info-line bg-status-info-soft px-2.5 text-[11.5px] font-semibold text-status-info transition-colors hover:bg-status-info hover:text-on-info"
+                    title="Chuyển nhóm làm việc"
+                  >
+                    <Building2 className="h-3 w-3" /> Chuyển nhóm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdminResetPassword(emp)}
+                    className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-warn-line bg-status-warn-soft px-2.5 text-[11.5px] font-semibold text-status-warn transition-colors hover:bg-status-warn hover:text-on-warn"
+                    title="Cấp lại mật khẩu"
+                  >
+                    <Key className="h-3 w-3" /> Cấp pass
+                  </button>
+                  {emp.status === 'INACTIVE' || emp.status === 'LOCKED' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReactivate(emp)}
+                      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-ok-line bg-status-ok-soft px-2.5 text-[11.5px] font-semibold text-status-ok transition-colors hover:bg-status-ok hover:text-on-ok"
+                      title="Kích hoạt lại tài khoản"
+                    >
+                      <UserCheck className="h-3 w-3" /> Kích hoạt lại
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleResign(emp)}
+                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-line bg-surface-secondary px-2.5 text-[11.5px] font-semibold text-ink transition-colors hover:bg-ink-muted hover:text-canvas"
+                        title="Đánh dấu đã nghỉ việc"
+                      >
+                        <UserX className="h-3 w-3" /> Đã nghỉ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(emp)}
+                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border border-status-danger-line bg-status-danger-soft px-2.5 text-[11.5px] font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white"
+                        title="Vô hiệu hóa tài khoản"
+                      >
+                        <X className="h-3 w-3" /> Xóa
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))
@@ -1090,7 +1257,7 @@ export const EmployeeManagementPage: React.FC = () => {
                 <span>Tự động kích hoạt tài khoản &amp; gửi email thông báo qua Gmail</span>
               </div>
               <p className="text-[11px] text-status-ok-line/80 leading-relaxed">
-                Hệ thống sẽ cấp mã nhân viên và mật khẩu mặc định (khởi tạo: <strong>123456</strong>), đồng thời phát lệnh gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
+                Hệ thống sẽ cấp mã nhân viên và mật khẩu bảo mật ngẫu nhiên mặc định, đồng thời gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
               </p>
             </div>
 
@@ -1135,7 +1302,18 @@ export const EmployeeManagementPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-ink">Mật Khẩu Mặc Định Khởi Tạo *</label>
-                <span className="text-[10px] text-status-warn font-bold">Bắt buộc đổi pass lần đầu</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewEmp(prev => ({ ...prev, password: generateRandomPassword() }))}
+                    className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Tạo ngẫu nhiên mật khẩu bảo mật mới"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Tạo ngẫu nhiên</span>
+                  </button>
+                  <span className="text-[10px] text-status-warn font-bold">Bắt buộc đổi pass lần đầu</span>
+                </div>
               </div>
               <div className="relative">
                 <input
@@ -1143,19 +1321,20 @@ export const EmployeeManagementPage: React.FC = () => {
                   required
                   value={newEmp.password}
                   onChange={(e) => setNewEmp({ ...newEmp, password: e.target.value })}
-                  className="w-full text-xs p-2.5 pr-16 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-mono font-bold"
-                  placeholder="123456"
+                  className="w-full text-xs p-2.5 pr-12 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-mono font-bold"
+                  placeholder="Mật khẩu ngẫu nhiên..."
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewEmpPassword(!showNewEmpPassword)}
-                  className="absolute right-2 top-2 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink rounded bg-surface border border-line cursor-pointer"
+                  className="absolute right-2.5 top-2.5 text-ink-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
+                  title={showNewEmpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
-                  {showNewEmpPassword ? 'Ẩn' : 'Hiện'}
+                  {showNewEmpPassword ? <EyeOff className="w-4 h-4 text-accent" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               <span className="text-[10px] text-ink-muted mt-1 block">
-                * Mật khẩu này sẽ được gửi vào hộp thư Gmail của nhân viên để đăng nhập lần đầu.
+                * Mật khẩu ngẫu nhiên này được khởi tạo tự động và gửi qua Gmail cho nhân viên để kích hoạt tài khoản.
               </span>
             </div>
 
@@ -1244,12 +1423,21 @@ export const EmployeeManagementPage: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-line">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)} disabled={isCreatingEmp}>
                 Hủy
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                <Mail className="w-3.5 h-3.5 mr-1" />
-                Tạo Nhân Viên &amp; Gửi Email Kích Hoạt
+              <Button type="submit" variant="primary" size="sm" disabled={isCreatingEmp}>
+                {isCreatingEmp ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Đang Tạo Nhân Viên...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3.5 h-3.5 mr-1" />
+                    Tạo Nhân Viên &amp; Gửi Email Kích Hoạt
+                  </>
+                )}
               </Button>
             </div>
           </form>

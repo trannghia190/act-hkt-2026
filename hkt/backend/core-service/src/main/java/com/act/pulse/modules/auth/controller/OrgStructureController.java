@@ -295,20 +295,28 @@ public class OrgStructureController {
             Optional<User> mgrOpt = userRepository.findById(u.getManagerId());
             if (mgrOpt.isPresent()) {
                 User mgr1 = mgrOpt.get();
-                managerName = mgr1.getFullName();
-                managerCode = mgr1.getEmployeeCode();
-                managerIdStr = mgr1.getId().toString();
-                if (mgr1.getManagerId() != null) {
-                    Optional<User> mgr2Opt = userRepository.findById(mgr1.getManagerId());
-                    if (mgr2Opt.isPresent()) {
-                        User mgr2 = mgr2Opt.get();
-                        approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName()
-                                + " (" + mgr2.getEmployeeCode() + ")";
+                boolean isMgrActive = !"INACTIVE".equalsIgnoreCase(mgr1.getStatus()) && !"LOCKED".equalsIgnoreCase(mgr1.getStatus());
+                if (isMgrActive) {
+                    managerName = mgr1.getFullName();
+                    managerCode = mgr1.getEmployeeCode();
+                    managerIdStr = mgr1.getId().toString();
+                    if (mgr1.getManagerId() != null) {
+                        Optional<User> mgr2Opt = userRepository.findById(mgr1.getManagerId());
+                        if (mgr2Opt.isPresent()) {
+                            User mgr2 = mgr2Opt.get();
+                            approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → " + mgr2.getFullName()
+                                    + " (" + mgr2.getEmployeeCode() + ")";
+                        } else {
+                            approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
+                        }
                     } else {
                         approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
                     }
                 } else {
-                    approvalChain = mgr1.getFullName() + " (" + mgr1.getEmployeeCode() + ") → Ban Quản Trị";
+                    managerName = mgr1.getFullName() + " (Đã nghỉ / Tạm khóa)";
+                    managerCode = mgr1.getEmployeeCode();
+                    managerIdStr = "";
+                    approvalChain = "⚠ Quản lý trực tiếp đã ngừng hoạt động (Cần gán lại)";
                 }
             }
         } else if ("ADMIN".equalsIgnoreCase(u.getRole())) {
@@ -405,18 +413,32 @@ public class OrgStructureController {
         // 5. Tạo OrgTreeNodeDto cho từng team
         Map<UUID, OrgTreeNodeDto> nodeMap = new HashMap<>();
         for (Team t : allTeams) {
-            List<User> members = teamUsersMap.getOrDefault(t.getId(), Collections.emptyList());
+            // Chỉ lấy các thành viên đang hoạt động (không lấy INACTIVE)
+            List<User> members = teamUsersMap.getOrDefault(t.getId(), Collections.emptyList()).stream()
+                    .filter(u -> !"INACTIVE".equalsIgnoreCase(u.getStatus()))
+                    .toList();
             int pCount = 0;
             List<EmployeeDto> memberDtos = new ArrayList<>();
             for (User u : members) {
                 pCount += userPendingMap.getOrDefault(u.getId(), 0);
-                boolean hasMgr = u.getManagerId() != null;
+                boolean hasMgr = false;
                 String mgrName = "Chưa có";
                 String mgrCode = "";
-                if (hasMgr && userMap.containsKey(u.getManagerId())) {
-                    mgrName = userMap.get(u.getManagerId()).getFullName();
-                    mgrCode = userMap.get(u.getManagerId()).getEmployeeCode();
+                if (u.getManagerId() != null && userMap.containsKey(u.getManagerId())) {
+                    User mgr = userMap.get(u.getManagerId());
+                    if (!"INACTIVE".equalsIgnoreCase(mgr.getStatus()) && !"LOCKED".equalsIgnoreCase(mgr.getStatus())) {
+                        hasMgr = true;
+                        mgrName = mgr.getFullName();
+                        mgrCode = mgr.getEmployeeCode();
+                    } else {
+                        mgrName = "Quản lý đã nghỉ / Tạm khóa";
+                        mgrCode = mgr.getEmployeeCode();
+                    }
                 }
+                String approvalChain = hasMgr
+                        ? mgrName + " (" + mgrCode + ")"
+                        : (u.getManagerId() != null ? "⚠ Quản lý trực tiếp đã ngừng hoạt động (Cần gán lại)" : "⚠ Chưa có quản lý trực tiếp");
+
                 memberDtos.add(EmployeeDto.builder()
                         .id(u.getId().toString())
                         .employeeCode(u.getEmployeeCode())
@@ -428,10 +450,10 @@ public class OrgStructureController {
                         .status(u.getStatus())
                         .team(t.getName())
                         .teamId(t.getId().toString())
-                        .managerId(u.getManagerId() != null ? u.getManagerId().toString() : null)
+                        .managerId(hasMgr ? u.getManagerId().toString() : null)
                         .managerName(mgrName)
                         .managerCode(mgrCode)
-                        .approvalChain(hasMgr ? mgrName + " (" + mgrCode + ")" : "⚠ Chưa có quản lý trực tiếp")
+                        .approvalChain(approvalChain)
                         .mustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()))
                         .faceEnrolled(Boolean.TRUE.equals(u.getFaceEnrolled()))
                         .build());
@@ -439,10 +461,14 @@ public class OrgStructureController {
 
             String leaderName = null;
             String leaderCode = null;
+            boolean hasValidLeader = false;
             if (t.getLeaderId() != null && userMap.containsKey(t.getLeaderId())) {
                 User leader = userMap.get(t.getLeaderId());
-                leaderName = leader.getFullName();
-                leaderCode = leader.getEmployeeCode();
+                if (!"INACTIVE".equalsIgnoreCase(leader.getStatus()) && !"LOCKED".equalsIgnoreCase(leader.getStatus())) {
+                    leaderName = leader.getFullName();
+                    leaderCode = leader.getEmployeeCode();
+                    hasValidLeader = true;
+                }
             }
 
             String derivedCode = t.getName().replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
@@ -456,11 +482,11 @@ public class OrgStructureController {
                     .name(t.getName())
                     .code(derivedCode)
                     .parentId(t.getParentId() != null ? t.getParentId().toString() : null)
-                    .leaderId(t.getLeaderId() != null ? t.getLeaderId().toString() : null)
+                    .leaderId(hasValidLeader && t.getLeaderId() != null ? t.getLeaderId().toString() : null)
                     .leaderName(leaderName)
                     .leaderCode(leaderCode)
-                    .managerName(leaderName != null ? leaderName : "Chưa có trưởng nhóm")
-                    .hasLeader(t.getLeaderId() != null)
+                    .managerName(hasValidLeader ? leaderName : "Chưa có trưởng nhóm hợp lệ")
+                    .hasLeader(hasValidLeader)
                     .memberCount(members.size())
                     .totalMemberCount(members.size())
                     .pendingRequestsCount(pCount)
@@ -516,7 +542,8 @@ public class OrgStructureController {
             @RequestParam(required = false) String team,
             @RequestParam(required = false) String position,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String role) {
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false, defaultValue = "false") Boolean activeOnly) {
         // 1. Load all teams into map
         Map<UUID, String> teamMap = new HashMap<>();
         teamRepository.findAll().forEach(t -> teamMap.put(t.getId(), t.getName()));
@@ -615,6 +642,9 @@ public class OrgStructureController {
             if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
                 matchStatus = dto.getStatus().equalsIgnoreCase(status.trim());
             }
+            if (Boolean.TRUE.equals(activeOnly)) {
+                matchStatus = matchStatus && "ACTIVE".equalsIgnoreCase(dto.getStatus());
+            }
 
             boolean matchRole = true;
             if (role != null && !role.isBlank() && !"ALL".equalsIgnoreCase(role)) {
@@ -637,6 +667,33 @@ public class OrgStructureController {
         res.put("currentPage", page);
 
         return ApiResponse.ok(res, "Lấy danh sách nhân viên thành công");
+    }
+
+    @GetMapping("/admin/users/active")
+    @Operation(summary = "Lấy danh sách nhân viên đang hoạt động (ACTIVE) cho dropdown chọn quản lý / trưởng nhóm")
+    public ApiResponse<List<Map<String, Object>>> getActiveUsers() {
+        Map<UUID, String> teamMap = new HashMap<>();
+        teamRepository.findAll().forEach(t -> teamMap.put(t.getId(), t.getName()));
+
+        List<User> activeUsers = userRepository.findAll().stream()
+                .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                .sorted(Comparator.comparing(User::getFullName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        List<Map<String, Object>> result = activeUsers.stream().map(u -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", u.getId().toString());
+            m.put("employeeCode", u.getEmployeeCode());
+            m.put("fullName", u.getFullName());
+            m.put("email", u.getEmail());
+            m.put("role", u.getRole());
+            m.put("positionName", u.getPositionName() != null ? u.getPositionName() : u.getRole());
+            m.put("teamName", u.getTeamId() != null ? teamMap.getOrDefault(u.getTeamId(), "Chưa có nhóm") : "Chưa có nhóm");
+            m.put("teamId", u.getTeamId() != null ? u.getTeamId().toString() : null);
+            return m;
+        }).toList();
+
+        return ApiResponse.ok(result, "Lấy danh sách nhân viên đang hoạt động thành công");
     }
 
     @GetMapping("/admin/users/onboard-preview")
@@ -729,7 +786,7 @@ public class OrgStructureController {
         User userToSave;
         String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
                 ? req.getPassword().trim()
-                : "123456";
+                : generateSecureRandomPassword();
 
         userToSave = User.builder()
                 .employeeCode(code)
@@ -763,16 +820,24 @@ public class OrgStructureController {
                     + userToSave.getEmployeeCode() + ": " + ex.getMessage());
         }
 
-        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
+        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP không đồng bộ (Async)
+        // để phản hồi tức thì cho HR, loại bỏ hoàn toàn tình trạng request bị treo 1-2 phút do mạng/SMTP handshake.
         boolean emailSent = false;
         String emailStatusMessage = "";
         try {
             if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(),
-                        userToSave.getEmployeeCode(), rawPassword);
-                if (emailSent) {
-                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới "
+                if (emailService.isMailDeliverable()) {
+                    emailSent = true;
+                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đang được gửi tự động qua Gmail tới "
                             + userToSave.getEmail();
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(),
+                                    userToSave.getEmployeeCode(), rawPassword);
+                        } catch (Exception ex) {
+                            System.err.println("[createEmployee] Lỗi gửi email async cho " + userToSave.getEmail() + ": " + ex.getMessage());
+                        }
+                    });
                 } else {
                     emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail()
                             + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
@@ -870,6 +935,9 @@ public class OrgStructureController {
         if (user.getId().equals(newManager.getId())) {
             throw new RuntimeException("Không thể tự gán chính mình làm quản lý");
         }
+        if ("INACTIVE".equalsIgnoreCase(newManager.getStatus()) || "LOCKED".equalsIgnoreCase(newManager.getStatus())) {
+            throw new RuntimeException("Người quản lý được chọn (" + newManager.getFullName() + ") đang không hoạt động hoặc bị khóa!");
+        }
 
         // Lấy tên quản lý cũ
         String oldManagerName = "Chưa có";
@@ -892,6 +960,33 @@ public class OrgStructureController {
             requestRepository.save(r);
             transferredCount++;
         }
+
+        // Bắn thông báo cập nhật quản lý cho nhân viên và quản lý mới
+        try {
+            notificationDispatcher.dispatch(
+                    "MANAGER_REASSIGNED",
+                    user.getId(),
+                    "Cập nhật người quản lý trực tiếp",
+                    "Người quản lý phê duyệt trực tiếp của bạn đã được cập nhật thành: "
+                            + newManager.getFullName() + " (" + newManager.getEmployeeCode() + ").",
+                    "SYSTEM",
+                    "MEDIUM",
+                    "/attendance/requests",
+                    "mgr-updated:" + user.getId() + ":" + System.currentTimeMillis()
+            );
+
+            notificationDispatcher.dispatch(
+                    "MANAGER_REASSIGNED",
+                    newManager.getId(),
+                    "Phân công quản lý nhân sự mới",
+                    "Bạn đã được phân công làm người quản lý trực tiếp cho nhân viên "
+                            + user.getFullName() + " (" + user.getEmployeeCode() + "). Đã tiếp nhận " + transferredCount + " đơn chờ duyệt.",
+                    "SYSTEM",
+                    "MEDIUM",
+                    "/attendance/approvals",
+                    "subordinate-assigned:" + newManager.getId() + ":" + user.getId() + ":" + System.currentTimeMillis()
+            );
+        } catch (Exception ignored) {}
 
         String actorName = resolveActorName();
 
@@ -1007,11 +1102,29 @@ public class OrgStructureController {
         }
     }
 
+    private String generateSecureRandomPassword() {
+        String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String lower = "abcdefghjkmnpqrstuvwxyz";
+        String digits = "23456789";
+        String special = "@#$!%*";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        sb.append(upper.charAt(random.nextInt(upper.length())));
+        sb.append(lower.charAt(random.nextInt(lower.length())));
+        sb.append(digits.charAt(random.nextInt(digits.length())));
+        sb.append(special.charAt(random.nextInt(special.length())));
+        String allChars = upper + lower + digits + special;
+        for (int i = 0; i < 4; i++) {
+            sb.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+        return "Act@" + sb.toString();
+    }
+
     @PostMapping("/admin/users/{id}/reset-password")
     @Operation(summary = "Admin cấp lại mật khẩu & Mở khóa Brute-Force (S40-C)")
-    public ApiResponse<Boolean> adminResetPassword(@PathVariable String id) {
+    public ApiResponse<String> adminResetPassword(@PathVariable String id) {
         User user = findUserByIdOrCode(id);
-        String tempPass = "123456";
+        String tempPass = generateSecureRandomPassword();
         user.setMustChangePassword(true);
         user.setStatus("ACTIVE");
         user.setPasswordHash(passwordEncoder.encode(tempPass));
@@ -1020,15 +1133,38 @@ public class OrgStructureController {
         // Thu hồi toàn bộ phiên đăng nhập cũ
         authService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD");
 
-        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP
+        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP không đồng bộ (Async)
         boolean emailSent = false;
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(),
-                        user.getEmployeeCode(), tempPass);
+                if (emailService.isMailDeliverable()) {
+                    emailSent = true;
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(),
+                                    user.getEmployeeCode(), tempPass);
+                        } catch (Exception ex) {
+                            System.err.println("[adminResetPassword] Lỗi gửi email async cho " + user.getEmail() + ": " + ex.getMessage());
+                        }
+                    });
+                }
             }
         } catch (Exception ignored) {
         }
+
+        // Bắn thông báo bảo mật trong hệ thống
+        try {
+            notificationDispatcher.dispatch(
+                    "SECURITY_ALERT",
+                    user.getId(),
+                    "Mật khẩu tài khoản đã được cấp lại bởi Quản trị viên",
+                    "Quản trị viên đã cấp lại mật khẩu tạm thời cho tài khoản của bạn. Mọi phiên đăng nhập cũ đã bị thu hồi. Vui lòng đăng nhập bằng mật khẩu mới và đổi mật khẩu ngay.",
+                    "SECURITY",
+                    "HIGH",
+                    "/account/profile",
+                    "admin-reset-pw:" + user.getId() + ":" + System.currentTimeMillis()
+            );
+        } catch (Exception ignored) {}
 
         AuditLog audit = AuditLog.builder()
                 .action("ADMIN_RESET_PASSWORD")
@@ -1047,7 +1183,117 @@ public class OrgStructureController {
         String msg = "Mật khẩu tạm thời (" + tempPass + ") đã được cấp lại thành công! " +
                 (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail()
                         : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
-        return ApiResponse.ok(true, msg);
+        return ApiResponse.ok(tempPass, msg);
+    }
+
+    private int cleanupDeactivatedUser(User u, String replacementManagerIdStr, String reason) {
+        int transferredRequests = 0;
+
+        // 1. Thu hồi toàn bộ phiên đăng nhập cũ
+        try {
+            authService.revokeAllSessions(u.getId(), "USER_DEACTIVATED");
+        } catch (Exception ignored) {}
+
+        // 2. Nếu user đang làm Trưởng nhóm (leaderId) của các nhóm -> Gỡ leaderId
+        List<Team> teamsLedByU = teamRepository.findAll().stream()
+                .filter(t -> u.getId().equals(t.getLeaderId()))
+                .toList();
+        for (Team t : teamsLedByU) {
+            t.setLeaderId(null);
+            t.setUpdatedAt(LocalDateTime.now());
+            teamRepository.save(t);
+        }
+
+        // 3. Tìm cấp quản lý thay thế cho các nhân viên cấp dưới trực tiếp của user
+        List<User> subordinates = userRepository.findAll().stream()
+                .filter(sub -> u.getId().equals(sub.getManagerId()))
+                .toList();
+
+        if (!subordinates.isEmpty()) {
+            User replacementManager = null;
+            if (replacementManagerIdStr != null && !replacementManagerIdStr.isBlank()) {
+                try {
+                    User candidate = findUserByIdOrCode(replacementManagerIdStr);
+                    if (!"INACTIVE".equalsIgnoreCase(candidate.getStatus()) && !"LOCKED".equalsIgnoreCase(candidate.getStatus()) && !candidate.getId().equals(u.getId())) {
+                        replacementManager = candidate;
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // Fallback 1: Cấp quản lý của chính u (nếu hợp lệ)
+            if (replacementManager == null && u.getManagerId() != null) {
+                User uMgr = userRepository.findById(u.getManagerId()).orElse(null);
+                if (uMgr != null && !"INACTIVE".equalsIgnoreCase(uMgr.getStatus()) && !"LOCKED".equalsIgnoreCase(uMgr.getStatus())) {
+                    replacementManager = uMgr;
+                }
+            }
+            // Fallback 2: Quản lý mặc định (05ACT)
+            if (replacementManager == null) {
+                replacementManager = userRepository.findByEmployeeCodeIgnoreCase("05ACT")
+                        .filter(a -> !"INACTIVE".equalsIgnoreCase(a.getStatus()) && !"LOCKED".equalsIgnoreCase(a.getStatus()))
+                        .orElse(null);
+            }
+            // Fallback 3: Bất kỳ HR_ADMIN hoặc ADMIN nào đang hoạt động
+            if (replacementManager == null) {
+                replacementManager = userRepository.findAll().stream()
+                        .filter(a -> ("HR_ADMIN".equalsIgnoreCase(a.getRole()) || "ADMIN".equalsIgnoreCase(a.getRole()))
+                                && !"INACTIVE".equalsIgnoreCase(a.getStatus()) && !"LOCKED".equalsIgnoreCase(a.getStatus()) && !a.getId().equals(u.getId()))
+                        .findFirst().orElse(null);
+            }
+
+            UUID newMgrId = replacementManager != null ? replacementManager.getId() : null;
+
+            for (User sub : subordinates) {
+                sub.setManagerId(newMgrId);
+                userRepository.save(sub);
+
+                // Chuyển giao các đơn PENDING_APPROVAL của nhân viên cấp dưới
+                List<RequestEntity> pendingList = requestRepository.findByUserIdAndStatus(sub.getId(), "PENDING_APPROVAL");
+                for (RequestEntity req : pendingList) {
+                    if (u.getId().equals(req.getDecidedBy()) || req.getDecidedBy() == null) {
+                        req.setDecidedBy(newMgrId);
+                        requestRepository.save(req);
+                        transferredRequests++;
+                    }
+                }
+
+                // Thông báo cho nhân viên cấp dưới
+                if (replacementManager != null) {
+                    try {
+                        notificationDispatcher.dispatch(
+                                "MANAGER_REASSIGNED",
+                                sub.getId(),
+                                "Thay đổi Người quản lý trực tiếp",
+                                "Do người quản lý cũ (" + u.getFullName() + ") ngừng hoạt động, người quản lý phê duyệt trực tiếp của bạn đã được chuyển giao sang: "
+                                        + replacementManager.getFullName() + " (" + replacementManager.getEmployeeCode() + ").",
+                                "SYSTEM",
+                                "HIGH",
+                                "/attendance/requests",
+                                "mgr-cleanup:" + sub.getId() + ":" + System.currentTimeMillis()
+                        );
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            // Thông báo cho người quản lý tiếp quản
+            if (replacementManager != null && !subordinates.isEmpty()) {
+                try {
+                    notificationDispatcher.dispatch(
+                            "MANAGER_REASSIGNED",
+                            replacementManager.getId(),
+                            "Tiếp nhận nhân sự từ người tiền nhiệm",
+                            "Bạn đã được phân công tiếp nhận " + subordinates.size() + " nhân viên trực tiếp và "
+                                    + transferredRequests + " đơn chờ duyệt do " + u.getFullName() + " (" + u.getEmployeeCode() + ") ngừng hoạt động.",
+                            "SYSTEM",
+                            "HIGH",
+                            "/attendance/approvals",
+                            "mgr-takeover:" + replacementManager.getId() + ":" + System.currentTimeMillis()
+                    );
+                } catch (Exception ignored) {}
+            }
+        }
+
+        return transferredRequests;
     }
 
     @GetMapping("/admin/users/{id}")
@@ -1068,12 +1314,17 @@ public class OrgStructureController {
         String reason = req != null && req.get("reason") != null && !String.valueOf(req.get("reason")).isBlank()
                 ? String.valueOf(req.get("reason")).trim()
                 : "Đánh dấu nghỉ việc từ trang quản lý nhân sự";
+        String replacementMgr = req != null && req.get("replacementManagerId") != null
+                ? String.valueOf(req.get("replacementManagerId")).trim() : null;
+
         String oldStatus = u.getStatus();
         u.setStatus("INACTIVE");
         // Rời khỏi tổ chức: bỏ nhóm/đơn vị trực tiếp nhưng GIỮ ca & quản lý để lịch sử chấm công còn tra cứu được.
         u.setTeamId(null);
         u.setManagerId(null);
         userRepository.save(u);
+
+        int transferred = cleanupDeactivatedUser(u, replacementMgr, reason);
 
         AuditLog audit = AuditLog.builder()
                 .action("RESIGN_EMPLOYEE")
@@ -1091,7 +1342,187 @@ public class OrgStructureController {
 
         return ApiResponse.ok(toEmployeeDto(u),
                 "Đã đánh dấu " + u.getFullName() + " (" + u.getEmployeeCode() + ") đã nghỉ việc. "
-                        + "Mã nhân viên vẫn giữ nguyên (không dùng lại được); email có thể cấp lại cho nhân viên mới.");
+                        + "Đã chuyển " + transferred + " đơn chờ duyệt sang cấp quản lý kế tiếp.");
+    }
+
+    @DeleteMapping("/admin/users/{id}")
+    @Operation(summary = "Xóa mềm / Vô hiệu hóa tài khoản nhân sự (S40 / A3)")
+    public ApiResponse<Map<String, Object>> deleteEmployee(
+            @PathVariable String id,
+            @RequestParam(required = false) String replacementManagerId,
+            @RequestParam(required = false, defaultValue = "Vô hiệu hóa nhân viên khỏi hệ thống") String reason) {
+        User u = findUserByIdOrCode(id);
+        String oldStatus = u.getStatus();
+        u.setStatus("INACTIVE");
+        u.setTeamId(null);
+        u.setManagerId(null);
+        userRepository.save(u);
+
+        int transferred = cleanupDeactivatedUser(u, replacementManagerId, reason);
+
+        AuditLog audit = AuditLog.builder()
+                .action("DELETE_USER")
+                .entityName("USER")
+                .entityId(u.getId().toString())
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .oldValue("Trạng thái: " + oldStatus)
+                .newValue("Trạng thái: INACTIVE (Vô hiệu hóa)")
+                .reason(reason)
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("userId", u.getId().toString());
+        resp.put("employeeCode", u.getEmployeeCode());
+        resp.put("transferredRequestsCount", transferred);
+        return ApiResponse.ok(resp, "Đã vô hiệu hóa tài khoản " + u.getFullName() + " (" + u.getEmployeeCode() + ") thành công. Đã chuyển " + transferred + " đơn chờ duyệt.");
+    }
+
+    @PostMapping("/admin/users/bulk-assign-manager")
+    @Operation(summary = "Phân công người quản lý trực tiếp hàng loạt cho nhiều nhân viên")
+    public ApiResponse<Map<String, Object>> bulkAssignManager(@RequestBody Map<String, Object> req) {
+        Object userIdsObj = req.get("userIds");
+        String managerIdStr = (String) req.get("managerId");
+        String reason = req.get("reason") != null ? String.valueOf(req.get("reason")).trim() : "Phân công quản lý hàng loạt";
+
+        if (managerIdStr == null || managerIdStr.isBlank()) {
+            throw new RuntimeException("Vui lòng chọn người quản lý mới!");
+        }
+        User newManager = findUserByIdOrCode(managerIdStr);
+        if ("INACTIVE".equalsIgnoreCase(newManager.getStatus()) || "LOCKED".equalsIgnoreCase(newManager.getStatus())) {
+            throw new RuntimeException("Người quản lý được chọn (" + newManager.getFullName() + ") đang không hoạt động hoặc bị khóa!");
+        }
+
+        List<String> userIds = new ArrayList<>();
+        if (userIdsObj instanceof List<?> list) {
+            for (Object item : list) {
+                if (item != null) userIds.add(String.valueOf(item).trim());
+            }
+        }
+
+        int updatedCount = 0;
+        int transferredRequestsTotal = 0;
+
+        for (String uid : userIds) {
+            try {
+                User u = findUserByIdOrCode(uid);
+                if (u.getId().equals(newManager.getId())) {
+                    continue; // Không thể tự gán mình làm quản lý
+                }
+                u.setManagerId(newManager.getId());
+                userRepository.save(u);
+                updatedCount++;
+
+                List<RequestEntity> pending = requestRepository.findByUserIdAndStatus(u.getId(), "PENDING_APPROVAL");
+                for (RequestEntity r : pending) {
+                    r.setDecidedBy(newManager.getId());
+                    requestRepository.save(r);
+                    transferredRequestsTotal++;
+                }
+
+                try {
+                    notificationDispatcher.dispatch(
+                            "MANAGER_REASSIGNED",
+                            u.getId(),
+                            "Cập nhật người quản lý trực tiếp",
+                            "Người quản lý phê duyệt trực tiếp của bạn đã được cập nhật thành: "
+                                    + newManager.getFullName() + " (" + newManager.getEmployeeCode() + ").",
+                            "SYSTEM",
+                            "MEDIUM",
+                            "/attendance/requests",
+                            "mgr-bulk:" + u.getId() + ":" + System.currentTimeMillis()
+                    );
+                } catch (Exception ignored) {}
+            } catch (Exception ignored) {}
+        }
+
+        try {
+            notificationDispatcher.dispatch(
+                    "MANAGER_REASSIGNED",
+                    newManager.getId(),
+                    "Phân công quản lý nhân sự hàng loạt",
+                    "Bạn đã được phân công làm người quản lý cho " + updatedCount + " nhân sự mới. Đã tiếp nhận " + transferredRequestsTotal + " đơn chờ duyệt.",
+                    "SYSTEM",
+                    "HIGH",
+                    "/attendance/approvals",
+                    "mgr-bulk-mgr:" + newManager.getId() + ":" + System.currentTimeMillis()
+            );
+        } catch (Exception ignored) {}
+
+        AuditLog audit = AuditLog.builder()
+                .action("BULK_ASSIGN_MANAGER")
+                .entityName("USER")
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .newValue("Gán " + updatedCount + " nhân viên sang quản lý: " + newManager.getFullName() + " (" + newManager.getEmployeeCode() + ")")
+                .reason(reason)
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("transferredRequestsCount", transferredRequestsTotal);
+        result.put("newManagerName", newManager.getFullName());
+        result.put("newManagerCode", newManager.getEmployeeCode());
+
+        return ApiResponse.ok(result, "Đã cập nhật quản lý thành công cho " + updatedCount + " nhân viên.");
+    }
+
+    @PostMapping("/admin/users/bulk-assign-team")
+    @Operation(summary = "Điều chuyển phòng ban / nhóm hàng loạt cho nhiều nhân viên")
+    public ApiResponse<Map<String, Object>> bulkAssignTeam(@RequestBody Map<String, Object> req) {
+        Object userIdsObj = req.get("userIds");
+        String teamIdStr = (String) req.get("teamId");
+        String reason = req.get("reason") != null ? String.valueOf(req.get("reason")).trim() : "Điều chuyển nhóm hàng loạt";
+
+        UUID teamId = null;
+        String teamName = "Chưa có nhóm";
+        if (teamIdStr != null && !teamIdStr.isBlank() && !"null".equalsIgnoreCase(teamIdStr)) {
+            try {
+                teamId = UUID.fromString(teamIdStr.trim());
+                teamName = teamRepository.findById(teamId).map(Team::getName).orElse("Nhóm");
+            } catch (Exception ignored) {}
+        }
+
+        List<String> userIds = new ArrayList<>();
+        if (userIdsObj instanceof List<?> list) {
+            for (Object item : list) {
+                if (item != null) userIds.add(String.valueOf(item).trim());
+            }
+        }
+
+        int updatedCount = 0;
+        for (String uid : userIds) {
+            try {
+                User u = findUserByIdOrCode(uid);
+                u.setTeamId(teamId);
+                userRepository.save(u);
+                updatedCount++;
+            } catch (Exception ignored) {}
+        }
+
+        AuditLog audit = AuditLog.builder()
+                .action("BULK_ASSIGN_TEAM")
+                .entityName("USER")
+                .userId(CurrentUser.userId())
+                .userCode(CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : "HR_ADMIN")
+                .userName(resolveActorName())
+                .newValue("Điều chuyển " + updatedCount + " nhân viên sang nhóm: " + teamName)
+                .reason(reason)
+                .ipAddress("127.0.0.1")
+                .build();
+        auditLogRepository.save(audit);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("teamName", teamName);
+
+        return ApiResponse.ok(result, "Đã điều chuyển " + updatedCount + " nhân viên sang nhóm " + teamName + " thành công.");
     }
 
     @PutMapping("/admin/users/{id}")
@@ -1122,7 +1553,15 @@ public class OrgStructureController {
             u.setRole(newRole);
         }
         if (req.containsKey("status") && req.get("status") != null) {
-            u.setStatus(String.valueOf(req.get("status")).toUpperCase().trim());
+            String newStatus = String.valueOf(req.get("status")).toUpperCase().trim();
+            if (!newStatus.equals(u.getStatus())) {
+                u.setStatus(newStatus);
+                if ("INACTIVE".equalsIgnoreCase(newStatus) || "LOCKED".equalsIgnoreCase(newStatus)) {
+                    String replacementMgr = req.containsKey("replacementManagerId")
+                            ? String.valueOf(req.get("replacementManagerId")).trim() : null;
+                    cleanupDeactivatedUser(u, replacementMgr, "Cập nhật trạng thái người dùng thành " + newStatus);
+                }
+            }
         }
         if (req.containsKey("teamId")) {
             String teamIdStr = String.valueOf(req.get("teamId"));
@@ -1139,6 +1578,10 @@ public class OrgStructureController {
             if (mgrIdStr != null && !mgrIdStr.isBlank() && !"null".equalsIgnoreCase(mgrIdStr)) {
                 try {
                     UUID newMgrId = UUID.fromString(mgrIdStr.trim());
+                    User newMgr = userRepository.findById(newMgrId).orElse(null);
+                    if (newMgr != null && ("INACTIVE".equalsIgnoreCase(newMgr.getStatus()) || "LOCKED".equalsIgnoreCase(newMgr.getStatus()))) {
+                        throw new RuntimeException("Người quản lý được chọn (" + newMgr.getFullName() + ") đang không hoạt động hoặc bị khóa!");
+                    }
                     if (!newMgrId.equals(u.getManagerId())) {
                         u.setManagerId(newMgrId);
                         // Tự động chuyển các đơn chờ duyệt sang người quản lý mới
@@ -1148,6 +1591,8 @@ public class OrgStructureController {
                             requestRepository.save(r);
                         }
                     }
+                } catch (RuntimeException re) {
+                    throw re;
                 } catch (Exception ignored) {}
             } else {
                 u.setManagerId(null);
@@ -1472,11 +1917,11 @@ public class OrgStructureController {
         String leaderInput = (String) (payload.get("leaderId") != null ? payload.get("leaderId")
                 : payload.get("managerId"));
         if (leaderInput != null && !leaderInput.isBlank()) {
-            try {
-                User leader = findUserByIdOrCode(leaderInput);
-                leaderId = leader.getId();
-            } catch (Exception ignored) {
+            User leader = findUserByIdOrCode(leaderInput);
+            if ("INACTIVE".equalsIgnoreCase(leader.getStatus()) || "LOCKED".equalsIgnoreCase(leader.getStatus())) {
+                throw new RuntimeException("Người được chọn làm trưởng nhóm (" + leader.getFullName() + ") đang không hoạt động hoặc bị khóa!");
             }
+            leaderId = leader.getId();
         }
 
         boolean specialApproval = Boolean
@@ -1579,6 +2024,9 @@ public class OrgStructureController {
                     : payload.get("managerId"));
             if (lInput != null && !lInput.isBlank()) {
                 User newLeader = findUserByIdOrCode(lInput);
+                if ("INACTIVE".equalsIgnoreCase(newLeader.getStatus()) || "LOCKED".equalsIgnoreCase(newLeader.getStatus())) {
+                    throw new RuntimeException("Người được chọn làm trưởng nhóm (" + newLeader.getFullName() + ") đang không hoạt động hoặc bị khóa!");
+                }
                 team.setLeaderId(newLeader.getId());
 
                 // Chuyển quản lý trực tiếp và các đơn chờ duyệt cho các thành viên trong nhóm
@@ -1673,6 +2121,9 @@ public class OrgStructureController {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhóm: " + id));
 
         User newLeader = findUserByIdOrCode(newLeaderIdStr);
+        if ("INACTIVE".equalsIgnoreCase(newLeader.getStatus()) || "LOCKED".equalsIgnoreCase(newLeader.getStatus())) {
+            throw new RuntimeException("Người được chọn làm trưởng nhóm (" + newLeader.getFullName() + ") đang không hoạt động hoặc bị khóa!");
+        }
 
         String oldLeaderName = "Chưa có";
         if (team.getLeaderId() != null) {
@@ -1699,6 +2150,36 @@ public class OrgStructureController {
                 transferredCount++;
             }
         }
+
+        // Bắn thông báo bổ nhiệm cho Trưởng nhóm mới và các thành viên
+        try {
+            notificationDispatcher.dispatch(
+                    "MANAGER_REASSIGNED",
+                    newLeader.getId(),
+                    "Bổ nhiệm Trưởng nhóm mới",
+                    "Bạn đã được bổ nhiệm làm Trưởng nhóm " + team.getName() + ". Đã tiếp nhận " + transferredCount + " đơn chờ duyệt từ các thành viên.",
+                    "TEAM",
+                    "HIGH",
+                    "/attendance/approvals",
+                    "team-leader-new:" + team.getId() + ":" + System.currentTimeMillis()
+            );
+
+            for (User m : members) {
+                if (!m.getId().equals(newLeader.getId())) {
+                    notificationDispatcher.dispatch(
+                            "MANAGER_REASSIGNED",
+                            m.getId(),
+                            "Thay đổi Trưởng nhóm " + team.getName(),
+                            "Nhóm " + team.getName() + " đã có trưởng nhóm mới: "
+                                    + newLeader.getFullName() + " (" + newLeader.getEmployeeCode() + "). Các đơn chờ duyệt đã được chuyển giao tự động.",
+                            "TEAM",
+                            "MEDIUM",
+                            "/org/tree",
+                            "team-leader-changed:" + team.getId() + ":" + m.getId() + ":" + System.currentTimeMillis()
+                    );
+                }
+            }
+        } catch (Exception ignored) {}
 
         // Ghi Audit Log
         AuditLog audit = AuditLog.builder()

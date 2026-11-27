@@ -21,6 +21,7 @@ public interface EmailService {
     void sendSlaEscalationEmail(String toEmail, String managerName, String requestId, String employeeName, String requestType, long elapsedHours);
     boolean sendTestEmail(String toEmail, String message);
     boolean configureSmtp(String host, int port, String username, String password);
+    boolean configureSmtp(String host, int port, String username, String password, String configuredBy);
     boolean isSmtpConfigured();
     /**
      * Có gửi được thư không: SMTP đã cấu hình, hoặc đang bật chế độ dev-log
@@ -28,4 +29,6 @@ public interface EmailService {
      */
     boolean isMailDeliverable();
     String getSenderEmail();
+    String getLastConfiguredAt();
+    String getLastConfiguredBy();
 }

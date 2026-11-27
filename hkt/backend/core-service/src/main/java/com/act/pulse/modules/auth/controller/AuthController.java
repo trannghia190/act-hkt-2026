@@ -2,6 +2,8 @@ package com.act.pulse.modules.auth.controller;
 
 import com.act.pulse.common.response.ApiResponse;
 import com.act.pulse.common.security.CurrentUser;
+import com.act.pulse.modules.attendance.entity.AuditLog;
+import com.act.pulse.modules.attendance.repository.AuditLogRepository;
 import com.act.pulse.modules.auth.dto.request.LoginRequest;
 import com.act.pulse.modules.auth.dto.request.UpdateProfileRequest;
 import com.act.pulse.modules.auth.dto.response.AuthResponse;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuditLogRepository auditLogRepository;
 
     @Data
     public static class ResetPasswordRequest {
@@ -141,12 +144,35 @@ public class AuthController {
     @PostMapping("/config-smtp")
     @Operation(summary = "Cấu hình tài khoản Gmail Doanh Nghiệp (Google App Password) trực tiếp")
     public ApiResponse<Boolean> configureSmtp(@RequestBody ConfigureSmtpRequest request) {
+        String role = CurrentUser.role();
+        boolean isHrOrAdmin = "ADMIN".equalsIgnoreCase(role) || "HR_ADMIN".equalsIgnoreCase(role);
+        if (!isHrOrAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ HR/Admin mới có quyền cấu hình Gmail Doanh Nghiệp.");
+        }
         boolean ok = authService.configureSmtp(
                 request.getHost() != null && !request.getHost().isBlank() ? request.getHost() : "smtp.gmail.com",
                 request.getPort() > 0 ? request.getPort() : 587,
                 request.getUsername(),
                 request.getPassword()
         );
+        if (ok) {
+            try {
+                String actor = CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : (CurrentUser.role() != null ? CurrentUser.role() : "HR_ADMIN");
+                AuditLog audit = AuditLog.builder()
+                        .action("CONFIG_GMAIL_SMTP")
+                        .entityName("SYSTEM_CONFIG")
+                        .entityId("GMAIL_SMTP")
+                        .userId(CurrentUser.userId())
+                        .userCode(actor)
+                        .userName(actor)
+                        .newValue("Cấu hình Gmail SMTP: " + request.getUsername() + " (" + (request.getHost() != null ? request.getHost() : "smtp.gmail.com") + ")")
+                        .reason("Thiết lập Gmail doanh nghiệp gửi thông báo tự động")
+                        .ipAddress("127.0.0.1")
+                        .build();
+                auditLogRepository.save(audit);
+            } catch (Exception ignored) {
+            }
+        }
         return ApiResponse.ok(ok, ok ? "Cấu hình Gmail Doanh Nghiệp thành công!" : "Lỗi khi cập nhật cấu hình SMTP.");
     }
 

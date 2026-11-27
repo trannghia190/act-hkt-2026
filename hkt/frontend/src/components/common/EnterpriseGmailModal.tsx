@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { Eye, EyeOff, ShieldAlert, Clock, UserCheck } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface EnterpriseGmailModalProps {
   isOpen: boolean;
@@ -9,27 +11,38 @@ interface EnterpriseGmailModalProps {
 }
 
 export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
+  const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR_ADMIN';
+
   const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
   const [smtpPort, setSmtpPort] = useState(587);
   const [gmailUser, setGmailUser] = useState('');
   const [appPassword, setAppPassword] = useState('');
+  const [showAppPassword, setShowAppPassword] = useState(false);
   const [targetEmail, setTargetEmail] = useState('');
   const [testMessage, setTestMessage] = useState('Thử nghiệm gửi email thông báo từ hệ thống ACT PULSE 2026.');
   const [isLoading, setIsLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
   const [currentSender, setCurrentSender] = useState('');
+  const [lastConfiguredAt, setLastConfiguredAt] = useState<string | null>(null);
+  const [lastConfiguredBy, setLastConfiguredBy] = useState<string | null>(null);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [activeStepTab, setActiveStepTab] = useState<'guide' | 'config'>('config');
 
   useEffect(() => {
     if (isOpen) {
+      const token = localStorage.getItem('token');
       // Fetch current status
-      fetch('/api/v1/auth/smtp-status')
+      fetch('/api/v1/auth/smtp-status', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success && data.data) {
             setIsConfigured(data.data.configured);
             setCurrentSender(data.data.senderEmail);
+            if (data.data.lastConfiguredAt) setLastConfiguredAt(data.data.lastConfiguredAt);
+            if (data.data.lastConfiguredBy) setLastConfiguredBy(data.data.lastConfiguredBy);
             if (data.data.senderEmail && data.data.senderEmail !== 'Chưa cấu hình') {
               setGmailUser(data.data.senderEmail);
             }
@@ -41,6 +54,11 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
 
   const handleSaveAndTest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isHrOrAdmin) {
+      alert('Chỉ HR hoặc Quản trị viên mới có quyền lưu cấu hình Gmail Doanh Nghiệp!');
+      return;
+    }
+
     if (!gmailUser.trim() || !appPassword.trim() || !targetEmail.trim()) {
       alert('Vui lòng nhập đầy đủ Gmail gửi, Mật khẩu ứng dụng và Địa chỉ nhận thật!');
       return;
@@ -49,11 +67,14 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
     setIsLoading(true);
     setResult(null);
 
+    const token = localStorage.getItem('token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
     try {
       // Step 1: Save SMTP config
       const configRes = await fetch('/api/v1/auth/config-smtp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           host: smtpHost,
           port: smtpPort,
@@ -70,7 +91,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
       // Step 2: Send real test email
       const testRes = await fetch('/api/v1/auth/test-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           targetEmail: targetEmail.trim(),
           message: testMessage.trim()
@@ -83,8 +104,16 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
         setCurrentSender(gmailUser.trim());
         setResult({
           success: true,
-          message: `✓ THÀNH CÔNG! Đã kết nối Gmail Doanh Nghiệp và gửi email thật tới ${targetEmail.trim()}. Hãy mở hòm thư Gmail của bạn để kiểm tra!`
+          message: `✓ THÀNH CÔNG! Đã lưu cấu hình và gửi email thật tới ${targetEmail.trim()}. Hãy mở hòm thư Gmail của bạn để kiểm tra!`
         });
+        // Refresh status to show updated lastConfigured info
+        fetch('/api/v1/auth/smtp-status', { headers: authHeaders })
+          .then(r => r.json())
+          .then(d => {
+            if (d?.data?.lastConfiguredAt) setLastConfiguredAt(d.data.lastConfiguredAt);
+            if (d?.data?.lastConfiguredBy) setLastConfiguredBy(d.data.lastConfiguredBy);
+          })
+          .catch(() => {});
       } else {
         setResult({
           success: false,
@@ -109,19 +138,44 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
       maxWidth="lg"
     >
       <div className="space-y-4 text-xs">
+        {/* Role permission check banner */}
+        {!isHrOrAdmin && (
+          <div className="flex items-center gap-2 p-3 bg-status-danger-soft border border-status-danger-line text-status-danger rounded-xl">
+            <ShieldAlert size={18} className="shrink-0" />
+            <div>
+              <strong>Quyền hạn hạn chế:</strong> Bạn đang đăng nhập với vai trò <code className="font-semibold">{user?.role || 'Nhân viên'}</code>. Chỉ nhân sự (HR_ADMIN) hoặc Quản trị viên (ADMIN) mới có quyền lưu cấu hình Gmail.
+            </div>
+          </div>
+        )}
+
         {/* Status Header */}
-        <div className="flex items-center justify-between p-3 bg-surface rounded-xl border border-line">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-ink">Trạng thái SMTP hiện tại:</span>
-            {isConfigured ? (
-              <Badge variant="ok">Đã kết nối Gmail thật</Badge>
-            ) : (
-              <Badge variant="warn">Chưa kết nối</Badge>
-            )}
+        <div className="p-3 bg-surface rounded-xl border border-line space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-ink">Trạng thái SMTP hiện tại:</span>
+              {isConfigured ? (
+                <Badge variant="ok">Đã kết nối Gmail thật</Badge>
+              ) : (
+                <Badge variant="warn">Chưa kết nối</Badge>
+              )}
+            </div>
+            <div className="text-ink-muted text-[11px]">
+              Tài khoản gửi: <strong className="text-ink">{currentSender || 'Chưa thiết lập'}</strong>
+            </div>
           </div>
-          <div className="text-ink-muted text-[11px]">
-            Tài khoản gửi: <strong className="text-ink">{currentSender || 'Chưa thiết lập'}</strong>
-          </div>
+
+          {lastConfiguredAt && (
+            <div className="flex items-center gap-1.5 text-[11px] text-ink-muted pt-1 border-t border-line/50">
+              <Clock size={12} className="text-accent" />
+              <span>Được lưu lần cuối: <strong className="text-ink">{lastConfiguredAt}</strong></span>
+              {lastConfiguredBy && (
+                <span className="flex items-center gap-1 ml-2 text-ink-secondary">
+                  <UserCheck size={12} className="text-accent" />
+                  Bởi: <strong className="text-accent">{lastConfiguredBy}</strong>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tab Selector */}
@@ -198,10 +252,11 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
               <input
                 type="email"
                 required
+                disabled={!isHrOrAdmin}
                 value={gmailUser}
                 onChange={e => setGmailUser(e.target.value)}
                 placeholder="VD: hr.actpulse@gmail.com hoặc user@act-corp.vn"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs font-medium"
+                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -209,14 +264,26 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
               <label className="block text-ink font-semibold mb-1">
                 Mật khẩu ứng dụng Google (16 ký tự App Password) *
               </label>
-              <input
-                type="password"
-                required
-                value={appPassword}
-                onChange={e => setAppPassword(e.target.value)}
-                placeholder="xxxx xxxx xxxx xxxx"
-                className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs font-mono"
-              />
+              <div className="relative">
+                <input
+                  type={showAppPassword ? 'text' : 'password'}
+                  required
+                  disabled={!isHrOrAdmin}
+                  value={appPassword}
+                  onChange={e => setAppPassword(e.target.value)}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  className="w-full px-3 py-2 pr-9 rounded-lg border border-line bg-surface text-ink text-xs font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowAppPassword(prev => !prev)}
+                  title={showAppPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink transition-colors"
+                >
+                  {showAppPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -236,10 +303,11 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             <input
               type="email"
               required
+              disabled={!isHrOrAdmin}
               value={targetEmail}
               onChange={e => setTargetEmail(e.target.value)}
               placeholder="Nhập email cá nhân thực tế của bạn để nhận thư (VD: sang.nguyen@gmail.com)"
-              className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs"
+              className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs disabled:opacity-60 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -247,9 +315,10 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             <label className="block text-ink-muted mb-1">Nội dung thông điệp kiểm thử</label>
             <input
               type="text"
+              disabled={!isHrOrAdmin}
               value={testMessage}
               onChange={e => setTestMessage(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs"
+              className="w-full px-3 py-2 rounded-lg border border-line bg-surface text-ink text-xs disabled:opacity-60 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -270,7 +339,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
             <Button variant="outline" size="sm" type="button" onClick={onClose}>
               Đóng
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={isLoading}>
+            <Button variant="primary" size="sm" type="submit" disabled={isLoading || !isHrOrAdmin}>
               {isLoading ? '⏳ Đang kết nối & gửi mail...' : '🚀 Lưu Cấu Hình & Gửi Thử Ngay'}
             </Button>
           </div>

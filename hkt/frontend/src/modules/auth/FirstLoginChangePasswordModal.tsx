@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface Props {
@@ -10,8 +11,11 @@ interface Props {
 export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSuccess, canDismiss = false }) => {
   const { user, updateUser } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -129,38 +133,68 @@ export const FirstLoginChangePasswordModal: React.FC<Props> = ({ isOpen, onSucce
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink">Mật Khẩu Hiện Tại / Tạm Thời</label>
-              <input
-                type="password"
-                value={oldPassword}
-                onChange={e => setOldPassword(e.target.value)}
-                placeholder="Nhập mật khẩu hiện tại (VD: Admin)"
-                className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showOldPassword ? 'text' : 'password'}
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu hiện tại (VD: Admin)"
+                  className="w-full px-3 py-2 pr-9 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword(!showOldPassword)}
+                  className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
+                  title={showOldPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showOldPassword ? <EyeOff className="w-3.5 h-3.5 text-accent" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink">Mật Khẩu Mới</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="Ví dụ: ActHr@2026Secure!"
-                className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Ví dụ: ActHr@2026Secure!"
+                  className="w-full px-3 py-2 pr-9 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
+                  title={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showNewPassword ? <EyeOff className="w-3.5 h-3.5 text-accent" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink">Xác Nhận Mật Khẩu Mới</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
-                className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới"
+                  className="w-full px-3 py-2 pr-9 bg-canvas border border-line rounded-lg text-xs focus:outline-none focus:border-accent"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
+                  title={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5 text-accent" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
 
             <div className="pt-2 flex justify-end gap-2">

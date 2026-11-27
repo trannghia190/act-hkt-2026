@@ -54,16 +54,23 @@ public final class NotificationEventCatalog {
         // ── Đơn từ & phép ───────────────────────────────────────────────────
         defFor(Set.of(ROLE_MANAGER),
                 "APPROVAL_OVERDUE", "Đơn chờ duyệt quá hạn SLA 48h", CATEGORY_REQUEST, true, true, true);
+        defFor(Set.of(ROLE_MANAGER, ROLE_HR),
+                "REQUEST_SUBMITTED", "Đơn mới được nộp (cần duyệt)", CATEGORY_REQUEST, true, true, true);
+        def("REQUEST_APPROVED", "Đơn của tôi được duyệt", CATEGORY_REQUEST, true, true, true);
+        def("REQUEST_REJECTED", "Đơn của tôi bị từ chối / trả lại", CATEGORY_REQUEST, true, true, true);
         defFor(Set.of(ROLE_MANAGER),
-                "REQUEST_SUBMITTED", "Đơn mới được nộp (cần duyệt)", CATEGORY_REQUEST, true, false, true);
-        def("REQUEST_APPROVED", "Đơn của tôi được duyệt", CATEGORY_REQUEST, true, false, true);
-        def("REQUEST_REJECTED", "Đơn của tôi bị từ chối / trả lại", CATEGORY_REQUEST, true, false, true);
+                "REQUEST_WITHDRAWN", "Đơn chờ duyệt bị rút lại / hủy", CATEGORY_REQUEST, true, true, true);
+        defFor(Set.of(ROLE_MANAGER),
+                "REQUEST_ATTACHMENT_ADDED", "Đơn có tài liệu minh chứng mới", CATEGORY_REQUEST, true, true, true);
         def("LEAVE_EXPIRY_SOON", "Phép tồn năm sắp hết hạn", CATEGORY_REQUEST, true, false, true);
         def("WFH_MISSING_REPORT", "Đơn WFH chưa gửi báo cáo cuối ngày", CATEGORY_REQUEST, true, false, true);
         defFor(Set.of(ROLE_HR),
-                "DISPUTE_RAISED", "Khiếu nại bảng công cần xử lý", CATEGORY_REQUEST, true, false, true);
-        def("DISPUTE_RESOLVED", "Khiếu nại bảng công đã được xử lý", CATEGORY_REQUEST, true, false, true);
-        def("DISPUTE_REJECTED", "Khiếu nại bảng công bị từ chối", CATEGORY_REQUEST, true, false, true);
+                "DISPUTE_RAISED", "Khiếu nại bảng công cần xử lý", CATEGORY_REQUEST, true, true, true);
+        def("DISPUTE_RESOLVED", "Khiếu nại bảng công đã được xử lý", CATEGORY_REQUEST, true, true, true);
+        def("DISPUTE_REJECTED", "Khiếu nại bảng công bị từ chối", CATEGORY_REQUEST, true, true, true);
+        def("MANAGER_REASSIGNED", "Thay đổi người quản lý / phê duyệt", CATEGORY_REQUEST, true, true, true);
+        def("USER_ONBOARDED", "Chào mừng thành viên mới & Kích hoạt", CATEGORY_SYSTEM, true, true, true);
+        def("SECURITY_ALERT", "Cảnh báo bảo mật & Đổi mật khẩu", CATEGORY_SYSTEM, true, true, true);
         // ── OKR ─────────────────────────────────────────────────────────────
         def("OKR_CHECKIN_DUE", "Check-in tiến độ OKR đến hạn", CATEGORY_OKR, true, false, true);
         def("OKR_NOT_CREATED", "Chưa thiết lập mục tiêu OKR quý", CATEGORY_OKR, true, true, true);

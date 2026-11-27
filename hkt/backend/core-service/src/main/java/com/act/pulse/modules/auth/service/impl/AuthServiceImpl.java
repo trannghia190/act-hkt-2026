@@ -69,6 +69,7 @@ public class AuthServiceImpl implements AuthService {
     private final FaceProfileRepository faceProfileRepository;
     private final TeamRepository teamRepository;
     private final PasskeyCredentialRepository passkeyCredentialRepository;
+    private final com.act.pulse.modules.notification.service.NotificationDispatcher notificationDispatcher;
 
     @Override
     @Transactional
@@ -113,12 +114,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String reqPass = request.getPassword();
-        boolean passwordMatched = passwordEncoder.matches(reqPass, user.getPasswordHash())
-                || "123456".equals(reqPass)
-                || "Act@2026".equals(reqPass)
-                || "Admin".equals(reqPass)
-                || "admin".equals(reqPass)
-                || "admin123".equals(reqPass);
+        boolean passwordMatched = passwordEncoder.matches(reqPass, user.getPasswordHash());
         if (!passwordMatched) {
             loginAttemptService.registerFailure(identifier, now);
             throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
@@ -268,6 +264,22 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             log.warn("Không thể gửi email xác nhận đổi mật khẩu cho {}: {}", user.getEmail(), e.getMessage());
         }
+
+        // Bắn thông báo nội bộ và push notification qua dispatcher
+        try {
+            notificationDispatcher.dispatch(
+                    "SECURITY_ALERT",
+                    user.getId(),
+                    "Mật khẩu tài khoản đã được thay đổi",
+                    "Mật khẩu tài khoản của bạn đã được thay đổi thành công vào lúc "
+                            + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+                            + ". Nếu không phải bạn thực hiện, vui lòng liên hệ ngay với HR/Admin.",
+                    "SECURITY",
+                    "HIGH",
+                    "/account/profile",
+                    "password-changed:" + user.getId() + ":" + System.currentTimeMillis()
+            );
+        } catch (Exception ignored) {}
 
         log.info("Đã đổi mật khẩu thành công cho nhân viên: {}", employeeCode);
         return true;
@@ -454,6 +466,22 @@ public class AuthServiceImpl implements AuthService {
             log.warn("Không thể gửi email xác nhận đặt lại mật khẩu cho {}: {}", user.getEmail(), e.getMessage());
         }
 
+        // Bắn thông báo nội bộ và push notification qua dispatcher
+        try {
+            notificationDispatcher.dispatch(
+                    "SECURITY_ALERT",
+                    user.getId(),
+                    "Mật khẩu đã được đặt lại qua mã OTP",
+                    "Mật khẩu của bạn đã được đặt lại thành công bằng mã xác thực OTP vào lúc "
+                            + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+                            + ". Toàn bộ các phiên đăng nhập cũ đã được thu hồi.",
+                    "SECURITY",
+                    "HIGH",
+                    "/account/profile",
+                    "password-reset:" + user.getId() + ":" + System.currentTimeMillis()
+            );
+        } catch (Exception ignored) {}
+
         log.info("Đặt lại mật khẩu thành công qua OTP cho nhân viên: {} ({})", user.getEmployeeCode(), user.getEmail());
         return true;
     }
@@ -465,7 +493,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean configureSmtp(String host, int port, String username, String password) {
-        return emailService.configureSmtp(host, port, username, password);
+        String actor = CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : CurrentUser.role();
+        return emailService.configureSmtp(host, port, username, password, actor != null ? actor : "HR_ADMIN");
     }
 
     @Override
@@ -475,6 +504,8 @@ public class AuthServiceImpl implements AuthService {
         status.put("senderEmail", emailService.getSenderEmail());
         status.put("defaultHost", "smtp.gmail.com");
         status.put("defaultPort", 587);
+        status.put("lastConfiguredAt", emailService.getLastConfiguredAt());
+        status.put("lastConfiguredBy", emailService.getLastConfiguredBy());
         return status;
     }
 

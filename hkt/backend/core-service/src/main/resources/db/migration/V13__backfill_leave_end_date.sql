@@ -1,3 +1,5 @@
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS end_date DATE;
+
 -- Backfill khoảng ngày cho các đơn nghỉ cũ tạo trước khi có end_date:
 -- payload có duration "N ngày làm việc" nhưng end_date đang = work_date.
 WITH candidates AS (
