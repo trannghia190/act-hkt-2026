@@ -68,7 +68,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ✅ | ✅ | ✅ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
-| T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ⬜ | ⬜ | ⬜ |
+| T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ✅ | ✅ | ✅ |
 | T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ⬜ | ⬜ | ⬜ |
 | T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ⬜ | ⬜ | ⬜ |
 | T15 | Thêm thiết bị | `/attendance/devices/add` | `AddDevicePage` | ⬜ | ⬜ | ⬜ |
@@ -627,3 +627,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   "Đọc số" giải thích quy tắc ngày 01/04 và 01/07. Verify: 43 dòng → chip 1 / 32 /
   43 khớp, tìm "136" còn 1 dòng, deep-link `?user=01HR` mở đúng sổ, 3 theme ×
   7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **T12 · Khiếu nại bảng công** ✅ (2026-11-27) — mockup
+  `screens/disputes.html` (3 theme × desktop 1440 + mobile 390). Thay
+  `window.prompt` bằng **Modal xử lý**: chọn "Duyệt & sửa ô (hiệu lực ngay)" hoặc
+  "Bổ sung công (tạo đơn chờ duyệt)", nhập đủ giờ vào/ra khi duyệt sửa giờ, bắt
+  buộc lý do. Bìa `bg-ink text-canvas` "Hàng chờ xử lý" + 4 số (cần xử lý vàng /
+  đã xử lý / bị từ chối / quá hạn); Panel lọc tìm tên-mã-lý do + 5 chip cuộn ngang
+  mobile; thanh **chọn tất cả / duyệt & sửa ô hàng loạt / từ chối hàng loạt** có
+  modal lý do chung, đơn không hợp lệ (thiếu giờ đề xuất) bị bỏ qua và **liệt kê
+  rõ**; mỗi dòng hiện tag loại (Sửa giờ / WFH / Nghỉ phép), badge trạng thái,
+  "NV xin" đúng nội dung, hạn xử lý (quá hạn tô vàng) + số giấy tờ; mobile là
+  card với lưới 3 nút. Verify: 3 đơn chờ → modal duyệt sửa giờ 08:30→17:30 lưu
+  `RESOLVED/FIX` đúng, modal WFH/nghỉ hiện cảnh báo hiệu lực ngay, bulk từ chối
+  bắt buộc lý do, 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
+  `tsc` + `build` sạch.
