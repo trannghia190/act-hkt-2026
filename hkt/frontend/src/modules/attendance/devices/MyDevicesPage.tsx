@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Ban, Clock, Fingerprint, Laptop, Plus, ScanFace, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { Badge } from '../../../components/common/Badge';
+import { Panel } from '../../../components/common/Panel';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
 
 interface Device {
@@ -22,6 +24,79 @@ const authHeaders = (): Record<string, string> => {
   } catch {
     return {};
   }
+};
+
+const statusBadge = (s: Device['status']) => {
+  if (s === 'ACTIVE') return <Badge variant="ok">đang hoạt động</Badge>;
+  if (s === 'PENDING') return <Badge variant="warn">chờ HR duyệt</Badge>;
+  return <Badge variant="gray">đã thu hồi</Badge>;
+};
+
+/** Một dòng thiết bị — cùng cấu trúc cho cả 3 trạng thái, khác nhau ở nhãn + nút. */
+const DeviceRow: React.FC<{
+  device: Device;
+  isCurrent: boolean;
+  deleting: boolean;
+  onRemove: (d: Device) => void;
+}> = ({ device: d, isCurrent, deleting, onRemove }) => {
+  const isLaptop = /pc|windows|mac|linux|browser/i.test(`${d.name} ${d.osVersion || ''}`);
+  const Icon = isLaptop ? Laptop : Smartphone;
+  const revoked = d.status === 'REVOKED';
+  return (
+    <section
+      className={`flex flex-wrap items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors sm:flex-nowrap ${
+        revoked ? 'border-line bg-canvas' : d.status === 'PENDING' ? 'border-status-warn-line bg-status-warn-soft/40' : 'border-line bg-surface hover:border-line-hover'
+      }`}
+    >
+      <div className="grid shrink-0 place-items-center rounded-[9px] border border-line bg-surface-secondary text-ink-secondary" style={{ width: 34, height: 34 }}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1 basis-[calc(100%-46px)] space-y-1 sm:basis-auto">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[13.5px] font-bold tracking-[-0.01em] text-ink">{d.name}</span>
+          <span className="rounded-md bg-surface-secondary px-1.5 py-[2px] text-[10.5px] font-semibold text-ink-muted">
+            {d.osVersion || 'Web'}
+          </span>
+          {statusBadge(d.status)}
+          {isCurrent && <Badge variant="accent">thiết bị hiện tại</Badge>}
+        </div>
+        <div className="inline-flex items-center gap-1 font-mono text-[10.5px] text-ink-muted">
+          <Fingerprint className="h-2.5 w-2.5" />
+          {d.fingerprint}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+          {revoked ? (
+            <span className="inline-flex items-center gap-1"><Ban className="h-2.5 w-2.5" />Không thể chấm công</span>
+          ) : (
+            <span className="inline-flex items-center gap-1"><Clock className="h-2.5 w-2.5" />
+              {d.status === 'PENDING' ? `Gửi yêu cầu ${d.createdAt || ''}`.trim() : `Hoạt động ${d.lastActive}`}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex w-full shrink-0 gap-1.5 sm:w-auto">
+        {d.status === 'ACTIVE' && (
+          <span className="hidden items-center gap-1 rounded-lg border border-status-ok-line bg-status-ok-soft px-2.5 text-[11px] font-semibold text-status-ok sm:inline-flex">
+            đã kích hoạt
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => onRemove(d)}
+          disabled={deleting}
+          title={d.status === 'ACTIVE' ? 'Xóa thiết bị khỏi tài khoản — máy này sẽ không chấm công được nữa' : undefined}
+          className={`inline-flex h-[29px] flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none ${
+            d.status === 'PENDING'
+              ? 'border border-status-warn-line bg-surface text-status-warn hover:bg-status-warn-soft'
+              : 'border border-status-danger-line bg-surface text-status-danger hover:bg-status-danger-soft'
+          }`}
+        >
+          {d.status === 'PENDING' ? <Ban className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}
+          {deleting ? 'Đang xóa…' : d.status === 'PENDING' ? 'Hủy yêu cầu' : 'Xóa thiết bị'}
+        </button>
+      </div>
+    </section>
+  );
 };
 
 export const MyDevicesPage: React.FC = () => {
@@ -88,151 +163,138 @@ export const MyDevicesPage: React.FC = () => {
 
   const activeCount = devices.filter((d) => d.status === 'ACTIVE').length;
   const pendingCount = devices.filter((d) => d.status === 'PENDING').length;
+  const revokedCount = devices.filter((d) => d.status === 'REVOKED').length;
   const isCurrentDevice = (d: Device): boolean => d.fingerprint === currentFingerprint;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      {/* Header Card */}
-      <div className="bg-canvas border border-line rounded-xl p-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-2">
-          <span>🔒</span> Quản Lý Thiết Bị Cá Nhân
+    <div className="mx-auto max-w-3xl space-y-4 pb-24">
+      {/* Đầu trang — mockup T14 */}
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+          <Smartphone className="h-3.5 w-3.5" />
+          Chấm công
         </div>
-        <h1 className="text-xl font-bold text-ink">Thiết bị đăng ký & Hồ sơ nhận diện</h1>
-        <p className="text-xs text-ink-muted mt-1">
-          Hạn mức mặc định 2 thiết bị/tài khoản — máy trong hạn mức kích hoạt ngay, từ máy thứ 3 cần lý do và chờ HR duyệt.
-          {' '}Hệ thống nhận diện thiết bị bằng fingerprint trình duyệt và kết hợp khuôn mặt khi chấm công.
-          {' '}Đăng nhập nhanh bằng vân tay/Face ID nằm ở trang <Link to="/account/passkey" className="text-accent font-semibold">Passkey &amp; bảo mật</Link>.
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+            Thiết bị của tôi
+          </h1>
+          <Badge variant="accent">T14</Badge>
+        </div>
+        <p className="mt-1 text-xs text-ink-muted">
+          Hạn mức 2 thiết bị/tài khoản — máy trong hạn mức kích hoạt ngay, máy thứ 3 cần lý do và chờ HR duyệt.
+          Nhận diện bằng fingerprint trình duyệt + khuôn mặt khi chấm công.
         </p>
       </div>
 
       {error && (
-        <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-xl p-3">
+        <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger">
           {error}
         </div>
       )}
 
-      {/* Device List Card */}
-      <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-line pb-3">
-          <div>
-            <h2 className="text-sm font-bold text-ink">
-              Thiết bị của tôi ({activeCount}/2 đang hoạt động)
-            </h2>
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              {pendingCount > 0
-                ? `Có ${pendingCount} thiết bị đang ở hàng chờ HR duyệt`
-                : 'Đang dùng các thiết bị đã được định danh hợp lệ'}
+      {/* Bìa tóm tắt */}
+      <div className="overflow-hidden rounded-[16px] border border-line bg-ink px-5 py-4 text-canvas">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-canvas/60">Thiết bị tin cậy</div>
+            <div className="mt-1 font-display text-lg font-extrabold">Chỉ máy đã đăng ký mới chấm công được</div>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-canvas/75">
+              Fingerprint trình duyệt định danh máy; máy lạ tự vào hàng chờ HR duyệt. Đổi máy thì đăng ký lại tại đây.
             </p>
           </div>
-          {devices.some(isCurrentDevice) ? (
+          <dl className="ml-auto flex gap-7">
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums text-status-ok">{activeCount}/2</dd>
+              <dt className="text-[11px] text-canvas/60">đang hoạt động</dt>
+            </div>
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums text-status-warn">{pendingCount}</dd>
+              <dt className="text-[11px] text-canvas/60">chờ duyệt</dt>
+            </div>
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums">{revokedCount}</dd>
+              <dt className="text-[11px] text-canvas/60">đã thu hồi</dt>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <Panel
+        title="Thiết bị của tôi"
+        subtitle={pendingCount > 0 ? `${pendingCount} máy chờ HR duyệt` : 'Các thiết bị đã được định danh hợp lệ'}
+        action={
+          devices.some(isCurrentDevice) ? (
             <span
-              className="text-xs px-3.5 py-1.5 rounded-lg bg-canvas text-ink-muted font-semibold border border-line cursor-not-allowed"
+              className="inline-flex h-[29px] items-center rounded-lg border border-line bg-canvas px-2.5 text-[11.5px] font-semibold text-ink-muted"
               title="Trình duyệt này đã được đăng ký. Đổi máy khác thì mở trang này trên máy đó."
             >
-              ✓ Thiết bị này đã đăng ký
+              ✓ Máy này đã đăng ký
             </span>
           ) : (
             <Link
               to="/attendance/devices/add"
-              className="text-xs px-3.5 py-1.5 rounded-lg bg-accent text-on-accent font-semibold hover:bg-accent-hover transition-colors shadow-xs"
+              className="inline-flex h-[29px] items-center gap-1 rounded-lg bg-accent px-2.5 text-[11.5px] font-semibold text-on-accent transition-colors hover:bg-accent-hover"
             >
-              + Đăng ký thiết bị này
+              <Plus className="h-3 w-3" />
+              Đăng ký
             </Link>
-          )}
-        </div>
-
+          )
+        }
+        bodyClassName="space-y-2.5"
+      >
         {loading ? (
-          <div className="py-6 text-center text-xs text-ink-muted">Đang tải danh sách thiết bị...</div>
+          <div className="py-3 text-xs text-ink-muted">Đang tải danh sách thiết bị…</div>
         ) : devices.length === 0 ? (
-          <div className="py-6 text-center text-xs text-ink-muted">
+          <div className="py-3 text-xs text-ink-muted">
             Chưa có thiết bị nào được ghi nhận. Hãy đăng ký thiết bị để bắt đầu chấm công.
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {devices.map((d) => (
-              <div
-                key={d.id}
-                className={`flex flex-col sm:flex-row sm:items-center justify-between border rounded-xl p-3.5 gap-2 transition-all ${
-                  d.status === 'ACTIVE'
-                    ? 'border-line bg-surface hover:border-accent/40'
-                    : d.status === 'PENDING'
-                      ? 'border-status-warn-line bg-status-warn-soft/40'
-                      : 'border-line bg-canvas'
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-ink">{d.name}</span>
-                    <Badge variant={d.status === 'ACTIVE' ? 'accent' : d.status === 'PENDING' ? 'warn' : 'gray'}>
-                      {d.status === 'ACTIVE' ? 'Đang hoạt động' : d.status === 'PENDING' ? 'Chờ HR duyệt' : 'Đã thu hồi'}
-                    </Badge>
-                    {isCurrentDevice(d) && <Badge variant="info">Thiết bị hiện tại</Badge>}
-                  </div>
-                  <div className="text-[11px] text-ink-muted font-mono">
-                    Mã thiết bị: {d.fingerprint}
-                  </div>
-                  <div className="text-[11px] text-ink-secondary">
-                    Lần chấm công gần nhất: <span className="font-medium text-ink">{d.lastActive}</span> · Nền tảng: {d.osVersion}
-                  </div>
-                </div>
-
-                <div className="text-right flex items-center gap-2">
-                  {d.status === 'ACTIVE' && (
-                    <span className="text-[11px] text-status-ok font-medium bg-status-ok-soft px-2.5 py-1 rounded-md border border-status-ok-line">
-                      ✓ Đã kích hoạt
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeDevice(d)}
-                    disabled={deletingId === d.id}
-                    title={d.status === 'ACTIVE'
-                      ? 'Xóa thiết bị khỏi tài khoản — máy này sẽ không chấm công được nữa'
-                      : undefined}
-                    className={`text-[11px] px-3 py-1.5 rounded-lg border font-semibold disabled:opacity-50 transition-colors ${
-                      d.status === 'PENDING'
-                        ? 'border-status-warn-line bg-surface text-status-warn hover:bg-status-warn-soft'
-                        : 'border-status-danger-line bg-surface text-status-danger hover:bg-status-danger-soft'
-                    }`}
-                  >
-                    {deletingId === d.id
-                      ? 'Đang xóa…'
-                      : d.status === 'PENDING' ? 'Hủy yêu cầu' : 'Xóa thiết bị'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          devices.map((d) => (
+            <DeviceRow
+              key={d.id}
+              device={d}
+              isCurrent={isCurrentDevice(d)}
+              deleting={deletingId === d.id}
+              onRemove={removeDevice}
+            />
+          ))
         )}
-      </div>
+      </Panel>
 
-      {/* Face Biometric Card */}
-      <div className="bg-surface border border-line rounded-xl p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-ink">Hồ sơ khuôn mặt AI Biometrics</span>
-              <Badge variant={user?.faceEnrolled ? 'accent' : 'warn'}>
-                {user?.faceEnrolled ? 'Đã đăng ký' : 'Chưa đăng ký'}
+      <Panel bodyClassName="space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[13.5px] font-bold text-ink">Hồ sơ khuôn mặt</span>
+              <Badge variant={user?.faceEnrolled ? 'ok' : 'warn'}>
+                {user?.faceEnrolled ? 'đã đăng ký' : 'chưa đăng ký'}
               </Badge>
             </div>
-            <div className="text-xs text-ink-muted">
-              Tài khoản: <strong className="text-ink">{user?.employeeCode || '—'}</strong> ({user?.fullName || '—'})
+            <div className="text-[11.5px] text-ink-muted">
+              {user?.employeeCode || '—'} · {user?.fullName || '—'}
             </div>
             {!user?.faceEnrolled && (
-              <div className="text-[11px] text-ink-secondary">
-                Chưa có mẫu khuôn mặt — đăng ký để xác thực khi chấm công.
-              </div>
+              <div className="text-[11px] text-ink-secondary">Chưa có mẫu khuôn mặt — đăng ký để xác thực khi chấm công.</div>
             )}
           </div>
           <Link
             to="/auth/enroll-face"
-            className="text-xs px-3 py-1.5 rounded-lg border border-line bg-canvas text-ink font-semibold hover:border-accent hover:text-accent transition-colors whitespace-nowrap"
+            className="inline-flex h-[29px] items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[11.5px] font-semibold text-ink-secondary transition-colors hover:bg-canvas hover:text-ink"
           >
+            <ScanFace className="h-3 w-3" />
             {user?.faceEnrolled ? 'Cập nhật mẫu mặt' : 'Đăng ký khuôn mặt'}
           </Link>
         </div>
-      </div>
+        <p className="text-[11px] leading-relaxed text-ink-muted">
+          Đăng nhập nhanh bằng vân tay/Face ID nằm ở trang{' '}
+          <Link to="/account/passkey" className="font-semibold text-accent-dark hover:underline">Passkey &amp; bảo mật</Link>.
+        </p>
+      </Panel>
+
+      <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-muted">
+        <ShieldCheck className="mt-px h-3 w-3 shrink-0" />
+        Thiết bị bị xóa hoặc thu hồi sẽ bị chặn chấm công ngay — đăng ký lại phải chờ HR duyệt.
+      </p>
     </div>
   );
 };

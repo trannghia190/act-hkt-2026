@@ -69,9 +69,9 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
 | T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ✅ | ✅ | ✅ |
-| T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ⬜ | ⬜ | ⬜ |
-| T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ⬜ | ⬜ | ⬜ |
-| T15 | Thêm thiết bị | `/attendance/devices/add` | `AddDevicePage` | ⬜ | ⬜ | ⬜ |
+| T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ✅ | ✅ | ✅ |
+| T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ✅ | ✅ | ✅ |
+| T15 | Thêm thiết bị | `/attendance/devices/add` | `AddDevicePage` | ✅ | ✅ | ✅ |
 
 ## 3 · Tài khoản
 
@@ -642,3 +642,37 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   `RESOLVED/FIX` đúng, modal WFH/nghỉ hiện cảnh báo hiệu lực ngay, bulk từ chối
   bắt buộc lý do, 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
   `tsc` + `build` sạch.
+- **T13 · Chi tiết khiếu nại** ✅ (2026-11-27) — mockup
+  `screens/dispute-detail.html` (3 theme × desktop 1440 + mobile 390). Màn thật vốn
+  đã đủ nghiệp vụ 3 nguồn đối chiếu → chỉ làm mockup + verify, không sửa logic. Bố
+  cục: đầu trang `h1` + mã đơn + badge trạng thái + dòng NV/mã/ngày công/hạn; bìa
+  `bg-ink text-canvas` "Đối chiếu 3 nguồn trước khi sửa" + 3 số (ngày còn lại vàng /
+  đơn liên quan / giấy tờ); lưới 3 thẻ **1 · Log gốc** (giờ vào/ra, "không sửa
+  được"), **2 · NV khiếu nại** (điều NV xin, đơn liên quan), **3 · Ô bảng công**
+  (ký hiệu HR đang giữ); dải nhắc quy tắc màu warn; Panel **Xử lý khiếu nại** (chọn
+  chế độ Sửa giờ/WFH/Nghỉ, giờ vào/ra bắt buộc, buổi, lý do bắt buộc, 3 nút Duyệt &
+  cập nhật / Tạo đơn bổ sung công / Từ chối). Đơn đã đóng đổi tiêu đề "Chi tiết
+  khiếu nại" + Panel "Kết quả xử lý" — đúng như app. Verify (HR 01HR): đơn quá hạn
+  DC-01 render đúng 3 thẻ + "Quá hạn"; state PENDING (mock dữ liệu) hiện đủ form
+  prefill 08:47, nút hành động có tooltip, mobile 390 không tràn ngang
+  (`scrollWidth` = `clientWidth` = 384), 0 lỗi JS; 3 theme × 2 khổ mở được.
+  Không sửa code nên `tsc`/`build` giữ nguyên trạng thái sạch của T12.
+
+- **T14 · Thiết bị của tôi** ✅ (2026-11-27) — mockup `screens/my-devices.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `MyDevicesPage`: đầu trang gọn +
+  badge T14; bìa `bg-ink` "Chỉ máy đã đăng ký mới chấm công được" + 3 số (x/2 đang
+  hoạt động, chờ duyệt, đã thu hồi); Panel danh sách với nút `+ Đăng ký` (đổi thành
+  "Máy này đã đăng ký" khi fingerprint hiện tại nằm trong danh sách); mỗi dòng có
+  icon laptop/phone, tên + nền tảng + badge trạng thái + badge "thiết bị hiện tại",
+  fingerprint mono, giờ hoạt động / gửi yêu cầu, nút Hủy yêu cầu / Xóa thiết bị;
+  Panel hồ sơ khuôn mặt + link Passkey. Verify (NV 01HR): 2 thiết bị thu hồi render
+  đúng nhãn xám, mobile 390 không tràn ngang, 0 lỗi JS; `tsc` + `build` sạch.
+- **T15 · Đăng ký thiết bị** ✅ (2026-11-27) — mockup `screens/add-device.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `AddDevicePage`: bìa `bg-ink` theo
+  hạn mức (còn hạn → "Kích hoạt thiết bị đang mở"/"Ngay"; đủ 2/2 → cảnh báo + "30
+  ngày hiệu lực"), form 1 panel: fingerprint readonly, tên thiết bị, khối lý do bắt
+  buộc + cảnh báo Wi-Fi nội bộ 403 + quy định khi vượt hạn mức; khối xanh khi còn
+  hạn mức; nút Hủy / Thêm thiết bị (Gửi yêu cầu chờ HR duyệt); trạng thái gửi xong
+  dùng `ok-soft`. Giữ nguyên API `/devices/request` + header `X-Office-Network` +
+  `wifiBssid`. Verify: tài khoản còn hạn mức render khối xanh và nút "Thêm thiết
+  bị", mobile 390 không tràn, 0 lỗi JS; `tsc` + `build` sạch.
