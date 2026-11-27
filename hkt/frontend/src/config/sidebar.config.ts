@@ -1,6 +1,7 @@
 // S00 — Cấu trúc điều hướng: Một nguồn sự thật duy nhất (Single Source of Truth)
-// Luật bắt buộc: Employee ⊂ Manager ⊂ HR.
-// Mỗi variant là superset của variant nhỏ hơn. Mọi mục của nhân viên có ở cả 2 bản còn lại.
+// Luật bắt buộc: Employee ⊂ Manager; Employee ⊂ HR. Manager và HR là 2 nhánh
+// song song (HR không kiêm duyệt đơn của quản lý), Admin = Manager + HR.
+// Nhóm trùng tên được gộp tự động (mergeGroups) để không lặp header (vd. OKR).
 
 export interface NavChildItem {
   label: string;
@@ -24,7 +25,7 @@ export interface NavGroup {
 }
 
 // =========================================================================
-// 1. NHÓM DÙNG CHUNG CHO MỌI VAI TRÒ (COMMON — BIẾN THỂ NHÂN VIÊN: 14 MỤC)
+// 1. NHÓM DÙNG CHUNG CHO MỌI VAI TRÒ (COMMON)
 // =========================================================================
 export const COMMON_GROUPS: NavGroup[] = [
   {
@@ -50,7 +51,7 @@ export const COMMON_GROUPS: NavGroup[] = [
       { id: 'team', label: 'Lịch nhóm', path: '/attendance/team-schedule', icon: 'Users', screenId: 'S14' },
       { id: 'balance', label: 'Số dư phép', path: '/attendance/leaves', icon: 'Sun', screenId: 'S09' },
       { id: 'mytime', label: 'Bảng công của tôi', path: '/attendance/my-timesheet', icon: 'FileText', screenId: 'S11' },
-      { id: 'policy', label: 'Quy định tra cứu', path: '/admin/policy-doc', icon: 'BookOpen', screenId: 'S19' },
+      { id: 'policy', label: 'Nội quy & quy chế', path: '/attendance/policy-doc', icon: 'BookOpen', screenId: 'S19' },
     ],
   },
   {
@@ -73,7 +74,7 @@ export const COMMON_GROUPS: NavGroup[] = [
 ];
 
 // =========================================================================
-// 2. NHÓM RIÊNG CỦA QUẢN LÝ (MANAGE: 3 MỤC)
+// 2. NHÓM RIÊNG CỦA QUẢN LÝ (MANAGER)
 // =========================================================================
 export const MANAGER_GROUPS: NavGroup[] = [
   {
@@ -88,25 +89,42 @@ export const MANAGER_GROUPS: NavGroup[] = [
 ];
 
 // =========================================================================
-// 3. NHÓM RIÊNG CỦA HR (HR: 12 MỤC)
+// 3. NHÓM RIÊNG CỦA HR (chia theo nghiệp vụ, tránh 1 nhóm 13 mục)
 // =========================================================================
 export const HR_GROUPS: NavGroup[] = [
   {
-    groupName: 'HR',
+    groupName: 'Chấm công & phép',
     items: [
       { id: 'tsheet', label: 'Bảng công & chốt', path: '/attendance/timesheet', icon: 'Table', screenId: 'S15' },
-      { id: 'dispute', label: 'Danh sách khiếu nại', path: '/attendance/disputes', icon: 'AlertTriangle', badgeKey: 'dispute', badgeColor: 'danger', screenId: 'S45' },
-      { id: 'leave', label: 'Bảng phép', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46' },
-      { id: 'rules', label: 'Cấu hình quy định', path: '/admin/rules', icon: 'Sliders', screenId: 'S16' },
-      { id: 'shift', label: 'Ca & lịch nghỉ lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26' },
-      { id: 'leavetypes', label: 'Quản lý loại nghỉ', path: '/admin/leave-types', icon: 'Tag', screenId: 'S32' },
-      { id: 'okrcycle', label: 'Chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44' },
-      { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
-      { id: 'audit', label: 'Nhật ký thay đổi', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
-      { id: 'hrdev', label: 'Quản lý thiết bị', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28' },
-      { id: 'sysdomain', label: 'Cấu hình Domain Host', path: '/admin/system-config', icon: 'Globe', screenId: 'S48' },
+      { id: 'dispute', label: 'Khiếu nại bảng công', path: '/attendance/disputes', icon: 'AlertTriangle', badgeKey: 'dispute', badgeColor: 'danger', screenId: 'S45' },
+      { id: 'leave', label: 'Bảng phép toàn công ty', path: '/attendance/leave-table', icon: 'Layers', screenId: 'S46' },
+      { id: 'ledger', label: 'Sổ phép nhân viên', path: '/attendance/leave-ledger', icon: 'BookOpen', screenId: 'S47' },
+    ],
+  },
+  {
+    groupName: 'Quản trị nhân sự',
+    items: [
       { id: 'people', label: 'Quản lý nhân viên', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40' },
       { id: 'mtree', label: 'Cây quản lý', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
+      { id: 'shift', label: 'Ca làm việc & ngày lễ', path: '/admin/shifts', icon: 'Clock', screenId: 'S26' },
+      { id: 'leavetypes', label: 'Loại nghỉ phép', path: '/admin/leave-types', icon: 'Tag', screenId: 'S32' },
+      { id: 'hrdev', label: 'Quản lý thiết bị', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28' },
+    ],
+  },
+  {
+    groupName: 'Cấu hình & hệ thống',
+    items: [
+      { id: 'rules', label: 'Bộ quy tắc', path: '/admin/rules', icon: 'Sliders', screenId: 'S16' },
+      { id: 'audit', label: 'Nhật ký kiểm toán', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
+      { id: 'sysdomain', label: 'Cấu hình Domain Host', path: '/admin/system-config', icon: 'Globe', screenId: 'S48' },
+    ],
+  },
+  {
+    // Gộp vào nhóm OKR chung khi dựng variant (cùng groupName).
+    groupName: 'OKR',
+    items: [
+      { id: 'okrcycle', label: 'Chu kỳ OKR', path: '/okr/cycles', icon: 'CalendarRange', screenId: 'S44' },
+      { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
     ],
   },
 ];
@@ -114,12 +132,28 @@ export const HR_GROUPS: NavGroup[] = [
 // =========================================================================
 // 4. SINH 3 BIẾN THỂ TỪ 1 NGUỒN CẤU HÌNH DUY NHẤT
 // =========================================================================
-// Employee (13) ⊂ Manager (17) ⊂ HR (25) / Admin (29)
+// Gộp nhóm cùng tên (vd. HR thêm mục vào nhóm "OKR" chung) nhưng giữ nguyên
+// thứ tự xuất hiện đầu tiên — tránh 2 header "OKR" cạnh nhau.
+function mergeGroups(...sets: NavGroup[][]): NavGroup[] {
+  const out: NavGroup[] = [];
+  const index = new Map<string, number>();
+  for (const group of sets.flat()) {
+    const at = index.get(group.groupName);
+    if (at === undefined) {
+      index.set(group.groupName, out.length);
+      out.push({ groupName: group.groupName, items: [...group.items] });
+    } else {
+      out[at] = { ...out[at], items: [...out[at].items, ...group.items] };
+    }
+  }
+  return out;
+}
+
 export const VARIANTS = {
   employee: COMMON_GROUPS,
-  manager: [...COMMON_GROUPS, ...MANAGER_GROUPS],
-  hr: [...COMMON_GROUPS, ...HR_GROUPS],
-  admin: [...COMMON_GROUPS, ...MANAGER_GROUPS, ...HR_GROUPS],
+  manager: mergeGroups(COMMON_GROUPS, MANAGER_GROUPS),
+  hr: mergeGroups(COMMON_GROUPS, HR_GROUPS),
+  admin: mergeGroups(COMMON_GROUPS, MANAGER_GROUPS, HR_GROUPS),
 };
 
 export const DEFAULT_BADGES: Record<string, number> = {

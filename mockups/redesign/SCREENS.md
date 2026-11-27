@@ -731,3 +731,13 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   Domain Config, 3 theme), Nhắc bật Web Push (toast desktop + mobile). Tất cả dùng
   token (`surface/line/ink/status-*`), không có màu cứng; nội dung không tràn ở
   390px.
+- **SH1 · Tổ chức lại menu (2026-11-28)** — Nhóm HR 13 mục tách thành
+  **Chấm công & phép** (bảng công/chốt, khiếu nại, bảng phép, sổ phép) ·
+  **Quản trị nhân sự** (nhân viên, cây quản lý, ca & lễ, loại nghỉ, thiết bị) ·
+  **Cấu hình & hệ thống** (bộ quy tắc, audit, domain); mục OKR của HR gộp vào
+  nhóm OKR chung thay vì lặp header. Thêm **Sổ phép nhân viên**
+  (`/attendance/leave-ledger`, màn T8) vốn có route nhưng thiếu menu. Menu
+  nhân viên đổi “Quy định tra cứu” → **Nội quy & quy chế** trỏ
+  `/attendance/policy-doc` (không còn dùng route `/admin`). HR/Manager vẫn là
+  2 nhánh song song, Admin = cả hai. Verify HR 01HR: 3 theme + mobile drawer,
+  click 3 link mới mở đúng màn; `tsc` + `build` + `check-consistency` sạch.

@@ -112,13 +112,13 @@ const BASE_CATALOG: CatalogItem[] = [
   { title: 'Khiếu nại bảng công', subtitle: 'Xử lý khiếu nại chấm công', kind: 'page', url: '/attendance/disputes', keywords: 'khieu nai bang cong dispute complaint cham cong', roles: HR_ROLES },
   { title: 'Thiết bị chấm công của tôi', subtitle: 'Quản lý thiết bị tin cậy', kind: 'page', url: '/attendance/devices', keywords: 'thiet bi cham cong device trusted thiet bi tin cay', roles: ALL_ROLES },
   { title: 'Thêm thiết bị chấm công', subtitle: 'Đăng ký thiết bị mới', kind: 'page', url: '/attendance/devices/add', keywords: 'them thiet bi cham cong add device dang ky thiet bi', roles: ALL_ROLES },
-  { title: 'Quy định & chính sách', subtitle: 'Nội quy, chính sách nhân sự', kind: 'page', url: '/admin/policy-doc', keywords: 'quy dinh chinh sach noi quy policy doc', roles: ALL_ROLES },
+  { title: 'Quy định & chính sách', subtitle: 'Nội quy, chính sách nhân sự', kind: 'page', url: '/attendance/policy-doc', keywords: 'quy dinh chinh sach noi quy policy doc', roles: ALL_ROLES },
 
   // Quy định (kết quả tìm kiếm mẫu)
-  { title: 'Quy định Đi muộn, về sớm', subtitle: 'Chính sách · Quota 2 lần/tháng, tối đa 60 phút', kind: 'rule', url: '/admin/policy-doc', keywords: 'dieu di muon muon som 60 phut 2 lan', roles: ALL_ROLES },
-  { title: 'Quy định Phép tồn & chuyển phép năm', subtitle: 'Chính sách · Hạn bảo lưu phép tồn đến 31/03', kind: 'rule', url: '/admin/policy-doc', keywords: 'phep phep ton nghi phep phep nam 31 03', roles: ALL_ROLES },
-  { title: 'Quy định Làm việc từ xa (WFH)', subtitle: 'Chính sách · Tối đa 2 ngày/tuần, báo cáo cuối ngày', kind: 'rule', url: '/admin/policy-doc', keywords: 'wfh lam viec tu xa online bao cao', roles: ALL_ROLES },
-  { title: 'Quy định Bổ sung chấm công quên quét', subtitle: 'Chính sách · Bổ sung trong 3 ngày, tối đa 5 lần/tháng', kind: 'rule', url: '/admin/policy-doc', keywords: 'bo sung quen cham cong quen quet adjust', roles: ALL_ROLES },
+  { title: 'Quy định Đi muộn, về sớm', subtitle: 'Chính sách · Quota 2 lần/tháng, tối đa 60 phút', kind: 'rule', url: '/attendance/policy-doc', keywords: 'dieu di muon muon som 60 phut 2 lan', roles: ALL_ROLES },
+  { title: 'Quy định Phép tồn & chuyển phép năm', subtitle: 'Chính sách · Hạn bảo lưu phép tồn đến 31/03', kind: 'rule', url: '/attendance/policy-doc', keywords: 'phep phep ton nghi phep phep nam 31 03', roles: ALL_ROLES },
+  { title: 'Quy định Làm việc từ xa (WFH)', subtitle: 'Chính sách · Tối đa 2 ngày/tuần, báo cáo cuối ngày', kind: 'rule', url: '/attendance/policy-doc', keywords: 'wfh lam viec tu xa online bao cao', roles: ALL_ROLES },
+  { title: 'Quy định Bổ sung chấm công quên quét', subtitle: 'Chính sách · Bổ sung trong 3 ngày, tối đa 5 lần/tháng', kind: 'rule', url: '/attendance/policy-doc', keywords: 'bo sung quen cham cong quen quet adjust', roles: ALL_ROLES },
 
   // Quản trị hệ thống
   { title: 'Quản lý nhân viên', subtitle: 'Hồ sơ, trạng thái, vai trò nhân sự', kind: 'page', url: '/admin/employees', keywords: 'quan ly nhan vien employee nhan su ho so s41', roles: HR_ROLES },
