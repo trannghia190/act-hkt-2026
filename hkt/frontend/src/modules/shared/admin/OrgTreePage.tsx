@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Panel } from '../../../components/common/Panel';
+import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -35,8 +35,7 @@ import {
   Eye,
   X,
   UserPlus,
-  Sparkles,
-  Lightbulb
+  Sparkles
 } from 'lucide-react';
 
 export interface EmployeeItem {
@@ -147,17 +146,17 @@ export const OrgTreePage: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/v1/admin/users/active', {
+      const res = await fetch('/api/v1/admin/users?size=100', {
         headers: authHeaders(),
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setAllUsers(json.data);
+        if (json.success && json.data?.content) {
+          setAllUsers(json.data.content);
         }
       }
     } catch (e) {
-      console.warn('Cannot load active users', e);
+      console.warn('Cannot load all users', e);
     }
   };
 
@@ -418,31 +417,27 @@ export const OrgTreePage: React.FC = () => {
         {/* Graph Card */}
         <div
           onClick={() => setSelectedNode(node)}
-          className={`${
-            isCompactGraph ? 'w-52' : 'w-64'
-          } rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${
-            isSelected
+          className={`${isCompactGraph ? 'w-52' : 'w-64'
+            } rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${isSelected
               ? 'ring-2 ring-accent border-accent shadow-lg scale-[1.02]'
               : isBroken
-              ? 'border-status-warn ring-2 ring-status-warn/20 shadow-md'
-              : isMatch
-              ? 'border-status-info ring-2 ring-status-info/30'
-              : 'border-line hover:border-accent/40 hover:shadow-md'
-          }`}
+                ? 'border-status-warn ring-2 ring-status-warn/20 shadow-md'
+                : isMatch
+                  ? 'border-sky-500 ring-2 ring-sky-400/30'
+                  : 'border-line hover:border-accent/40 hover:shadow-md'
+            }`}
         >
           {/* Header Strip with Tier Gradient */}
           <div
-            className={`${
-              isCompactGraph ? 'px-2.5 py-1.5' : 'px-3.5 py-2.5'
-            } rounded-t-2xl flex items-center justify-between text-on-info ${
-              level === 0
+            className={`${isCompactGraph ? 'px-2.5 py-1.5' : 'px-3.5 py-2.5'
+              } rounded-t-2xl flex items-center justify-between text-on-info ${level === 0
                 ? 'bg-gradient-to-r from-status-info via-status-info to-status-info'
                 : level === 1
-                ? 'bg-gradient-to-r from-status-ok via-status-ok to-status-ok'
-                : level === 2
-                ? 'bg-gradient-to-r from-status-info via-status-info to-status-info'
-                : 'bg-gradient-to-r from-status-warn via-status-warn to-status-warn'
-            }`}
+                  ? 'bg-gradient-to-r from-status-ok via-status-ok to-status-ok'
+                  : level === 2
+                    ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-blue-700'
+                    : 'bg-gradient-to-r from-amber-600 via-orange-600 to-orange-700'
+              }`}
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <Building2 className="w-3.5 h-3.5 shrink-0 opacity-90" />
@@ -460,13 +455,11 @@ export const OrgTreePage: React.FC = () => {
             {/* Leader Section */}
             <div className={`flex items-center gap-2 rounded-xl bg-canvas/80 border border-line/70 ${isCompactGraph ? 'p-1.5' : 'p-2'}`}>
               <div
-                className={`${
-                  isCompactGraph ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
-                } rounded-full flex items-center justify-center font-bold text-on-accent shrink-0 shadow-2xs ${
-                  node.hasLeader
+                className={`${isCompactGraph ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
+                  } rounded-full flex items-center justify-center font-bold text-on-accent shrink-0 shadow-2xs ${node.hasLeader
                     ? 'bg-gradient-to-br from-accent to-status-ok'
                     : 'bg-gradient-to-br from-status-warn to-status-danger'
-                }`}
+                  }`}
               >
                 {node.hasLeader ? (node.leaderName ? node.leaderName.charAt(0) : 'L') : '?'}
               </div>
@@ -478,7 +471,7 @@ export const OrgTreePage: React.FC = () => {
                     <span className="font-mono text-[10px] text-ink-muted font-normal">({node.leaderCode})</span>
                   </div>
                 ) : (
-                  <div className="text-status-warn font-bold text-[11px] flex items-center gap-1">
+                  <div className="text-amber-600 font-bold text-[11px] flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 shrink-0" />
                     Chưa có trưởng nhóm
                   </div>
@@ -488,8 +481,8 @@ export const OrgTreePage: React.FC = () => {
 
             {/* Metrics Row (3-column pill cards) */}
             <div className="grid grid-cols-3 gap-1.5 text-center font-semibold">
-              <div className="p-1.5 rounded-lg bg-status-info-soft border border-status-info-line/80 text-status-info">
-                <div className="text-[10px] text-status-info flex items-center justify-center gap-0.5">
+              <div className="p-1.5 rounded-lg bg-sky-50 border border-sky-200/80 text-sky-800">
+                <div className="text-[10px] text-sky-700 flex items-center justify-center gap-0.5">
                   <Users className="w-2.5 h-2.5" />
                   <span>Nhân sự</span>
                 </div>
@@ -497,11 +490,10 @@ export const OrgTreePage: React.FC = () => {
               </div>
 
               <div
-                className={`p-1.5 rounded-lg border ${
-                  node.totalPendingRequestsCount > 0
-                    ? 'bg-status-warn-soft border-status-warn-line text-status-warn'
-                    : 'bg-canvas border-line text-ink-muted'
-                }`}
+                className={`p-1.5 rounded-lg border ${node.totalPendingRequestsCount > 0
+                  ? 'bg-amber-50 border-amber-300 text-amber-800'
+                  : 'bg-canvas border-line text-ink-muted'
+                  }`}
               >
                 <div className="text-[10px] flex items-center justify-center gap-0.5">
                   <Clock className="w-2.5 h-2.5" />
@@ -511,11 +503,10 @@ export const OrgTreePage: React.FC = () => {
               </div>
 
               <div
-                className={`p-1.5 rounded-lg border ${
-                  noMgrCount > 0 || isBroken
-                    ? 'bg-status-danger-soft border-status-danger-line text-status-danger'
-                    : 'bg-status-ok-soft border-status-ok-line text-status-ok'
-                }`}
+                className={`p-1.5 rounded-lg border ${noMgrCount > 0 || isBroken
+                  ? 'bg-rose-50 border-rose-300 text-rose-800'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  }`}
               >
                 <div className="text-[10px] flex items-center justify-center gap-0.5">
                   <ShieldAlert className="w-2.5 h-2.5" />
@@ -533,7 +524,7 @@ export const OrgTreePage: React.FC = () => {
                   e.stopPropagation();
                   setSelectedNode(node);
                 }}
-                className="px-2 py-1 rounded-md bg-accent-soft hover:bg-accent hover:text-on-accent text-accent-dark font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-2 py-1 rounded-md bg-accent-soft hover:bg-accent hover:text-white text-accent font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                 title="Xem danh sách nhân viên trong nhóm"
               >
                 <Eye className="w-3 h-3" />
@@ -549,7 +540,7 @@ export const OrgTreePage: React.FC = () => {
                       setParentTeamForAdd(node);
                       setIsAddTeamModalOpen(true);
                     }}
-                    className="p-1 rounded-md bg-canvas hover:bg-accent-soft border border-line text-ink-secondary hover:text-accent-dark font-semibold transition-colors cursor-pointer"
+                    className="p-1 rounded-md bg-canvas hover:bg-accent-soft border border-line text-ink-secondary hover:text-accent font-semibold transition-colors cursor-pointer"
                     title="Thêm nhóm con trực thuộc"
                   >
                     <Plus className="w-3 h-3" />
@@ -563,7 +554,7 @@ export const OrgTreePage: React.FC = () => {
                       setLeaderChangeReason('');
                       setIsLeaderModalOpen(true);
                     }}
-                    className="p-1 rounded-md bg-canvas hover:bg-status-warn-soft border border-line text-ink-secondary hover:text-status-warn font-semibold transition-colors cursor-pointer"
+                    className="p-1 rounded-md bg-canvas hover:bg-amber-50 border border-line text-ink-secondary hover:text-amber-600 font-semibold transition-colors cursor-pointer"
                     title="Đổi trưởng nhóm"
                   >
                     <UserCheck className="w-3 h-3" />
@@ -579,11 +570,10 @@ export const OrgTreePage: React.FC = () => {
               <button
                 type="button"
                 onClick={(e) => toggleExpand(node.id, e)}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
-                  isExpanded
-                    ? 'bg-surface text-ink border-line hover:bg-accent hover:text-on-accent'
-                    : 'bg-accent text-on-accent border-accent shadow-sm'
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${isExpanded
+                  ? 'bg-surface text-ink border-line hover:bg-accent hover:text-white'
+                  : 'bg-accent text-white border-accent shadow-sm'
+                  }`}
                 title={isExpanded ? 'Thu gọn các nhánh con' : 'Mở rộng các nhánh con'}
               >
                 <span>{isExpanded ? '−' : '+'}</span>
@@ -652,11 +642,11 @@ export const OrgTreePage: React.FC = () => {
         <div
           onClick={() => setSelectedNode(node)}
           className={`w-full rounded-2xl border transition-all cursor-pointer p-4 shadow-sm hover:shadow-md relative group ${isSelected
-            ? 'bg-gradient-to-br from-status-ok/10 via-surface to-surface border-accent ring-2 ring-accent/30'
+            ? 'bg-gradient-to-br from-emerald-500/10 via-surface to-surface border-accent ring-2 ring-accent/30'
             : isBroken
-              ? 'bg-gradient-to-br from-status-warn/10 via-surface to-surface border-status-warn/40 hover:border-status-warn/60'
+              ? 'bg-gradient-to-br from-amber-500/10 via-surface to-surface border-amber-500/40 hover:border-amber-500/60'
               : isMatch
-                ? 'bg-gradient-to-br from-status-info/10 via-surface to-surface border-status-info'
+                ? 'bg-gradient-to-br from-sky-500/10 via-surface to-surface border-sky-400'
                 : 'bg-surface border-line hover:border-accent/40 hover:bg-canvas/60'
             }`}
         >
@@ -664,19 +654,18 @@ export const OrgTreePage: React.FC = () => {
           <div className="flex items-center justify-between gap-2 mb-2.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span
-                className={`text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                  level === 0
-                    ? 'bg-status-info-soft text-status-info border border-status-info-line'
-                    : level === 1
-                    ? 'bg-status-info-soft text-status-info border border-status-info-line'
-                    : 'bg-status-ok-soft text-status-ok border border-status-ok-line'
+                className={`text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ${level === 0
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : level === 1
+                    ? 'bg-sky-100 text-sky-700 border border-sky-300'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                   }`}
               >
                 {level === 0 ? 'Khối Gốc' : level === 1 ? 'Phòng Ban' : `Tiểu Nhóm (L${level})`}
               </span>
               <span className="text-[10px] font-mono text-ink-muted">#{node.code}</span>
               {node.isSpecialApproval && (
-                <span className="text-[10px] bg-status-info-soft text-status-info border border-status-info-line px-1.5 py-0.2 rounded font-semibold">
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-300 px-1.5 py-0.2 rounded font-semibold">
                   Duyệt đặc biệt
                 </span>
               )}
@@ -697,7 +686,7 @@ export const OrgTreePage: React.FC = () => {
 
           {/* Department Name */}
           <div className="flex items-center gap-2 mb-3">
-            <Building2 className={`w-5 h-5 shrink-0 ${level === 0 ? 'text-status-info' : 'text-accent'}`} />
+            <Building2 className={`w-5 h-5 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
             <h3 className="text-sm font-bold text-ink truncate group-hover:text-accent transition-colors">
               {node.name}
             </h3>
@@ -708,7 +697,7 @@ export const OrgTreePage: React.FC = () => {
             {node.hasLeader ? (
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-accent-soft text-accent-dark font-bold flex items-center justify-center text-xs">
+                  <div className="w-7 h-7 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
                     {node.leaderName ? node.leaderName.charAt(0) : 'L'}
                   </div>
                   <div>
@@ -730,7 +719,7 @@ export const OrgTreePage: React.FC = () => {
                       setLeaderChangeReason('');
                       setIsLeaderModalOpen(true);
                     }}
-                    className="px-2 py-1 text-[11px] font-semibold text-accent-dark hover:bg-accent-soft rounded-lg border border-line"
+                    className="px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent-soft rounded-lg border border-line"
                   >
                     Đổi trưởng
                   </button>
@@ -738,8 +727,8 @@ export const OrgTreePage: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-status-warn">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-status-warn" />
+                <div className="flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
                   <div>
                     <div className="font-bold text-xs">Chưa có trưởng nhóm</div>
                     <div className="text-[10px] text-ink-muted">Đơn chờ trong nhóm có thể bị kẹt phê duyệt</div>
@@ -756,7 +745,7 @@ export const OrgTreePage: React.FC = () => {
                       setLeaderChangeReason('');
                       setIsLeaderModalOpen(true);
                     }}
-                    className="px-2 py-1 text-[11px] font-bold text-status-warn bg-status-warn-soft hover:bg-status-warn-line rounded-lg border border-status-warn-line"
+                    className="px-2 py-1 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300"
                   >
                     Gán trưởng ngay
                   </button>
@@ -769,19 +758,19 @@ export const OrgTreePage: React.FC = () => {
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-line/60 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-0.5 bg-canvas border border-line rounded-md text-[11px] font-mono text-ink-secondary flex items-center gap-1">
-                <Users className="w-3 h-3 text-status-info" />
+                <Users className="w-3 h-3 text-sky-600" />
                 {node.memberCount} trực tiếp ({node.totalMemberCount} toàn nhánh)
               </span>
 
               {node.totalPendingRequestsCount > 0 && (
-                <span className="px-2 py-0.5 bg-status-warn-soft border border-status-warn-line text-status-warn rounded-md text-[11px] font-semibold flex items-center gap-1">
+                <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {node.totalPendingRequestsCount} đơn chờ
                 </span>
               )}
 
               {noMgrCount > 0 && (
-                <span className="px-2 py-0.5 bg-status-danger-soft border border-status-danger-line text-status-danger rounded-md text-[11px] font-semibold flex items-center gap-1">
+                <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-[11px] font-semibold flex items-center gap-1">
                   <ShieldAlert className="w-3 h-3" />
                   {noMgrCount} thiếu sếp
                 </span>
@@ -836,11 +825,10 @@ export const OrgTreePage: React.FC = () => {
         <div
           onClick={() => setSelectedNode(node)}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
-          className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
-            isSelected
-              ? 'bg-accent-soft text-accent-dark font-bold border border-accent/30'
-              : isBroken
-              ? 'bg-status-warn-soft text-status-warn border border-status-warn-line'
+          className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${isSelected
+            ? 'bg-accent-soft text-accent font-bold border border-accent/30'
+            : isBroken
+              ? 'bg-amber-50 text-amber-900 border border-amber-300'
               : 'hover:bg-canvas text-ink'
             }`}
         >
@@ -857,7 +845,7 @@ export const OrgTreePage: React.FC = () => {
               <span className="w-4" />
             )}
 
-            <Building2 className={`w-4 h-4 shrink-0 ${level === 0 ? 'text-status-info' : 'text-accent'}`} />
+            <Building2 className={`w-4 h-4 shrink-0 ${level === 0 ? 'text-purple-600' : 'text-accent'}`} />
 
             <div className="min-w-0 flex items-center gap-2">
               <span className="font-semibold text-xs truncate">{node.name}</span>
@@ -871,14 +859,14 @@ export const OrgTreePage: React.FC = () => {
             </span>
 
             {node.totalPendingRequestsCount > 0 && (
-              <span className="px-2 py-0.5 bg-status-warn-soft border border-status-warn-line text-status-warn rounded-md text-xs font-semibold flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md text-xs font-semibold flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {node.totalPendingRequestsCount} đơn
               </span>
             )}
 
             {noMgrCount > 0 && (
-              <span className="px-2 py-0.5 bg-status-danger-soft border border-status-danger-line text-status-danger rounded-md text-xs font-semibold">
+              <span className="px-2 py-0.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-md text-xs font-semibold">
                 {noMgrCount} thiếu sếp
               </span>
             )}
@@ -898,139 +886,145 @@ export const OrgTreePage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto pb-24">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="p-3.5 bg-status-ok-soft border border-status-ok-line text-status-ok rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-status-ok" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span className="font-semibold">{toastMessage}</span>
           </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            aria-label="Đóng thông báo"
-            className="ml-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-status-ok transition-colors hover:bg-status-ok/15 hover:text-ink"
-          >
-            <X className="h-3.5 w-3.5" />
+          <button onClick={() => setToastMessage(null)} className="text-emerald-700 hover:text-emerald-900 font-bold ml-2">
+            ✕
           </button>
         </div>
       )}
 
-      {/* Đầu trang — mockup `.phead` */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
-            <Network className="h-3.5 w-3.5" />
-            Cơ cấu tổ chức
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
-              Cây phân tầng quản lý &amp; sơ đồ cơ cấu
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl font-bold tracking-tight text-ink flex items-center gap-2">
+              <Network className="w-5 h-5 text-accent" />
+              Cây Phân Tầng Quản Lý &amp; Sơ Đồ Cơ Cấu
             </h1>
-            <Badge variant="accent">P0 · A4</Badge>
+            <Badge variant="accent">S41 / P0 · A4</Badge>
           </div>
-          <p className="mt-1 text-xs text-ink-muted">
-            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động.
+          <p className="text-xs text-ink-muted">
+            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {brokenGroups + brokenMembers > 0 && (
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-status-warn-line bg-status-warn-soft px-2.5 text-xs font-semibold text-status-warn">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
+            <span className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              ⚠ {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
             </span>
           )}
 
           {canManage && (
             <Button
               variant="primary"
-              size="md"
+              size="sm"
               onClick={() => {
                 setParentTeamForAdd(null);
                 setIsAddTeamModalOpen(true);
               }}
             >
-              <Plus className="h-3.5 h-3.5" />
-              Tạo nhóm gốc
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              + Tạo Nhóm Gốc
             </Button>
           )}
         </div>
       </div>
 
-      {/* Metrics Summary Strip */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
-            <Building2 className="h-3.5 w-3.5 text-accent" />
-            Tổng phòng ban
+      {/* Metrics Summary Strip (Vibrant, high-contrast colors) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+            <Building2 className="w-5 h-5" />
           </div>
-          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
-            {totalTeamsCount}
-            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">nhóm</small>
-          </div>
-        </div>
-
-        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
-            <Users className="h-3.5 w-3.5 text-accent" />
-            Tổng nhân sự
-          </div>
-          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
-            {totalMembersAll}
-            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">người</small>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng phòng ban</div>
+            <div className="text-lg font-bold text-ink">{totalTeamsCount} nhóm</div>
           </div>
         </div>
 
-        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
-            <Clock className="h-3.5 w-3.5 text-accent" />
-            Đơn chờ duyệt
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+            <Users className="w-5 h-5" />
           </div>
-          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-status-warn">
-            {totalPendingAll}
-            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">đơn</small>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
+            <div className="text-lg font-bold text-ink">{totalMembersAll} người</div>
           </div>
         </div>
 
-        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
-            <ShieldAlert className="h-3.5 w-3.5 text-accent" />
-            Điểm nghẽn duyệt
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+            <Clock className="w-5 h-5" />
           </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Đơn chờ duyệt</div>
+            <div className="text-lg font-bold text-amber-700">{totalPendingAll} đơn</div>
+          </div>
+        </div>
+
+        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
           <div
-            className={`mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] ${
-              brokenGroups + brokenMembers > 0 ? 'text-status-danger' : 'text-status-ok'
-            }`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${brokenGroups + brokenMembers > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+              }`}
           >
-            {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-ink-muted font-medium">Điểm nghẽn duyệt</div>
+            <div
+              className={`text-lg font-bold ${brokenGroups + brokenMembers > 0 ? 'text-rose-700' : 'text-emerald-700'
+                }`}
+            >
+              {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Toolbar & Controls */}
-      <Panel>
+      <Card>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          {/* Segmented control — đúng spec design system: ô 34px trong khung p-4px */}
-          <div role="group" aria-label="Kiểu hiển thị" className="grid w-full max-w-[460px] grid-cols-3 gap-1 rounded-xl border border-line bg-canvas p-1">
-            {([
-              { key: 'graph', label: 'Sơ đồ Graph', Icon: Workflow },
-              { key: 'chart', label: 'Thẻ phân tầng', Icon: LayoutGrid },
-              { key: 'tree', label: 'Cây thư mục', Icon: ListTree },
-            ] as const).map((v) => {
-              const on = viewMode === v.key;
-              return (
-                <button
-                  key={v.key}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setViewMode(v.key)}
-                  className={`flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-bold transition-colors ${
-                    on ? 'bg-ink text-canvas' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
-                  }`}
-                >
-                  <v.Icon className="h-3.5 w-3.5" />
-                  <span className="truncate">{v.label}</span>
-                </button>
-              );
-            })}
+          {/* View Mode Toggle Buttons */}
+          <div className="flex items-center gap-1 p-1 bg-canvas border border-line rounded-xl self-start">
+            <button
+              type="button"
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'graph'
+                ? 'bg-accent text-white shadow-xs font-bold'
+                : 'text-ink-secondary hover:text-ink hover:bg-surface'
+                }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Sơ Đồ Graph (Đồ Thị)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('chart')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'chart'
+                ? 'bg-accent text-white shadow-xs font-bold'
+                : 'text-ink-secondary hover:text-ink hover:bg-surface'
+                }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Thẻ Phân Tầng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('tree')}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'tree'
+                ? 'bg-accent text-white shadow-xs font-bold'
+                : 'text-ink-secondary hover:text-ink hover:bg-surface'
+                }`}
+            >
+              <ListTree className="w-3.5 h-3.5" />
+              <span>Cây Thư Mục</span>
+            </button>
           </div>
 
           {/* Search Input */}
@@ -1042,8 +1036,7 @@ export const OrgTreePage: React.FC = () => {
                 placeholder="Tìm tên nhóm, mã nhóm, tên trưởng nhóm..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Tìm nhóm"
-                className="w-full rounded-[10px] border border-line bg-canvas py-2 pl-8 pr-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
+                className="w-full text-xs pl-8 pr-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -1053,76 +1046,66 @@ export const OrgTreePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setOnlyIssues(!onlyIssues)}
-              aria-pressed={onlyIssues}
-              className={`inline-flex h-[31px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
-                onlyIssues
-                  ? 'border-status-warn-line bg-status-warn-soft font-bold text-status-warn'
-                  : 'border-line bg-surface text-ink-muted hover:text-ink'
-              }`}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${onlyIssues
+                ? 'bg-amber-100 border-amber-300 text-amber-800 font-bold'
+                : 'bg-canvas border-line text-ink-muted hover:text-ink'
+                }`}
             >
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Chỉ xem điểm kẹt
+              ⚠ Chỉ xem điểm kẹt
             </button>
             <button
               type="button"
               onClick={() => setHideEmpty(!hideEmpty)}
-              aria-pressed={hideEmpty}
-              className={`inline-flex h-[31px] cursor-pointer items-center rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
-                hideEmpty
-                  ? 'border-accent-line bg-accent-soft font-bold text-accent-dark'
-                  : 'border-line bg-surface text-ink-muted hover:text-ink'
-              }`}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${hideEmpty
+                ? 'bg-accent-soft border-accent text-accent font-bold'
+                : 'bg-canvas border-line text-ink-muted hover:text-ink'
+                }`}
             >
               Ẩn nhóm rỗng
             </button>
             <button
               type="button"
               onClick={expandAll}
-              className="inline-flex h-[31px] cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[12.5px] font-semibold text-ink-muted transition-colors hover:text-ink"
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
             >
               Mở tất cả
             </button>
             <button
               type="button"
               onClick={collapseAll}
-              className="inline-flex h-[31px] cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[12.5px] font-semibold text-ink-muted transition-colors hover:text-ink"
+              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
             >
               Thu gọn
             </button>
           </div>
         </div>
-      </Panel>
+      </Card>
 
       {/* Main Layout: Left (Graph / Chart / Tree) · Right (Node Detail Drawer) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column */}
         <div className={selectedNode ? 'lg:col-span-8 space-y-3' : 'lg:col-span-12 space-y-3'}>
           {loading ? (
-            <Panel hideHeader bodyClassName="p-12">
-              <div className="text-center text-ink-muted">
-                <RefreshCw className="mx-auto mb-2 h-8 w-8 animate-spin text-accent" />
-                <p className="text-sm font-semibold text-ink">Đang tải và xây dựng cây phân tầng tổ chức...</p>
-              </div>
-            </Panel>
+            <Card className="p-12 text-center text-ink-muted">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
+              <p className="font-semibold text-sm text-ink">Đang tải và xây dựng cây phân tầng tổ chức...</p>
+            </Card>
           ) : treeData.length === 0 ? (
-            <Panel hideHeader bodyClassName="p-12">
-              <div className="space-y-3 text-center text-ink-muted">
-                <Building2 className="mx-auto h-10 w-10 text-ink-muted/50" />
-                <p className="text-sm font-bold text-ink">Chưa có nhóm hoặc phòng ban nào được tạo</p>
-                <p className="text-xs text-ink-muted">Bắt đầu bằng việc tạo nhóm gốc đầu tiên cho công ty.</p>
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    setParentTeamForAdd(null);
-                    setIsAddTeamModalOpen(true);
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Tạo nhóm đầu tiên
-                </Button>
-              </div>
-            </Panel>
+            <Card className="p-12 text-center text-ink-muted space-y-3">
+              <Building2 className="w-10 h-10 mx-auto text-ink-muted/50" />
+              <p className="font-bold text-sm text-ink">Chưa có nhóm hoặc phòng ban nào được tạo</p>
+              <p className="text-xs text-ink-muted">Bắt đầu bằng việc tạo nhóm gốc đầu tiên cho công ty.</p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setParentTeamForAdd(null);
+                  setIsAddTeamModalOpen(true);
+                }}
+              >
+                + Tạo Nhóm Đầu Tiên
+              </Button>
+            </Card>
           ) : viewMode === 'graph' ? (
             <div className="space-y-2">
               {/* Graph Toolbar: Zoom & Actions */}
@@ -1173,11 +1156,10 @@ export const OrgTreePage: React.FC = () => {
                       setIsCompactGraph(next);
                       setTimeout(() => handleFitToScreen(), 100);
                     }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold text-[11px] border transition-colors shadow-2xs cursor-pointer ${
-                      isCompactGraph
-                        ? 'bg-accent text-on-accent border-accent'
-                        : 'bg-canvas hover:bg-surface border-line text-ink-secondary hover:text-ink'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold text-[11px] border transition-colors shadow-2xs cursor-pointer ${isCompactGraph
+                      ? 'bg-accent text-on-accent border-accent'
+                      : 'bg-canvas hover:bg-surface border-line text-ink-secondary hover:text-ink'
+                      }`}
                     title="Bật/tắt bố cục thu gọn để chứa nhiều nhánh nhất trong 1 màn hình"
                   >
                     <LayoutGrid className="w-3 h-3" />
@@ -1186,9 +1168,8 @@ export const OrgTreePage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="hidden items-center gap-1.5 text-[11px] text-ink-muted sm:inline-flex">
-                    <Lightbulb className="h-3.5 w-3.5" />
-                    Click vào thẻ để xem danh sách nhân viên
+                  <span className="text-[11px] text-ink-muted hidden sm:inline">
+                    💡 Click vào thẻ để xem danh sách nhân viên
                   </span>
                 </div>
               </div>
@@ -1198,7 +1179,7 @@ export const OrgTreePage: React.FC = () => {
                 ref={canvasContainerRef}
                 className="w-full overflow-x-auto overflow-y-auto p-6 rounded-2xl border border-line bg-canvas/40 shadow-inner min-h-[580px] relative"
                 style={{
-                  backgroundImage: 'radial-gradient(circle, rgb(var(--line)) 1.2px, transparent 1.2px)',
+                  backgroundImage: 'radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px)',
                   backgroundSize: '24px 24px',
                 }}
               >
@@ -1221,25 +1202,25 @@ export const OrgTreePage: React.FC = () => {
               {treeData.map((rootNode) => renderVisualNodeCard(rootNode, 0))}
             </div>
           ) : (
-            <Panel bodyClassName="space-y-1">
+            <Card className="p-4 space-y-1">
               {treeData.map((rootNode) => renderTreeNode(rootNode, 0))}
-            </Panel>
+            </Card>
           )}
         </div>
 
         {/* Right Column: Node Details & Member Drawer */}
         {selectedNode && (
           <div className="lg:col-span-4 sticky top-4">
-            <Panel className="space-y-4">
+            <Card className="p-4 space-y-4 border-line shadow-sm">
               {/* Header */}
               <div className="border-b border-line pb-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent-soft text-accent-dark border border-accent/30 font-bold">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent-soft text-accent border border-accent/30 font-bold">
                       #{selectedNode.code}
                     </span>
                     {selectedNode.isSpecialApproval && (
-                      <span className="text-[10px] bg-status-info-soft text-status-info border border-status-info-line px-1.5 py-0.5 rounded font-semibold">
+                      <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-300 px-1.5 py-0.5 rounded font-semibold">
                         Duyệt đặc biệt
                       </span>
                     )}
@@ -1247,11 +1228,10 @@ export const OrgTreePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedNode(null)}
-                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11.5px] font-bold text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
+                    className="p-1 hover:bg-canvas rounded-lg text-ink-muted hover:text-ink text-xs font-bold"
                     title="Đóng ngăn chi tiết"
                   >
-                    <X className="h-3.5 w-3.5" />
-                    Đóng
+                    ✕ Đóng
                   </button>
                 </div>
 
@@ -1286,7 +1266,7 @@ export const OrgTreePage: React.FC = () => {
 
                 {selectedNode.hasLeader ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-accent-soft text-accent-dark font-bold flex items-center justify-center text-xs">
+                    <div className="w-8 h-8 rounded-full bg-accent-soft text-accent font-bold flex items-center justify-center text-xs">
                       {selectedNode.leaderName ? selectedNode.leaderName.charAt(0) : 'L'}
                     </div>
                     <div>
@@ -1295,8 +1275,8 @@ export const OrgTreePage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-2 rounded-lg bg-status-warn-soft border border-status-warn-line text-status-warn text-xs flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-status-warn shrink-0" />
+                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <div>
                       <div className="font-bold">Chưa có người duyệt trực tiếp</div>
                       <div className="text-[10px]">Đơn từ sẽ bị tắc nếu không gán quản lý</div>
@@ -1309,31 +1289,31 @@ export const OrgTreePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-ink">Thành viên ({selectedNode.members?.length || 0})</span>
-                  {/* Tab header theo spec: 9.5px uppercase font-extrabold, đang chọn = ink + gạch accent */}
-                  <div role="tablist" aria-label="Lọc thành viên" className="flex gap-3.5">
-                    {([
-                      { key: 'all', label: 'Tất cả' },
-                      { key: 'pending', label: 'Có đơn chờ' },
-                      { key: 'no-mgr', label: 'Thiếu sếp' },
-                    ] as const).map((t) => {
-                      const on = memberFilter === t.key;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={on}
-                          onClick={() => setMemberFilter(t.key)}
-                          className={`cursor-pointer border-b-2 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.07em] transition-colors ${
-                            on
-                              ? 'border-accent text-ink'
-                              : 'border-transparent text-ink-muted hover:text-ink'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center gap-1 bg-canvas p-0.5 rounded-lg border border-line">
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('all')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${memberFilter === 'all' ? 'bg-surface text-ink shadow-2xs font-bold' : 'text-ink-muted'
+                        }`}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('pending')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${memberFilter === 'pending' ? 'bg-surface text-amber-700 shadow-2xs font-bold' : 'text-ink-muted'
+                        }`}
+                    >
+                      Có đơn chờ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberFilter('no-mgr')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${memberFilter === 'no-mgr' ? 'bg-surface text-rose-700 shadow-2xs font-bold' : 'text-ink-muted'
+                        }`}
+                    >
+                      Thiếu sếp
+                    </button>
                   </div>
                 </div>
 
@@ -1343,14 +1323,10 @@ export const OrgTreePage: React.FC = () => {
                       Không có nhân sự nào trong danh mục này
                     </div>
                   ) : (
-                    getFilteredMembers(selectedNode).map((m) => {
-                      const hasBrokenManager = !m.managerId || m.approvalChain?.includes('không khả dụng') || m.managerName?.includes('Đã nghỉ');
-                      return (
+                    getFilteredMembers(selectedNode).map((m) => (
                       <div
                         key={m.id}
-                        className={`p-2.5 rounded-xl border transition-all text-xs space-y-1.5 shadow-2xs ${
-                          hasBrokenManager ? 'border-status-danger/40 bg-status-danger-soft/20' : 'border-line hover:border-accent/40 bg-surface'
-                        }`}
+                        className="p-2.5 rounded-xl border border-line hover:border-accent/40 bg-surface transition-all text-xs space-y-1.5 shadow-2xs"
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-bold text-ink flex items-center gap-1.5">
@@ -1358,28 +1334,27 @@ export const OrgTreePage: React.FC = () => {
                             <span className="text-[10px] font-mono text-ink-muted">({m.employeeCode})</span>
                           </div>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              m.role === 'ADMIN'
-                                ? 'bg-status-info-soft text-status-info border border-status-info-line'
-                                : m.role === 'MANAGER'
-                                ? 'bg-status-warn-soft text-status-warn border border-status-warn-line'
-                                : 'bg-status-info-soft text-status-info border border-status-info-line'
-                            }`}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${m.role === 'ADMIN'
+                              ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                              : m.role === 'MANAGER'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                                : 'bg-sky-100 text-sky-700 border border-sky-300'
+                              }`}
                           >
                             {m.role || 'EMPLOYEE'}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-1 border-t border-line/50">
-                          {hasBrokenManager ? (
-                            <span className="text-status-danger font-bold flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-status-danger" />
-                              {m.managerName?.includes('Đã nghỉ') ? 'Sếp đã nghỉ/khóa' : 'Chưa có người duyệt!'}
-                            </span>
-                          ) : (
+                          {m.managerId ? (
                             <span className="text-ink-muted flex items-center gap-1">
                               <GitPullRequest className="w-3 h-3 text-accent" />
                               Sếp: <strong className="text-ink">{m.managerName || 'Quản lý'}</strong>
+                            </span>
+                          ) : (
+                            <span className="text-rose-700 font-bold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Chưa có người duyệt!
                             </span>
                           )}
 
@@ -1392,19 +1367,14 @@ export const OrgTreePage: React.FC = () => {
                                 setAssignMgrReason('Gán quản lý trực tiếp từ sơ đồ cây');
                                 setIsAssignMgrModalOpen(true);
                               }}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                hasBrokenManager
-                                  ? 'bg-status-danger text-white hover:bg-status-danger/90'
-                                  : 'text-accent hover:underline'
-                              }`}
+                              className="text-accent hover:underline font-bold text-[10px]"
                             >
-                              {hasBrokenManager ? 'Gán sếp ngay' : 'Đổi sếp'}
+                              {m.managerId ? 'Đổi sếp' : 'Gán sếp ngay'}
                             </button>
                           )}
                         </div>
                       </div>
-                      );
-                    })
+                    ))
                   )}
                 </div>
               </div>
@@ -1428,7 +1398,7 @@ export const OrgTreePage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </Panel>
+            </Card>
           </div>
         )}
       </div>
@@ -1440,8 +1410,8 @@ export const OrgTreePage: React.FC = () => {
         title={`Đổi Trưởng Nhóm: ${targetTeam?.name || ''}`}
       >
         <form onSubmit={handleSaveLeader} className="space-y-4 text-xs">
-          <div className="p-3 bg-status-warn-soft border border-status-warn-line rounded-xl text-status-warn flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-status-warn shrink-0 mt-0.5" />
+          <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               <strong>Quy tắc A4:</strong> Khi đổi trưởng nhóm, toàn bộ đơn từ đang chờ duyệt (`PENDING_APPROVAL`) của nhóm
               sẽ được <strong>bàn giao tự động</strong> sang cho trưởng nhóm mới để không bị tắc luồng.
@@ -1450,7 +1420,7 @@ export const OrgTreePage: React.FC = () => {
 
           <div>
             <label className="block text-[11px] font-semibold text-ink-muted mb-1">
-              Chọn Trưởng Nhóm Mới <span className="text-status-danger">*</span>
+              Chọn Trưởng Nhóm Mới <span className="text-rose-500">*</span>
             </label>
             <select
               value={newLeaderId}
@@ -1469,7 +1439,7 @@ export const OrgTreePage: React.FC = () => {
 
           <div>
             <label className="block text-[11px] font-semibold text-ink-muted mb-1">
-              Lý do thay đổi (Bắt buộc theo A5 - Nhật ký kiểm toán) <span className="text-status-danger">*</span>
+              Lý do thay đổi (Bắt buộc theo A5 - Nhật ký kiểm toán) <span className="text-rose-500">*</span>
             </label>
             <textarea
               value={leaderChangeReason}
@@ -1501,7 +1471,7 @@ export const OrgTreePage: React.FC = () => {
         <form onSubmit={handleCreateTeam} className="space-y-4 text-xs">
           <div>
             <label className="block text-[11px] font-semibold text-ink-muted mb-1">
-              Tên Nhóm / Phòng Ban <span className="text-status-danger">*</span>
+              Tên Nhóm / Phòng Ban <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -1551,7 +1521,7 @@ export const OrgTreePage: React.FC = () => {
         <form onSubmit={handleAssignManager} className="space-y-4 text-xs">
           <div>
             <label className="block text-[11px] font-semibold text-ink-muted mb-1">
-              Chọn Người Quản Lý Trực Tiếp <span className="text-status-danger">*</span>
+              Chọn Người Quản Lý Trực Tiếp <span className="text-rose-500">*</span>
             </label>
             <select
               value={assignMgrId}

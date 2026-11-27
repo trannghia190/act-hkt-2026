@@ -820,16 +820,24 @@ public class OrgStructureController {
                     + userToSave.getEmployeeCode() + ": " + ex.getMessage());
         }
 
-        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP
+        // Gửi email thông báo khởi tạo tài khoản & kích hoạt lần đầu qua Gmail SMTP không đồng bộ (Async)
+        // để phản hồi tức thì cho HR, loại bỏ hoàn toàn tình trạng request bị treo 1-2 phút do mạng/SMTP handshake.
         boolean emailSent = false;
         String emailStatusMessage = "";
         try {
             if (userToSave.getEmail() != null && !userToSave.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(),
-                        userToSave.getEmployeeCode(), rawPassword);
-                if (emailSent) {
-                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đã được gửi thành công qua Gmail tới "
+                if (emailService.isMailDeliverable()) {
+                    emailSent = true;
+                    emailStatusMessage = "Email thông báo kích hoạt & mật khẩu mặc định đang được gửi tự động qua Gmail tới "
                             + userToSave.getEmail();
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            emailService.sendAccountActivationEmail(userToSave.getEmail(), userToSave.getFullName(),
+                                    userToSave.getEmployeeCode(), rawPassword);
+                        } catch (Exception ex) {
+                            System.err.println("[createEmployee] Lỗi gửi email async cho " + userToSave.getEmail() + ": " + ex.getMessage());
+                        }
+                    });
                 } else {
                     emailStatusMessage = "Đã phát lệnh gửi thông báo tài khoản tới " + userToSave.getEmail()
                             + " (SMTP đang chờ kết nối tài khoản Google Doanh Nghiệp)";
@@ -1125,12 +1133,21 @@ public class OrgStructureController {
         // Thu hồi toàn bộ phiên đăng nhập cũ
         authService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD");
 
-        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP
+        // Gửi email thông báo cấp lại mật khẩu tạm thời qua Gmail SMTP không đồng bộ (Async)
         boolean emailSent = false;
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailSent = emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(),
-                        user.getEmployeeCode(), tempPass);
+                if (emailService.isMailDeliverable()) {
+                    emailSent = true;
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(),
+                                    user.getEmployeeCode(), tempPass);
+                        } catch (Exception ex) {
+                            System.err.println("[adminResetPassword] Lỗi gửi email async cho " + user.getEmail() + ": " + ex.getMessage());
+                        }
+                    });
+                }
             }
         } catch (Exception ignored) {
         }

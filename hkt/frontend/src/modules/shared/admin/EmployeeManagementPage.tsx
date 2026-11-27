@@ -83,6 +83,7 @@ export const EmployeeManagementPage: React.FC = () => {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCreatingEmp, setIsCreatingEmp] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isChangeManagerModalOpen, setIsChangeManagerModalOpen] = useState(false);
   const [isChangeTeamModalOpen, setIsChangeTeamModalOpen] = useState(false);
@@ -266,6 +267,8 @@ export const EmployeeManagementPage: React.FC = () => {
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
+    setIsCreatingEmp(true);
+    const pass = newEmp.password || generateRandomPassword();
     try {
       const res = await fetch('/api/v1/admin/users', {
         method: 'POST',
@@ -277,7 +280,7 @@ export const EmployeeManagementPage: React.FC = () => {
           team: newEmp.team,
           positionName: newEmp.positionName,
           role: newEmp.role,
-          password: newEmp.password || '123456',
+          password: pass,
           joinedDate: newEmp.joinedDate,
         }),
       });
@@ -292,11 +295,11 @@ export const EmployeeManagementPage: React.FC = () => {
           email: empData?.email || newEmp.email,
           team: empData?.team || newEmp.team,
           role: empData?.role || newEmp.role,
-          defaultPassword: empData?.defaultPassword || newEmp.password || '123456',
+          defaultPassword: empData?.defaultPassword || pass,
           emailSent: empData?.emailSent,
           emailStatusMessage: empData?.emailStatusMessage || json.message,
         });
-        showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || newEmp.password || '123456'}`);
+        showToast(`Đã thêm nhân viên ${empData?.fullName || newEmp.fullName} thành công! Mật khẩu mặc định: ${empData?.defaultPassword || pass}`);
         // Reset code for next entry (giữ nhóm đang chọn, không hard-code tên nhóm)
         setNewEmp({
           code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
@@ -318,6 +321,8 @@ export const EmployeeManagementPage: React.FC = () => {
     } catch (err) {
       setAddError('Không kết nối được tới máy chủ — nhân viên chưa được tạo.');
       setIsAddModalOpen(false);
+    } finally {
+      setIsCreatingEmp(false);
     }
   };
 
@@ -1252,7 +1257,7 @@ export const EmployeeManagementPage: React.FC = () => {
                 <span>Tự động kích hoạt tài khoản &amp; gửi email thông báo qua Gmail</span>
               </div>
               <p className="text-[11px] text-status-ok-line/80 leading-relaxed">
-                Hệ thống sẽ cấp mã nhân viên và mật khẩu mặc định (khởi tạo: <strong>123456</strong>), đồng thời phát lệnh gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
+                Hệ thống sẽ cấp mã nhân viên và mật khẩu bảo mật ngẫu nhiên mặc định, đồng thời gửi thư kích hoạt kèm thông tin đăng nhập tới Gmail của nhân sự. Nhân viên bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên.
               </p>
             </div>
 
@@ -1418,12 +1423,21 @@ export const EmployeeManagementPage: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-line">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)} disabled={isCreatingEmp}>
                 Hủy
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                <Mail className="w-3.5 h-3.5 mr-1" />
-                Tạo Nhân Viên &amp; Gửi Email Kích Hoạt
+              <Button type="submit" variant="primary" size="sm" disabled={isCreatingEmp}>
+                {isCreatingEmp ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Đang Tạo Nhân Viên...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3.5 h-3.5 mr-1" />
+                    Tạo Nhân Viên &amp; Gửi Email Kích Hoạt
+                  </>
+                )}
               </Button>
             </div>
           </form>

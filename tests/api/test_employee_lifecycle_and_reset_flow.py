@@ -125,14 +125,23 @@ def test_lifecycle_and_reset():
     assert status == 200, f"Admin reset failed: {admin_reset}"
     print(f"PASS: HR Admin reset mật khẩu cho nhân viên {test_emp_code} thành công")
 
+    temp_admin_pass = admin_reset["data"]
     # Kiểm tra nhân viên đăng nhập bằng mật khẩu tạm sau khi HR reset -> bắt buộc đổi mật khẩu
     status, after_admin_reset = api_call("POST", "/auth/login", {
         "employeeCodeOrEmail": test_emp_code,
-        "password": "123456"
+        "password": temp_admin_pass
     })
     assert status == 200
     assert after_admin_reset["data"]["mustChangePassword"] is True
     print("PASS: Nhân viên được yêu cầu đổi mật khẩu sau khi HR Admin reset")
+
+    # Kiểm tra không thể đăng nhập bằng mật khẩu cũ hay mật khẩu mặc định 123456
+    status, backdoor_login = api_call("POST", "/auth/login", {
+        "employeeCodeOrEmail": test_emp_code,
+        "password": "123456"
+    })
+    assert status != 200, "LỖI BẢO MẬT: Vẫn đăng nhập được bằng mật khẩu mặc định 123456!"
+    print("PASS: Mật khẩu mặc định 123456 đã bị chặn hoàn toàn sau khi đổi mật khẩu")
 
     print("\n==========================================================")
     print("🎉 TOÀN BỘ LUỒNG TẠO NHÂN VIÊN & RESET MẬT KHẨU PASS 100%!")

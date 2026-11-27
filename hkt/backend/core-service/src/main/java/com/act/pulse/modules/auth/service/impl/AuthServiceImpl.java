@@ -114,12 +114,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String reqPass = request.getPassword();
-        boolean passwordMatched = passwordEncoder.matches(reqPass, user.getPasswordHash())
-                || "123456".equals(reqPass)
-                || "Act@2026".equals(reqPass)
-                || "Admin".equals(reqPass)
-                || "admin".equals(reqPass)
-                || "admin123".equals(reqPass);
+        boolean passwordMatched = passwordEncoder.matches(reqPass, user.getPasswordHash());
         if (!passwordMatched) {
             loginAttemptService.registerFailure(identifier, now);
             throw new RuntimeException("Tài khoản hoặc mật khẩu không chính xác");
