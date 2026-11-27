@@ -728,11 +728,15 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   tràn, `test_theme_responsive` ĐẠT.
 - **SH2 · Header (tinh chỉnh)** ✅ (2026-11-28) — desktop bỏ badge ACT-HKT trùng
   thương hiệu, thay bằng **crumb + tên màn** lấy từ nav (khớp path hoặc màn cha gần
-  nhất: `/okr/cycles/new` → "Chu kỳ OKR"); mobile giữ brand `ACT-HKT` (ẩn <360px).
-  Giảm mật độ mobile: ẩn theme switcher (đổi ở Hồ sơ), giữ tìm kiếm/chuông/camera/
-  avatar/đăng xuất; mọi nút icon 36×36 + `aria-label`. Verify 320/360/375/390/414/
-  768/1024/1440: header không tràn ngang, đổi theme 3 template ổn, tìm kiếm/palette/
-  hồ sơ/logout hoạt động, `tsc` + `build` sạch.
+  nhất: `/okr/cycles/new` → "Chu kỳ OKR"); **bỏ hẳn brand ACT-HKT** (logo đã có ở
+  sidebar, mobile không lặp lại). **Ô tìm kiếm thành điểm vào lệnh chính**: từ `lg`
+  (≥1024) đặt giữa topbar, rộng theo không gian còn lại và tối đa **480px** (1024
+  ~180–243px, 1280 ~264–367px, ≥1440 luôn 420–480px); dưới `lg` giữ nút gọn
+  220–280px, mobile chỉ icon. Giảm mật độ mobile: ẩn theme switcher (đổi ở Hồ sơ),
+  giữ tìm kiếm/chuông/camera/avatar/đăng xuất; mọi nút icon 36×36 + `aria-label`.
+  Verify 320/360/375/390/414/640/768/1024/1100/1280/1440/1680/1920 + 6 route dài
+  tên: header không tràn ngang, đổi theme 3 template ổn, tìm kiếm/palette/hồ sơ/
+  logout hoạt động, `tsc` sạch.
 - **M1–M4 · Modal** ✅ (2026-11-27) — Đổi mật khẩu (desktop 3 theme), Đổi mật khẩu
   lần đầu (mobile 390 3 theme, nút Bỏ qua/Cập nhật rõ), Kết nối Gmail (System
   Domain Config, 3 theme), Nhắc bật Web Push (toast desktop + mobile). Tất cả dùng

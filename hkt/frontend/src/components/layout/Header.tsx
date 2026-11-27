@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-[60px] border-b border-line bg-surface px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
       {/* Left: Mobile Hamburger & Brand Badge */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2.5">
         {onOpenMobileMenu && (
           <button
             type="button"
@@ -76,23 +76,29 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Mobile/tablet: brand ngắn (sidebar ẩn) */}
-        <div className="hidden min-[360px]:flex items-center gap-2 cursor-pointer shrink-0 lg:hidden" onClick={() => navigate('/todo')} title="Về trang Cần làm">
-          <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent-dark border border-accent-line font-mono whitespace-nowrap">
-            ACT-HKT
-          </span>
-          <span className="text-[11px] text-ink-muted hidden md:inline font-medium">
-            · Worklife &amp; Performance
-          </span>
-        </div>
+      </div>
+
+      {/* Giữa (desktop rộng): ô tìm kiếm lớn, điểm vào lệnh chính của app */}
+      <div className="hidden min-w-0 flex-1 items-center justify-center px-4 lg:flex xl:px-8">
+        <button
+          type="button"
+          onClick={onOpenCommandPalette}
+          className="flex h-9 w-full max-w-[480px] items-center gap-2 rounded-[10px] border border-line bg-canvas px-3 text-[12.5px] text-ink-muted shadow-2xs transition-colors hover:border-line-hover hover:bg-canvas-subtle hover:text-ink-secondary cursor-pointer"
+          title={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
+          aria-label={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">Tìm kiếm nhanh…</span>
+          <kbd className="ml-auto shrink-0 rounded bg-line px-1 font-mono text-[10px] font-bold">{shortcutLabel}</kbd>
+        </button>
       </div>
 
       {/* Right: Quick Action Controls */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5">
-        {/* Quick Search Button (Desktop: with Ctrl+K shortcut, Mobile: icon button) */}
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+        {/* Tìm kiếm compact ở tablet/màn hẹp — desktop rộng dùng ô giữa */}
         <button
           onClick={onOpenCommandPalette}
-          className="grid h-9 w-9 sm:w-auto sm:px-3 place-items-center sm:flex sm:items-center gap-1.5 sm:gap-2 text-[12.5px] border border-line rounded-[10px] bg-canvas hover:bg-canvas-subtle text-ink-secondary cursor-pointer shadow-2xs transition-colors"
+          className="grid h-9 w-9 sm:w-[220px] sm:px-3 md:w-[280px] lg:hidden place-items-center sm:flex sm:items-center gap-1.5 sm:gap-2 text-[12.5px] border border-line rounded-[10px] bg-canvas hover:bg-canvas-subtle text-ink-secondary cursor-pointer shadow-2xs transition-colors"
           title={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
           aria-label={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
         >
