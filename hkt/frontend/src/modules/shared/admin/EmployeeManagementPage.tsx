@@ -827,9 +827,9 @@ export const EmployeeManagementPage: React.FC = () => {
               setImportError(null);
               setIsImportModalOpen(true);
             }}
-            className="border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
+            className="border-status-ok-line text-status-ok hover:bg-status-ok-soft font-semibold"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <FileSpreadsheet className="h-4 w-4 text-status-ok" />
             Import Excel
           </Button>
           <Button variant="primary" size="md" onClick={() => { setAddError(null); setIsAddModalOpen(true); }}>
@@ -2169,7 +2169,7 @@ export const EmployeeManagementPage: React.FC = () => {
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
                     importFile
-                      ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+                      ? 'border-status-ok-line bg-status-ok-soft/40'
                       : 'border-line hover:border-accent bg-canvas/50'
                   }`}
                 >
@@ -2203,7 +2203,7 @@ export const EmployeeManagementPage: React.FC = () => {
                   ) : (
                     <div className="flex items-center justify-between gap-4 p-2 bg-surface rounded-lg border border-line">
                       <div className="flex items-center gap-3 overflow-hidden text-left">
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-status-ok-soft flex items-center justify-center text-status-ok shrink-0">
                           <FileSpreadsheet className="h-5 w-5" />
                         </div>
                         <div className="truncate">
@@ -2277,7 +2277,6 @@ export const EmployeeManagementPage: React.FC = () => {
                   size="sm"
                   onClick={handleImportExcel}
                   disabled={!importFile || isImporting}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
                 >
                   {isImporting ? (
                     <>
@@ -2302,12 +2301,12 @@ export const EmployeeManagementPage: React.FC = () => {
                   <span className="text-[11px] font-bold uppercase text-ink-muted">Tổng số dòng xử lý</span>
                   <p className="text-xl font-black text-ink mt-1">{importResult.totalRows}</p>
                 </div>
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5">
-                  <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                <div className="rounded-xl border border-status-ok-line bg-status-ok-soft p-3.5">
+                  <span className="text-[11px] font-bold uppercase text-status-ok flex items-center gap-1">
                     <CheckCircle className="h-3.5 w-3.5" />
                     Import Thành Công
                   </span>
-                  <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                  <p className="text-xl font-black text-status-ok mt-1">
                     {importResult.successCount} nhân viên
                   </p>
                 </div>
@@ -2366,7 +2365,7 @@ export const EmployeeManagementPage: React.FC = () => {
                 <div className="space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <CheckCircle2 className="h-4 w-4 text-status-ok" />
                       Tài khoản vừa khởi tạo ({importResult.successList.length})
                     </h4>
                     <div className="flex items-center gap-2">
@@ -2375,9 +2374,9 @@ export const EmployeeManagementPage: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={handleCopyAllImportCredentials}
-                        className="text-xs border-primary/40 text-primary"
+                        className="text-xs border-accent-line text-accent"
                       >
-                        {copiedImportCredentials ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedImportCredentials ? <Check className="h-3.5 w-3.5 text-status-ok" /> : <Copy className="h-3.5 w-3.5" />}
                         {copiedImportCredentials ? 'Đã sao chép!' : 'Sao chép thông tin tài khoản'}
                       </Button>
                       <Button
@@ -2409,11 +2408,11 @@ export const EmployeeManagementPage: React.FC = () => {
                       <tbody className="divide-y divide-line">
                         {importResult.successList.map((emp) => (
                           <tr key={emp.employeeCode} className="hover:bg-canvas/50">
-                            <td className="p-2.5 font-mono font-bold text-primary">{emp.employeeCode}</td>
+                            <td className="p-2.5 font-mono font-bold text-accent">{emp.employeeCode}</td>
                             <td className="p-2.5 font-bold text-ink">{emp.fullName}</td>
                             <td className="p-2.5 font-mono text-ink-muted">{emp.email}</td>
                             <td className="p-2.5">
-                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary">
+                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-accent-soft text-accent-dark">
                                 {emp.teamName}
                               </span>
                             </td>
@@ -2428,7 +2427,7 @@ export const EmployeeManagementPage: React.FC = () => {
                             </td>
                             <td className="p-2.5 text-center">
                               {emp.emailSent ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-status-ok-soft text-status-ok">
                                   <Check className="h-3 w-3" />
                                   Đã gửi
                                 </span>
