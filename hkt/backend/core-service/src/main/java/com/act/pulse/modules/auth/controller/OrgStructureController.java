@@ -444,7 +444,7 @@ public class OrgStructureController {
                         .employeeCode(u.getEmployeeCode())
                         .fullName(u.getFullName())
                         .email(u.getEmail())
-                        .phone("0901234567")
+                        .phone(u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : "—")
                         .role(u.getRole())
                         .positionName(u.getPositionName())
                         .status(u.getStatus())
@@ -793,6 +793,7 @@ public class OrgStructureController {
                 .fullName(fullName)
                 .email(req.getEmail() != null && !req.getEmail().isBlank() ? req.getEmail().trim()
                         : code.toLowerCase() + "@act.vn")
+                .phone(req.getPhone() != null && !req.getPhone().isBlank() ? req.getPhone().trim() : null)
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .role(req.getRole() != null && !req.getRole().isBlank() ? req.getRole().toUpperCase().trim()
                         : "EMPLOYEE")
@@ -885,7 +886,7 @@ public class OrgStructureController {
                 .employeeCode(userToSave.getEmployeeCode())
                 .fullName(userToSave.getFullName())
                 .email(userToSave.getEmail())
-                .phone("0901234567")
+                .phone(userToSave.getPhone())
                 .team(teamName)
                 .teamId(defaultTeamId != null ? defaultTeamId.toString() : null)
                 .positionName(userToSave.getPositionName())
@@ -1876,26 +1877,6 @@ public class OrgStructureController {
         return ApiResponse.ok("Đã xóa ngày lễ " + h.getName(), "Xóa ngày lễ thành công");
     }
 
-    @GetMapping("/admin/users/import-template")
-    @Operation(summary = "Tải file mẫu Excel Import Nhân sự chuẩn ACT (CORE-IMPORT-01)")
-    public ApiResponse<Map<String, String>> getImportTemplate() {
-        return ApiResponse.ok(Map.of("templateUrl", "/templates/ACT_Employee_Import_Template.xlsx"),
-                "Lấy link file mẫu Excel thành công");
-    }
-
-    @PostMapping("/admin/users/preview-import")
-    @Operation(summary = "Upload & Preview Dữ liệu Import Nhân viên (CORE-IMPORT-02)")
-    public ApiResponse<Map<String, Object>> previewImport(@RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(Map.of("totalRows", 15, "validRows", 15, "errorRows", 0),
-                "Preview dữ liệu import hợp lệ 100%");
-    }
-
-    @PostMapping("/admin/users/confirm-import")
-    @Operation(summary = "Thực thi Batch Import Nhân viên & Gửi Email kích hoạt ngầm (CORE-IMPORT-03)")
-    public ApiResponse<Map<String, Object>> confirmImport(@RequestBody(required = false) Map<String, Object> payload) {
-        return ApiResponse.ok(Map.of("importedCount", 15), "Import thành công 15 nhân viên mới");
-    }
-
     @PostMapping(value = { "/admin/teams", "/admin/departments" })
     @Operation(summary = "Thêm mới nhóm / phòng ban (S41 / CORE-ORG-02)")
     public ApiResponse<OrgTreeNodeDto> createTeam(@RequestBody Map<String, Object> payload) {
@@ -2032,6 +2013,7 @@ public class OrgStructureController {
                 // Chuyển quản lý trực tiếp và các đơn chờ duyệt cho các thành viên trong nhóm
                 List<User> members = userRepository.findByTeamId(team.getId());
                 for (User m : members) {
+                    if (m.getId().equals(newLeader.getId())) continue;
                     m.setManagerId(newLeader.getId());
                     userRepository.save(m);
 
@@ -2140,6 +2122,7 @@ public class OrgStructureController {
         List<User> members = userRepository.findByTeamId(team.getId());
         int transferredCount = 0;
         for (User m : members) {
+            if (m.getId().equals(newLeader.getId())) continue;
             m.setManagerId(newLeader.getId());
             userRepository.save(m);
 

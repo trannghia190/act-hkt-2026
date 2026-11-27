@@ -3,7 +3,7 @@ import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X, RefreshCw } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X, RefreshCw, FileSpreadsheet, UploadCloud, Download, AlertCircle, FileCheck, CheckCircle } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -150,6 +150,170 @@ export const EmployeeManagementPage: React.FC = () => {
   const [viewDetailEmp, setViewDetailEmp] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState<Employee | null>(null);
   const [editReason, setEditReason] = useState('Cập nhật hồ sơ nhân sự');
+
+  // Excel Import States & Handlers
+  interface ImportErrorDetail {
+    rowNumber: number;
+    employeeCode?: string;
+    fullName?: string;
+    email?: string;
+    errorMessage: string;
+  }
+
+  interface ImportedEmployeeSummary {
+    employeeCode: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    teamName: string;
+    positionName: string;
+    role: string;
+    managerCode?: string;
+    managerName?: string;
+    joinedDate: string;
+    defaultPassword: string;
+    emailSent: boolean;
+    emailStatusMessage?: string;
+  }
+
+  interface ImportResult {
+    totalRows: number;
+    successCount: number;
+    errorCount: number;
+    successList: ImportedEmployeeSummary[];
+    errorList: ImportErrorDetail[];
+  }
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [sendActivationEmail, setSendActivationEmail] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [copiedImportCredentials, setCopiedImportCredentials] = useState(false);
+
+  const getAuthToken = (): string => {
+    try {
+      const u = JSON.parse(localStorage.getItem('pulse_auth_user') || '{}');
+      return u?.accessToken ? `Bearer ${u.accessToken}` : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
+    setImportError(null);
+    try {
+      const authHeaders: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) authHeaders['Authorization'] = token;
+
+      const res = await fetch('/api/v1/admin/users/import-template', { headers: authHeaders });
+      if (!res.ok) throw new Error('Không thể tải file mẫu từ hệ thống');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'AscendTech_Mau_Import_Nhan_Vien.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setImportError(err.message || 'Lỗi khi tải file mẫu');
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
+  const handleImportExcel = async () => {
+    if (!importFile) {
+      setImportError('Vui lòng chọn file Excel để import');
+      return;
+    }
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = token;
+
+      const res = await fetch(`/api/v1/admin/users/import-excel?sendActivationEmail=${sendActivationEmail}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || json.code !== 200) {
+        throw new Error(json.message || 'Lỗi xử lý file Excel');
+      }
+      setImportResult(json.data);
+      if (json.data?.successCount > 0) {
+        fetchEmployees();
+        fetchTeams();
+        fetchActiveUsers();
+      }
+    } catch (err: any) {
+      setImportError(err.message || 'Lỗi khi import file Excel');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCopyAllImportCredentials = () => {
+    if (!importResult || importResult.successList.length === 0) return;
+    const baseUrl = systemDomainHost || window.location.origin;
+    let text = `=== DANH SÁCH TÀI KHOẢN ASCEND TECH KHỞI TẠO TỪ EXCEL (${importResult.successList.length} nhân viên) ===\n\n`;
+    importResult.successList.forEach((emp, i) => {
+      text += `[${i + 1}] ${emp.fullName} - Mã NV: ${emp.employeeCode}\n`;
+      text += `  • Email: ${emp.email}\n`;
+      text += `  • Phòng ban: ${emp.teamName} | Chức danh: ${emp.positionName} | Vai trò: ${emp.role}\n`;
+      text += `  • Mật khẩu khởi tạo: ${emp.defaultPassword}\n`;
+      text += `  • Gửi mail thông báo: ${emp.emailSent ? 'Đã gửi qua Gmail' : (emp.emailStatusMessage || 'Chưa gửi')}\n\n`;
+    });
+    text += `• Đường dẫn đăng nhập: ${baseUrl}/login\n`;
+    text += `• Yêu cầu: Bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên\n`;
+    text += `==========================================================`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedImportCredentials(true);
+    setTimeout(() => setCopiedImportCredentials(false), 3000);
+  };
+
+  const handleExportImportResultCsv = () => {
+    if (!importResult || importResult.successList.length === 0) return;
+    const rows = [
+      ['Mã NV', 'Họ và tên', 'Email', 'Số điện thoại', 'Phòng ban', 'Chức danh', 'Vai trò', 'Mã QL', 'Ngày vào làm', 'Mật khẩu khởi tạo', 'Trạng thái gửi mail'],
+      ...importResult.successList.map(e => [
+        e.employeeCode,
+        `"${(e.fullName || '').replace(/"/g, '""')}"`,
+        e.email,
+        e.phone || '',
+        `"${(e.teamName || '').replace(/"/g, '""')}"`,
+        `"${(e.positionName || '').replace(/"/g, '""')}"`,
+        e.role,
+        e.managerCode || '',
+        e.joinedDate,
+        e.defaultPassword,
+        e.emailSent ? 'Đã gửi Gmail' : (e.emailStatusMessage || 'Chưa gửi')
+      ])
+    ];
+    const csvContent = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AscendTech_Ket_Qua_Import_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
 
   const getAuthHeaders = (): Record<string, string> => {
     try {
@@ -654,6 +818,20 @@ export const EmployeeManagementPage: React.FC = () => {
               {noManagerCount} người chưa có sếp
             </span>
           )}
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => {
+              setImportResult(null);
+              setImportFile(null);
+              setImportError(null);
+              setIsImportModalOpen(true);
+            }}
+            className="border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            Import Excel
+          </Button>
           <Button variant="primary" size="md" onClick={() => { setAddError(null); setIsAddModalOpen(true); }}>
             <UserPlus className="h-3.5 w-3.5" />
             Thêm nhân viên
@@ -1935,6 +2113,370 @@ export const EmployeeManagementPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* MODAL IMPORT NHÂN VIÊN TỪ FILE EXCEL */}
+      {isImportModalOpen && (
+        <Modal
+          isOpen={isImportModalOpen}
+          onClose={() => {
+            setIsImportModalOpen(false);
+            setImportResult(null);
+            setImportFile(null);
+            setImportError(null);
+          }}
+          title="Import Danh Sách Nhân Viên Từ File Excel"
+          maxWidth="4xl"
+        >
+          {!importResult ? (
+            <div className="space-y-5 text-ink">
+              {/* Bước 1: Tải file mẫu */}
+              <div className="rounded-xl border border-line bg-canvas p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                      <Download className="h-4 w-4 text-accent" />
+                      Bước 1: Tải File Mẫu Chuẩn Ascend Tech (.xlsx)
+                    </h4>
+                    <p className="text-xs text-ink-muted mt-1">
+                      File mẫu có sẵn tiêu đề chuẩn, dữ liệu mẫu, và sheet Danh mục tham chiếu Phòng ban, Quản lý để bạn điền chính xác.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadTemplate}
+                    disabled={isDownloadingTemplate}
+                    className="shrink-0 border-accent/40 text-accent hover:bg-accent/10"
+                  >
+                    {isDownloadingTemplate ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    {isDownloadingTemplate ? 'Đang tải...' : 'Tải File Mẫu Excel'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Bước 2: Upload file */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-2">
+                  Bước 2: Chọn File Excel Dữ Liệu Nhân Viên (.xlsx, .xls)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                    importFile
+                      ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+                      : 'border-line hover:border-accent bg-canvas/50'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    id="excel-file-upload"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setImportFile(e.target.files[0]);
+                        setImportError(null);
+                      }
+                    }}
+                  />
+                  {!importFile ? (
+                    <label
+                      htmlFor="excel-file-upload"
+                      className="cursor-pointer flex flex-col items-center justify-center gap-2"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-surface border border-line flex items-center justify-center text-ink-muted hover:text-accent shadow-xs">
+                        <UploadCloud className="h-6 w-6 text-accent" />
+                      </div>
+                      <span className="text-xs font-semibold text-ink">
+                        Bấm để chọn file hoặc kéo thả file Excel vào đây
+                      </span>
+                      <span className="text-[11px] text-ink-muted">
+                        Hỗ trợ định dạng .xlsx, .xls (Dung lượng tối đa 15MB)
+                      </span>
+                    </label>
+                  ) : (
+                    <div className="flex items-center justify-between gap-4 p-2 bg-surface rounded-lg border border-line">
+                      <div className="flex items-center gap-3 overflow-hidden text-left">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
+                          <FileSpreadsheet className="h-5 w-5" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-ink truncate">{importFile.name}</p>
+                          <p className="text-[10px] text-ink-muted">
+                            {(importFile.size / 1024).toFixed(1)} KB • Sẵn sàng import
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="excel-file-upload"
+                          className="text-xs text-accent hover:underline cursor-pointer px-2 py-1 font-semibold"
+                        >
+                          Đổi file khác
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setImportFile(null)}
+                          className="w-7 h-7 rounded-md text-ink-muted hover:text-status-danger hover:bg-canvas flex items-center justify-center"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bước 3: Cấu hình gửi email */}
+              <div className="rounded-xl border border-line bg-canvas/60 p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendActivationEmail}
+                    onChange={(e) => setSendActivationEmail(e.target.checked)}
+                    className="mt-0.5 rounded border-line text-accent focus:ring-accent h-4 w-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-ink">
+                      Tự động gửi email thông báo kích hoạt & mật khẩu cho từng nhân viên qua Gmail Doanh Nghiệp
+                    </span>
+                    <p className="text-[11px] text-ink-muted mt-0.5">
+                      Nếu bỏ chọn, hệ thống vẫn khởi tạo đầy đủ tài khoản, và bạn có thể sao chép hoặc tải danh sách tài khoản kèm mật khẩu để bàn giao cho nhân viên.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Thông báo lỗi nếu có */}
+              {importError && (
+                <div className="p-3.5 rounded-lg border border-status-danger-line bg-status-danger-soft text-status-danger text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{importError}</span>
+                </div>
+              )}
+
+              {/* Nút hành động */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-line">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsImportModalOpen(false)}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleImportExcel}
+                  disabled={!importFile || isImporting}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                >
+                  {isImporting ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />
+                      Đang Xử Lý Import...
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck className="h-3.5 w-3.5 mr-1" />
+                      Bắt Đầu Import Excel
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Màn hình kết quả sau khi import */
+            <div className="space-y-4 text-ink">
+              {/* Thẻ tóm tắt kết quả */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-line bg-surface p-3.5">
+                  <span className="text-[11px] font-bold uppercase text-ink-muted">Tổng số dòng xử lý</span>
+                  <p className="text-xl font-black text-ink mt-1">{importResult.totalRows}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5">
+                  <span className="text-[11px] font-bold uppercase text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Import Thành Công
+                  </span>
+                  <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                    {importResult.successCount} nhân viên
+                  </p>
+                </div>
+                <div className={`rounded-xl border p-3.5 ${
+                  importResult.errorCount > 0
+                    ? 'border-status-danger-line bg-status-danger-soft text-status-danger'
+                    : 'border-line bg-surface text-ink-muted'
+                }`}>
+                  <span className="text-[11px] font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Dòng Lỗi / Bỏ Qua
+                  </span>
+                  <p className={`text-xl font-black mt-1 ${importResult.errorCount > 0 ? 'text-status-danger' : 'text-ink'}`}>
+                    {importResult.errorCount} dòng
+                  </p>
+                </div>
+              </div>
+
+              {/* Bảng lỗi chi tiết nếu có */}
+              {importResult.errorList.length > 0 && (
+                <div className="rounded-xl border border-status-danger-line bg-status-danger-soft/30 p-3.5">
+                  <h4 className="text-xs font-bold text-status-danger flex items-center gap-1.5 mb-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Danh sách dòng bị lỗi ({importResult.errorList.length})
+                  </h4>
+                  <div className="max-h-40 overflow-y-auto border border-status-danger-line/50 rounded-lg bg-surface">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-canvas border-b border-line text-ink-muted sticky top-0">
+                        <tr>
+                          <th className="p-2 font-bold w-16">Dòng #</th>
+                          <th className="p-2 font-bold w-28">Mã NV</th>
+                          <th className="p-2 font-bold">Họ tên / Email</th>
+                          <th className="p-2 font-bold text-status-danger">Nguyên nhân lỗi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {importResult.errorList.map((err, idx) => (
+                          <tr key={idx} className="hover:bg-status-danger-soft/20">
+                            <td className="p-2 font-mono font-bold text-ink-muted">#{err.rowNumber}</td>
+                            <td className="p-2 font-mono">{err.employeeCode || '—'}</td>
+                            <td className="p-2">
+                              <span className="font-semibold text-ink">{err.fullName || '—'}</span>
+                              {err.email && <span className="text-[11px] text-ink-muted block font-mono">{err.email}</span>}
+                            </td>
+                            <td className="p-2 text-status-danger font-medium">{err.errorMessage}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Bảng danh sách nhân viên đã tạo thành công */}
+              {importResult.successList.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      Tài khoản vừa khởi tạo ({importResult.successList.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyAllImportCredentials}
+                        className="text-xs border-primary/40 text-primary"
+                      >
+                        {copiedImportCredentials ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedImportCredentials ? 'Đã sao chép!' : 'Sao chép thông tin tài khoản'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportImportResultCsv}
+                        className="text-xs border-line"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Tải CSV kết quả
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto border border-line rounded-xl bg-surface">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-canvas border-b border-line text-ink-muted sticky top-0 z-10">
+                        <tr>
+                          <th className="p-2.5 font-bold">Mã NV</th>
+                          <th className="p-2.5 font-bold">Họ và tên</th>
+                          <th className="p-2.5 font-bold">Email</th>
+                          <th className="p-2.5 font-bold">Phòng ban</th>
+                          <th className="p-2.5 font-bold">Chức danh / Vai trò</th>
+                          <th className="p-2.5 font-bold">Mật khẩu khởi tạo</th>
+                          <th className="p-2.5 font-bold text-center">Gửi mail</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {importResult.successList.map((emp) => (
+                          <tr key={emp.employeeCode} className="hover:bg-canvas/50">
+                            <td className="p-2.5 font-mono font-bold text-primary">{emp.employeeCode}</td>
+                            <td className="p-2.5 font-bold text-ink">{emp.fullName}</td>
+                            <td className="p-2.5 font-mono text-ink-muted">{emp.email}</td>
+                            <td className="p-2.5">
+                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary">
+                                {emp.teamName}
+                              </span>
+                            </td>
+                            <td className="p-2.5">
+                              <span className="text-ink font-medium">{emp.positionName}</span>
+                              <span className="text-[10px] text-ink-muted block uppercase font-mono">{emp.role}</span>
+                            </td>
+                            <td className="p-2.5">
+                              <code className="px-2 py-1 rounded bg-canvas border border-line font-mono font-bold text-ink text-[11px]">
+                                {emp.defaultPassword}
+                              </code>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {emp.emailSent ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                                  <Check className="h-3 w-3" />
+                                  Đã gửi
+                                </span>
+                              ) : (
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-canvas text-ink-muted" title={emp.emailStatusMessage}>
+                                  Chưa gửi
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Nút đóng */}
+              <div className="flex justify-between items-center pt-3 border-t border-line">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setImportResult(null);
+                    setImportFile(null);
+                    setImportError(null);
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  Import file khác
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setIsImportModalOpen(false);
+                    setImportResult(null);
+                    setImportFile(null);
+                    setImportError(null);
+                  }}
+                >
+                  Hoàn Tất & Đóng
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </div>

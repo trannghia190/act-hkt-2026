@@ -308,32 +308,60 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public boolean sendPasswordResetEmail(String toEmail, String fullName, String resetToken) {
         String subject = "[Ascend Tech] Mã Xác Thực OTP Đặt Lại Mật Khẩu";
-        String preheader = "Mã OTP xác thực đặt lại mật khẩu của bạn là " + resetToken + " (hiệu lực 15 phút).";
+        String preheader = "Mã OTP xác thực đặt lại mật khẩu của bạn là " + resetToken + " (hiệu lực 15 phút) hoặc bấm liên kết 1-click trong thư.";
+
+        String encodedEmail;
+        try {
+            encodedEmail = java.net.URLEncoder.encode(toEmail, java.nio.charset.StandardCharsets.UTF_8.toString());
+        } catch (Exception e) {
+            encodedEmail = toEmail;
+        }
+
+        String directResetUrl = systemConfigService.buildAbsoluteUrl(
+                "/forgot-password?email=" + encodedEmail + "&token=" + resetToken
+        );
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
             <p style="color: #334155;">Hệ thống Ascend Tech vừa tiếp nhận yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <strong>%s</strong>.</p>
             
-            <!-- OTP Block -->
-            <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 14px; padding: 24px 20px; text-align: center; margin: 24px 0;">
-                <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 1px;">
-                    MÃ XÁC THỰC BẢO MẬT (OTP)
+            <p style="color: #334155; font-size: 13.5px;">Anh/Chị có thể lựa chọn <strong>1 trong 2 phương thức thuận tiện</strong> dưới đây để hoàn tất việc thiết lập mật khẩu mới:</p>
+
+            <!-- Method 1: Direct 1-Click Link (Recommended) -->
+            <div style="background-color: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 14px; padding: 20px; margin: 20px 0; text-align: center;">
+                <div style="font-size: 12px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                    ⚡ PHƯƠNG THỨC 1: ĐẶT LẠI MẬT KHẨU 1-CLICK (KHUYÊN DÙNG)
                 </div>
-                <div style="font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #047857; margin: 12px 0;">
-                    %s
+                <p style="font-size: 12.5px; color: #475569; margin: 0 0 14px 0; line-height: 1.5;">
+                    Không cần gõ lại mã OTP hay lo lắng bị reload trang — chỉ cần bấm nút bên dưới, hệ thống sẽ tự động xác thực và mở ngay màn hình nhập mật khẩu mới:
+                </p>
+                <a href="%s" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 13.5px; letter-spacing: 0.3px; box-shadow: 0 4px 12px rgba(37,99,235,0.25);">
+                    XÁC THỰC OTP &amp; ĐỔI MẬT KHẨU NGAY (1-CLICK) →
+                </a>
+            </div>
+
+            <!-- Method 2: Manual OTP Code -->
+            <div style="text-align: center; margin: 24px 0 16px 0;">
+                <div style="font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                    🔑 PHƯƠNG THỨC 2: NHẬP MÃ OTP THỦ CÔNG
                 </div>
-                <div style="display: inline-block; background-color: #dcfce7; color: #15803d; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px;">
-                    ⏳ Hiệu lực trong vòng 15 phút
+                <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 14px; padding: 18px 24px; text-align: center; display: inline-block; min-width: 280px;">
+                    <div style="font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #047857;">
+                        %s
+                    </div>
+                    <div style="display: inline-block; background-color: #dcfce7; color: #15803d; font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-top: 8px;">
+                        ⏳ Hiệu lực trong vòng 15 phút
+                    </div>
                 </div>
             </div>
 
             <!-- Caution Note -->
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 12px; color: #64748b; line-height: 1.6;">
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 20px;">
                 <strong>⚠️ Khuyến cáo bảo mật:</strong><br>
-                • Tuyệt đối <strong>không chia sẻ</strong> mã OTP này cho bất kỳ ai, kể cả nhân sự hoặc kỹ thuật viên.<br>
-                • Nếu Anh/Chị không gửi yêu cầu này, rất có thể ai đó đang cố tình truy cập tài khoản của bạn. Vui lòng bỏ qua email và thông báo ngay cho Quản trị viên hệ thống để phong tỏa tài khoản kịp thời.
+                • Tuyệt đối <strong>không chia sẻ</strong> mã OTP hoặc đường dẫn 1-click này cho bất kỳ ai.<br>
+                • Nếu Anh/Chị không gửi yêu cầu này, vui lòng bỏ qua email và thông báo ngay cho Quản trị viên hệ thống để phong tỏa tài khoản kịp thời.
             </div>
-            """, fullName, toEmail, resetToken);
+            """, fullName, toEmail, directResetUrl, resetToken);
 
         String htmlContent = buildMasterHtml(
                 preheader,
@@ -342,8 +370,8 @@ public class EmailServiceImpl implements EmailService {
                 "Xác Thực Đặt Lại Mật Khẩu",
                 "Mã bảo mật OTP gửi qua Gmail Doanh Nghiệp",
                 body,
-                "TRUY CẬP TRANG ĐẶT LẠI MẬT KHẨU →",
-                systemConfigService.buildAbsoluteUrl("/forgot-password")
+                "MỞ TRANG ĐẶT LẠI MẬT KHẨU (1-CLICK) →",
+                directResetUrl
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);

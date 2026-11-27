@@ -9,6 +9,7 @@ import { CommandPalette } from './components/layout/CommandPalette';
 import { EnterpriseGmailModal } from './components/common/EnterpriseGmailModal';
 import { FirstLoginChangePasswordModal } from './modules/auth/FirstLoginChangePasswordModal';
 import { LoginPage } from './modules/auth/LoginPage';
+import { ForgotPasswordPage } from './modules/auth/ForgotPasswordPage';
 import { AppRoutes } from './routes/AppRoutes';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ThemeProvider } from './theme/ThemeContext';
@@ -94,13 +95,17 @@ function RootApp() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated && location.pathname !== '/login') {
+  const isPublicAuthRoute = ['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+
+  if (!isAuthenticated && !isPublicAuthRoute) {
     return <LoginPage />;
   }
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ForgotPasswordPage />} />
       <Route path="/*" element={<MainLayout />} />
     </Routes>
   );
