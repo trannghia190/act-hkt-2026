@@ -42,8 +42,14 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={`w-full ${maxWidthStyles[maxWidth]} bg-surface rounded-xl border border-line shadow-xl overflow-hidden flex flex-col max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
