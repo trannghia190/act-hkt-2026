@@ -147,17 +147,17 @@ export const OrgTreePage: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/v1/admin/users?size=100', {
+      const res = await fetch('/api/v1/admin/users/active', {
         headers: authHeaders(),
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.success && json.data?.content) {
-          setAllUsers(json.data.content);
+        if (json.success && Array.isArray(json.data)) {
+          setAllUsers(json.data);
         }
       }
     } catch (e) {
-      console.warn('Cannot load all users', e);
+      console.warn('Cannot load active users', e);
     }
   };
 
@@ -1343,10 +1343,14 @@ export const OrgTreePage: React.FC = () => {
                       Không có nhân sự nào trong danh mục này
                     </div>
                   ) : (
-                    getFilteredMembers(selectedNode).map((m) => (
+                    getFilteredMembers(selectedNode).map((m) => {
+                      const hasBrokenManager = !m.managerId || m.approvalChain?.includes('không khả dụng') || m.managerName?.includes('Đã nghỉ');
+                      return (
                       <div
                         key={m.id}
-                        className="p-2.5 rounded-xl border border-line hover:border-accent/40 bg-surface transition-all text-xs space-y-1.5 shadow-2xs"
+                        className={`p-2.5 rounded-xl border transition-all text-xs space-y-1.5 shadow-2xs ${
+                          hasBrokenManager ? 'border-status-danger/40 bg-status-danger-soft/20' : 'border-line hover:border-accent/40 bg-surface'
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-bold text-ink flex items-center gap-1.5">
@@ -1367,15 +1371,15 @@ export const OrgTreePage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-1 border-t border-line/50">
-                          {m.managerId ? (
+                          {hasBrokenManager ? (
+                            <span className="text-status-danger font-bold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-status-danger" />
+                              {m.managerName?.includes('Đã nghỉ') ? 'Sếp đã nghỉ/khóa' : 'Chưa có người duyệt!'}
+                            </span>
+                          ) : (
                             <span className="text-ink-muted flex items-center gap-1">
                               <GitPullRequest className="w-3 h-3 text-accent" />
                               Sếp: <strong className="text-ink">{m.managerName || 'Quản lý'}</strong>
-                            </span>
-                          ) : (
-                            <span className="text-status-danger font-bold flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              Chưa có người duyệt!
                             </span>
                           )}
 
@@ -1388,14 +1392,19 @@ export const OrgTreePage: React.FC = () => {
                                 setAssignMgrReason('Gán quản lý trực tiếp từ sơ đồ cây');
                                 setIsAssignMgrModalOpen(true);
                               }}
-                              className="text-accent hover:underline font-bold text-[10px]"
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                hasBrokenManager
+                                  ? 'bg-status-danger text-white hover:bg-status-danger/90'
+                                  : 'text-accent hover:underline'
+                              }`}
                             >
-                              {m.managerId ? 'Đổi sếp' : 'Gán sếp ngay'}
+                              {hasBrokenManager ? 'Gán sếp ngay' : 'Đổi sếp'}
                             </button>
                           )}
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
