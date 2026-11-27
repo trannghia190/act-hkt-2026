@@ -64,7 +64,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ✅ | ✅ | ✅ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
-| T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
+| T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ✅ | ✅ | ✅ |
 | T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
@@ -600,3 +600,17 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   chuyển nhóm ngay, disabled→enabled, khôi phục dữ liệu; tên nhân viên hiện đúng
   thay ID; không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
   `tsc` + `build` sạch.
+
+- **T8 · Sổ cái biến động phép (HR)** ✅ (2026-11-27) — mockup
+  `screens/leave-ledger.html` (3 theme × desktop 1440 + mobile 390). Bảng phẳng
+  → sổ cái nhóm theo tháng: đầu trang eyebrow `BookOpen` "Chấm công" + h1 + badge
+  T8 + 2 nút (Điều chỉnh số dư accent / Xuất CSV viền); **bìa `bg-ink text-canvas`**
+  chọn nhân viên + 3 số dư (được hưởng / đã dùng / còn lại); Panel lọc (tìm lý do
+  + mã bút toán, chọn tháng, 5 chip loại biến động đếm khớp dữ liệu, cuộn ngang
+  mobile); **mỗi tháng = section** với tổng ngày trong tháng, mỗi bút toán là dòng
+  card: ngày mono, tag loại (Cấp phép ok / Sử dụng danger / HR điều chỉnh info /
+  Hết hạn tồn gray) + loại phép, lý do đầy đủ, meta người thực hiện + mã bút toán,
+  số ngày ±kèm số dư còn lại. Modal điều chỉnh số dư dùng `Modal` chung (chip lý do
+  nhanh, bắt buộc lý do, validate khác 0). Verify: cộng đúng theo tháng, lọc/tìm
+  khớp số đếm, điều chỉnh thêm bút toán mới, 3 theme × 7 bề rộng không tràn;
+  0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
