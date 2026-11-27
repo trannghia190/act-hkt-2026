@@ -50,7 +50,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ✅ | ✅ | ✅ |
 | S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ✅ | ✅ | ✅ |
 | S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ✅ | ✅ | ✅ |
-| S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ⬜ | ⬜ | ⬜ |
+| S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ✅ | ✅ | ✅ |
 | S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ⬜ | ⬜ | ⬜ |
 
 ## 2 · Chấm công
@@ -568,3 +568,20 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   phòng). Verify: 19 mục, LEAVE lọc ra 6, tìm "phép" ra 4, mở rộng/modal sửa/modal
   lịch sử đều PASS; 3 theme × 7 bề rộng không tràn ngang; 0 lỗi JS, 0 HTTP ≥ 400,
   0 emoji; `tsc` + `build` sạch.
+
+- **S10 · Danh mục loại nghỉ phép** ✅ (2026-11-27) — mockup
+  `screens/leave-types.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `LeaveTypesPage` (bảng đơn giản 1 heading → hệ thống card): đầu trang eyebrow
+  `CalendarDays` "Quản trị HR" + `h1` "Danh mục loại nghỉ phép" + badge S10 +
+  nút **"+ Thêm loại nghỉ"** accent; **bìa tóm tắt** `bg-ink text-canvas` (tổng /
+  đang dùng / cần giấy tờ); **4 chip lọc** (Tất cả / Hệ thống / HR tự thêm / Đang
+  tắt — đếm khớp dữ liệu, `aria-pressed`, cuộn ngang mobile); **mỗi loại nghỉ =
+  card 13px**: mã mono chip accent-soft + tên + tag "hệ thống" (icon Lock) +
+  badge đang dùng/đã tắt, **5–6 chip giá trị** (số ngày/năm hoặc Theo BHXH, đơn
+  vị, hưởng lương, giấy tờ, hạn gửi, trừ phép năm); nút **Sửa** luôn hiện, **Xoá**
+  chỉ loại HR tự thêm; footer giải thích vì sao hệ thống không xoá được. Modal tự
+  viết → **`Modal` dùng chung** (thêm `role="dialog"`, `aria-modal`, click nền
+  đóng), field Mã (khoá khi sửa) + Tên + số ngày/năm + 4 toggle + đơn vị + hạn
+  gửi. Verify: đúng 16 loại, tạo mới rơi vào "HR tự thêm" (1), xoá về 0, modal
+  sửa mở với Mã disabled, không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS,
+  0 HTTP ≥ 400; `tsc` + `build` sạch.
