@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
@@ -9,6 +9,7 @@ import { isWebAuthnSupported, loginWithPasskey as requestPasskeyLogin } from '..
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('136ACT');
   const [password, setPassword] = useState('123456');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -16,7 +17,9 @@ export const LoginPage: React.FC = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetOtp, setResetOtp] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
+  const [showResetNewPassword, setShowResetNewPassword] = useState(false);
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
@@ -254,14 +257,24 @@ export const LoginPage: React.FC = () => {
                   Quên mật khẩu?
                 </button>
               </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu..."
-                className="w-full h-11 px-3.5 text-sm rounded-[11px] border border-line bg-surface focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/20 font-medium text-ink transition"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu..."
+                  className="w-full h-11 px-3.5 pr-11 text-sm rounded-[11px] border border-line bg-surface focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/20 font-medium text-ink transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4 text-accent" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <Button
@@ -390,26 +403,46 @@ export const LoginPage: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-ink mb-1">Mật khẩu mới (tối thiểu 8 ký tự, gồm chữ hoa, số &amp; ký tự đặc biệt)</label>
-                <input
-                  type="password"
-                  required
-                  value={resetNewPassword}
-                  onChange={(e) => setResetNewPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu mới..."
-                  className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type={showResetNewPassword ? 'text' : 'password'}
+                    required
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu mới..."
+                    className="w-full p-2 pr-9 border border-line rounded-lg bg-canvas text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetNewPassword(!showResetNewPassword)}
+                    className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
+                    title={showResetNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showResetNewPassword ? <EyeOff className="w-3.5 h-3.5 text-accent" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block font-semibold text-ink mb-1">Xác nhận mật khẩu mới</label>
-                <input
-                  type="password"
-                  required
-                  value={resetConfirmPassword}
-                  onChange={(e) => setResetConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới..."
-                  className="w-full p-2 border border-line rounded-lg bg-canvas text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type={showResetConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    placeholder="Nhập lại mật khẩu mới..."
+                    className="w-full p-2 pr-9 border border-line rounded-lg bg-canvas text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
+                    className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
+                    title={showResetConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showResetConfirmPassword ? <EyeOff className="w-3.5 h-3.5 text-accent" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-line">

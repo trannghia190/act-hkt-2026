@@ -729,7 +729,7 @@ public class OrgStructureController {
         User userToSave;
         String rawPassword = req.getPassword() != null && !req.getPassword().isBlank()
                 ? req.getPassword().trim()
-                : "123456";
+                : generateSecureRandomPassword();
 
         userToSave = User.builder()
                 .employeeCode(code)
@@ -1007,11 +1007,29 @@ public class OrgStructureController {
         }
     }
 
+    private String generateSecureRandomPassword() {
+        String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String lower = "abcdefghjkmnpqrstuvwxyz";
+        String digits = "23456789";
+        String special = "@#$!%*";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        sb.append(upper.charAt(random.nextInt(upper.length())));
+        sb.append(lower.charAt(random.nextInt(lower.length())));
+        sb.append(digits.charAt(random.nextInt(digits.length())));
+        sb.append(special.charAt(random.nextInt(special.length())));
+        String allChars = upper + lower + digits + special;
+        for (int i = 0; i < 4; i++) {
+            sb.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+        return "Act@" + sb.toString();
+    }
+
     @PostMapping("/admin/users/{id}/reset-password")
     @Operation(summary = "Admin cấp lại mật khẩu & Mở khóa Brute-Force (S40-C)")
-    public ApiResponse<Boolean> adminResetPassword(@PathVariable String id) {
+    public ApiResponse<String> adminResetPassword(@PathVariable String id) {
         User user = findUserByIdOrCode(id);
-        String tempPass = "123456";
+        String tempPass = generateSecureRandomPassword();
         user.setMustChangePassword(true);
         user.setStatus("ACTIVE");
         user.setPasswordHash(passwordEncoder.encode(tempPass));
@@ -1047,7 +1065,7 @@ public class OrgStructureController {
         String msg = "Mật khẩu tạm thời (" + tempPass + ") đã được cấp lại thành công! " +
                 (emailSent ? "Đã gửi email thông báo qua Gmail tới " + user.getEmail()
                         : "Hệ thống đã phát lệnh gửi tới Gmail " + user.getEmail());
-        return ApiResponse.ok(true, msg);
+        return ApiResponse.ok(tempPass, msg);
     }
 
     @GetMapping("/admin/users/{id}")

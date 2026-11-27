@@ -64,21 +64,21 @@ export const Header: React.FC<HeaderProps> = ({
           <kbd className="hidden sm:inline text-[10px] bg-line px-1 rounded font-mono font-bold">{shortcutLabel}</kbd>
         </button>
 
-        {/* Enterprise Gmail Setup Button — ẩn trên mobile để header không bị chật.
-            Bọc ngoài vì Button luôn có `inline-flex`, class `hidden` trên chính nó
-            có thể bị luật display của Tailwind ghi đè. */}
-        <div className="hidden md:block">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenGmailModal}
-            className="text-xs gap-1.5 border-accent-line text-accent-dark hover:bg-accent-soft"
-            title="Cấu hình gửi email thông báo qua Gmail SMTP"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Gmail</span>
-          </Button>
-        </div>
+        {/* Enterprise Gmail Setup Button — chỉ hiển thị cho HR và ADMIN */}
+        {user && (user.role === 'ADMIN' || user.role === 'HR_ADMIN') && (
+          <div className="hidden md:block">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenGmailModal}
+              className="text-xs gap-1.5 border-accent-line text-accent-dark hover:bg-accent-soft"
+              title="Cấu hình gửi email thông báo qua Gmail SMTP (Chỉ dành cho HR & Admin)"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Gmail</span>
+            </Button>
+          </div>
+        )}
 
         {/* Template / theme picker */}
         <ThemeSwitcher />

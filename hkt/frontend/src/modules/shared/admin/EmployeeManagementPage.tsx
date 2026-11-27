@@ -3,7 +3,7 @@ import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X } from 'lucide-react';
+import { GitPullRequest, UserCheck, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2, UserPlus, Mail, Key, Copy, Check, Eye, EyeOff, Edit2, User, Phone, Calendar, Shield, Building2, Users, UserX, X, RefreshCw } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -89,6 +89,23 @@ export const EmployeeManagementPage: React.FC = () => {
 
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
 
+  const generateRandomPassword = (): string => {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '@#$!%*';
+    const all = upper + lower + digits + special;
+    let res = 'Act@';
+    res += upper[Math.floor(Math.random() * upper.length)];
+    res += lower[Math.floor(Math.random() * lower.length)];
+    res += digits[Math.floor(Math.random() * digits.length)];
+    res += special[Math.floor(Math.random() * special.length)];
+    for (let i = 0; i < 4; i++) {
+      res += all[Math.floor(Math.random() * all.length)];
+    }
+    return res;
+  };
+
   // Form states
   const [newEmp, setNewEmp] = useState({
     code: 'ACT' + Math.floor(1000 + Math.random() * 9000),
@@ -97,7 +114,7 @@ export const EmployeeManagementPage: React.FC = () => {
     team: '',   // sẽ điền bằng nhóm đầu tiên nạp từ API
     positionName: 'Kỹ sư Phần mềm',
     role: 'EMPLOYEE' as const,
-    password: '123456',
+    password: generateRandomPassword(),
     joinedDate: todayISO(),
   });
   // Xem trước thâm niên & quỹ phép theo ngày onboard (tính ở backend, cùng rule với lúc tạo).
@@ -268,7 +285,7 @@ export const EmployeeManagementPage: React.FC = () => {
           team: newEmp.team,
           positionName: 'Kỹ sư Phần mềm',
           role: 'EMPLOYEE' as const,
-          password: '123456',
+          password: generateRandomPassword(),
           joinedDate: todayISO(),
         });
         fetchEmployees();
@@ -408,17 +425,18 @@ export const EmployeeManagementPage: React.FC = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
+        const tempPassword = typeof data.data === 'string' && data.data ? data.data : 'Act@RandomPass';
         setCreatedAccount({
           fullName: emp.fullName,
           employeeCode: emp.employeeCode,
           email: emp.email,
           team: emp.team,
           role: emp.role,
-          defaultPassword: '123456',
+          defaultPassword: tempPassword,
           emailSent: true,
-          emailStatusMessage: data.message || 'Đã cấp lại mật khẩu tạm thời (123456) và phát lệnh gửi email kích hoạt qua Gmail.',
+          emailStatusMessage: data.message || `Đã cấp lại mật khẩu tạm thời (${tempPassword}) và phát lệnh gửi email kích hoạt qua Gmail.`,
         });
-        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName}! Mật khẩu tạm: 123456`);
+        showToast(`Đã cấp lại mật khẩu cho ${emp.fullName}! Mật khẩu tạm: ${tempPassword}`);
         fetchEmployees();
       } else {
         alert(data.message || 'Lỗi khi cấp lại mật khẩu');
@@ -1135,7 +1153,18 @@ export const EmployeeManagementPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-semibold text-ink">Mật Khẩu Mặc Định Khởi Tạo *</label>
-                <span className="text-[10px] text-status-warn font-bold">Bắt buộc đổi pass lần đầu</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewEmp(prev => ({ ...prev, password: generateRandomPassword() }))}
+                    className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Tạo ngẫu nhiên mật khẩu bảo mật mới"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Tạo ngẫu nhiên</span>
+                  </button>
+                  <span className="text-[10px] text-status-warn font-bold">Bắt buộc đổi pass lần đầu</span>
+                </div>
               </div>
               <div className="relative">
                 <input
@@ -1143,19 +1172,20 @@ export const EmployeeManagementPage: React.FC = () => {
                   required
                   value={newEmp.password}
                   onChange={(e) => setNewEmp({ ...newEmp, password: e.target.value })}
-                  className="w-full text-xs p-2.5 pr-16 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-mono font-bold"
-                  placeholder="123456"
+                  className="w-full text-xs p-2.5 pr-12 rounded-lg border border-line bg-canvas text-ink focus:outline-none focus:border-accent font-mono font-bold"
+                  placeholder="Mật khẩu ngẫu nhiên..."
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewEmpPassword(!showNewEmpPassword)}
-                  className="absolute right-2 top-2 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink rounded bg-surface border border-line cursor-pointer"
+                  className="absolute right-2.5 top-2.5 text-ink-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center"
+                  title={showNewEmpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
-                  {showNewEmpPassword ? 'Ẩn' : 'Hiện'}
+                  {showNewEmpPassword ? <EyeOff className="w-4 h-4 text-accent" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               <span className="text-[10px] text-ink-muted mt-1 block">
-                * Mật khẩu này sẽ được gửi vào hộp thư Gmail của nhân viên để đăng nhập lần đầu.
+                * Mật khẩu ngẫu nhiên này được khởi tạo tự động và gửi qua Gmail cho nhân viên để kích hoạt tài khoản.
               </span>
             </div>
 

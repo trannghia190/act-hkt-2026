@@ -10,6 +10,9 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -38,9 +41,81 @@ public class EmailServiceImpl implements EmailService {
     private boolean devLogMail;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
+    private static final String SMTP_CONFIG_FILE = ".smtp-config.properties";
+
+    private String lastConfiguredAt = null;
+    private String lastConfiguredBy = null;
+
+    @jakarta.annotation.PostConstruct
+    public void initPersistedConfig() {
+        try {
+            File file = new File(SMTP_CONFIG_FILE);
+            if (file.exists() && file.isFile()) {
+                Properties props = new Properties();
+                try (FileInputStream in = new FileInputStream(file)) {
+                    props.load(in);
+                }
+                String host = props.getProperty("mail.host", "smtp.gmail.com");
+                int port = Integer.parseInt(props.getProperty("mail.port", "587"));
+                String username = props.getProperty("mail.username", "");
+                String password = props.getProperty("mail.password", "");
+                String configuredAt = props.getProperty("mail.configuredAt", "");
+                String configuredBy = props.getProperty("mail.configuredBy", "HR_ADMIN");
+
+                if (username != null && !username.isBlank() && password != null && !password.isBlank()) {
+                    if (mailSender instanceof JavaMailSenderImpl impl) {
+                        impl.setHost(host);
+                        impl.setPort(port);
+                        impl.setUsername(username);
+                        impl.setPassword(password);
+                        Properties mailProps = impl.getJavaMailProperties();
+                        mailProps.put("mail.transport.protocol", "smtp");
+                        mailProps.put("mail.smtp.auth", "true");
+                        mailProps.put("mail.smtp.starttls.enable", "true");
+                        mailProps.put("mail.smtp.starttls.required", "true");
+                        mailProps.put("mail.smtp.ssl.trust", impl.getHost());
+                        mailProps.put("mail.smtp.connectiontimeout", "8000");
+                        mailProps.put("mail.smtp.timeout", "8000");
+                        mailProps.put("mail.smtp.writetimeout", "8000");
+                    }
+                    this.senderEmail = username;
+                    this.mailHost = host;
+                    this.lastConfiguredAt = configuredAt;
+                    this.lastConfiguredBy = configuredBy;
+                    log.info("Đã nạp lại cấu hình SMTP từ file: sender={}, host={}, port={}, configuredBy={}", username, host, port, configuredBy);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi khi nạp lại cấu hình SMTP từ file: {}", ex.getMessage());
+        }
+    }
+
+    private void persistSmtpConfig(String host, int port, String username, String password, String configuredAt, String configuredBy) {
+        try {
+            Properties props = new Properties();
+            props.setProperty("mail.host", host != null ? host : "smtp.gmail.com");
+            props.setProperty("mail.port", String.valueOf(port));
+            props.setProperty("mail.username", username != null ? username : "");
+            props.setProperty("mail.password", password != null ? password : "");
+            props.setProperty("mail.configuredAt", configuredAt != null ? configuredAt : "");
+            props.setProperty("mail.configuredBy", configuredBy != null ? configuredBy : "");
+            File file = new File(SMTP_CONFIG_FILE);
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                props.store(out, "Persisted SMTP Configuration for ACT Pulse");
+            }
+            log.info("Đã lưu cấu hình SMTP bền vững vào file: {}", file.getAbsolutePath());
+        } catch (Exception ex) {
+            log.warn("Không thể lưu file cấu hình SMTP bền vững: {}", ex.getMessage());
+        }
+    }
 
     @Override
     public boolean configureSmtp(String host, int port, String username, String password) {
+        return configureSmtp(host, port, username, password, "HR_ADMIN");
+    }
+
+    @Override
+    public boolean configureSmtp(String host, int port, String username, String password, String configuredBy) {
         try {
             if (mailSender instanceof JavaMailSenderImpl impl) {
                 impl.setHost(host != null && !host.isBlank() ? host : "smtp.gmail.com");
@@ -60,7 +135,12 @@ public class EmailServiceImpl implements EmailService {
 
                 this.senderEmail = username;
                 this.mailHost = impl.getHost();
-                log.info("Cập nhật cấu hình SMTP thành công cho host: {}, port: {}, sender: {}", host, port, username);
+                this.lastConfiguredAt = LocalDateTime.now().format(TIME_FORMATTER);
+                this.lastConfiguredBy = (configuredBy != null && !configuredBy.isBlank()) ? configuredBy : "HR_ADMIN";
+
+                persistSmtpConfig(impl.getHost(), impl.getPort(), username, password, this.lastConfiguredAt, this.lastConfiguredBy);
+
+                log.info("Cập nhật cấu hình SMTP thành công cho host: {}, port: {}, sender: {} bởi {}", host, port, username, this.lastConfiguredBy);
                 return true;
             }
             return false;
@@ -90,6 +170,16 @@ public class EmailServiceImpl implements EmailService {
             return impl.getUsername();
         }
         return senderEmail != null ? senderEmail : "Chưa cấu hình";
+    }
+
+    @Override
+    public String getLastConfiguredAt() {
+        return lastConfiguredAt;
+    }
+
+    @Override
+    public String getLastConfiguredBy() {
+        return lastConfiguredBy;
     }
 
     // =========================================================================

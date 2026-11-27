@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
@@ -89,7 +89,24 @@ export const OrgTreePage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'graph' | 'chart' | 'tree'>('graph');
   const [zoom, setZoom] = useState<number>(100);
+  const [isCompactGraph, setIsCompactGraph] = useState(false);
   const [memberFilter, setMemberFilter] = useState<'all' | 'pending' | 'no-mgr'>('all');
+
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const treeContentWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleFitToScreen = () => {
+    if (!canvasContainerRef.current || !treeContentWrapperRef.current) return;
+    const containerWidth = canvasContainerRef.current.clientWidth - 48;
+    const currentScale = zoom / 100;
+    const rawWidth = treeContentWrapperRef.current.scrollWidth;
+    const unscaledWidth = rawWidth > 0 && currentScale > 0 ? rawWidth / currentScale : treeContentWrapperRef.current.offsetWidth;
+    if (unscaledWidth > 0 && containerWidth > 0) {
+      const targetScale = Math.min(100, Math.max(30, Math.floor((containerWidth / unscaledWidth) * 96)));
+      setZoom(targetScale);
+      showToast(`Đã tự động thu phóng ${targetScale}% để vừa khít màn hình!`);
+    }
+  };
 
   // Available users for manager/leader dropdown
   const [allUsers, setAllUsers] = useState<EmployeeItem[]>([]);
@@ -401,7 +418,9 @@ export const OrgTreePage: React.FC = () => {
         {/* Graph Card */}
         <div
           onClick={() => setSelectedNode(node)}
-          className={`w-64 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${
+          className={`${
+            isCompactGraph ? 'w-52' : 'w-64'
+          } rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-xl relative text-left bg-surface select-none group ${
             isSelected
               ? 'ring-2 ring-accent border-accent shadow-lg scale-[1.02]'
               : isBroken
@@ -413,7 +432,9 @@ export const OrgTreePage: React.FC = () => {
         >
           {/* Header Strip with Tier Gradient */}
           <div
-            className={`px-3.5 py-2.5 rounded-t-2xl flex items-center justify-between text-on-info ${
+            className={`${
+              isCompactGraph ? 'px-2.5 py-1.5' : 'px-3.5 py-2.5'
+            } rounded-t-2xl flex items-center justify-between text-on-info ${
               level === 0
                 ? 'bg-gradient-to-r from-status-info via-status-info to-status-info'
                 : level === 1
@@ -425,7 +446,7 @@ export const OrgTreePage: React.FC = () => {
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <Building2 className="w-3.5 h-3.5 shrink-0 opacity-90" />
-              <span className="font-bold text-xs truncate" title={node.name}>
+              <span className={`font-bold truncate ${isCompactGraph ? 'text-[11px]' : 'text-xs'}`} title={node.name}>
                 {node.name}
               </span>
             </div>
@@ -435,11 +456,13 @@ export const OrgTreePage: React.FC = () => {
           </div>
 
           {/* Card Body */}
-          <div className="p-3 space-y-2.5 text-xs">
+          <div className={`${isCompactGraph ? 'p-2 space-y-2 text-[11px]' : 'p-3 space-y-2.5 text-xs'}`}>
             {/* Leader Section */}
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-canvas/80 border border-line/70">
+            <div className={`flex items-center gap-2 rounded-xl bg-canvas/80 border border-line/70 ${isCompactGraph ? 'p-1.5' : 'p-2'}`}>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-on-accent shrink-0 shadow-2xs ${
+                className={`${
+                  isCompactGraph ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
+                } rounded-full flex items-center justify-center font-bold text-on-accent shrink-0 shadow-2xs ${
                   node.hasLeader
                     ? 'bg-gradient-to-br from-accent to-status-ok'
                     : 'bg-gradient-to-br from-status-warn to-status-danger'
@@ -450,7 +473,7 @@ export const OrgTreePage: React.FC = () => {
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] text-ink-muted font-medium">Trưởng nhóm:</div>
                 {node.hasLeader ? (
-                  <div className="font-bold text-ink truncate text-xs" title={node.leaderName || ''}>
+                  <div className={`font-bold text-ink truncate ${isCompactGraph ? 'text-[11px]' : 'text-xs'}`} title={node.leaderName || ''}>
                     {node.leaderName}{' '}
                     <span className="font-mono text-[10px] text-ink-muted font-normal">({node.leaderCode})</span>
                   </div>
@@ -574,10 +597,10 @@ export const OrgTreePage: React.FC = () => {
         {hasChildren && isExpanded && (
           <div className="flex flex-col items-center w-full">
             {/* Vertical Stem from parent to horizontal rail */}
-            <div className="w-0.5 h-8 bg-accent/40" />
+            <div className={`w-0.5 bg-accent/40 ${isCompactGraph ? 'h-5' : 'h-8'}`} />
 
             {/* Children container */}
-            <div className="flex justify-center items-start relative pt-6 gap-6">
+            <div className={`flex justify-center items-start relative ${isCompactGraph ? 'pt-4 gap-3' : 'pt-6 gap-6'}`}>
               {/* Horizontal rail bar if more than 1 child */}
               {node.children.length > 1 && (
                 <div
@@ -593,7 +616,7 @@ export const OrgTreePage: React.FC = () => {
               {node.children.map((child) => (
                 <div key={child.id} className="relative flex flex-col items-center">
                   {/* Vertical stem from rail down to child card */}
-                  <div className="absolute -top-6 w-0.5 h-6 bg-accent/40" />
+                  <div className={`absolute w-0.5 bg-accent/40 ${isCompactGraph ? '-top-4 h-4' : '-top-6 h-6'}`} />
                   {renderGraphNode(child, level + 1)}
                 </div>
               ))}
@@ -1103,12 +1126,12 @@ export const OrgTreePage: React.FC = () => {
           ) : viewMode === 'graph' ? (
             <div className="space-y-2">
               {/* Graph Toolbar: Zoom & Actions */}
-              <div className="flex items-center justify-between gap-3 p-2.5 bg-surface border border-line rounded-xl text-xs shadow-2xs">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-surface border border-line rounded-xl text-xs shadow-2xs">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink-muted">Thu phóng sơ đồ:</span>
                   <button
                     type="button"
-                    onClick={() => setZoom((z) => Math.max(50, z - 15))}
+                    onClick={() => setZoom((z) => Math.max(30, z - 10))}
                     className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
                     title="Thu nhỏ"
                   >
@@ -1117,7 +1140,7 @@ export const OrgTreePage: React.FC = () => {
                   <span className="font-mono font-bold text-xs text-ink w-12 text-center">{zoom}%</span>
                   <button
                     type="button"
-                    onClick={() => setZoom((z) => Math.min(150, z + 15))}
+                    onClick={() => setZoom((z) => Math.min(150, z + 10))}
                     className="w-7 h-7 rounded-lg bg-canvas hover:bg-surface border border-line flex items-center justify-center font-bold text-ink cursor-pointer"
                     title="Phóng to"
                   >
@@ -1128,7 +1151,37 @@ export const OrgTreePage: React.FC = () => {
                     onClick={() => setZoom(100)}
                     className="px-2 py-1 rounded-lg bg-canvas hover:bg-surface border border-line text-[11px] font-semibold text-ink-muted hover:text-ink cursor-pointer"
                   >
-                    Reset 100%
+                    100%
+                  </button>
+
+                  {/* Auto-Fit to Screen */}
+                  <button
+                    type="button"
+                    onClick={handleFitToScreen}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-soft hover:bg-accent hover:text-on-accent text-accent-dark font-semibold text-[11px] border border-accent/30 transition-colors shadow-2xs cursor-pointer"
+                    title="Tự động thu phóng để toàn bộ sơ đồ vừa trong 1 màn hình"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span>Vừa màn hình (Auto-Fit)</span>
+                  </button>
+
+                  {/* Compact 1-Screen Layout */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !isCompactGraph;
+                      setIsCompactGraph(next);
+                      setTimeout(() => handleFitToScreen(), 100);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold text-[11px] border transition-colors shadow-2xs cursor-pointer ${
+                      isCompactGraph
+                        ? 'bg-accent text-on-accent border-accent'
+                        : 'bg-canvas hover:bg-surface border-line text-ink-secondary hover:text-ink'
+                    }`}
+                    title="Bật/tắt bố cục thu gọn để chứa nhiều nhánh nhất trong 1 màn hình"
+                  >
+                    <LayoutGrid className="w-3 h-3" />
+                    <span>{isCompactGraph ? '✓ Chế độ 1 màn hình' : 'Sắp xếp 1 màn hình'}</span>
                   </button>
                 </div>
 
@@ -1142,20 +1195,22 @@ export const OrgTreePage: React.FC = () => {
 
               {/* Graph Canvas Container */}
               <div
-                className="w-full overflow-x-auto overflow-y-auto p-8 rounded-2xl border border-line bg-canvas/40 shadow-inner min-h-[580px] relative"
+                ref={canvasContainerRef}
+                className="w-full overflow-x-auto overflow-y-auto p-6 rounded-2xl border border-line bg-canvas/40 shadow-inner min-h-[580px] relative"
                 style={{
                   backgroundImage: 'radial-gradient(circle, rgb(var(--line)) 1.2px, transparent 1.2px)',
                   backgroundSize: '24px 24px',
                 }}
               >
                 <div
+                  ref={treeContentWrapperRef}
                   style={{
                     transform: `scale(${zoom / 100})`,
                     transformOrigin: 'top center',
                   }}
                   className="transition-transform duration-150 inline-block min-w-full pb-16"
                 >
-                  <div className="flex justify-center items-start gap-12">
+                  <div className={`flex justify-center items-start ${isCompactGraph ? 'gap-4' : 'gap-12'}`}>
                     {treeData.map((rootNode) => renderGraphNode(rootNode, 0))}
                   </div>
                 </div>

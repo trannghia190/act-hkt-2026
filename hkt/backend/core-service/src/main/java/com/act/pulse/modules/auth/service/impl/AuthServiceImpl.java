@@ -465,7 +465,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean configureSmtp(String host, int port, String username, String password) {
-        return emailService.configureSmtp(host, port, username, password);
+        String actor = CurrentUser.employeeCode() != null ? CurrentUser.employeeCode() : CurrentUser.role();
+        return emailService.configureSmtp(host, port, username, password, actor != null ? actor : "HR_ADMIN");
     }
 
     @Override
@@ -475,6 +476,8 @@ public class AuthServiceImpl implements AuthService {
         status.put("senderEmail", emailService.getSenderEmail());
         status.put("defaultHost", "smtp.gmail.com");
         status.put("defaultPort", 587);
+        status.put("lastConfiguredAt", emailService.getLastConfiguredAt());
+        status.put("lastConfiguredBy", emailService.getLastConfiguredBy());
         return status;
     }
 
