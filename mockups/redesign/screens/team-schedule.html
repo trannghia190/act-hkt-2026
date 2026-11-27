@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T3 · Lịch nhóm — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    /* ── Shell desktop ─────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink));
+      border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .sgroup-t { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active));
+      font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; flex: 0 0 16px; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-size: 11px; font-weight: 800; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 60px; flex: 0 0 auto; border-bottom: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+    .topbar .search { height: 34px; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas));
+      color: rgb(var(--ink-muted)); font-size: 12.5px; min-width: 190px; }
+    .topbar .search kbd { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: rgb(var(--line)); border-radius: 4px; padding: 1px 4px; color: rgb(var(--ink-2)); }
+    .topbar .spacer { flex: 1; }
+    .topbar .iconbtn { position: relative; width: 34px; height: 34px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--surface)); color: rgb(var(--ink-2)); }
+    .topbar .iconbtn .dot { position: absolute; top: -5px; right: -6px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8.5px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .tb-avatar { width: 30px; height: 30px; border-radius: 99px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+    .content { flex: 1; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+    .wrap { width: 100%; max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Page head ─────────────────────────────────────────────────────── */
+    .phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 13px; height: 13px; stroke-width: 2; }
+    .phead h1 { margin: 6px 0 0; font-size: 23px; }
+    .phead .sub { margin-top: 4px; font-size: 12px; color: rgb(var(--ink-muted)); }
+
+    /* Nút ‹ › + nhãn tháng */
+    .monthnav { display: flex; align-items: center; gap: 6px; }
+    .mnav-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px;
+      border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); color: rgb(var(--ink));
+      cursor: pointer; }
+    .mnav-btn:hover { background: rgb(var(--canvas-subtle)); }
+    .mnav-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+    .mnav-lab { height: 36px; display: flex; align-items: center; padding: 0 12px; border-radius: 10px;
+      border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); color: rgb(var(--ink));
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+
+    /* ── Stat row 5 ô ──────────────────────────────────────────────────── */
+    .stats5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .st { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; padding: 14px; }
+    .st .lbl { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .st .lbl svg { width: 14px; height: 14px; stroke-width: 2; color: rgb(var(--accent)); }
+    .st .val { margin-top: 8px; font-size: 24px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.035em; line-height: 1; color: rgb(var(--ink)); }
+    .st .val small { font-size: 12px; font-weight: 600; color: rgb(var(--ink-muted)); margin-left: 4px; letter-spacing: 0; }
+    .st .sub { margin-top: 6px; font-size: 11px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .st.ok .val { color: rgb(var(--ok)); } .st.ok .sub { color: rgb(var(--ok)); }
+    .st.warn .val { color: rgb(var(--warn)); } .st.warn .sub { color: rgb(var(--warn)); }
+    .st.acc .val { color: rgb(var(--accent)); } .st.acc .sub { color: rgb(var(--accent-dark)); }
+    .st.wfh .val { color: rgb(var(--wfh)); } .st.wfh .sub { color: rgb(var(--wfh)); }
+
+    /* ── Panel lịch ────────────────────────────────────────────────────── */
+    .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 13px; overflow: hidden; }
+    .panel-h { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgb(var(--line)); }
+    .panel-h .t { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+    .panel-h .c { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .panel-b { padding: 14px 16px 16px; }
+
+    .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+    .cal-h { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: rgb(var(--ink-muted)); padding-bottom: 2px; }
+    .cal-cell { min-height: 82px; border: 1px solid rgb(var(--line)); border-radius: 10px;
+      background: rgb(var(--surface)); padding: 6px 7px; display: flex; flex-direction: column;
+      align-items: flex-start; position: relative; }
+    .cal-cell .d { font-size: 11.5px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: rgb(var(--ink)); }
+    .cal-cell .io { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgb(var(--ink-2)); }
+    .cal-cell .io b { color: rgb(var(--ink)); }
+    .cal-cell .sy { margin-top: auto; font-size: 10.5px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .cal-cell .hr { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgb(var(--ink-muted)); }
+    .cal-cell .dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 99px;
+      background: rgb(var(--danger)); }
+    /* Nhãn KN — đã có khiếu nại (chip hổ phách, khớp màn Bảng công của tôi) */
+    .cal-cell .kn { position: absolute; top: 5px; right: 5px; font-size: 8px; font-weight: 800;
+      padding: 1px 4px; border-radius: 4px; background: rgb(var(--warn)); color: rgb(var(--on-warn)); }
+    .cal-cell.ok  { background: rgb(var(--ok-soft) / .6); border-color: rgb(var(--ok-line)); color: rgb(var(--ok)); }
+    .cal-cell.ok .d { color: rgb(var(--ok)); }
+    .cal-cell.late { background: rgb(var(--warn-soft)); border-color: rgb(var(--warn-line)); color: rgb(var(--warn)); }
+    .cal-cell.late .d { color: rgb(var(--warn)); }
+    .cal-cell.bad { background: rgb(var(--danger-soft)); border-color: rgb(var(--danger-line)); color: rgb(var(--danger)); }
+    .cal-cell.bad .d { color: rgb(var(--danger)); }
+    .cal-cell.leave { background: rgb(var(--info-soft)); border-color: rgb(var(--info-line)); color: rgb(var(--info)); }
+    .cal-cell.leave .d { color: rgb(var(--info)); }
+    .cal-cell.wfh { background: rgb(var(--wfh-soft)); border-color: rgb(var(--wfh-line)); color: rgb(var(--wfh)); }
+    .cal-cell.wfh .d { color: rgb(var(--wfh)); }
+    .cal-cell.hol { background: rgb(var(--ok-soft) / .4); border-color: rgb(var(--ok-line)); color: rgb(var(--ok)); }
+    .cal-cell.hol .d { color: rgb(var(--ok)); }
+    .cal-cell.abs { background: rgb(var(--canvas)); border-color: rgb(var(--line)); color: rgb(var(--danger)); }
+    .cal-cell.abs .d { color: rgb(var(--danger)); }
+    .cal-cell.we { background: rgb(var(--canvas-subtle)); border-color: rgb(var(--line-soft)); }
+    .cal-cell.we .d { color: rgb(var(--ink-muted)); }
+    .cal-cell.fut { background: rgb(var(--surface)); border-color: rgb(var(--line)); }
+    .cal-cell.fut .d { color: rgb(var(--ink-muted)); }
+    /* Ô đang chọn — viền accent 2px */
+    .cal-cell.sel { box-shadow: 0 0 0 2px rgb(var(--accent)); }
+
+    .legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px;
+      padding-top: 12px; border-top: 1px solid rgb(var(--line)); }
+    .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: rgb(var(--ink-muted)); }
+    .lg i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
+
+    /* ── Panel chi tiết ngày ──────────────────────────────────────────── */
+    .detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .dcell { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas)); padding: 12px; }
+    .dcell .l { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .dcell .v { margin-top: 4px; font-size: 14px; font-weight: 700; color: rgb(var(--ink)); }
+    .dcell .v.mono { font-family: 'JetBrains Mono', monospace; }
+    .dcell .v.ok { color: rgb(var(--ok)); }
+    .alert-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 12px;
+      border-radius: 10px; font-size: 12px; background: rgb(var(--warn-soft));
+      border: 1px solid rgb(var(--warn-line)); color: rgb(var(--warn)); }
+    .alert-row svg { width: 14px; height: 14px; flex: 0 0 14px; }
+    .alert-row .sp { flex: 1; }
+    .alert-row button { border: 0; border-radius: 9px; padding: 7px 12px; font-family: inherit;
+      font-size: 12px; font-weight: 650; background: rgb(var(--warn)); color: rgb(var(--on-warn)); cursor: pointer; }
+    .close-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; height: 28px;
+      padding: 0 10px; border-radius: 9px; border: 1px solid rgb(var(--line)); background: transparent;
+      color: rgb(var(--ink-2)); font-family: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer; }
+    .close-btn svg { width: 12px; height: 12px; }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    .m { width: 390px; min-height: 844px; display: flex; flex-direction: column; background: rgb(var(--canvas)); }
+    .m-top { height: 54px; flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 0 12px; background: rgb(var(--surface)); border-bottom: 1px solid rgb(var(--line)); }
+    .m-top .brand { font-size: 12.5px; font-weight: 800; letter-spacing: -.02em; }
+    .m-top .brand small { display: block; font-size: 8px; letter-spacing: .12em; color: rgb(var(--ink-muted)); font-weight: 700; }
+    .m-top .bell { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center;
+      border: 1px solid rgb(var(--line)); border-radius: 9px; color: rgb(var(--ink-2)); position: relative; }
+    .m-top .bell .badge { position: absolute; top: -5px; right: -5px; background: rgb(var(--accent));
+      color: rgb(var(--on-accent)); font-size: 8px; font-weight: 700; border-radius: 99px; padding: 1px 4px; }
+    .m-body { flex: 1; padding: 14px 12px 82px; display: flex; flex-direction: column; gap: 12px; }
+    .m-sec-t { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .m-h1 { font-size: 20px; margin: 4px 0 0; }
+    .m-sub { font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 3px; }
+    .m-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .m-stat { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; padding: 11px 12px; }
+    .m-stat.span2 { grid-column: span 2; }
+    .m-stat .lbl { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .m-stat .lbl svg { width: 13px; height: 13px; stroke-width: 2; color: rgb(var(--accent)); }
+    .m-stat .val { margin-top: 6px; font-size: 21px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+      letter-spacing: -.035em; line-height: 1; }
+    .m-stat .val small { font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); margin-left: 3px; letter-spacing: 0; }
+    .m-stat .sub { margin-top: 4px; font-size: 10.5px; font-weight: 600; color: rgb(var(--ink-muted)); }
+    .m-stat.ok .val, .m-stat.ok .sub { color: rgb(var(--ok)); }
+    .m-stat.warn .val, .m-stat.warn .sub { color: rgb(var(--warn)); }
+    .m-stat.acc .val { color: rgb(var(--accent)); } .m-stat.acc .sub { color: rgb(var(--accent-dark)); }
+    .m-stat.wfh .val, .m-stat.wfh .sub { color: rgb(var(--wfh)); }
+    .m-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .m-cal .cal-h { font-size: 8.5px; padding-bottom: 1px; }
+    .m-cal .cal-cell { min-height: 52px; padding: 4px; border-radius: 8px; }
+    .m-cal .cal-cell .d { font-size: 10.5px; }
+    .m-cal .cal-cell .sy { font-size: 8.5px; }
+    .m-cal .cal-cell .io { display: none; }
+    .m-cal .cal-cell .hr { display: none; }
+    .m-cal .cal-cell .dot { width: 5px; height: 5px; top: 4px; right: 4px; }
+    .m-cal .cal-cell .kn { font-size: 6.5px; padding: 0 3px; top: 3px; right: 3px; }
+    .m-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid rgb(var(--line)); }
+    .m-legend .lg { font-size: 10px; }
+    .m-detail { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; overflow: hidden; }
+    .m-detail-h { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-bottom: 1px solid rgb(var(--line)); }
+    .m-detail-h .t { font-size: 12.5px; font-weight: 700; }
+    .m-detail-b { padding: 12px; }
+    .m-dgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .m-dcell { border: 1px solid rgb(var(--line)); border-radius: 10px; background: rgb(var(--canvas)); padding: 10px; }
+    .m-dcell .l { font-size: 10px; color: rgb(var(--ink-muted)); }
+    .m-dcell .v { margin-top: 3px; font-size: 13px; font-weight: 700; }
+    .m-nav { position: sticky; bottom: 0; height: 60px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
+      background: rgb(var(--surface)); border-top: 1px solid rgb(var(--line)); margin-top: auto; }
+    .m-nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 8.5px; font-weight: 650; color: rgb(var(--ink-muted)); }
+    .m-nav div.on { color: rgb(var(--accent)); }
+    .m-nav svg { width: 17px; height: 17px; stroke-width: 1.9; }
+
+    /* ── T3: lịch nhóm ─────────────────────────────────────────────── */
+    .ts-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+    .seg2 { display: inline-flex; border: 1px solid rgb(var(--line)); background: rgb(var(--surface));
+      border-radius: 11px; padding: 3px; gap: 2px; }
+    .seg2 button { border: 0; background: transparent; color: rgb(var(--ink-muted)); font-family: inherit;
+      font-size: 12px; font-weight: 650; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; }
+    .seg2 button svg { width: 13px; height: 13px; stroke-width: 2; }
+    .seg2 button.on { background: rgb(var(--ink)); color: rgb(var(--canvas)); }
+
+    /* Bìa tóm tắt tối */
+    .ts-cover { border-radius: 16px; background: rgb(var(--ink)); color: rgb(var(--canvas));
+      padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+    .ts-cover .k { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+    .ts-cover .t { margin-top: 5px; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+    .ts-cover p { margin: 6px 0 0; max-width: 540px; font-size: 12px; line-height: 1.6; opacity: .72; }
+    .ts-cover .box { display: flex; margin-left: auto; }
+    .ts-cover .box > div { padding: 0 18px; border-left: 1px solid rgb(var(--canvas) / .16); text-align: center; }
+    .ts-cover .box > div:first-child { border-left: 0; }
+    .ts-cover .n { display: flex; align-items: baseline; justify-content: center; gap: 3px;
+      font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-size: 26px; font-weight: 800;
+      letter-spacing: -.035em; line-height: 1; }
+    .ts-cover .n small { font-size: 12px; font-weight: 600; letter-spacing: 0; opacity: .55; }
+    .ts-cover .n.ok { color: rgb(var(--ok)); }
+    .ts-cover .n.warn { color: rgb(var(--warn)); }
+    .ts-cover .n.wfh { color: rgb(var(--wfh)); }
+    .ts-cover .n.danger { color: rgb(var(--danger)); }
+    .ts-cover .l { margin-top: 6px; font-size: 10.5px; font-weight: 600; opacity: .6; }
+
+    /* Banner xung đột */
+    .ts-warn { display: flex; align-items: flex-start; gap: 10px; border: 1px solid rgb(var(--warn-line));
+      background: rgb(var(--warn-soft)); color: rgb(var(--warn)); border-radius: 12px; padding: 11px 13px;
+      font-size: 12px; line-height: 1.6; }
+    .ts-warn > svg { width: 15px; height: 15px; flex: 0 0 15px; margin-top: 2px; }
+    .ts-warn b { font-weight: 800; }
+    .ts-warn .ln { margin-top: 1px; font-size: 11.5px; opacity: .92; }
+
+    /* Ô lịch nhóm */
+    .cal-cell { font-family: inherit; text-align: left; cursor: pointer; }
+    .cal-cell:hover { border-color: rgb(var(--line-hover)); }
+    .cal-cell.blank { background: transparent; border-color: transparent; cursor: default; }
+    .cal-cell.blank:hover { border-color: transparent; }
+    .mlist { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 1px 8px; font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px; color: rgb(var(--ink-muted)); }
+    .mlist b { font-weight: 800; color: rgb(var(--ink-secondary)); }
+    .mlist .ok b { color: rgb(var(--ok)); }
+    .mlist .wfh b { color: rgb(var(--wfh)); }
+    .mlist .off b { color: rgb(var(--info)); }
+    .mlist .late b { color: rgb(var(--warn)); }
+    .cal-cell .sy { color: rgb(var(--ink-muted)); }
+    .cal-cell.conf { background: rgb(var(--warn-soft)); border-color: rgb(var(--warn-line)); }
+    .cal-cell.conf .d { color: rgb(var(--warn)); }
+    .cal-cell.conf .sy { color: rgb(var(--warn)); }
+    .cal-cell .conf { position: absolute; top: 6px; right: 6px; font-size: 8.5px; font-weight: 800;
+      padding: 1px 5px; border-radius: 5px; background: rgb(var(--warn)); color: rgb(var(--on-warn)); }
+
+    /* Danh sách thành viên trong ngày */
+    .ts-entries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .ts-entry { display: flex; align-items: center; gap: 10px; border: 1px solid rgb(var(--line));
+      border-radius: 10px; background: rgb(var(--canvas)); padding: 8px 11px; min-width: 0; }
+    .ts-entry .av { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 99px; display: grid; place-items: center;
+      font-size: 10.5px; font-weight: 800; background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+    .ts-entry .who { min-width: 0; }
+    .ts-entry .nm { font-size: 12px; font-weight: 650; color: rgb(var(--ink)); }
+    .ts-entry .cd { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgb(var(--ink-muted)); margin-left: 3px; }
+    .ts-entry .dt { display: block; margin-top: 1px; font-size: 10px; color: rgb(var(--ink-muted)); }
+    .ts-entry .chip { margin-left: auto; flex: 0 0 auto; }
+
+    /* ── Mobile ────────────────────────────────────────────────────── */
+    .m-tools { display: flex; flex-direction: column; gap: 8px; }
+    .m-tools .seg2 { display: grid; grid-template-columns: 1fr 1fr; }
+    .m-tools .seg2 button { justify-content: center; }
+    .m-conflict { display: flex; align-items: flex-start; gap: 7px; border: 1px solid rgb(var(--warn-line));
+      background: rgb(var(--warn-soft)); color: rgb(var(--warn)); border-radius: 11px; padding: 10px 11px;
+      font-size: 11px; line-height: 1.5; }
+    .m-conflict svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; }
+    .m-conflict b { font-weight: 800; }
+    .m-cal .mlist { display: none; }
+    .m-cal .cal-cell.conf .conf { font-size: 6.5px; padding: 0 3px; top: 3px; right: 3px; }
+    .m-cal .conf { font-size: 6.5px; padding: 0 3px; top: 3px; right: 3px; }
+    .m-entries { margin-top: 11px; }
+    .m-entry { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid rgb(var(--line-soft)); }
+    .m-entry:first-child { border-top: 0; }
+    .m-entry .av { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 99px; display: grid; place-items: center;
+      font-size: 10px; font-weight: 800; background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); }
+    .m-entry .nm { font-size: 12px; font-weight: 650; color: rgb(var(--ink)); }
+    .m-entry .cd { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgb(var(--ink-muted)); margin-left: 3px; }
+    .m-entry .dt { display: block; font-size: 10px; color: rgb(var(--ink-muted)); }
+    .m-entry .chip { margin-left: auto; }
+    .m-more { padding-top: 8px; border-top: 1px solid rgb(var(--line-soft)); font-size: 10.5px; color: rgb(var(--ink-muted)); }
+
+  </style>
+</head>
+<body data-title="T3 · Lịch nhóm">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ═══ Desktop 1440 ═════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup-t">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Thông báo</div>
+          <div class="sgroup-t">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Lịch công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Bảng công của tôi</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Nghỉ phép của tôi</div>
+          <div class="sgroup-t">OKR</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR của tôi</div>
+        </div>
+        <div class="side-user">
+          <div class="av">VA</div>
+          <div><div style="font-size:11.5px;font-weight:650">Vũ Anh</div><div style="font-size:9.5px;color:rgb(var(--rail-muted))">136ACT · Nhân viên</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Tìm kiếm<kbd>⌘K</kbd></div>
+          <div class="spacer"></div>
+          <button class="iconbtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">17</span></button>
+          <div class="tb-avatar">VA</div>
+        </div>
+
+        
+        <div class="content">
+          <div class="wrap">
+
+            <!-- Page head -->
+            <div class="phead">
+              <div>
+                <div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8"/></svg>Chấm công · Lịch nhóm</div>
+                <h1 class="h1">Lịch nhóm</h1>
+                <div class="sub">Phòng Kỹ thuật · 12 người · cảnh báo khi ≥60% nhóm vắng cùng ngày</div>
+              </div>
+              <div class="ts-tools">
+                <div class="seg2">
+                  <button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15h2M14 15h2"/></svg>Tuần</button>
+                  <button type="button" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15h8M8 18h5"/></svg>Tháng</button>
+                </div>
+                <div class="monthnav">
+                  <button class="mnav-btn" type="button" title="Xem tháng trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                  <span class="mnav-lab">Tháng 11 / 2026</span>
+                  <button class="mnav-btn" type="button" title="Xem tháng sau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bìa tóm tắt -->
+            <div class="ts-cover">
+              <div>
+                <div class="k">Phòng Kỹ thuật · 12 thành viên</div>
+                <div class="t">Ai vắng, ai có mặt — nhìn một lượt</div>
+                <p>Số liệu lấy từ đơn đã duyệt và chấm công thực tế. Ngày có ≥60% nhóm vắng sẽ được đánh dấu để quản lý kịp điều chỉnh lịch.</p>
+              </div>
+              <div class="box">
+                <div><div class="n ok">9,5<small>/12</small></div><div class="l">Có mặt hôm nay</div></div>
+                <div><div class="n wfh">1,5</div><div class="l">Làm từ xa</div></div>
+                <div><div class="n">1</div><div class="l">Nghỉ phép</div></div>
+                <div><div class="n warn">1</div><div class="l">Đi muộn</div></div>
+                <div><div class="n danger">2</div><div class="l">Ngày xung đột</div></div>
+              </div>
+            </div>
+
+            <!-- Banner xung đột -->
+            <div class="ts-warn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              <div>
+                <b>2 ngày nguy cơ thiếu người</b>
+                <div class="ln">19/11/2026: 8/12 người vắng (WFH 5 + nghỉ 3) — đội sẽ thiếu người</div>
+                <div class="ln">24/11/2026: 8/12 người vắng (WFH 4 + nghỉ 4) — đội sẽ thiếu người</div>
+              </div>
+            </div>
+
+            <!-- Lưới lịch -->
+            <section class="panel">
+              <div class="panel-h">
+                <span class="t">Lưới lịch tháng 11/2026</span>
+                <span class="c">12 người · 21 ngày làm việc</span>
+              </div>
+              <div class="panel-b">
+                <div class="cal">
+                  <div class="cal-h">T2</div><div class="cal-h">T3</div><div class="cal-h">T4</div>
+                  <div class="cal-h">T5</div><div class="cal-h">T6</div><div class="cal-h">T7</div>
+                  <div class="cal-h">CN</div>
+                  <div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell we"><span class="d">1</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">2</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">3</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="off">Nghỉ <b>1</b></span></span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">4</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span><span class="late">Muộn <b>1</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell wfh"><span class="d">5</span><span class="mlist"><span class="ok">Có mặt <b>6</b></span><span class="wfh">WFH <b>4</b></span><span class="off">Nghỉ <b>2</b></span></span><span class="sy">6/12</span></button><button type="button" class="cal-cell"><span class="d">6</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="wfh">WFH <b>1</b></span></span><span class="sy">11/12</span></button><div class="cal-cell we"><span class="d">7</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">8</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">9</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">10</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="off">Nghỉ <b>1</b></span></span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">11</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="wfh">WFH <b>1</b></span></span><span class="sy">11/12</span></button><button type="button" class="cal-cell wfh"><span class="d">12</span><span class="mlist"><span class="ok">Có mặt <b>8</b></span><span class="wfh">WFH <b>3</b></span><span class="off">Nghỉ <b>1</b></span></span><span class="sy">8/12</span></button><button type="button" class="cal-cell"><span class="d">13</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><div class="cal-cell we"><span class="d">14</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">15</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">16</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">17</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span><span class="late">Muộn <b>1</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">18</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell conf"><span class="d">19</span><span class="conf">!</span><span class="mlist"><span class="ok">Có mặt <b>4</b></span><span class="wfh">WFH <b>5</b></span><span class="off">Nghỉ <b>3</b></span></span><span class="sy">4/12</span></button><button type="button" class="cal-cell"><span class="d">20</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="wfh">WFH <b>1</b></span></span><span class="sy">11/12</span></button><div class="cal-cell we"><span class="d">21</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">22</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">23</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="off">Nghỉ <b>1</b></span></span><span class="sy">11/12</span></button><button type="button" class="cal-cell conf"><span class="d">24</span><span class="conf">!</span><span class="mlist"><span class="ok">Có mặt <b>4</b></span><span class="wfh">WFH <b>4</b></span><span class="off">Nghỉ <b>4</b></span></span><span class="sy">4/12</span></button><button type="button" class="cal-cell"><span class="d">25</span><span class="mlist"><span class="ok">Có mặt <b>11</b></span><span class="wfh">WFH <b>1</b></span></span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">26</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button><button type="button" class="cal-cell sel"><span class="d">27</span><span class="mlist"><span class="ok">Có mặt <b>9,5</b></span><span class="wfh">WFH <b>1,5</b></span><span class="off">Nghỉ <b>1</b></span><span class="late">Muộn <b>1</b></span></span><span class="sy">9,5/12</span></button><div class="cal-cell we"><span class="d">28</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">29</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">30</span><span class="mlist"><span class="ok">Có mặt <b>12</b></span></span><span class="sy">12/12</span></button>
+                </div>
+                <div class="legend">
+                  <span class="lg"><i style="background:rgb(var(--ok))"></i>Đủ người</span>
+                  <span class="lg"><i style="background:rgb(var(--wfh))"></i>Nhiều người WFH</span>
+                  <span class="lg"><i style="background:rgb(var(--warn))"></i>Nguy cơ thiếu người (≥60% vắng)</span>
+                  <span class="lg"><i style="background:rgb(var(--ink-muted))"></i>Cuối tuần</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Chi tiết ngày đã chọn -->
+            <section class="panel">
+              <div class="panel-h">
+                <span class="t">Chi tiết ngày 27/11/2026</span>
+                <span style="font-size:11px;color:rgb(var(--ink-muted))">Thứ Sáu</span>
+                <button class="close-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg>Đóng</button>
+              </div>
+              <div class="panel-b">
+                <div class="detail-grid">
+                  <div class="dcell"><div class="l">Có mặt</div><div class="v ok">9,5 / 12 người</div></div>
+                  <div class="dcell"><div class="l">Làm từ xa (WFH)</div><div class="v" style="color:rgb(var(--wfh))">1,5 người</div></div>
+                  <div class="dcell"><div class="l">Nghỉ phép</div><div class="v" style="color:rgb(var(--info))">1 người</div></div>
+                  <div class="dcell"><div class="l">Đi muộn / về sớm</div><div class="v" style="color:rgb(var(--warn))">1 người</div></div>
+                </div>
+                <div class="ts-entries"><div class="ts-entry"><span class="av">VA</span><span class="who"><span class="nm">Vũ Anh</span><span class="cd">136ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">TM</span><span class="who"><span class="nm">Trần Minh</span><span class="cd">204ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">HY</span><span class="who"><span class="nm">Hoàng Yến</span><span class="cd">175ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">BS</span><span class="who"><span class="nm">Bùi Sơn</span><span class="cd">198ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">ML</span><span class="who"><span class="nm">Mai Linh</span><span class="cd">221ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">TL</span><span class="who"><span class="nm">Trịnh Long</span><span class="cd">143ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">CV</span><span class="who"><span class="nm">Cao Vy</span><span class="cd">209ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">ND</span><span class="who"><span class="nm">Ninh Duy</span><span class="cd">167ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="ts-entry"><span class="av">DQ</span><span class="who"><span class="nm">Đỗ Quân</span><span class="cd">112ACT</span><span class="dt">Vào 09:12 · muộn 42 phút</span></span><span class="chip chip-warn">Đi muộn</span></div><div class="ts-entry"><span class="av">LH</span><span class="who"><span class="nm">Lê Hoa</span><span class="cd">187ACT</span><span class="dt">WFH cả ngày</span></span><span class="chip chip-wfh">WFH</span></div><div class="ts-entry"><span class="av">PK</span><span class="who"><span class="nm">Phạm Khánh</span><span class="cd">231ACT</span><span class="dt">WFH buổi sáng · làm việc 13:30–17:30</span></span><span class="chip chip-wfh">WFH sáng</span></div><div class="ts-entry"><span class="av">NB</span><span class="who"><span class="nm">Nguyễn Bảo</span><span class="cd">156ACT</span><span class="dt">Nghỉ phép cả ngày</span></span><span class="chip chip-info">Nghỉ phép</span></div></div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══ Mobile 390 ═══════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="m">
+      <div class="m-top">
+        <div class="brand">ACT-HKT<small>ASCEND TECHNOLOGY</small></div>
+        <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">17</span></div>
+      </div>
+
+      <div class="m-body">
+        <div>
+          <div class="m-sec-t">Chấm công · Lịch nhóm</div>
+          <div class="m-h1 h1">Lịch nhóm</div>
+          <div class="m-sub">Phòng Kỹ thuật · 12 người · cảnh báo ≥60% vắng</div>
+        </div>
+
+        <div class="m-tools">
+          <div class="monthnav">
+            <button class="mnav-btn" type="button" style="width:34px;height:34px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <span class="mnav-lab" style="height:34px;flex:1;justify-content:center">Tháng 11 / 2026</span>
+            <button class="mnav-btn" type="button" style="width:34px;height:34px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+          </div>
+          <div class="seg2">
+            <button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15h2M14 15h2"/></svg>Tuần</button>
+            <button type="button" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15h8M8 18h5"/></svg>Tháng</button>
+          </div>
+        </div>
+
+        <div class="m-stats">
+          <div class="m-stat ok">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.9"/></svg>Có mặt hôm nay</div>
+            <div class="val">9,5<small>/12</small></div>
+            <div class="sub">Thứ Sáu, 27/11</div>
+          </div>
+          <div class="m-stat wfh">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>Làm từ xa</div>
+            <div class="val">1,5<small>người</small></div>
+            <div class="sub">Đơn WFH đã duyệt</div>
+          </div>
+          <div class="m-stat acc">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2"/><path d="M16 3h5v5"/><path d="M21 3l-7 7"/></svg>Nghỉ phép</div>
+            <div class="val">1<small>người</small></div>
+            <div class="sub">Nghỉ cả ngày</div>
+          </div>
+          <div class="m-stat warn">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đi muộn</div>
+            <div class="val">1<small>người</small></div>
+            <div class="sub">Vào 09:12</div>
+          </div>
+          <div class="m-stat warn span2">
+            <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Ngày nguy cơ thiếu người</div>
+            <div class="val">2<small>ngày</small></div>
+            <div class="sub">19/11 và 24/11 · 8/12 người vắng</div>
+          </div>
+        </div>
+
+        <div class="m-conflict">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <span><b>Thiếu người 19/11 &amp; 24/11:</b> mỗi ngày 8/12 người vắng (WFH + nghỉ phép) — cân nhắc dời lịch họp nhóm.</span>
+        </div>
+
+        <section class="panel">
+          <div class="panel-h" style="padding:11px 12px">
+            <span class="t" style="font-size:12.5px">Lưới lịch tháng 11/2026</span>
+            <span class="c">21 ngày làm</span>
+          </div>
+          <div class="panel-b" style="padding:11px 12px 13px">
+            <div class="cal m-cal">
+              <div class="cal-h">T2</div><div class="cal-h">T3</div><div class="cal-h">T4</div>
+              <div class="cal-h">T5</div><div class="cal-h">T6</div><div class="cal-h">T7</div>
+              <div class="cal-h">CN</div>
+              <div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell blank"></div><div class="cal-cell we"><span class="d">1</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">2</span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">3</span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">4</span><span class="sy">12/12</span></button><button type="button" class="cal-cell wfh"><span class="d">5</span><span class="sy">6/12</span></button><button type="button" class="cal-cell"><span class="d">6</span><span class="sy">11/12</span></button><div class="cal-cell we"><span class="d">7</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">8</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">9</span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">10</span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">11</span><span class="sy">11/12</span></button><button type="button" class="cal-cell wfh"><span class="d">12</span><span class="sy">8/12</span></button><button type="button" class="cal-cell"><span class="d">13</span><span class="sy">12/12</span></button><div class="cal-cell we"><span class="d">14</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">15</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">16</span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">17</span><span class="sy">12/12</span></button><button type="button" class="cal-cell"><span class="d">18</span><span class="sy">12/12</span></button><button type="button" class="cal-cell conf"><span class="d">19</span><span class="conf">!</span><span class="sy">4/12</span></button><button type="button" class="cal-cell"><span class="d">20</span><span class="sy">11/12</span></button><div class="cal-cell we"><span class="d">21</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">22</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">23</span><span class="sy">11/12</span></button><button type="button" class="cal-cell conf"><span class="d">24</span><span class="conf">!</span><span class="sy">4/12</span></button><button type="button" class="cal-cell"><span class="d">25</span><span class="sy">11/12</span></button><button type="button" class="cal-cell"><span class="d">26</span><span class="sy">12/12</span></button><button type="button" class="cal-cell sel"><span class="d">27</span><span class="sy">9,5/12</span></button><div class="cal-cell we"><span class="d">28</span><span class="sy">—</span></div><div class="cal-cell we"><span class="d">29</span><span class="sy">—</span></div><button type="button" class="cal-cell"><span class="d">30</span><span class="sy">12/12</span></button>
+            </div>
+            <div class="m-legend">
+              <span class="lg"><i style="background:rgb(var(--ok))"></i>Đủ người</span>
+              <span class="lg"><i style="background:rgb(var(--wfh))"></i>Nhiều WFH</span>
+              <span class="lg"><i style="background:rgb(var(--warn))"></i>Nguy cơ thiếu người</span>
+              <span class="lg"><i style="background:rgb(var(--ink-muted))"></i>Cuối tuần</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="m-detail">
+          <div class="m-detail-h">
+            <span class="t">Chi tiết ngày 27/11/2026</span>
+            <span style="font-size:10.5px;color:rgb(var(--ink-muted))">(T6)</span>
+            <button class="close-btn" type="button" style="height:26px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg>Đóng</button>
+          </div>
+          <div class="m-detail-b">
+            <div class="m-dgrid">
+              <div class="m-dcell"><div class="l">Có mặt</div><div class="v" style="color:rgb(var(--ok));font-family:'JetBrains Mono',monospace">9,5 / 12</div></div>
+              <div class="m-dcell"><div class="l">Làm từ xa (WFH)</div><div class="v" style="color:rgb(var(--wfh));font-family:'JetBrains Mono',monospace">1,5</div></div>
+              <div class="m-dcell"><div class="l">Nghỉ phép</div><div class="v" style="color:rgb(var(--info));font-family:'JetBrains Mono',monospace">1</div></div>
+              <div class="m-dcell"><div class="l">Đi muộn / về sớm</div><div class="v" style="color:rgb(var(--warn));font-family:'JetBrains Mono',monospace">1</div></div>
+            </div>
+            <div class="m-entries">
+              <div class="m-entry"><span class="av">VA</span><span><span class="nm">Vũ Anh</span><span class="cd">136ACT</span><span class="dt">Cả ngày · 08:30–17:30</span></span><span class="chip chip-ok">Có mặt</span></div><div class="m-entry"><span class="av">DQ</span><span><span class="nm">Đỗ Quân</span><span class="cd">112ACT</span><span class="dt">Vào 09:12 · muộn 42 phút</span></span><span class="chip chip-warn">Đi muộn</span></div><div class="m-entry"><span class="av">LH</span><span><span class="nm">Lê Hoa</span><span class="cd">187ACT</span><span class="dt">WFH cả ngày</span></span><span class="chip chip-wfh">WFH</span></div><div class="m-entry"><span class="av">PK</span><span><span class="nm">Phạm Khánh</span><span class="cd">231ACT</span><span class="dt">WFH buổi sáng · 13:30–17:30</span></span><span class="chip chip-wfh">WFH sáng</span></div><div class="m-entry"><span class="av">NB</span><span><span class="nm">Nguyễn Bảo</span><span class="cd">156ACT</span><span class="dt">Nghỉ phép cả ngày</span></span><span class="chip chip-info">Nghỉ phép</span></div>
+              <div class="m-more">+ 7 người khác đang có mặt đủ ngày</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="m-nav">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+        <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>OKR</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Menu</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>
