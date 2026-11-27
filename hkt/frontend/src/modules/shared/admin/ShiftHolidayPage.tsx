@@ -1,4 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Coffee,
+  Info,
+  Landmark,
+  Moon,
+  Pencil,
+  Plus,
+  Power,
+  Shield,
+  Sun,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { Button } from '../../../components/common/Button';
+import { Badge } from '../../../components/common/Badge';
+import { Modal } from '../../../components/common/Modal';
+import { Panel } from '../../../components/common/Panel';
 
 interface Shift {
   id?: string;
@@ -99,22 +121,23 @@ const CsvPicker: React.FC<{
 
   return (
     <div className={disabled ? 'opacity-50' : ''}>
-      <div className="font-semibold">{label}</div>
-      <details className="mt-1 border border-line rounded-lg bg-surface">
-        <summary className="cursor-pointer px-2 py-1.5 text-[11px] text-ink-muted">
+      <div className="font-semibold text-ink">{label}</div>
+      <details className="mt-1 rounded-[10px] border border-line bg-surface">
+        <summary className="cursor-pointer px-2.5 py-2 text-[11px] text-ink-muted">
           {selected.length ? `${selected.length} đã chọn — bấm để sửa` : 'Chưa chọn — bấm để chọn'}
         </summary>
-        <div className="p-2 border-t border-line space-y-1">
+        <div className="space-y-1 border-t border-line p-2">
           <input
             disabled={disabled}
-            className="w-full border border-line rounded p-1.5 text-[11px]"
+            aria-label={`Tìm trong ${label}`}
+            className="w-full rounded-[10px] border border-line bg-canvas px-2.5 py-1.5 text-[11px] text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
             placeholder="Tìm…"
             value={q}
             onChange={e => setQ(e.target.value)}
           />
-          <div className="max-h-36 overflow-auto space-y-0.5">
+          <div className="max-h-36 space-y-0.5 overflow-auto">
             {shown.map(o => (
-              <label key={o.value} className="flex items-center gap-2 text-[11px]">
+              <label key={o.value} className="flex items-center gap-2 text-[11px] text-ink">
                 <input type="checkbox" disabled={disabled} checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
                 <span>{o.label || o.value}</span>
                 {o.sub && <span className="text-ink-muted">{o.sub}</span>}
@@ -127,9 +150,20 @@ const CsvPicker: React.FC<{
       {selected.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {selected.map(v => (
-            <span key={v} className="inline-flex items-center gap-1 rounded bg-canvas border border-line px-1.5 py-0.5 text-[10px]">
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas px-1.5 py-0.5 text-[10px] text-ink-secondary"
+            >
               {labelOf(v)}
-              <button type="button" disabled={disabled} className="text-ink-muted hover:text-status-danger" onClick={() => toggle(v)}>×</button>
+              <button
+                type="button"
+                disabled={disabled}
+                aria-label={`Bỏ chọn ${labelOf(v)}`}
+                className="cursor-pointer text-ink-muted transition-colors hover:text-status-danger"
+                onClick={() => toggle(v)}
+              >
+                <X className="h-3 w-3" />
+              </button>
             </span>
           ))}
         </div>
@@ -303,215 +337,513 @@ export const ShiftHolidayPage: React.FC = () => {
 
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      {toast && <div className="fixed top-16 right-6 z-[100] bg-status-ok text-on-ok px-4 py-2 rounded text-xs font-semibold">{toast}</div>}
-      <div className="bg-canvas border border-line rounded-xl p-6">
-        <h1 className="text-xl font-bold text-ink mt-1">Ca làm việc & lịch nghỉ lễ</h1>
-        <p className="text-xs text-ink-muted mt-1">Ca chuẩn (SHIFT_STANDARD) là <b className="text-ink">base mặc định cho toàn công ty</b> — sửa được, không tắt/xóa được, không cần áp ca. Ca khác là <b className="text-ink">ca ngoại lệ</b>: áp theo <b className="text-ink">nhóm / chức danh / mã nhân viên</b>, có thể <b className="text-ink">loại trừ</b> thành viên và xếp thứ tự ưu tiên (ca dưới cùng thắng). Ca linh hoạt (8–10h · 17–19h, đủ 8h = 1 công) · geofence + dải IP · ngày lễ theo năm.</p>
-        <div className="flex gap-2 mt-3">
-          {(['shifts', 'holidays'] as const).map(x => (
-            <button key={x} onClick={() => setTab(x)} className={`inline-flex items-center h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors ${tab === x ? 'bg-ink text-canvas border-ink' : 'bg-surface border-line text-ink-secondary'}`}>
-              {x === 'shifts' ? 'Ca làm việc' : 'Lịch nghỉ lễ'}
-            </button>
-          ))}
+    <div className="mx-auto max-w-5xl space-y-4 pb-24">
+      {toast && (
+        <div className="fixed right-6 top-16 z-[100] flex items-center gap-2 rounded-xl bg-status-ok px-4 py-2 text-xs font-semibold text-on-ok shadow-lg">
+          <CheckCircle2 className="h-4 w-4" />
+          {toast}
+        </div>
+      )}
+
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Clock className="h-3.5 w-3.5" />
+            Cấu hình chấm công
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Ca làm việc &amp; lịch nghỉ lễ
+            </h1>
+            <Badge variant="accent">P0</Badge>
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            Ca chuẩn <strong className="text-ink">SHIFT_STANDARD</strong> là base mặc định cho toàn công ty — sửa được,
+            không tắt/xóa được. Ca khác là <strong className="text-ink">ca ngoại lệ</strong>: áp theo{' '}
+            <strong className="text-ink">nhóm / chức danh / mã nhân viên</strong>, có thể{' '}
+            <strong className="text-ink">loại trừ</strong> thành viên và xếp thứ tự ưu tiên (ca dưới cùng thắng). Ca linh
+            hoạt (8–10h · 17–19h, đủ 8h = 1 công) · geofence + dải IP · ngày lễ theo năm.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button variant="primary" size="md" onClick={openAdd}>
+            <Plus className="h-3.5 w-3.5" />
+            Thêm ca
+          </Button>
         </div>
       </div>
-      {error && <div className="text-sm text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-3">{error}</div>}
+
+      {/* Segmented control — đúng spec: ô 34px trong khung p-4px, đang chọn = ink + canvas */}
+      <div role="group" aria-label="Loại cấu hình" className="grid w-full max-w-[340px] grid-cols-2 gap-1 rounded-xl border border-line bg-canvas p-1">
+        {([
+          { key: 'shifts', label: 'Ca làm việc', Icon: Clock },
+          { key: 'holidays', label: 'Lịch nghỉ lễ', Icon: Calendar },
+        ] as const).map((v) => {
+          const on = tab === v.key;
+          return (
+            <button
+              key={v.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setTab(v.key)}
+              className={`flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-bold transition-colors ${
+                on ? 'bg-ink text-canvas' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
+              }`}
+            >
+              <v.Icon className="h-3.5 w-3.5" />
+              <span className="truncate">{v.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger">
+          {error}
+        </div>
+      )}
 
       {tab === 'shifts' ? (
-        <div className="bg-surface border border-line rounded-xl p-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <p className="text-xs text-ink-muted">
-              <b className="text-ink">Ca chuẩn</b> luôn áp dụng toàn công ty — không tắt/xóa được, chỉ sửa khung giờ.
-              Ca ngoại lệ xếp từ trên xuống: <b className="text-ink">ca càng ở dưới càng ưu tiên cao</b> — một người khớp
-              nhiều ca sẽ nhận ca ở dưới cùng. Dùng <b className="text-ink">↑/↓</b> để đổi thứ tự ghi đè.
+        <div className="space-y-3">
+          <div className="flex items-start gap-2.5 rounded-[13px] border border-line bg-surface p-3.5 text-xs text-ink-muted shadow-2xs">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+            <p>
+              <strong className="text-ink">Ca chuẩn</strong> luôn áp dụng toàn công ty — không tắt/xóa được, chỉ sửa
+              khung giờ. Ca ngoại lệ xếp từ trên xuống:{' '}
+              <strong className="text-ink">ca càng ở dưới càng ưu tiên cao</strong> — một người khớp nhiều ca sẽ nhận ca ở
+              dưới cùng. Dùng nút <strong className="text-ink">Lên / Xuống</strong> để đổi thứ tự ghi đè.
             </p>
-            <button className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent shrink-0" onClick={openAdd}>+ Thêm ca</button>
           </div>
+
           {orderedShifts.map(s => {
             const ruleShifts = orderedShifts.filter(x => !isBaseShift(x));
             const ruleIndex = ruleShifts.findIndex(x => x.code === s.code);
             const ruleCount = ruleShifts.length;
+            const hh = (v?: string | null) => (v || '').slice(0, 5);
             return (
-              <div key={s.code} className={`border rounded-lg p-3 mb-2 text-sm ${isBaseShift(s) ? 'border-accent/40 bg-accent/5' : 'border-line'} ${!isBaseShift(s) && !s.isActive ? 'opacity-60' : ''}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center flex-wrap gap-y-1">
-                    <span className="font-mono text-xs text-accent mr-2">{s.code}</span><span className="font-semibold">{s.name}</span>
-                    {isBaseShift(s)
-                      ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent text-on-accent">Mặc định toàn công ty</span>
-                      : <>
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-warn-soft text-status-warn">ca ngoại lệ</span>
-                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${s.isActive ? 'bg-status-ok-soft text-status-ok' : 'bg-line text-ink'}`}>
-                            {s.isActive ? `ưu tiên #${ruleIndex + 1}/${ruleCount}` : 'đang tắt'}
-                          </span>
-                          {s.isActive && ruleIndex === ruleCount - 1 && (
-                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-danger-soft text-status-danger">ưu tiên cao nhất</span>
-                          )}
-                        </>}
-                    {s.isFlexible && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-status-ok-soft text-status-ok">linh hoạt</span>}
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    {!isBaseShift(s) && (
+              <div
+                key={s.code}
+                className={`overflow-hidden rounded-[13px] border bg-surface shadow-2xs ${
+                  isBaseShift(s) ? 'border-accent-line' : 'border-line'
+                } ${!isBaseShift(s) && !s.isActive ? 'opacity-60' : ''}`}
+              >
+                <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-accent-line bg-accent-soft px-[7px] py-[2px] font-mono text-[10.5px] font-bold text-accent-dark">
+                      {s.code}
+                    </span>
+                    <span className="text-sm font-bold text-ink">{s.name}</span>
+                    {isBaseShift(s) ? (
+                      <Badge variant="accent">Mặc định toàn công ty</Badge>
+                    ) : (
                       <>
-                        <button className="text-xs px-2 py-1 rounded border border-line disabled:opacity-40" disabled={ruleIndex <= 0}
-                          title="Đưa ca lên — ưu tiên thấp hơn" onClick={() => moveShift(s, -1)}>↑</button>
-                        <button className="text-xs px-2 py-1 rounded border border-line disabled:opacity-40" disabled={ruleIndex >= ruleCount - 1}
-                          title="Đưa ca xuống — ưu tiên cao hơn" onClick={() => moveShift(s, 1)}>↓</button>
-                        <button className="text-xs px-2 py-1 rounded border border-line" title={s.isActive ? 'Tắt ca — nhân sự rơi về ca thấp hơn/ca chuẩn' : 'Bật ca'}
-                          onClick={() => toggleShift(s)}>{s.isActive ? 'Tắt' : 'Bật'}</button>
+                        <Badge variant="warn">ca ngoại lệ</Badge>
+                        {s.isActive ? (
+                          <Badge variant="ok">
+                            ưu tiên #{ruleIndex + 1}/{ruleCount}
+                          </Badge>
+                        ) : (
+                          <Badge variant="gray">đang tắt</Badge>
+                        )}
+                        {s.isActive && ruleIndex === ruleCount - 1 && (
+                          <Badge variant="danger">ưu tiên cao nhất</Badge>
+                        )}
                       </>
                     )}
-                    <button className="text-xs px-2 py-1 rounded border border-line" title={isBaseShift(s) ? 'Sửa khung giờ ca chuẩn — áp dụng ngay cho toàn công ty' : undefined} onClick={() => openEdit(s)}>Sửa</button>
+                    {s.isFlexible && <Badge variant="ok">linh hoạt</Badge>}
+                  </div>
+
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                     {!isBaseShift(s) && (
-                      <button className="text-xs px-2 py-1 rounded border border-status-danger-line text-status-danger" title="Xóa ca — nhân sự đang dùng về ca chuẩn" onClick={() => deleteShift(s)}>Xóa</button>
+                      <>
+                        <button
+                          type="button"
+                          disabled={ruleIndex <= 0}
+                          onClick={() => moveShift(s, -1)}
+                          title="Đưa ca lên — ưu tiên thấp hơn"
+                          aria-label={`Đưa ca ${s.name} lên — ưu tiên thấp hơn`}
+                          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[9px] border border-line bg-surface text-ink-secondary transition-colors hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={ruleIndex >= ruleCount - 1}
+                          onClick={() => moveShift(s, 1)}
+                          title="Đưa ca xuống — ưu tiên cao hơn"
+                          aria-label={`Đưa ca ${s.name} xuống — ưu tiên cao hơn`}
+                          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[9px] border border-line bg-surface text-ink-secondary transition-colors hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => toggleShift(s)}
+                          title={s.isActive ? 'Tắt ca — nhân sự rơi về ca thấp hơn hoặc ca chuẩn' : 'Bật ca'}
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                          {s.isActive ? 'Tắt' : 'Bật'}
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openEdit(s)}
+                      title={isBaseShift(s) ? 'Sửa khung giờ ca chuẩn — áp dụng ngay cho toàn công ty' : 'Sửa cấu hình ca'}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {isBaseShift(s) ? 'Sửa khung giờ' : 'Sửa'}
+                    </Button>
+                    {!isBaseShift(s) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteShift(s)}
+                        title="Xóa ca — nhân sự đang dùng về ca chuẩn"
+                        className="border-status-danger-line text-status-danger hover:bg-status-danger-soft"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Xóa
+                      </Button>
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-ink-muted mt-1">
-                  {s.checkInStart?.slice(0,5)}–{s.checkInEnd?.slice(0,5)} / {s.checkOutStart?.slice(0,5)}–{s.checkOutEnd?.slice(0,5)} · nghỉ trưa {s.lunchBreakStart?.slice(0,5)}–{s.lunchBreakEnd?.slice(0,5)} · {s.requiredWorkHours}h
-                </div>
-                {s.isFlexible && <div className="text-xs text-status-ok mt-1">Khung linh hoạt: vào {s.flexibleCheckinFrom?.slice(0,5)}–{s.flexibleCheckinTo?.slice(0,5)} · ra {s.flexibleCheckoutFrom?.slice(0,5)}–{s.flexibleCheckoutTo?.slice(0,5)} — đủ {s.requiredWorkHours}h trong khung = 1 công</div>}
-                <div className="text-xs text-ink-muted mt-1">
-                  {isBaseShift(s)
-                    ? 'Áp dụng mặc định cho mọi nhân sự không khớp ca ngoại lệ nào · geofence ' + s.geofenceRadiusM + 'm · IP ' + (s.ipRanges || '—')
-                    : `Gán: nhóm ${s.targetGroup || '—'} · chức danh ${s.targetPosition || '—'} · nhân viên ${s.targetEmployees || '—'} · loại trừ ${s.excludeEmployees || '—'} · geofence ${s.geofenceRadiusM}m`}
+
+                <div className="space-y-3 px-4 py-3.5">
+                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    <div className="rounded-[10px] border border-line bg-canvas px-3 py-2">
+                      <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
+                        <Sun className="h-3 w-3" />
+                        Vào ca
+                      </div>
+                      <div className="mt-1 font-mono text-[13px] font-bold tracking-[-0.02em] text-ink">
+                        {hh(s.checkInStart)}
+                        <span className="text-ink-muted"> – {hh(s.checkInEnd)}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-[10px] border border-line bg-canvas px-3 py-2">
+                      <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
+                        <Moon className="h-3 w-3" />
+                        Ra ca
+                      </div>
+                      <div className="mt-1 font-mono text-[13px] font-bold tracking-[-0.02em] text-ink">
+                        {hh(s.checkOutStart)}
+                        <span className="text-ink-muted"> – {hh(s.checkOutEnd)}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-[10px] border border-line bg-canvas px-3 py-2">
+                      <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
+                        <Coffee className="h-3 w-3" />
+                        Nghỉ trưa
+                      </div>
+                      <div className="mt-1 font-mono text-[13px] font-bold tracking-[-0.02em] text-ink">
+                        {hh(s.lunchBreakStart)}
+                        <span className="text-ink-muted"> – {hh(s.lunchBreakEnd)}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-[10px] border border-line bg-canvas px-3 py-2">
+                      <div className="flex items-center gap-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink-muted">
+                        <Landmark className="h-3 w-3" />
+                        Giờ/ngày
+                      </div>
+                      <div className="mt-1 font-mono text-[13px] font-bold tracking-[-0.02em] text-ink">
+                        {s.requiredWorkHours}
+                        <span className="font-sans text-[10.5px] font-semibold text-ink-muted"> giờ</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {s.isFlexible && (
+                    <div className="flex items-start gap-2.5 rounded-[11px] border border-status-ok-line bg-status-ok-soft px-3 py-2.5 text-[11.5px] text-status-ok">
+                      <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <div>
+                        <strong className="font-bold">Khung linh hoạt:</strong> vào {hh(s.flexibleCheckinFrom)}–
+                        {hh(s.flexibleCheckinTo)} · ra {hh(s.flexibleCheckoutFrom)}–{hh(s.flexibleCheckoutTo)} — đủ{' '}
+                        {s.requiredWorkHours}h trong khung = 1 công
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-2.5 border-t border-line-soft pt-3 text-[11.5px] text-ink-muted">
+                    <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                    <div>
+                      {isBaseShift(s) ? (
+                        <>
+                          Áp dụng mặc định cho mọi nhân sự không khớp ca ngoại lệ nào · geofence{' '}
+                          <strong className="font-semibold text-ink-secondary">{s.geofenceRadiusM}m</strong> · IP{' '}
+                          <strong className="font-semibold text-ink-secondary">{s.ipRanges || '—'}</strong>
+                        </>
+                      ) : (
+                        <>
+                          Gán: nhóm <strong className="font-semibold text-ink-secondary">{s.targetGroup || '—'}</strong> ·
+                          chức danh <strong className="font-semibold text-ink-secondary">{s.targetPosition || '—'}</strong> ·
+                          nhân viên{' '}
+                          <strong className="font-semibold text-ink-secondary">{s.targetEmployees || '—'}</strong> · loại trừ{' '}
+                          <strong className="font-semibold text-ink-secondary">{s.excludeEmployees || '—'}</strong> ·
+                          geofence <strong className="font-semibold text-ink-secondary">{s.geofenceRadiusM}m</strong>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="bg-surface border border-line rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs text-ink-muted">
-              <span className="font-semibold text-ink">Ngày lễ đã cấu hình</span> · {holidays.length} kỳ nghỉ
-            </div>
-            <button onClick={() => openHolidayModal()} className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent font-semibold">+ Thêm ngày lễ</button>
-          </div>
+        <Panel
+          title="Ngày lễ đã cấu hình"
+          subtitle={`${holidays.length} kỳ nghỉ`}
+          action={
+            <Button variant="primary" size="sm" onClick={() => openHolidayModal()}>
+              <Plus className="h-3.5 w-3.5" />
+              Thêm ngày lễ
+            </Button>
+          }
+          bodyClassName="p-0"
+        >
           {!holidays.length && (
-            <div className="text-sm text-ink-muted border border-dashed border-line rounded-lg p-4 text-center">
-              Chưa có ngày nghỉ lễ nào. Bấm “+ Thêm ngày lễ” để tạo.
+            <div className="border-b border-dashed border-line p-6 text-center text-sm text-ink-muted">
+              Chưa có ngày nghỉ lễ nào. Bấm “Thêm ngày lễ” để tạo.
             </div>
           )}
           {holidays.map(h => {
             const until = h.endDate && h.endDate !== h.holidayDate ? ` → ${h.endDate}` : '';
             return (
-              <div key={h.id || h.holidayDate} className="flex items-center justify-between gap-3 border-b border-line py-2 text-sm last:border-0">
+              <div
+                key={h.id || h.holidayDate}
+                className="flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3 last:border-0"
+              >
                 <div className="min-w-0">
-                  <div className="font-medium truncate">{h.name}</div>
-                  <div className="text-xs text-ink-muted">
-                    {h.holidayDate}{until} · {h.isPaid ? 'hưởng lương' : 'không lương'} · thêm bởi {h.createdByName || 'hệ thống'}
+                  <div className="truncate text-[12.5px] font-semibold text-ink">{h.name}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-muted">
+                    <span className="font-mono">{h.holidayDate}{until}</span>
+                    <Badge variant={h.isPaid ? 'ok' : 'gray'}>{h.isPaid ? 'hưởng lương' : 'không lương'}</Badge>
+                    <span>thêm bởi {h.createdByName || 'hệ thống'}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openHolidayModal(h)} className="text-xs px-2 py-1 rounded border border-line">Sửa</button>
-                  <button onClick={() => deleteHoliday(h)} className="text-xs px-2 py-1 rounded border border-status-danger-line text-status-danger">Xóa</button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button variant="secondary" size="sm" onClick={() => openHolidayModal(h)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    Sửa
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteHoliday(h)}
+                    className="border-status-danger-line text-status-danger hover:bg-status-danger-soft"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Xóa
+                  </Button>
                 </div>
               </div>
             );
           })}
-        </div>
+        </Panel>
       )}
 
-      {isHolidayOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => setIsHolidayOpen(false)}>
-          <form className="bg-surface rounded-xl p-5 w-full max-w-md space-y-3" onClick={e => e.stopPropagation()} onSubmit={saveHoliday}>
-            <h3 className="text-base font-bold">{editingHolidayId ? 'Sửa ngày nghỉ lễ' : 'Thêm ngày nghỉ lễ'}</h3>
-            <label className="block text-xs font-semibold">Tên ngày lễ *
-              <input className="mt-1 w-full border border-line rounded-lg p-2" placeholder="Ví dụ: Tết Nguyên Đán, Giáng Sinh…" value={holidayForm.name} onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })} />
+      <Modal
+        isOpen={isHolidayOpen}
+        onClose={() => setIsHolidayOpen(false)}
+        title={editingHolidayId ? 'Sửa ngày nghỉ lễ' : 'Thêm ngày nghỉ lễ'}
+      >
+        <form onSubmit={saveHoliday} className="space-y-3">
+          <label className="block text-xs font-semibold text-ink">
+            Tên ngày lễ <span className="text-status-danger">*</span>
+            <input
+              className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
+              placeholder="Ví dụ: Tết Nguyên Đán, Giáng Sinh…"
+              value={holidayForm.name}
+              onChange={e => setHolidayForm({ ...holidayForm, name: e.target.value })}
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <label className="font-semibold text-ink">
+              Từ ngày <span className="text-status-danger">*</span>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
+                value={holidayForm.startDate}
+                onChange={e => setHolidayForm({ ...holidayForm, startDate: e.target.value, endDate: holidayForm.endDate || e.target.value })}
+              />
             </label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <label className="font-semibold">Từ ngày *
-                <input type="date" className="mt-1 w-full border border-line rounded-lg p-2" value={holidayForm.startDate} onChange={e => setHolidayForm({ ...holidayForm, startDate: e.target.value, endDate: holidayForm.endDate || e.target.value })} />
-              </label>
-              <label className="font-semibold">Đến ngày
-                <input type="date" className="mt-1 w-full border border-line rounded-lg p-2" min={holidayForm.startDate || undefined} value={holidayForm.endDate} onChange={e => setHolidayForm({ ...holidayForm, endDate: e.target.value })} />
-              </label>
-            </div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={holidayForm.isPaid} onChange={e => setHolidayForm({ ...holidayForm, isPaid: e.target.checked })} /> Hưởng lương</label>
-            <div className="text-[11px] text-ink-muted">Để trống “Đến ngày” nếu lễ chỉ diễn ra 1 ngày.</div>
-            {error && <div className="text-xs text-status-danger bg-status-danger-soft border border-status-danger-line rounded-lg p-2">{error}</div>}
-            <div className="flex justify-end gap-2">
-              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => setIsHolidayOpen(false)}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent">Lưu ngày lễ</button>
-            </div>
-          </form>
-        </div>
-      )}
+            <label className="font-semibold text-ink">
+              Đến ngày
+              <input
+                type="date"
+                className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
+                min={holidayForm.startDate || undefined}
+                value={holidayForm.endDate}
+                onChange={e => setHolidayForm({ ...holidayForm, endDate: e.target.value })}
+              />
+            </label>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={holidayForm.isPaid} onChange={e => setHolidayForm({ ...holidayForm, isPaid: e.target.checked })} />
+            Hưởng lương
+          </label>
+          <div className="text-[11px] text-ink-muted">Để trống “Đến ngày” nếu lễ chỉ diễn ra 1 ngày.</div>
+          {error && <div className="rounded-lg border border-status-danger-line bg-status-danger-soft p-2 text-xs text-status-danger">{error}</div>}
+          <div className="flex justify-end gap-2 border-t border-line pt-3">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsHolidayOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Lưu ngày lễ
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {isShiftOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>
-          <form className="bg-surface rounded-xl p-5 w-full max-w-2xl space-y-3 max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()} onSubmit={saveShift}>
-            <h3 className="text-base font-bold">{editing ? 'Sửa ca' : 'Thêm ca'}</h3>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <label className="font-semibold">Mã *<input className="mt-1 w-full border border-line rounded-lg p-2" value={form.code} disabled={!!editing} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></label>
-              <label className="font-semibold">Tên *<input className="mt-1 w-full border border-line rounded-lg p-2" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
-              <label className="font-semibold">Vào từ<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.checkInStart} onChange={e => setForm({ ...form, checkInStart: e.target.value })} /></label>
-              <label className="font-semibold">Vào đến<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.checkInEnd} onChange={e => setForm({ ...form, checkInEnd: e.target.value })} /></label>
-              <label className="font-semibold">Ra từ<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.checkOutStart} onChange={e => setForm({ ...form, checkOutStart: e.target.value })} /></label>
-              <label className="font-semibold">Ra đến<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.checkOutEnd} onChange={e => setForm({ ...form, checkOutEnd: e.target.value })} /></label>
-              <label className="font-semibold">Nghỉ trưa từ<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.lunchBreakStart} onChange={e => setForm({ ...form, lunchBreakStart: e.target.value })} /></label>
-              <label className="font-semibold">Nghỉ trưa đến<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.lunchBreakEnd} onChange={e => setForm({ ...form, lunchBreakEnd: e.target.value })} /></label>
-              <label className="font-semibold">Số giờ/ngày<input type="number" step="0.5" className="mt-1 w-full border border-line rounded-lg p-2" value={form.requiredWorkHours} onChange={e => setForm({ ...form, requiredWorkHours: Number(e.target.value) })} /></label>
-              <label className="font-semibold">Geofence (m)<input type="number" className="mt-1 w-full border border-line rounded-lg p-2" value={form.geofenceRadiusM} onChange={e => setForm({ ...form, geofenceRadiusM: Number(e.target.value) })} /></label>
-            </div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isFlexible} onChange={e => setForm({ ...form, isFlexible: e.target.checked })} /> Ca linh hoạt</label>
-            {form.isFlexible && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <label>Check-in từ<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.flexibleCheckinFrom} onChange={e => setForm({ ...form, flexibleCheckinFrom: e.target.value })} /></label>
-                <label>đến<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.flexibleCheckinTo} onChange={e => setForm({ ...form, flexibleCheckinTo: e.target.value })} /></label>
-                <label>Check-out từ<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.flexibleCheckoutFrom} onChange={e => setForm({ ...form, flexibleCheckoutFrom: e.target.value })} /></label>
-                <label>đến<input type="time" className="mt-1 w-full border border-line rounded-lg p-2" value={form.flexibleCheckoutTo} onChange={e => setForm({ ...form, flexibleCheckoutTo: e.target.value })} /></label>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <CsvPicker
-                label="Nhóm áp dụng"
-                hint="Chọn một hoặc nhiều nhóm — ca khớp nếu nhân sự thuộc bất kỳ nhóm nào."
-                options={teamOptions}
-                value={form.targetGroup}
-                disabled={isBaseShift(form)}
-                onChange={v => setForm({ ...form, targetGroup: v })}
+      <Modal
+        isOpen={isShiftOpen}
+        onClose={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}
+        title={editing ? `Sửa ca — ${editing.name}` : 'Thêm ca làm việc'}
+        maxWidth="2xl"
+      >
+        <form onSubmit={saveShift} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <label className="font-semibold text-ink">
+              Mã <span className="text-status-danger">*</span>
+              <input
+                className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 disabled:opacity-60"
+                value={form.code}
+                disabled={!!editing}
+                onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
               />
-              <CsvPicker
-                label="Chức danh áp dụng"
-                hint="Chọn một hoặc nhiều chức danh."
-                options={positionOptions}
-                value={form.targetPosition}
-                disabled={isBaseShift(form)}
-                onChange={v => setForm({ ...form, targetPosition: v })}
+            </label>
+            <label className="font-semibold text-ink">
+              Tên <span className="text-status-danger">*</span>
+              <input
+                className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
               />
-              <CsvPicker
-                label="Nhân viên áp dụng"
-                hint="Chọn trực tiếp nhân sự cụ thể (ngoài phạm vi nhóm/chức danh)."
-                options={employeeOptions}
-                value={form.targetEmployees}
-                disabled={isBaseShift(form)}
-                onChange={v => setForm({ ...form, targetEmployees: v })}
-              />
-              <CsvPicker
-                label="Loại trừ nhân viên"
-                hint="Nhân sự bị loại trừ không nhận ca này dù khớp nhóm/chức danh."
-                options={employeeOptions}
-                value={form.excludeEmployees}
-                disabled={isBaseShift(form)}
-                onChange={v => setForm({ ...form, excludeEmployees: v })}
-              />
-              <label className="font-semibold col-span-2">Dải IP mạng nội bộ<input className="mt-1 w-full border border-line rounded-lg p-2" value={form.ipRanges} onChange={e => setForm({ ...form, ipRanges: e.target.value })} /></label>
+            </label>
+            <label className="font-semibold text-ink">
+              Vào từ
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.checkInStart} onChange={e => setForm({ ...form, checkInStart: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Vào đến
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.checkInEnd} onChange={e => setForm({ ...form, checkInEnd: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Ra từ
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.checkOutStart} onChange={e => setForm({ ...form, checkOutStart: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Ra đến
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.checkOutEnd} onChange={e => setForm({ ...form, checkOutEnd: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Nghỉ trưa từ
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.lunchBreakStart} onChange={e => setForm({ ...form, lunchBreakStart: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Nghỉ trưa đến
+              <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.lunchBreakEnd} onChange={e => setForm({ ...form, lunchBreakEnd: e.target.value })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Số giờ/ngày
+              <input type="number" step="0.5" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.requiredWorkHours} onChange={e => setForm({ ...form, requiredWorkHours: Number(e.target.value) })} />
+            </label>
+            <label className="font-semibold text-ink">
+              Geofence (m)
+              <input type="number" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.geofenceRadiusM} onChange={e => setForm({ ...form, geofenceRadiusM: Number(e.target.value) })} />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={form.isFlexible} onChange={e => setForm({ ...form, isFlexible: e.target.checked })} />
+            Ca linh hoạt
+          </label>
+          {form.isFlexible && (
+            <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+              <label className="text-ink">
+                Check-in từ
+                <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.flexibleCheckinFrom} onChange={e => setForm({ ...form, flexibleCheckinFrom: e.target.value })} />
+              </label>
+              <label className="text-ink">
+                đến
+                <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.flexibleCheckinTo} onChange={e => setForm({ ...form, flexibleCheckinTo: e.target.value })} />
+              </label>
+              <label className="text-ink">
+                Check-out từ
+                <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.flexibleCheckoutFrom} onChange={e => setForm({ ...form, flexibleCheckoutFrom: e.target.value })} />
+              </label>
+              <label className="text-ink">
+                đến
+                <input type="time" className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.flexibleCheckoutTo} onChange={e => setForm({ ...form, flexibleCheckoutTo: e.target.value })} />
+              </label>
             </div>
-            <div className="flex gap-4 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.requiresHrApproval} onChange={e => setForm({ ...form, requiresHrApproval: e.target.checked })} /> Cần HR duyệt</label>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <CsvPicker
+              label="Nhóm áp dụng"
+              hint="Chọn một hoặc nhiều nhóm — ca khớp nếu nhân sự thuộc bất kỳ nhóm nào."
+              options={teamOptions}
+              value={form.targetGroup}
+              disabled={isBaseShift(form)}
+              onChange={v => setForm({ ...form, targetGroup: v })}
+            />
+            <CsvPicker
+              label="Chức danh áp dụng"
+              hint="Chọn một hoặc nhiều chức danh."
+              options={positionOptions}
+              value={form.targetPosition}
+              disabled={isBaseShift(form)}
+              onChange={v => setForm({ ...form, targetPosition: v })}
+            />
+            <CsvPicker
+              label="Nhân viên áp dụng"
+              hint="Chọn trực tiếp nhân sự cụ thể (ngoài phạm vi nhóm/chức danh)."
+              options={employeeOptions}
+              value={form.targetEmployees}
+              disabled={isBaseShift(form)}
+              onChange={v => setForm({ ...form, targetEmployees: v })}
+            />
+            <CsvPicker
+              label="Loại trừ nhân viên"
+              hint="Nhân sự bị loại trừ không nhận ca này dù khớp nhóm/chức danh."
+              options={employeeOptions}
+              value={form.excludeEmployees}
+              disabled={isBaseShift(form)}
+              onChange={v => setForm({ ...form, excludeEmployees: v })}
+            />
+            <label className="col-span-2 font-semibold text-ink">
+              Dải IP mạng nội bộ
+              <input className="mt-1 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20" value={form.ipRanges} onChange={e => setForm({ ...form, ipRanges: e.target.value })} />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={form.requiresHrApproval} onChange={e => setForm({ ...form, requiresHrApproval: e.target.checked })} />
+            Cần HR duyệt
+          </label>
+
+          {isBaseShift(form) && (
+            <div className="rounded-lg border border-accent-line bg-accent-soft p-2.5 text-xs text-accent-dark">
+              Ca chuẩn luôn áp dụng cho toàn công ty — không cần chọn nhóm/chức danh/nhân viên và không có loại trừ. Mọi ca
+              khác đều là ca ngoại lệ đè lên ca chuẩn theo thứ tự ưu tiên.
             </div>
-            {isBaseShift(form) && (
-              <div className="text-xs text-accent">Ca chuẩn luôn áp dụng cho toàn công ty — không cần chọn nhóm/chức danh/nhân viên và không có loại trừ. Mọi ca khác đều là ca ngoại lệ đè lên ca chuẩn theo thứ tự ưu tiên.</div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button type="button" className="text-xs px-3 py-1.5 rounded border border-line" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>Huỷ</button>
-              <button type="submit" className="text-xs px-3 py-1.5 rounded bg-accent text-on-accent">Lưu ca</button>
-            </div>
-          </form>
-        </div>
-      )}
+          )}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-3">
+            <Button variant="outline" size="sm" type="button" onClick={() => { setEditing(null); setForm(emptyShift); setIsShiftOpen(false); }}>
+              Hủy
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              Lưu ca
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

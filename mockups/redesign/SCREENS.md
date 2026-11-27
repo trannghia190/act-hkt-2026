@@ -46,7 +46,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ✅ | ✅ | ✅ |
-| S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ⬜ | ⬜ | ⬜ |
+| S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ✅ | ✅ | ✅ |
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ⬜ | ⬜ | ⬜ |
 | S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ⬜ | ⬜ | ⬜ |
 | S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ⬜ | ⬜ | ⬜ |
@@ -485,3 +485,26 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   8 điểm lỗi); lọc "Chỉ xem điểm kẹt" giữ đúng nhóm có vấn đề; "Ẩn nhóm rỗng" bỏ
   Zeus; drawer mở đúng danh sách thành viên; trang **không còn emoji**; `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **S6 · Ca làm việc & lịch nghỉ lễ** ✅ (2026-11-27) — mockup
+  `screens/shift-holiday.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `ShiftHolidayPage`: tiêu đề → **đầu trang eyebrow + `h1` + badge P0 + sub**; 2 nút
+  tab cũ → **segmented control** đúng spec (ô 34px bo 9px, đang chọn `bg-ink
+  text-canvas`, icon Clock/Calendar); **mỗi ca là 1 card bo 13px** thay vì 1 khối
+  gộp: header tách viền (mã ca `font-mono` trong chip accent + tên + badge trạng
+  thái) và **thân 4 ô thời gian** (Vào ca / Ra ca / Nghỉ trưa / Giờ mỗi ngày — icon
+  Sun/Moon/Coffee/Landmark, nhãn 9.5px uppercase `font-extrabold`, giờ `font-mono`);
+  khung linh hoạt → khối cảnh báo `status-ok-soft` + viền `status-ok-line`; phạm vi
+  áp dụng → hàng có icon Shield; **nút Lên/Xuống dùng icon lucide** (ArrowUp/
+  ArrowDown) thay ký tự ↑/↓, kèm `aria-label` mô tả hệ quả; **modal chuyển sang
+  component `Modal` dùng chung** (tiêu đề + nút đóng X, Escape đóng, scroll body) —
+  trước là 2 form tự dựng overlay; input bo 10px + focus ring accent; **bộ chọn CSV**
+  (nhóm/chức danh/nhân viên) bo 10px, chip đã chọn có nút X icon thay ký tự ×;
+  lịch nghỉ lễ → **Panel dùng chung** + `Badge` hưởng lương / không lương; nút
+  hành động dùng `Button` (primary/secondary/outline) theo spec. Không đổi nghiệp vụ:
+  cùng API `/api/v1/admin/shifts` + `/admin/holidays`, ca chuẩn không tắt/xóa được,
+  sắp xếp ưu tiên ca, tạo/sửa/xóa ca & ngày lễ, validate thiếu tên/ngày. Verify:
+  3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; hiển thị đủ
+  2 ca + đúng khung giờ vào/ra/nghỉ + số giờ khớp API; ca chuẩn không có nút
+  Tắt/Xóa và bộ chọn phạm vi bị khoá, mã ca khoá khi sửa; validate thiếu tên ngày lễ
+  báo lỗi; trang **không còn emoji**; `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.
