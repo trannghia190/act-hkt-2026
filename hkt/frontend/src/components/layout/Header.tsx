@@ -1,10 +1,11 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 import { Menu, Search, Camera, LogOut, Mail } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { VARIANTS } from '../../config/sidebar.config';
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -21,6 +22,25 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Tiêu đề ngữ cảnh trên topbar: lấy từ nav (nguồn sự thật), khớp path hoặc
+  // màn cha gần nhất (vd. /okr/cycles/new → "Chu kỳ OKR").
+  const navContext = useMemo(() => {
+    const custom: Record<string, { group: string; label: string }> = {
+      '/auth/enroll-face': { group: 'Tài khoản', label: 'Đăng ký khuôn mặt' },
+      '/attendance/devices/add': { group: 'Chấm công', label: 'Đăng ký thiết bị' },
+    };
+    if (custom[pathname]) return custom[pathname];
+    const flat = VARIANTS.admin.flatMap((g) =>
+      g.items.map((i) => ({ group: g.groupName, label: i.label, path: i.path })),
+    );
+    const exact = flat.find((i) => i.path === pathname);
+    if (exact) return exact;
+    return flat
+      .filter((i) => pathname.startsWith(`${i.path}/`))
+      .sort((a, b) => b.path.length - a.path.length)[0] ?? null;
+  }, [pathname]);
   const shortcutLabel =
     typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)
       ? '⌘K'
@@ -34,14 +54,30 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenMobileMenu}
-            className="lg:hidden p-1.5 rounded-lg border border-line bg-canvas hover:bg-canvas-subtle text-ink cursor-pointer"
+            className="lg:hidden grid h-9 w-9 place-items-center rounded-lg border border-line bg-canvas text-ink transition-colors hover:bg-canvas-subtle cursor-pointer"
             title="Mở menu danh mục"
+            aria-label="Mở menu danh mục"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-[18px] h-[18px]" />
           </button>
         )}
 
-        <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => navigate('/todo')}>
+        {/* Desktop: tiêu đề ngữ cảnh thay cho badge trùng thương hiệu ở sidebar */}
+        {navContext && (
+          <div className="hidden min-w-0 lg:flex flex-col justify-center leading-tight">
+            {navContext.group !== navContext.label && (
+              <span className="text-[9.5px] font-extrabold uppercase tracking-[0.09em] text-accent-dark">
+                {navContext.group}
+              </span>
+            )}
+            <h2 className="truncate font-display text-[14px] font-extrabold tracking-tight text-ink">
+              {navContext.label}
+            </h2>
+          </div>
+        )}
+
+        {/* Mobile/tablet: brand ngắn (sidebar ẩn) */}
+        <div className="hidden min-[360px]:flex items-center gap-2 cursor-pointer shrink-0 lg:hidden" onClick={() => navigate('/todo')} title="Về trang Cần làm">
           <span className="text-xs font-black tracking-tight px-2 py-0.5 rounded-md bg-accent-soft text-accent-dark border border-accent-line font-mono whitespace-nowrap">
             ACT-HKT
           </span>
@@ -52,12 +88,13 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right: Quick Action Controls */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
         {/* Quick Search Button (Desktop: with Ctrl+K shortcut, Mobile: icon button) */}
         <button
           onClick={onOpenCommandPalette}
-          className="h-9 px-2.5 sm:px-3 text-[12.5px] border border-line rounded-[10px] bg-canvas hover:bg-canvas-subtle text-ink-secondary flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs transition-colors"
+          className="grid h-9 w-9 sm:w-auto sm:px-3 place-items-center sm:flex sm:items-center gap-1.5 sm:gap-2 text-[12.5px] border border-line rounded-[10px] bg-canvas hover:bg-canvas-subtle text-ink-secondary cursor-pointer shadow-2xs transition-colors"
           title={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
+          aria-label={`Tìm kiếm chức năng nhanh (${shortcutLabel})`}
         >
           <Search className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Tìm kiếm</span>
@@ -80,8 +117,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Template / theme picker */}
-        <ThemeSwitcher />
+        {/* Template / theme picker — mobile đổi theme trong Tuỳ chỉnh cá nhân */}
+        <div className="hidden md:block">
+          <ThemeSwitcher />
+        </div>
 
         {/* Global Multi-channel Notification Center */}
         <NotificationDropdown />
@@ -90,8 +129,9 @@ export const Header: React.FC<HeaderProps> = ({
         {user?.faceEnrolled === false && (
           <button
             onClick={() => navigate('/auth/enroll-face')}
-            className="px-2 sm:px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer bg-status-warn-soft text-status-warn border-status-warn-line font-bold"
+            className="grid h-9 w-9 sm:w-auto sm:px-2.5 place-items-center sm:flex sm:items-center gap-1.5 text-xs rounded-lg border bg-status-warn-soft text-status-warn border-status-warn-line font-bold transition-colors cursor-pointer"
             title="Tài khoản chưa đăng ký khuôn mặt — bấm để đăng ký"
+            aria-label="Tài khoản chưa đăng ký khuôn mặt — bấm để đăng ký"
           >
             <Camera className="w-3.5 h-3.5 text-accent" />
             <span className="hidden lg:inline">Chưa ĐK Mặt</span>
@@ -104,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={() => navigate('/account/profile')}
             title="Hồ sơ cá nhân"
-            className="flex items-center gap-2 rounded-lg px-1 py-0.5 hover:bg-canvas transition-colors cursor-pointer"
+            className="flex h-9 items-center gap-2 rounded-lg px-1 transition-colors hover:bg-canvas cursor-pointer"
           >
             {user?.avatarUrl ? (
               <img
@@ -118,14 +158,15 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
             <div className="text-left text-xs hidden xl:block leading-tight">
-              <div className="font-semibold text-ink truncate max-w-[120px]">{user?.fullName}</div>
+              <div className="font-semibold text-ink truncate max-w-[92px] 2xl:max-w-[120px]">{user?.fullName}</div>
               <div className="text-[10px] text-ink-muted font-mono">{user?.employeeCode}</div>
             </div>
           </button>
           <button
             onClick={onLogout}
-            className="p-1.5 text-ink-muted hover:text-status-danger hover:bg-canvas rounded-lg transition-colors cursor-pointer"
+            className="grid h-9 w-9 place-items-center text-ink-muted hover:text-status-danger hover:bg-canvas rounded-lg transition-colors cursor-pointer"
             title="Đăng xuất khỏi hệ thống ACT-HKT"
+            aria-label="Đăng xuất"
           >
             <LogOut className="w-4 h-4" />
           </button>
