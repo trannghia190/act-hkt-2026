@@ -51,7 +51,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ✅ | ✅ | ✅ |
 | S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ✅ | ✅ | ✅ |
 | S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ✅ | ✅ | ✅ |
-| S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ⬜ | ⬜ | ⬜ |
+| S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ✅ | ✅ | ✅ |
 
 ## 2 · Chấm công
 
@@ -585,3 +585,18 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   gửi. Verify: đúng 16 loại, tạo mới rơi vào "HR tự thêm" (1), xoá về 0, modal
   sửa mở với Mã disabled, không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS,
   0 HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **S11 · Thiết bị chấm công** ✅ (2026-11-27) — mockup
+  `screens/device-management.html` (3 theme × desktop 1440 + mobile 390). Đầu
+  trang eyebrow `ShieldCheck` "Quản trị HR" + badge S11; **bìa tóm tắt** đếm
+  chờ duyệt / đang hoạt động / đã thu hồi; **3 Panel** (Chờ duyệt / Đang hoạt
+  động / Đã thu hồi) — mỗi thiết bị là dòng card: icon laptop/điện thoại theo
+  model, model + tag OS + badge trạng thái, **tên + mã nhân viên** (nạp kèm từ
+  `/admin/users`, lỗi thì lùi về mã ID ngắn) + fingerprint mono, meta "Yêu cầu
+  lúc / Hoạt động / Hết hạn" hoặc "Thu hồi lúc · Không thể chấm công". Nút Duyệt
+  accent, Từ chối/Thu hồi viền danger; hàng mobile rơi xuống dưới, mỗi nút chia
+  đôi chiều rộng. `window.prompt` → **Modal thu hồi**: chip lý do nhanh + textarea
+  bắt buộc (nút submit disabled tới khi có lý do). Verify: đúng 0/1/3, thu hồi
+  chuyển nhóm ngay, disabled→enabled, khôi phục dữ liệu; tên nhân viên hiện đúng
+  thay ID; không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
+  `tsc` + `build` sạch.
