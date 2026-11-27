@@ -4,9 +4,9 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch (_) {
-    payload = { title: 'ACT Pulse', body: event.data ? event.data.text() : '' };
+    payload = { title: 'Ascend Tech', body: event.data ? event.data.text() : '' };
   }
-  const title = payload.title || 'ACT Pulse';
+  const title = payload.title || 'Ascend Tech';
   const options = {
     body: payload.body || '',
     icon: '/favicon.ico',

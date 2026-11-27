@@ -71,7 +71,7 @@ public class WebAuthnService {
     @Value("${app.webauthn.rp-id:localhost}")
     private String rpId;
 
-    @Value("${app.webauthn.rp-name:ACT Pulse}")
+    @Value("${app.webauthn.rp-name:Ascend Tech}")
     private String rpName;
 
     @Value("${app.webauthn.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}")

@@ -104,6 +104,7 @@ export const HR_GROUPS: NavGroup[] = [
       { id: 'okrrep', label: 'Báo cáo OKR', path: '/okr/summary-report', icon: 'BarChart2', screenId: 'S25' },
       { id: 'audit', label: 'Nhật ký thay đổi', path: '/admin/audit-logs', icon: 'Shield', screenId: 'S35' },
       { id: 'hrdev', label: 'Quản lý thiết bị', path: '/admin/devices', icon: 'MonitorSmartphone', screenId: 'S28' },
+      { id: 'sysdomain', label: 'Cấu hình Domain Host', path: '/admin/system-config', icon: 'Globe', screenId: 'S48' },
       { id: 'people', label: 'Quản lý nhân viên', path: '/admin/employees', icon: 'UserCheck', screenId: 'S40' },
       { id: 'mtree', label: 'Cây quản lý', path: '/admin/org-tree', icon: 'GitPullRequest', screenId: 'S41' },
     ],

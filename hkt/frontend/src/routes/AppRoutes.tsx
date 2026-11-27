@@ -8,6 +8,7 @@ import { EmployeeManagementPage } from '../modules/shared/admin/EmployeeManageme
 import { OrgTreePage } from '../modules/shared/admin/OrgTreePage';
 import { ShiftHolidayPage } from '../modules/shared/admin/ShiftHolidayPage';
 import { AuditLogPage } from '../modules/shared/admin/AuditLogPage';
+import { SystemDomainConfigPage } from '../modules/shared/admin/SystemDomainConfigPage';
 import { FaceEnrollmentPage } from '../modules/auth/FaceEnrollmentPage';
 
 // 2. Attendance & Time Tracking Pages
@@ -109,6 +110,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}>
             <AuditLogPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/system-config"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'HR_ADMIN']}>
+            <SystemDomainConfigPage />
           </ProtectedRoute>
         }
       />

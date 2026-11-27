@@ -69,7 +69,6 @@ public final class NotificationEventCatalog {
         def("DISPUTE_RESOLVED", "Khiếu nại bảng công đã được xử lý", CATEGORY_REQUEST, true, true, true);
         def("DISPUTE_REJECTED", "Khiếu nại bảng công bị từ chối", CATEGORY_REQUEST, true, true, true);
         def("MANAGER_REASSIGNED", "Thay đổi người quản lý / phê duyệt", CATEGORY_REQUEST, true, true, true);
-        def("USER_ONBOARDED", "Chào mừng thành viên mới & Kích hoạt", CATEGORY_SYSTEM, true, true, true);
         def("SECURITY_ALERT", "Cảnh báo bảo mật & Đổi mật khẩu", CATEGORY_SYSTEM, true, true, true);
         // ── OKR ─────────────────────────────────────────────────────────────
         def("OKR_CHECKIN_DUE", "Check-in tiến độ OKR đến hạn", CATEGORY_OKR, true, false, true);
@@ -105,7 +104,7 @@ public final class NotificationEventCatalog {
                 "HR_CLOSE_TIMESHEET", "Nhắc HR chốt bảng công kỳ này", CATEGORY_SYSTEM, true, true, true);
         defFor(Set.of(ROLE_HR),
                 "HR_UNLOCK_OKR", "Nhắc HR mở khóa điều chỉnh OKR", CATEGORY_SYSTEM, true, true, true);
-        def("ONBOARDING", "Chào mừng tài khoản mới", CATEGORY_SYSTEM, true, true, false);
+        def("ONBOARDING", "Chào mừng tài khoản mới", CATEGORY_SYSTEM, true, false, false);
     }
 
     private NotificationEventCatalog() {}

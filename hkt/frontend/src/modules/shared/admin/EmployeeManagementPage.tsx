@@ -134,6 +134,18 @@ export const EmployeeManagementPage: React.FC = () => {
   const [createdAccount, setCreatedAccount] = useState<CreatedResult | null>(null);
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [showNewEmpPassword, setShowNewEmpPassword] = useState(false);
+  const [systemDomainHost, setSystemDomainHost] = useState<string>(window.location.origin);
+
+  useEffect(() => {
+    fetch('/api/v1/admin/system-config/public-domain', { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.data?.domainHost) {
+          setSystemDomainHost(data.data.domainHost);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [viewDetailEmp, setViewDetailEmp] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState<Employee | null>(null);
@@ -531,14 +543,15 @@ export const EmployeeManagementPage: React.FC = () => {
 
   const handleCopyCredentials = () => {
     if (!createdAccount) return;
-    const text = `=== THÔNG TIN TÀI KHOẢN ACT PULSE ===\n` +
+    const baseUrl = systemDomainHost || window.location.origin;
+    const text = `=== THÔNG TIN TÀI KHOẢN ASCEND TECH ===\n` +
       `• Họ và Tên: ${createdAccount.fullName}\n` +
       `• Mã nhân viên: ${createdAccount.employeeCode}\n` +
       `• Email đăng nhập: ${createdAccount.email}\n` +
       `• Mật khẩu khởi tạo / tạm thời: ${createdAccount.defaultPassword}\n` +
       `• Yêu cầu: Bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên\n` +
-      `• Đường dẫn đăng nhập: http://localhost:3000/login\n` +
-      `=====================================`;
+      `• Đường dẫn đăng nhập: ${baseUrl}/login\n` +
+      `======================================`;
     navigator.clipboard.writeText(text);
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 3000);

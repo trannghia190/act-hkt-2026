@@ -80,7 +80,7 @@ app:
     # RP ID phải là host của origin (không gồm scheme/port). Khi demo qua tunnel HTTPS,
     # đặt WEBAUTHN_RP_ID=<tunnel-host> và WEBAUTHN_ALLOWED_ORIGINS=https://<tunnel-host>.
     rp-id: ${WEBAUTHN_RP_ID:localhost}
-    rp-name: ${WEBAUTHN_RP_NAME:ACT Pulse}
+    rp-name: ${WEBAUTHN_RP_NAME:Ascend Tech}
     allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
     # Origin động cho tunnel demo — RP ID tự suy ra từ host của Origin.
     # Production: đặt WEBAUTHN_ALLOWED_ORIGIN_PATTERNS='' để tắt.

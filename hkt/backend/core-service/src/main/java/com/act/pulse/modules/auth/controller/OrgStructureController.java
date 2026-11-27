@@ -854,7 +854,7 @@ public class OrgStructureController {
             notificationDispatcher.dispatch(
                     "ONBOARDING",
                     userToSave.getId(),
-                    "Chào mừng thành viên mới đến với ACT PULSE!",
+                    "Chào mừng thành viên mới đến với Ascend Tech!",
                     "Tài khoản của bạn đã được khởi tạo thành công. Mã nhân viên: "
                             + userToSave.getEmployeeCode() + ". Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.",
                     "ONBOARDING",
