@@ -52,6 +52,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ✅ | ✅ | ✅ |
 | S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ✅ | ✅ | ✅ |
 | S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ✅ | ✅ | ✅ |
+| S48 | Cấu hình Domain Host | `/admin/system-config` | `SystemDomainConfigPage` | ✅ | ✅ | ✅ |
 
 ## 2 · Chấm công
 
@@ -697,3 +698,12 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   gửi), ghi chú "ảnh gốc không lưu". Giữ nguyên API enroll + tab verify/profile.
   Verify: Midnight desktop+mobile 390 không tràn; Bento desktop tương phản tốt;
   tab verify render đúng; `tsc` + `build` sạch.
+- **S48 · Cấu hình Domain Host** ✅ (2026-11-27) — mockup `screens/system-config.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `SystemDomainConfigPage`: đầu
+  trang chuẩn + badge S48; bìa `bg-ink` "Một tên miền chuẩn — mọi liên kết hệ
+  thống" + 3 số host/môi trường/cập nhật gần nhất; cột trái Panel "Thiết lập tên
+  miền gốc" (input + preset + lý do + nút lưu) và Panel "Xem trước liên kết tự
+  động"; cột phải Panel trạng thái (host, DB key, người/thời gian sửa), Panel
+  chính sách, thẻ Gmail SMTP. Giữ nguyên API `GET/PUT system-config`, nút Nạp
+  lại & modal Gmail. Verify (HR 01HR): 3 theme desktop + mobile 390 đều không
+  tràn ngang, `tsc` + `build` sạch, `test_theme_responsive` ĐẠT.
