@@ -65,6 +65,8 @@ SFACE_SIMILARITY_THRESHOLD = float(os.environ.get("SFACE_SIMILARITY_THRESHOLD", 
 # Official SFace cosine similarity decision threshold (cv::FaceRecognizerSF::FR_COSINE default is 0.363)
 SFACE_MATCH_COSINE_THRESHOLD = 0.363
 LIVENESS_MOTION_THRESHOLD = float(os.environ.get("FACE_LIVENESS_MOTION", "0.25"))
+# Phát hiện khẩu trang khi ĐĂNG KÝ: tỉ lệ điểm ảnh "da" tối thiểu ở vùng mũi-miệng-cằm (0..1)
+MASK_MIN_SKIN_RATIO = float(os.environ.get("FACE_MASK_MIN_SKIN_RATIO", "0.35"))
 
 _db_pool = None
 employee_db: Dict[str, Dict[str, Any]] = {}
@@ -319,7 +321,7 @@ class VerifyResponse(BaseModel):
     similarity_score: float = 0.0
     quality_passed: bool = True
     is_liveness_verified: bool = False
-    is_proxy_punch_detected: bool = Field(..., description="Explicitly indicates whether proxy punch is detected")
+    is_proxy_punch_detected: bool = Field(False, description="Explicitly indicates whether proxy punch is detected")
     error_code: Optional[str] = None
     message: str
 
@@ -568,6 +570,71 @@ def extract_face_embedding(img: np.ndarray) -> tuple[Optional[np.ndarray], Optio
     if norm > 0:
         feat_norm = feat_norm / norm
     return feat_norm.astype(np.float32), None
+
+
+def detect_primary_face(img: np.ndarray) -> Optional[np.ndarray]:
+    """Phát hiện khuôn mặt lớn nhất bằng YuNet (có landmark). Không thấy → None (không fallback)."""
+    if detector is None or img is None:
+        return None
+    h, w = img.shape[:2]
+    candidates = [(img, 1.0), (enhance_image(img), 1.0)]
+    if max(h, w) > 640:
+        scale = 640.0 / max(h, w)
+        candidates.append((cv2.resize(img, (int(w * scale), int(h * scale))), scale))
+    for src, scale in candidates:
+        try:
+            sh, sw = src.shape[:2]
+            detector.setInputSize((sw, sh))
+            _, faces = detector.detect(src)
+            if faces is not None and len(faces) > 0:
+                faces = faces.copy()
+                if scale != 1.0:
+                    faces[:, :14] = faces[:, :14] / scale
+                return sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+        except Exception as e:
+            logger.debug("YuNet detection error: %s", e)
+    return None
+
+
+def _skin_mask_ycrcb(region_bgr: np.ndarray) -> np.ndarray:
+    """Mặt nạ điểm ảnh có màu da (YCrCb), chịu được nhiều tông da/ánh sáng."""
+    ycrcb = cv2.cvtColor(region_bgr, cv2.COLOR_BGR2YCrCb)
+    y, cr, cb = ycrcb[:, :, 0], ycrcb[:, :, 1], ycrcb[:, :, 2]
+    return (y > 40) & (cr >= 133) & (cr <= 180) & (cb >= 77) & (cb <= 135)
+
+
+def check_face_uncovered(img: np.ndarray, face: np.ndarray) -> tuple[bool, Optional[str]]:
+    """
+    Phát hiện khẩu trang / vật che mũi-miệng (chỉ dùng khi ĐĂNG KÝ khuôn mặt).
+    Căn chỉnh mặt về 112x112 (SFace alignCrop: mắt y≈51, mũi y≈72, miệng y≈92), rồi đo tỉ lệ
+    điểm ảnh giống da ở vùng mũi-miệng-cằm, so với màu da vùng trán/giữa hai mắt (luôn hở khi đeo khẩu trang).
+    """
+    if recognizer is None:
+        return True, None
+    try:
+        aligned = recognizer.alignCrop(img, face)
+    except Exception as e:
+        logger.debug("alignCrop for mask check failed: %s", e)
+        return True, None
+
+    ref_region = aligned[30:50, 36:76]       # trán dưới + giữa hai mắt
+    lower_region = aligned[68:106, 30:82]    # cánh mũi, miệng, cằm
+    lower_skin_px = _skin_mask_ycrcb(lower_region)
+
+    # So theo màu da riêng của người đó (Lab, có cả độ sáng) để chịu được tông da/ánh sáng khác nhau,
+    # nhưng vẫn loại khẩu trang trắng/đen/xám (sắc độ trung tính nhưng độ sáng khác hẳn da).
+    ref_lab = cv2.cvtColor(ref_region, cv2.COLOR_BGR2Lab).reshape(-1, 3).astype(np.float32)
+    low_lab = cv2.cvtColor(lower_region, cv2.COLOR_BGR2Lab).reshape(-1, 3).astype(np.float32)
+    d = low_lab - np.median(ref_lab, axis=0)
+    dist = np.sqrt((0.5 * d[:, 0]) ** 2 + d[:, 1] ** 2 + d[:, 2] ** 2)
+    similar_px = (dist < 16.0).reshape(lower_skin_px.shape)
+    light_ok = (np.abs(d[:, 0]) < 60).reshape(lower_skin_px.shape)
+
+    lower_ratio = float(((lower_skin_px & light_ok) | similar_px).mean())
+    logger.info("Mask check: lower_skin_ratio=%.2f (min %.2f)", lower_ratio, MASK_MIN_SKIN_RATIO)
+    if lower_ratio < MASK_MIN_SKIN_RATIO:
+        return False, "Phát hiện khuôn mặt bị che (khẩu trang / tay / vật cản). Vui lòng tháo khẩu trang và để lộ toàn bộ mũi, miệng khi đăng ký."
+    return True, None
 
 
 def cosine_similarity(v1: np.ndarray, v2: np.ndarray) -> float:
@@ -917,6 +984,15 @@ async def enroll_face_json(payload: EnrollJsonRequest, authorization: Optional[s
     quality_ok, quality_err = check_image_quality(img)
     if not quality_ok:
         raise HTTPException(status_code=400, detail=quality_err)
+
+    # Đăng ký: phải thấy rõ khuôn mặt và KHÔNG đeo khẩu trang / che mũi-miệng.
+    # (Chấm công không kiểm tra khẩu trang — chỉ áp dụng lúc đăng ký mẫu.)
+    face = detect_primary_face(img)
+    if face is None:
+        raise HTTPException(status_code=400, detail="Không phát hiện rõ khuôn mặt trong ảnh. Vui lòng nhìn thẳng vào camera, đủ ánh sáng.")
+    uncovered, cover_err = check_face_uncovered(img, face)
+    if not uncovered:
+        raise HTTPException(status_code=400, detail=cover_err)
 
     feature, err = extract_face_embedding(img)
     if feature is None:
