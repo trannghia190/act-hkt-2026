@@ -19,13 +19,21 @@ export const RuleValueSummary: React.FC<{ ruleKey: string; value: unknown; showR
       {entries.length === 0 ? (
         <div className="text-xs text-ink-muted">Giá trị không đọc được — xem JSON gốc.</div>
       ) : (
-        <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
+        <dl className="grid gap-x-4 sm:grid-cols-2">
           {entries.map(([key, val]) => {
             const meta = fieldMeta(ruleKey, key, val);
+            const isBool = typeof val === 'boolean';
             return (
-              <div key={key} className="flex items-baseline justify-between gap-2 border-b border-line/60 py-1">
+              <div
+                key={key}
+                className="flex items-baseline justify-between gap-2 border-b border-line-soft py-1.5"
+              >
                 <dt className="text-xs text-ink-secondary">{meta.label}</dt>
-                <dd className={`text-xs text-right ${typeof val === 'boolean' ? (val ? 'text-status-ok' : 'text-ink-muted') : 'font-semibold text-ink'}`}>
+                <dd
+                  className={`text-right text-xs font-semibold ${
+                    isBool ? (val ? 'text-status-ok' : 'text-ink-muted') : 'text-ink'
+                  }`}
+                >
                   {formatFieldValue(meta, val)}
                 </dd>
               </div>
@@ -36,7 +44,9 @@ export const RuleValueSummary: React.FC<{ ruleKey: string; value: unknown; showR
       {showRaw && entries.length > 0 && (
         <details className="pt-1">
           <summary className="cursor-pointer text-[11px] text-ink-muted">Xem JSON gốc (kỹ thuật)</summary>
-          <pre className="mt-1 bg-canvas rounded-lg p-2 text-[11px] overflow-x-auto">{JSON.stringify(obj, null, 2)}</pre>
+          <pre className="mt-1 overflow-x-auto rounded-[9px] border border-line bg-surface p-2.5 font-mono text-[10.5px] text-ink-muted">
+            {JSON.stringify(obj, null, 2)}
+          </pre>
         </details>
       )}
     </div>
