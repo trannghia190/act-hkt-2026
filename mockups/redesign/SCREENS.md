@@ -47,7 +47,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ✅ | ✅ | ✅ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ✅ | ✅ | ✅ |
-| S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ⬜ | ⬜ | ⬜ |
+| S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ✅ | ✅ | ✅ |
 | S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ⬜ | ⬜ | ⬜ |
 | S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ⬜ | ⬜ | ⬜ |
 | S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ⬜ | ⬜ | ⬜ |
@@ -507,4 +507,29 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   2 ca + đúng khung giờ vào/ra/nghỉ + số giờ khớp API; ca chuẩn không có nút
   Tắt/Xóa và bộ chọn phạm vi bị khoá, mã ca khoá khi sửa; validate thiếu tên ngày lễ
   báo lỗi; trang **không còn emoji**; `tsc` + `build` + `check-consistency` +
+  `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **S7 · Nhật ký kiểm toán (Audit Log)** ✅ (2026-11-27) — mockup
+  `screens/audit-log.html` (3 theme × desktop 1440 + mobile 390). Áp vào `AuditLogPage`:
+  tiêu đề → **đầu trang eyebrow + `h1` + badge S35 + sub**; **5 metric card** từ "icon
+  tròn + chữ" → layout `.stats` (nhãn 10px uppercase `font-extrabold`, số
+  `font-display` 24px) — lưới 5 cột ở desktop, 2 cột ở mobile; **7 chip lọc nhóm →
+  pill 31px** (`bg-ink text-canvas` khi chọn) kèm **số đếm `font-mono` luôn khớp
+  số dòng thực sự hiện ra**; **sửa lỗi lọc nhóm**: tham số `category` của API chỉ
+  so khớp tên entity nên chọn "Sửa bảng công" chỉ trả 5 bản ghi thay vì 206 — nay
+  lọc **phía client** theo cả `action` lẫn `entity`, bổ sung nhóm "Khiếu nại" và
+  "Thiết bị", nhóm "Điểm OKR" (0 bản ghi — OKR ghi audit ở bảng riêng `okr_audit_logs`)
+  được thay bằng nhóm có dữ liệu thật; **bảng 7 cột** header 9.5px uppercase
+  `font-extrabold` theo spec, cột "Đối tượng" có **entityId bấm được để lọc theo
+  nhân viên** (đã thay `<div onClick>` bằng `<button>` để bàn phím dùng được);
+  diff **giá trị cũ gạch ngang** (`status-danger-soft`) → mũi tên → **giá trị mới**
+  (`status-ok-soft`); nút "Thử xoá" dùng icon ShieldCheck + `status-danger-line`
+  (giữ nguyên hành vi kiểm tra append-only); **action badge có nhãn tiếng Việt** cho
+  37 hành động thay vì hiện mã kỹ thuật; bộ lọc `Card` → **Panel dùng chung**, input
+  bo 10px + focus ring accent; xuất CSV giờ xuất **đúng số dòng đang lọc** và báo
+  số dòng trong toast. Không đổi nghiệp vụ: cùng API `/api/v1/admin/audit-logs`,
+  lọc keyword/actor/ngày, kiểm tra append-only (405), export CSV. Verify: 3 theme ×
+  320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; **8/8 chip khớp đúng số
+  dòng** (1617 / 206 / 127 / 792 / 333 / 164 / 101 / 2); chip "Bảng công" chỉ chứa
+  log bảng công; diff cũ→mới hiển thị; click đối tượng lọc được theo nhân viên;
+  nút "Thử xoá" trả 405 đúng chuẩn A5; `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
