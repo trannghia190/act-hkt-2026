@@ -45,7 +45,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ✅ | ✅ | ✅ |
 | S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
-| S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ⬜ | ⬜ | ⬜ |
+| S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ✅ | ✅ | ✅ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ⬜ | ⬜ | ⬜ |
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ⬜ | ⬜ | ⬜ |
 | S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ⬜ | ⬜ | ⬜ |
@@ -464,3 +464,24 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   Verify: 3 theme × 320/360/390/414/768/1024/1440 không tràn ngang, 0 lỗi JS; trang
   **không còn emoji** (kể cả marker từ backend); `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+- **S5 · Cây quản lý / Sơ đồ tổ chức** ✅ (2026-11-27) — mockup
+  `screens/org-tree.html` (3 theme × desktop 1440 + mobile 390). Áp vào `OrgTreePage`:
+  tiêu đề → **đầu trang eyebrow + `h1` + badge P0 · A4 + sub**, chip cảnh báo "N điểm
+  cần sửa" **bỏ emoji ⚠** sang icon `AlertTriangle`; **4 metric card** từ "icon tròn +
+  chữ" → layout `.stats` (nhãn 10px uppercase `font-extrabold` + icon, số
+  `font-display` 24px); **3 nút chuyển kiểu hiển thị → segmented control** đúng spec
+  (khung `p-1` bo 12px, ô 34px bo 9px, đang chọn `bg-ink text-canvas`, có icon
+  Workflow/LayoutGrid/ListTree); **4 nút lọc → pill 31px** (`Chỉ xem điểm kẹt` /
+  `Ẩn nhóm rỗng` / `Mở tất cả` / `Thu gọn`), có `aria-pressed`; input tìm nhóm bo 10px
+  + focus ring accent; mọi khối `Card` → **component `Panel` dùng chung** (toolbar,
+  loading, empty state, cây thư mục, drawer chi tiết); **tab lọc thành viên** trong
+  drawer → tab header 9.5px uppercase `font-extrabold`, đang chọn gạch accent;
+  **bỏ hết emoji làm icon** (`✕` toast / drawer, `⚠` chip lọc, `💡` gợi ý) sang icon
+  lucide (X / AlertTriangle / Lightbulb). **Không đổi nghiệp vụ**: cùng API
+  `/api/v1/org/tree`, đổi trưởng nhóm (bắt buộc lý do + ghi audit + chuyển đơn chờ),
+  gán/đổi sếp cho nhân viên, tạo nhóm con, 3 kiểu hiển thị (Graph / Thẻ phân tầng /
+  Cây thư mục) + thu phóng. Verify: 3 theme × 320/360/390/414/768/1024/1440 không
+  tràn ngang, 0 lỗi JS; **4 metric khớp đúng API** (11 nhóm / 28 người / 134 đơn /
+  8 điểm lỗi); lọc "Chỉ xem điểm kẹt" giữ đúng nhóm có vấn đề; "Ẩn nhóm rỗng" bỏ
+  Zeus; drawer mở đúng danh sách thành viên; trang **không còn emoji**; `tsc` + `build` +
+  `check-consistency` + `test_theme_responsive` + `test_mockup_responsive` sạch.

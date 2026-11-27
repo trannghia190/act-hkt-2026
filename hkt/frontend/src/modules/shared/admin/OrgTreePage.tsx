@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '../../../components/common/Card';
+import { Panel } from '../../../components/common/Panel';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -35,7 +35,8 @@ import {
   Eye,
   X,
   UserPlus,
-  Sparkles
+  Sparkles,
+  Lightbulb
 } from 'lucide-react';
 
 export interface EmployeeItem {
@@ -879,145 +880,134 @@ export const OrgTreePage: React.FC = () => {
             <CheckCircle2 className="w-4 h-4 text-status-ok" />
             <span className="font-semibold">{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-status-ok hover:text-status-ok font-bold ml-2">
-            ✕
+          <button
+            onClick={() => setToastMessage(null)}
+            aria-label="Đóng thông báo"
+            className="ml-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg text-status-ok transition-colors hover:bg-status-ok/15 hover:text-ink"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold tracking-tight text-ink flex items-center gap-2">
-              <Network className="w-5 h-5 text-accent" />
-              Cây Phân Tầng Quản Lý &amp; Sơ Đồ Cơ Cấu
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Network className="h-3.5 w-3.5" />
+            Cơ cấu tổ chức
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Cây phân tầng quản lý &amp; sơ đồ cơ cấu
             </h1>
             <Badge variant="accent">P0 · A4</Badge>
           </div>
-          <p className="text-xs text-ink-muted">
-            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động
+          <p className="mt-1 text-xs text-ink-muted">
+            Quản trị cơ cấu phòng ban lồng nhau không giới hạn số tầng · Khám phá sơ đồ Graph đồ thị, tìm điểm nghẽn và bàn giao đơn chờ tự động.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {brokenGroups + brokenMembers > 0 && (
-            <span className="px-3 py-1.5 bg-status-warn-soft text-status-warn border border-status-warn-line rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
-              <AlertTriangle className="w-4 h-4 text-status-warn" />
-              ⚠ {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-status-warn-line bg-status-warn-soft px-2.5 text-xs font-semibold text-status-warn">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {brokenGroups + brokenMembers} điểm cần sửa ({brokenMembers} người thiếu sếp, {brokenGroups} nhóm thiếu trưởng)
             </span>
           )}
 
           {canManage && (
             <Button
               variant="primary"
-              size="sm"
+              size="md"
               onClick={() => {
                 setParentTeamForAdd(null);
                 setIsAddTeamModalOpen(true);
               }}
             >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              + Tạo Nhóm Gốc
+              <Plus className="h-3.5 h-3.5" />
+              Tạo nhóm gốc
             </Button>
           )}
         </div>
       </div>
 
-      {/* Metrics Summary Strip (Vibrant, high-contrast colors) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
-            <Building2 className="w-5 h-5" />
+      {/* Metrics Summary Strip */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <Building2 className="h-3.5 w-3.5 text-accent" />
+            Tổng phòng ban
           </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Tổng phòng ban</div>
-            <div className="text-lg font-bold text-ink">{totalTeamsCount} nhóm</div>
-          </div>
-        </div>
-
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-info-soft text-status-info flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Tổng nhân sự</div>
-            <div className="text-lg font-bold text-ink">{totalMembersAll} người</div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {totalTeamsCount}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">nhóm</small>
           </div>
         </div>
 
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-status-warn-soft text-status-warn flex items-center justify-center font-bold">
-            <Clock className="w-5 h-5" />
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <Users className="h-3.5 w-3.5 text-accent" />
+            Tổng nhân sự
           </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Đơn chờ duyệt</div>
-            <div className="text-lg font-bold text-status-warn">{totalPendingAll} đơn</div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-ink">
+            {totalMembersAll}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">người</small>
           </div>
         </div>
 
-        <div className="p-3.5 bg-surface border border-line rounded-xl flex items-center gap-3 shadow-2xs">
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <Clock className="h-3.5 w-3.5 text-accent" />
+            Đơn chờ duyệt
+          </div>
+          <div className="mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] text-status-warn">
+            {totalPendingAll}
+            <small className="ml-1 text-xs font-semibold tracking-normal text-ink-muted">đơn</small>
+          </div>
+        </div>
+
+        <div className="rounded-[13px] border border-line bg-surface p-3.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.06em] text-ink-muted">
+            <ShieldAlert className="h-3.5 w-3.5 text-accent" />
+            Điểm nghẽn duyệt
+          </div>
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-              brokenGroups + brokenMembers > 0 ? 'bg-status-danger-soft text-status-danger' : 'bg-status-ok-soft text-status-ok'
+            className={`mt-2 font-display text-[24px] font-extrabold leading-none tracking-[-0.035em] ${
+              brokenGroups + brokenMembers > 0 ? 'text-status-danger' : 'text-status-ok'
             }`}
           >
-            <ShieldAlert className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] text-ink-muted font-medium">Điểm nghẽn duyệt</div>
-            <div
-              className={`text-lg font-bold ${
-                brokenGroups + brokenMembers > 0 ? 'text-status-danger' : 'text-status-ok'
-              }`}
-            >
-              {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
-            </div>
+            {brokenGroups + brokenMembers > 0 ? `${brokenGroups + brokenMembers} điểm lỗi` : 'An toàn 100%'}
           </div>
         </div>
       </div>
 
       {/* Toolbar & Controls */}
-      <Card>
+      <Panel>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          {/* View Mode Toggle Buttons */}
-          <div className="flex items-center gap-1 p-1 bg-canvas border border-line rounded-xl self-start">
-            <button
-              type="button"
-              onClick={() => setViewMode('graph')}
-              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                viewMode === 'graph'
-                  ? 'bg-ink text-canvas shadow-xs font-bold'
-                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
-              }`}
-            >
-              <Workflow className="w-3.5 h-3.5" />
-              <span>Sơ Đồ Graph (Đồ Thị)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('chart')}
-              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                viewMode === 'chart'
-                  ? 'bg-ink text-canvas shadow-xs font-bold'
-                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Thẻ Phân Tầng</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('tree')}
-              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                viewMode === 'tree'
-                  ? 'bg-ink text-canvas shadow-xs font-bold'
-                  : 'text-ink-secondary hover:text-ink hover:bg-surface'
-              }`}
-            >
-              <ListTree className="w-3.5 h-3.5" />
-              <span>Cây Thư Mục</span>
-            </button>
+          {/* Segmented control — đúng spec design system: ô 34px trong khung p-4px */}
+          <div role="group" aria-label="Kiểu hiển thị" className="grid w-full max-w-[460px] grid-cols-3 gap-1 rounded-xl border border-line bg-canvas p-1">
+            {([
+              { key: 'graph', label: 'Sơ đồ Graph', Icon: Workflow },
+              { key: 'chart', label: 'Thẻ phân tầng', Icon: LayoutGrid },
+              { key: 'tree', label: 'Cây thư mục', Icon: ListTree },
+            ] as const).map((v) => {
+              const on = viewMode === v.key;
+              return (
+                <button
+                  key={v.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setViewMode(v.key)}
+                  className={`flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-2 text-xs font-bold transition-colors ${
+                    on ? 'bg-ink text-canvas' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
+                  }`}
+                >
+                  <v.Icon className="h-3.5 w-3.5" />
+                  <span className="truncate">{v.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Input */}
@@ -1029,7 +1019,8 @@ export const OrgTreePage: React.FC = () => {
                 placeholder="Tìm tên nhóm, mã nhóm, tên trưởng nhóm..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs pl-8 pr-3 py-2 border border-line rounded-lg bg-canvas text-ink focus:outline-none focus:border-accent"
+                aria-label="Tìm nhóm"
+                className="w-full rounded-[10px] border border-line bg-canvas py-2 pl-8 pr-3 text-xs text-ink focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20"
               />
             </div>
           </div>
@@ -1039,21 +1030,24 @@ export const OrgTreePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setOnlyIssues(!onlyIssues)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+              aria-pressed={onlyIssues}
+              className={`inline-flex h-[31px] cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
                 onlyIssues
-                  ? 'bg-status-warn-soft border-status-warn-line text-status-warn font-bold'
-                  : 'bg-canvas border-line text-ink-muted hover:text-ink'
+                  ? 'border-status-warn-line bg-status-warn-soft font-bold text-status-warn'
+                  : 'border-line bg-surface text-ink-muted hover:text-ink'
               }`}
             >
-              ⚠ Chỉ xem điểm kẹt
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Chỉ xem điểm kẹt
             </button>
             <button
               type="button"
               onClick={() => setHideEmpty(!hideEmpty)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+              aria-pressed={hideEmpty}
+              className={`inline-flex h-[31px] cursor-pointer items-center rounded-full border px-3 text-[12.5px] font-semibold transition-colors ${
                 hideEmpty
-                  ? 'bg-accent-soft border-accent text-accent-dark font-bold'
-                  : 'bg-canvas border-line text-ink-muted hover:text-ink'
+                  ? 'border-accent-line bg-accent-soft font-bold text-accent-dark'
+                  : 'border-line bg-surface text-ink-muted hover:text-ink'
               }`}
             >
               Ẩn nhóm rỗng
@@ -1061,46 +1055,51 @@ export const OrgTreePage: React.FC = () => {
             <button
               type="button"
               onClick={expandAll}
-              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
+              className="inline-flex h-[31px] cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[12.5px] font-semibold text-ink-muted transition-colors hover:text-ink"
             >
               Mở tất cả
             </button>
             <button
               type="button"
               onClick={collapseAll}
-              className="px-2.5 py-1.5 rounded-lg bg-canvas border border-line text-xs text-ink-muted hover:text-ink font-semibold cursor-pointer"
+              className="inline-flex h-[31px] cursor-pointer items-center rounded-full border border-line bg-surface px-3 text-[12.5px] font-semibold text-ink-muted transition-colors hover:text-ink"
             >
               Thu gọn
             </button>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* Main Layout: Left (Graph / Chart / Tree) · Right (Node Detail Drawer) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column */}
         <div className={selectedNode ? 'lg:col-span-8 space-y-3' : 'lg:col-span-12 space-y-3'}>
           {loading ? (
-            <Card className="p-12 text-center text-ink-muted">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
-              <p className="font-semibold text-sm text-ink">Đang tải và xây dựng cây phân tầng tổ chức...</p>
-            </Card>
+            <Panel hideHeader bodyClassName="p-12">
+              <div className="text-center text-ink-muted">
+                <RefreshCw className="mx-auto mb-2 h-8 w-8 animate-spin text-accent" />
+                <p className="text-sm font-semibold text-ink">Đang tải và xây dựng cây phân tầng tổ chức...</p>
+              </div>
+            </Panel>
           ) : treeData.length === 0 ? (
-            <Card className="p-12 text-center text-ink-muted space-y-3">
-              <Building2 className="w-10 h-10 mx-auto text-ink-muted/50" />
-              <p className="font-bold text-sm text-ink">Chưa có nhóm hoặc phòng ban nào được tạo</p>
-              <p className="text-xs text-ink-muted">Bắt đầu bằng việc tạo nhóm gốc đầu tiên cho công ty.</p>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setParentTeamForAdd(null);
-                  setIsAddTeamModalOpen(true);
-                }}
-              >
-                + Tạo Nhóm Đầu Tiên
-              </Button>
-            </Card>
+            <Panel hideHeader bodyClassName="p-12">
+              <div className="space-y-3 text-center text-ink-muted">
+                <Building2 className="mx-auto h-10 w-10 text-ink-muted/50" />
+                <p className="text-sm font-bold text-ink">Chưa có nhóm hoặc phòng ban nào được tạo</p>
+                <p className="text-xs text-ink-muted">Bắt đầu bằng việc tạo nhóm gốc đầu tiên cho công ty.</p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    setParentTeamForAdd(null);
+                    setIsAddTeamModalOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Tạo nhóm đầu tiên
+                </Button>
+              </div>
+            </Panel>
           ) : viewMode === 'graph' ? (
             <div className="space-y-2">
               {/* Graph Toolbar: Zoom & Actions */}
@@ -1134,8 +1133,9 @@ export const OrgTreePage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-ink-muted hidden sm:inline">
-                    💡 Click vào thẻ để xem danh sách nhân viên
+                  <span className="hidden items-center gap-1.5 text-[11px] text-ink-muted sm:inline-flex">
+                    <Lightbulb className="h-3.5 w-3.5" />
+                    Click vào thẻ để xem danh sách nhân viên
                   </span>
                 </div>
               </div>
@@ -1166,16 +1166,16 @@ export const OrgTreePage: React.FC = () => {
               {treeData.map((rootNode) => renderVisualNodeCard(rootNode, 0))}
             </div>
           ) : (
-            <Card className="p-4 space-y-1">
+            <Panel bodyClassName="space-y-1">
               {treeData.map((rootNode) => renderTreeNode(rootNode, 0))}
-            </Card>
+            </Panel>
           )}
         </div>
 
         {/* Right Column: Node Details & Member Drawer */}
         {selectedNode && (
           <div className="lg:col-span-4 sticky top-4">
-            <Card className="p-4 space-y-4 border-line shadow-sm">
+            <Panel className="space-y-4">
               {/* Header */}
               <div className="border-b border-line pb-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -1192,10 +1192,11 @@ export const OrgTreePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedNode(null)}
-                    className="p-1 hover:bg-canvas rounded-lg text-ink-muted hover:text-ink text-xs font-bold"
+                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11.5px] font-bold text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
                     title="Đóng ngăn chi tiết"
                   >
-                    ✕ Đóng
+                    <X className="h-3.5 w-3.5" />
+                    Đóng
                   </button>
                 </div>
 
@@ -1253,34 +1254,31 @@ export const OrgTreePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-ink">Thành viên ({selectedNode.members?.length || 0})</span>
-                  <div className="flex items-center gap-1 bg-canvas p-0.5 rounded-lg border border-line">
-                    <button
-                      type="button"
-                      onClick={() => setMemberFilter('all')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
-                        memberFilter === 'all' ? 'bg-surface text-ink shadow-2xs font-bold' : 'text-ink-muted'
-                      }`}
-                    >
-                      Tất cả
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMemberFilter('pending')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
-                        memberFilter === 'pending' ? 'bg-surface text-status-warn shadow-2xs font-bold' : 'text-ink-muted'
-                      }`}
-                    >
-                      Có đơn chờ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMemberFilter('no-mgr')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
-                        memberFilter === 'no-mgr' ? 'bg-surface text-status-danger shadow-2xs font-bold' : 'text-ink-muted'
-                      }`}
-                    >
-                      Thiếu sếp
-                    </button>
+                  {/* Tab header theo spec: 9.5px uppercase font-extrabold, đang chọn = ink + gạch accent */}
+                  <div role="tablist" aria-label="Lọc thành viên" className="flex gap-3.5">
+                    {([
+                      { key: 'all', label: 'Tất cả' },
+                      { key: 'pending', label: 'Có đơn chờ' },
+                      { key: 'no-mgr', label: 'Thiếu sếp' },
+                    ] as const).map((t) => {
+                      const on = memberFilter === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={on}
+                          onClick={() => setMemberFilter(t.key)}
+                          className={`cursor-pointer border-b-2 pb-1 text-[9.5px] font-extrabold uppercase tracking-[0.07em] transition-colors ${
+                            on
+                              ? 'border-accent text-ink'
+                              : 'border-transparent text-ink-muted hover:text-ink'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1366,7 +1364,7 @@ export const OrgTreePage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </Card>
+            </Panel>
           </div>
         )}
       </div>
