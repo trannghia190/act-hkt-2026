@@ -65,7 +65,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ✅ | ✅ | ✅ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
 | T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ✅ | ✅ | ✅ |
-| T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
+| T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ✅ | ✅ | ✅ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
 | T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ⬜ | ⬜ | ⬜ |
@@ -114,7 +114,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 1. **Lõi demo** — A1 · S1 · T1 · T11 · T10 · T7 · T4/T5 · T6 · AC1 · S2/S3
 2. **OKR** — O1…O9
-3. **Quản trị HR** — S4…S11 · T8/T9 · T12/T13 · T14/T15 · AC2 · A2
+3. **Quản trị HR** — S4…S11 · T8/T9 ✅ · T12/T13 · T14/T15 · AC2 · A2
 4. **Shell & modal** — SH1…SH5 · M1…M4
 
 > Tổng: **39 màn** + **9 thành phần shell/modal**.
@@ -614,3 +614,16 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   nhanh, bắt buộc lý do, validate khác 0). Verify: cộng đúng theo tháng, lọc/tìm
   khớp số đếm, điều chỉnh thêm bút toán mới, 3 theme × 7 bề rộng không tràn;
   0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **T9 · Bảng phép toàn công ty (HR)** ✅ (2026-11-27) — mockup
+  `screens/leave-table.html` (3 theme × desktop 1440 + mobile 390). Bảng phẳng
+  8 cột → **bìa `bg-ink text-canvas`** "Năm nay · toàn công ty" + 4 số tổng
+  (nhân viên / ngày còn lại / sắp hết vàng / đã hết đỏ) khớp bộ lọc hiện tại;
+  Panel lọc (tìm tên-mã, chọn nhóm, đếm nhân viên, 3 chip Tất cả / Sắp hết (< 2) /
+  Đã hết cuộn ngang mobile); bảng desktop cột đầu **dính trái**, tiêu đề số có
+  tooltip giải thích nghiệp vụ, hàng tổng `tfoot` cộng theo bộ lọc; mobile là
+  card: avatar chữ cái + badge "Còn X ngày / Hết phép" + lưới 3 số (phép năm còn /
+  tồn còn / đã dùng). Mọi dòng/card **link thẳng sổ phép** `?user=<mã>`. Panel
+  "Đọc số" giải thích quy tắc ngày 01/04 và 01/07. Verify: 43 dòng → chip 1 / 32 /
+  43 khớp, tìm "136" còn 1 dòng, deep-link `?user=01HR` mở đúng sổ, 3 theme ×
+  7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
