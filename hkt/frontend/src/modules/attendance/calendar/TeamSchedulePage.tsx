@@ -142,6 +142,8 @@ export const TeamSchedulePage: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>(TODAY_STR);
+  // Mobile chỉ hiện vài người có mặt trước, phần còn lại gộp sau nút "+N người khác".
+  const [showAllPresent, setShowAllPresent] = useState(false);
 
   useEffect(() => {
     const token = (() => { try { return JSON.parse(localStorage.getItem('pulse_auth_user') || '{}')?.accessToken; } catch { return ''; } })();
@@ -154,6 +156,7 @@ export const TeamSchedulePage: React.FC = () => {
           // Giữ ngày đang chọn nếu còn trong tháng, ngược lại chọn hôm nay / ngày đầu tiên có dữ liệu.
           const rows: DayRow[] = j.data.days || [];
           setSelectedDay(prev => (rows.some(d => d.date === prev) ? prev : (rows.find(d => d.date === TODAY_STR)?.date ?? rows[0]?.date ?? prev)));
+          setShowAllPresent(false);
         } else setError(j?.message || 'Không tải được lịch nhóm');
       })
       .catch(() => setError('Không tải được lịch nhóm'));
@@ -180,6 +183,20 @@ export const TeamSchedulePage: React.FC = () => {
   const rowByDate = new Map<string, DayRow>(allDays.map(d => [d.date, d]));
 
   const dayEntries = allDays.find(d => d.date === selectedDay) || null;
+  /** Đổi ngày đang chọn — luôn thu gọn lại danh sách người có mặt. */
+  const selectDay = (date: string) => {
+    setSelectedDay(date);
+    setShowAllPresent(false);
+  };
+  const PRESENT_PREVIEW = 5;
+  const presentCount = dayEntries ? dayEntries.entries.filter(e => e.kind === 'PRESENT').length : 0;
+  const hiddenPresent = showAllPresent ? 0 : Math.max(0, presentCount - PRESENT_PREVIEW);
+  // Đánh dấu người có mặt vượt quá phần xem trước để ẩn trên mobile (desktop vẫn hiện đủ).
+  let presentSeen = 0;
+  const entryRows = (dayEntries?.entries ?? []).map(e => {
+    const collapsed = e.kind === 'PRESENT' && !showAllPresent && presentSeen++ >= PRESENT_PREVIEW;
+    return { e, collapsed };
+  });
   const focus = dayEntries ?? allDays.find(d => d.date === TODAY_STR) ?? allDays[0] ?? null;
   const focusLabel = focus ? (focus.date === TODAY_STR ? 'Hôm nay' : dateLabel(focus.date)) : 'Chưa có dữ liệu';
 
@@ -231,7 +248,7 @@ export const TeamSchedulePage: React.FC = () => {
           weekend={weekdayIdx >= 5}
           selected={selectedDay === date}
           threshold={threshold}
-          onSelect={setSelectedDay}
+          onSelect={selectDay}
         />,
       );
     }
@@ -246,7 +263,7 @@ export const TeamSchedulePage: React.FC = () => {
           weekend={i >= 5}
           selected={selectedDay === date}
           threshold={threshold}
-          onSelect={setSelectedDay}
+          onSelect={selectDay}
         />,
       );
     }
@@ -469,7 +486,7 @@ export const TeamSchedulePage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setSelectedDay('')}
+              onClick={() => selectDay('')}
               className="inline-flex h-[29px] items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-[11.5px] font-semibold text-ink-secondary transition-colors hover:bg-canvas hover:text-ink"
             >
               <X className="h-3 w-3" />
@@ -502,12 +519,12 @@ export const TeamSchedulePage: React.FC = () => {
               </div>
             ) : (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {dayEntries.entries.map(e => {
+                {entryRows.map(({ e, collapsed }) => {
                   const chip = entryChip(e);
                   return (
                     <div
                       key={`${e.employeeCode}-${e.kind}-${e.halfDayPeriod ?? ''}`}
-                      className="flex min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-canvas px-3 py-2"
+                      className={`min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-canvas px-3 py-2 sm:flex ${collapsed ? 'hidden' : 'flex'}`}
                     >
                       <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-accent-soft text-[10.5px] font-extrabold text-accent-dark">
                         {initials(e.fullName)}
@@ -526,6 +543,15 @@ export const TeamSchedulePage: React.FC = () => {
                   );
                 })}
               </div>
+            )}
+            {hiddenPresent > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllPresent(true)}
+                className="mt-2 w-full rounded-lg border border-line-soft bg-canvas px-3 py-2 text-center text-[11.5px] font-semibold text-ink-muted transition-colors hover:text-ink sm:hidden"
+              >
+                + {hiddenPresent} người khác đang có mặt đủ ngày
+              </button>
             )}
           </div>
         </section>

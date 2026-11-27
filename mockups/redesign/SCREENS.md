@@ -60,7 +60,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 |---|---|---|---|---|---|---|
 | T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ✅ | ✅ | ✅ |
 | T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ✅ | ✅ | ✅ |
-| T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
+| T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ✅ | ✅ | ✅ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ✅ | ✅ | ✅ |
@@ -99,15 +99,15 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Thành phần | File | Design | Impl | Verify |
 |---|---|---|---|---|---|
-| SH1 | Sidebar (desktop + mobile drawer) | `layout/Sidebar.tsx` | ⬜ | ⬜ | ⬜ |
-| SH2 | Header | `layout/Header.tsx` | ⬜ | ⬜ | ⬜ |
-| SH3 | Bottom nav (mobile) | `layout/MobileBottomNav.tsx` | ⬜ | ⬜ | ⬜ |
-| SH4 | Command palette (⌘K) | `layout/CommandPalette.tsx` | ⬜ | ⬜ | ⬜ |
-| SH5 | Theme switcher | `layout/ThemeSwitcher.tsx` | ⬜ | ⬜ | ⬜ |
-| M1 | Đổi mật khẩu | `account/ChangePasswordModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M2 | Đổi mật khẩu lần đầu | `auth/FirstLoginChangePasswordModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M3 | Kết nối Gmail | `common/EnterpriseGmailModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M4 | Nhắc bật thông báo đẩy | `layout/PushOnboardingPrompt.tsx` | ⬜ | ⬜ | ⬜ |
+| SH1 | Sidebar (desktop + mobile drawer) | `layout/Sidebar.tsx` | ✅ | ✅ | ✅ |
+| SH2 | Header | `layout/Header.tsx` | ✅ | ✅ | ✅ |
+| SH3 | Bottom nav (mobile) | `layout/MobileBottomNav.tsx` | ✅ | ✅ | ✅ |
+| SH4 | Command palette (⌘K) | `layout/CommandPalette.tsx` | ✅ | ✅ | ✅ |
+| SH5 | Theme switcher | `layout/ThemeSwitcher.tsx` | ✅ | ✅ | ✅ |
+| M1 | Đổi mật khẩu | `account/ChangePasswordModal.tsx` | ✅ | ✅ | ✅ |
+| M2 | Đổi mật khẩu lần đầu | `auth/FirstLoginChangePasswordModal.tsx` | ✅ | ✅ | ✅ |
+| M3 | Kết nối Gmail | `common/EnterpriseGmailModal.tsx` | ✅ | ✅ | ✅ |
+| M4 | Nhắc bật thông báo đẩy | `layout/PushOnboardingPrompt.tsx` | ✅ | ✅ | ✅ |
 
 ---
 
@@ -714,3 +714,20 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   chính sách, thẻ Gmail SMTP. Giữ nguyên API `GET/PUT system-config`, nút Nạp
   lại & modal Gmail. Verify (HR 01HR): 3 theme desktop + mobile 390 đều không
   tràn ngang, `tsc` + `build` sạch, `test_theme_responsive` ĐẠT.
+- **T3 · Lịch nhóm** ✅ (2026-11-27) — mockup `screens/team-schedule.html` đã đủ
+  3 theme × desktop 1440 + mobile 390; app `TeamSchedulePage` vốn khớp khung
+  (bìa tóm tắt, banner xung đột, lưới tháng/tuần, legend, panel chi tiết ngày).
+  Bổ sung theo mockup: panel chi tiết trên mobile thu gọn người có mặt — hiện 5
+  người đầu, phần còn lại gộp sau nút "+N người khác đang có mặt đủ ngày" (bấm
+  để mở đủ, desktop vẫn hiện toàn bộ). Verify manager 05ACT: 3 theme × 4 bề rộng
+  320/390/768/1440 không tràn ngang, nút gộp/mở đúng, `tsc` + `build` sạch.
+- **SH1–SH5 · Shell** ✅ (2026-11-27) — Sidebar/Header/BottomNav dùng chung đã token
+  3 theme (`rail-*` cho rail tối, rail trắng ở Ascend Clean), không còn hex cứng;
+  Command palette (⌘K) + Theme switcher trong Header render đúng theme. Verify:
+  desktop 1440 (palette 3 theme) + mobile 390 (drawer mở/đóng ở 3 theme), không
+  tràn, `test_theme_responsive` ĐẠT.
+- **M1–M4 · Modal** ✅ (2026-11-27) — Đổi mật khẩu (desktop 3 theme), Đổi mật khẩu
+  lần đầu (mobile 390 3 theme, nút Bỏ qua/Cập nhật rõ), Kết nối Gmail (System
+  Domain Config, 3 theme), Nhắc bật Web Push (toast desktop + mobile). Tất cả dùng
+  token (`surface/line/ink/status-*`), không có màu cứng; nội dung không tràn ở
+  390px.
