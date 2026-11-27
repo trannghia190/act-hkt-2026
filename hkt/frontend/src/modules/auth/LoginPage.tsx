@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/common/Modal';
@@ -7,7 +7,8 @@ import { Button } from '../../components/common/Button';
 import { isWebAuthnSupported, loginWithPasskey as requestPasskeyLogin } from '../../utils/webauthn';
 
 export const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState('136ACT');
+  const location = useLocation();
+  const [username, setUsername] = useState(() => (location.state as any)?.username || '136ACT');
   const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,8 +105,8 @@ export const LoginPage: React.FC = () => {
       setResetError('Mật khẩu mới phải có ít nhất 8 ký tự.');
       return;
     }
-    if (!/[A-Z]/.test(resetNewPassword) || !/[a-z]/.test(resetNewPassword) || !/[0-9]/.test(resetNewPassword)) {
-      setResetError('Mật khẩu mới phải gồm chữ hoa, chữ thường và chữ số.');
+    if (!/[A-Z]/.test(resetNewPassword) || !/[a-z]/.test(resetNewPassword) || !/[0-9]/.test(resetNewPassword) || !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(resetNewPassword)) {
+      setResetError('Mật khẩu mới phải gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt (!@#$...).');
       return;
     }
     if (resetNewPassword !== resetConfirmPassword) {
@@ -251,8 +252,8 @@ export const LoginPage: React.FC = () => {
                 <label className="text-[12.5px] font-semibold text-ink">Mật khẩu</label>
                 <button
                   type="button"
-                  onClick={() => setIsForgotPasswordOpen(true)}
-                  className="text-[11px] text-accent hover:underline font-medium"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-[11px] text-accent hover:underline font-medium cursor-pointer"
                 >
                   Quên mật khẩu?
                 </button>
