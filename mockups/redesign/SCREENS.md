@@ -48,8 +48,8 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ✅ | ✅ | ✅ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ✅ | ✅ | ✅ |
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ✅ | ✅ | ✅ |
-| S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ⬜ | ⬜ | ⬜ |
-| S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ⬜ | ⬜ | ⬜ |
+| S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ✅ | ✅ | ✅ |
+| S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ✅ | ✅ | ✅ |
 | S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ⬜ | ⬜ | ⬜ |
 | S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ⬜ | ⬜ | ⬜ |
 
@@ -533,3 +533,38 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   log bảng công; diff cũ→mới hiển thị; click đối tượng lọc được theo nhân viên;
   nút "Thử xoá" trả 405 đúng chuẩn A5; `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+
+- **S8 · Tra cứu nội quy (Policy doc)** ✅ (2026-11-27) — mockup
+  `screens/policy-doc.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `PolicyDocPage`: đầu trang eyebrow `BookOpen` + `h1` + badge S19 + sub; **bìa tóm
+  tắt** đảo màu (`bg-ink text-canvas`, tự đúng ở cả theme sáng lẫn tối) hiển thị
+  **19 quy định · 6 nhóm · số mục đã tuỳ chỉnh** lấy từ dữ liệu; ô tìm kiếm
+  (`aria-label="Tìm quy định"`) + dòng đếm khớp kết quả lọc; **7 chip nhóm pill
+  31px** có số đếm `font-mono` khớp số thẻ thực hiện; **mục lục 2 tầng thu gọn mặc
+  định** (`<details>` — hết chiếm nửa màn hình như bản cũ), bấm nhóm là lọc, bấm
+  tên quy định là mở đúng thẻ và cuộn tới; danh sách **accordion chỉ mở 1 mục**
+  (`aria-expanded`), thẻ mở hiện mô tả + **ví dụ minh hoạ** (riêng `payroll_period`
+  sinh từ chính giá trị đang cấu hình) + **nhãn nghiệp vụ tiếng Việt** từ
+  `RuleValueSummary` (không phải key kỹ thuật) + JSON gốc thu gọn cho kỹ thuật;
+  hàng quy định **2 dòng trên mobile** (tên trên, mã + phiên bản dưới) — không còn
+  tên bị bóp thành 3 dòng; verify 3 theme × 7 bề rộng không tràn ngang (390:
+  `scrollWidth=390`), 0 lỗi JS, 0 HTTP ≥ 400; `tsc --noEmit` + `npm run build` sạch.
+
+- **S9 · Bộ quy tắc vận hành (Rule engine)** ✅ (2026-11-27) — mockup
+  `screens/rule-engine.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `RuleEnginePage`: tiêu đề "Cấu hình 19 quy định" → **đầu trang eyebrow
+  `SlidersHorizontal` "Quản trị HR" + `h1` + badge S16 + sub**; **bìa tóm tắt**
+  (`bg-ink text-canvas`, tự đúng cả theme sáng/tối) hiển thị **19 quy định · 6
+  nhóm · số mục đã tuỳ chỉnh** từ dữ liệu; ô tìm kiếm ra **Panel** (icon Search,
+  focus ring accent) + dòng đếm `Đang hiện N quy định · cập nhật gần nhất <ngày>`;
+  thêm **7 chip lọc nhóm pill 31px** (`aria-pressed`, đếm `font-mono` khớp dữ
+  liệu) — lọc client theo `category`; **bảng 5 cột → danh sách card 13px**: tên +
+  badge nhóm + tag phiên bản, ruleKey mono, **3–4 chip giá trị nghiệp vụ** (đọc
+  `fieldMeta`/`formatFieldValue`, không phải JSON thô), mô tả ngắn, **details "Xem
+  đủ giá trị đang áp dụng"** mở bảng đầy đủ + JSON gốc cho kỹ thuật; nút **Lịch
+  sử/Sửa** xếp dọc desktop, xếp ngang nửa-đầu mobile; 2 modal tự viết → **`Modal`
+  dùng chung** (Escape/X đóng, cuộn thân, footer Huỷ/Lưu) — giữ nguyên toàn bộ
+  nghiệp vụ (lý do bắt buộc, xác nhận, rollback tạo phiên bản mới, map vị trí văn
+  phòng). Verify: 19 mục, LEAVE lọc ra 6, tìm "phép" ra 4, mở rộng/modal sửa/modal
+  lịch sử đều PASS; 3 theme × 7 bề rộng không tràn ngang; 0 lỗi JS, 0 HTTP ≥ 400,
+  0 emoji; `tsc` + `build` sạch.
