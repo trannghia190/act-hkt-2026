@@ -1,10 +1,15 @@
 package com.act.pulse.common.service.impl;
 
+import com.act.pulse.common.entity.SystemConfig;
+import com.act.pulse.common.repository.SystemConfigRepository;
 import com.act.pulse.common.service.EmailService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -12,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -25,6 +29,8 @@ import java.util.Properties;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+    private final SystemConfigRepository systemConfigRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${spring.mail.username:}")
     private String senderEmail;
@@ -41,18 +47,41 @@ public class EmailServiceImpl implements EmailService {
     private boolean devLogMail;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
-    private static final String SMTP_CONFIG_FILE = ".smtp-config.properties";
+    private static final String SMTP_CONFIG_KEY = "SMTP_CONFIG";
 
     private String lastConfiguredAt = null;
     private String lastConfiguredBy = null;
 
-    @jakarta.annotation.PostConstruct
-    public void initPersistedConfig() {
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SmtpConfigDto {
+        private String host;
+        private int port;
+        private String username;
+        private String password;
+        private String lastConfiguredAt;
+        private String lastConfiguredBy;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initPersistedConfigFromDb() {
         try {
-            File file = new File(SMTP_CONFIG_FILE);
-            if (file.exists() && file.isFile()) {
+            java.util.Optional<SystemConfig> opt = systemConfigRepository.findByConfigKey(SMTP_CONFIG_KEY);
+            if (opt.isPresent() && opt.get().getConfigValue() != null && !opt.get().getConfigValue().isBlank()) {
+                SmtpConfigDto dto = objectMapper.readValue(opt.get().getConfigValue(), SmtpConfigDto.class);
+                applySmtpDto(dto);
+                log.info("Đã nạp lại cấu hình SMTP từ Database (table system_configs): sender={}, host={}, port={}, configuredBy={}",
+                        dto.getUsername(), dto.getHost(), dto.getPort(), dto.getLastConfiguredBy());
+                return;
+            }
+
+            // Fallback & Auto-migration: nếu DB chưa có nhưng có file properties cũ thì nạp và migrate vào DB
+            File oldFile = new File(".smtp-config.properties");
+            if (oldFile.exists() && oldFile.isFile()) {
                 Properties props = new Properties();
-                try (FileInputStream in = new FileInputStream(file)) {
+                try (FileInputStream in = new FileInputStream(oldFile)) {
                     props.load(in);
                 }
                 String host = props.getProperty("mail.host", "smtp.gmail.com");
@@ -63,49 +92,73 @@ public class EmailServiceImpl implements EmailService {
                 String configuredBy = props.getProperty("mail.configuredBy", "HR_ADMIN");
 
                 if (username != null && !username.isBlank() && password != null && !password.isBlank()) {
-                    if (mailSender instanceof JavaMailSenderImpl impl) {
-                        impl.setHost(host);
-                        impl.setPort(port);
-                        impl.setUsername(username);
-                        impl.setPassword(password);
-                        Properties mailProps = impl.getJavaMailProperties();
-                        mailProps.put("mail.transport.protocol", "smtp");
-                        mailProps.put("mail.smtp.auth", "true");
-                        mailProps.put("mail.smtp.starttls.enable", "true");
-                        mailProps.put("mail.smtp.starttls.required", "true");
-                        mailProps.put("mail.smtp.ssl.trust", impl.getHost());
-                        mailProps.put("mail.smtp.connectiontimeout", "8000");
-                        mailProps.put("mail.smtp.timeout", "8000");
-                        mailProps.put("mail.smtp.writetimeout", "8000");
-                    }
-                    this.senderEmail = username;
-                    this.mailHost = host;
-                    this.lastConfiguredAt = configuredAt;
-                    this.lastConfiguredBy = configuredBy;
-                    log.info("Đã nạp lại cấu hình SMTP từ file: sender={}, host={}, port={}, configuredBy={}", username, host, port, configuredBy);
+                    SmtpConfigDto dto = SmtpConfigDto.builder()
+                            .host(host)
+                            .port(port)
+                            .username(username)
+                            .password(password)
+                            .lastConfiguredAt(configuredAt)
+                            .lastConfiguredBy(configuredBy)
+                            .build();
+                    applySmtpDto(dto);
+                    persistSmtpConfigToDb(host, port, username, password, configuredAt, configuredBy);
+                    try {
+                        oldFile.delete();
+                    } catch (Exception ignored) {}
+                    log.info("Đã tự động migrate cấu hình SMTP từ file cũ vào Database thành công!");
                 }
             }
         } catch (Exception ex) {
-            log.warn("Lỗi khi nạp lại cấu hình SMTP từ file: {}", ex.getMessage());
+            log.warn("Lỗi khi nạp lại cấu hình SMTP từ Database: {}", ex.getMessage());
         }
     }
 
-    private void persistSmtpConfig(String host, int port, String username, String password, String configuredAt, String configuredBy) {
-        try {
-            Properties props = new Properties();
-            props.setProperty("mail.host", host != null ? host : "smtp.gmail.com");
-            props.setProperty("mail.port", String.valueOf(port));
-            props.setProperty("mail.username", username != null ? username : "");
-            props.setProperty("mail.password", password != null ? password : "");
-            props.setProperty("mail.configuredAt", configuredAt != null ? configuredAt : "");
-            props.setProperty("mail.configuredBy", configuredBy != null ? configuredBy : "");
-            File file = new File(SMTP_CONFIG_FILE);
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                props.store(out, "Persisted SMTP Configuration for ACT Pulse");
+    private void applySmtpDto(SmtpConfigDto dto) {
+        if (dto.getUsername() != null && !dto.getUsername().isBlank() && dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            if (mailSender instanceof JavaMailSenderImpl impl) {
+                impl.setHost(dto.getHost() != null && !dto.getHost().isBlank() ? dto.getHost() : "smtp.gmail.com");
+                impl.setPort(dto.getPort() > 0 ? dto.getPort() : 587);
+                impl.setUsername(dto.getUsername());
+                impl.setPassword(dto.getPassword());
+                Properties mailProps = impl.getJavaMailProperties();
+                mailProps.put("mail.transport.protocol", "smtp");
+                mailProps.put("mail.smtp.auth", "true");
+                mailProps.put("mail.smtp.starttls.enable", "true");
+                mailProps.put("mail.smtp.starttls.required", "true");
+                mailProps.put("mail.smtp.ssl.trust", impl.getHost());
+                mailProps.put("mail.smtp.connectiontimeout", "8000");
+                mailProps.put("mail.smtp.timeout", "8000");
+                mailProps.put("mail.smtp.writetimeout", "8000");
             }
-            log.info("Đã lưu cấu hình SMTP bền vững vào file: {}", file.getAbsolutePath());
+            this.senderEmail = dto.getUsername();
+            this.mailHost = dto.getHost();
+            this.lastConfiguredAt = dto.getLastConfiguredAt();
+            this.lastConfiguredBy = dto.getLastConfiguredBy();
+        }
+    }
+
+    private void persistSmtpConfigToDb(String host, int port, String username, String password, String configuredAt, String configuredBy) {
+        try {
+            SmtpConfigDto dto = SmtpConfigDto.builder()
+                    .host(host != null ? host : "smtp.gmail.com")
+                    .port(port)
+                    .username(username != null ? username : "")
+                    .password(password != null ? password : "")
+                    .lastConfiguredAt(configuredAt != null ? configuredAt : "")
+                    .lastConfiguredBy(configuredBy != null ? configuredBy : "")
+                    .build();
+            String json = objectMapper.writeValueAsString(dto);
+
+            SystemConfig config = systemConfigRepository.findByConfigKey(SMTP_CONFIG_KEY)
+                    .orElseGet(() -> SystemConfig.builder().configKey(SMTP_CONFIG_KEY).build());
+            config.setConfigValue(json);
+            config.setDescription("Cấu hình tài khoản gửi Gmail SMTP Doanh Nghiệp");
+            config.setUpdatedBy(configuredBy != null ? configuredBy : "HR_ADMIN");
+            systemConfigRepository.save(config);
+
+            log.info("Đã lưu cấu hình SMTP bền vững vào Database (table system_configs)");
         } catch (Exception ex) {
-            log.warn("Không thể lưu file cấu hình SMTP bền vững: {}", ex.getMessage());
+            log.warn("Không thể lưu cấu hình SMTP vào Database: {}", ex.getMessage());
         }
     }
 
@@ -138,9 +191,9 @@ public class EmailServiceImpl implements EmailService {
                 this.lastConfiguredAt = LocalDateTime.now().format(TIME_FORMATTER);
                 this.lastConfiguredBy = (configuredBy != null && !configuredBy.isBlank()) ? configuredBy : "HR_ADMIN";
 
-                persistSmtpConfig(impl.getHost(), impl.getPort(), username, password, this.lastConfiguredAt, this.lastConfiguredBy);
+                persistSmtpConfigToDb(impl.getHost(), impl.getPort(), username, password, this.lastConfiguredAt, this.lastConfiguredBy);
 
-                log.info("Cập nhật cấu hình SMTP thành công cho host: {}, port: {}, sender: {} bởi {}", host, port, username, this.lastConfiguredBy);
+                log.info("Cập nhật cấu hình SMTP vào Database thành công: host={}, port={}, sender={} bởi {}", host, port, username, this.lastConfiguredBy);
                 return true;
             }
             return false;
