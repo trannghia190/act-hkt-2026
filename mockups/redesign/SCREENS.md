@@ -752,3 +752,16 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   `/attendance/policy-doc` (không còn dùng route `/admin`). HR/Manager vẫn là
   2 nhánh song song, Admin = cả hai. Verify HR 01HR: 3 theme + mobile drawer,
   click 3 link mới mở đúng màn; `tsc` + `build` + `check-consistency` sạch.
+- **Rà soát ô nhập liệu · Bento Studio** ✅ (2026-11-28) — quét toàn bộ
+  `input`/`select`/`textarea` hiển thị dưới theme Bento Studio, tính nền hiệu dụng bằng cách
+  leo cây DOM tới nền đục đầu tiên rồi đo tương phản WCAG: 43 route desktop +
+  42 route mobile 390 + login/quên mật khẩu + command palette + modal (tổng 450
+  control) → **0 control chữ-trên-nền-trắng không đọc được**. Phát hiện 1 lỗi
+  thật: trong modal **Đơn WFH**, 2 `select` "Đơn vị" (Cả ngày/Nửa ngày…) và
+  "Buổi" (Sáng/Chiều) nằm trong panel `bg-status-info-soft text-status-info`
+  nhưng bản thân select không có nền/chữ riêng → Bento render nền trắng mặc định
+  của trình duyệt + chữ xanh nhạt kế thừa (tương phản ~2.2:1). Sửa bằng
+  `bg-surface text-ink` (đo lại: chữ `rgb(242,243,245)` trên nền `rgb(20,21,25)`
+  → đạt AA). Bổ sung `color-scheme: light/dark` theo từng theme trong `index.css`
+  để popup `<select>`, date picker và autofill native cũng theo nền theme thay vì
+  mặc định sáng của OS. Verify: `tsc` + `build` sạch.

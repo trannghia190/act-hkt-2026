@@ -1116,7 +1116,7 @@ export const RequestsPage: React.FC = () => {
               <div><strong>Quy chế WFH:</strong> tối đa <strong>2 ngày WFH / tuần</strong>; cho phép đăng ký lùi tối đa <strong>{wfhBackfillDays} ngày</strong> (ngày sớm nhất <strong>{minDateForSelected}</strong>) và ngày tương lai. Không giới hạn địa điểm.</div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-[11px]">Đơn vị
-                  <select className="mt-1 w-full border border-status-info-line rounded p-1" value={leaveUnit}
+                  <select className="mt-1 w-full border border-status-info-line rounded bg-surface p-1 text-ink" value={leaveUnit}
                     onChange={e => {
                       const unit = e.target.value as 'DAY' | 'HALF_DAY';
                       setLeaveUnit(unit);
@@ -1128,7 +1128,7 @@ export const RequestsPage: React.FC = () => {
                 </label>
                 {leaveUnit === 'HALF_DAY' && (
                   <label className="block text-[11px]">Buổi
-                    <select className="mt-1 w-full border border-status-info-line rounded p-1" value={halfDayPeriod}
+                    <select className="mt-1 w-full border border-status-info-line rounded bg-surface p-1 text-ink" value={halfDayPeriod}
                       onChange={e => setHalfDayPeriod(e.target.value as 'MORNING' | 'AFTERNOON')}>
                       <option value="MORNING">Buổi sáng</option>
                       <option value="AFTERNOON">Buổi chiều</option>
