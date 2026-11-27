@@ -20,7 +20,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
   const [appPassword, setAppPassword] = useState('');
   const [showAppPassword, setShowAppPassword] = useState(false);
   const [targetEmail, setTargetEmail] = useState('');
-  const [testMessage, setTestMessage] = useState('Thử nghiệm gửi email thông báo từ hệ thống ACT PULSE 2026.');
+  const [testMessage, setTestMessage] = useState('Thử nghiệm gửi email thông báo từ hệ thống Ascend Tech 2026.');
   const [isLoading, setIsLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
   const [currentSender, setCurrentSender] = useState('');
@@ -221,7 +221,7 @@ export const EnterpriseGmailModal: React.FC<EnterpriseGmailModalProps> = ({ isOp
                 <strong>Bước 2: Tạo Mật khẩu ứng dụng (App Password)</strong>
                 <p className="text-ink-secondary mt-0.5">
                   Truy cập trực tiếp: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-accent underline">myaccount.google.com/apppasswords</a>
-                  <br />Nhập tên ứng dụng (Ví dụ: <code>ACT PULSE HR</code>) → Bấm <strong>Tạo (Create)</strong>.
+                  <br />Nhập tên ứng dụng (Ví dụ: <code>Ascend Tech HR</code>) → Bấm <strong>Tạo (Create)</strong>.
                 </p>
               </div>
 

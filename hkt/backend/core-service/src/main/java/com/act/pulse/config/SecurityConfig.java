@@ -67,8 +67,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 // Phân quyền chuyên biệt (RBAC):
-                // 1. Cho phép nhân viên đã đăng nhập xem danh mục ca làm việc và lịch nghỉ lễ
-                .requestMatchers(HttpMethod.GET, "/admin/shifts", "/admin/holidays").authenticated()
+                // 1. Cho phép nhân viên đã đăng nhập xem danh mục ca làm việc, lịch nghỉ lễ và domain host
+                .requestMatchers(HttpMethod.GET, "/admin/shifts", "/admin/holidays", "/admin/system-config/public-domain").authenticated()
 
                 // 2. Toàn bộ quản trị hệ thống, nhân sự, audit log, phân nhóm... chỉ dành cho ADMIN và HR_ADMIN
                 .requestMatchers("/admin/**").hasAnyRole("ADMIN", "HR_ADMIN")

@@ -42,6 +42,7 @@ import {
   ClipboardCheck,
   MessageCircle,
   Tag,
+  Globe,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -77,6 +78,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ClipboardCheck,
   MessageCircle,
   Tag,
+  Globe,
 };
 
 interface SidebarProps {

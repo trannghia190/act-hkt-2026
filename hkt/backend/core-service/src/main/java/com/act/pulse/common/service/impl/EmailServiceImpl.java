@@ -30,6 +30,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
     private final SystemConfigRepository systemConfigRepository;
+    private final com.act.pulse.common.service.SystemConfigService systemConfigService;
     private final ObjectMapper objectMapper;
 
     @Value("${spring.mail.username:}")
@@ -240,12 +241,12 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public boolean sendAccountActivationEmail(String toEmail, String fullName, String employeeCode, String temporaryPassword) {
-        String subject = "[ACT PULSE] Thông Báo Khởi Tạo Tài Khoản Nhân Viên & Kích Hoạt Lần Đầu";
-        String preheader = "Kính gửi " + fullName + ", tài khoản của bạn đã được khởi tạo trên hệ thống ACT PULSE. Vui lòng kích hoạt trong 24 giờ.";
+        String subject = "[Ascend Tech] Thông Báo Khởi Tạo Tài Khoản Nhân Viên & Kích Hoạt Lần Đầu";
+        String preheader = "Kính gửi " + fullName + ", tài khoản của bạn đã được khởi tạo trên hệ thống Ascend Tech. Vui lòng kích hoạt trong 24 giờ.";
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
-            <p style="color: #334155;">Bộ phận Nhân sự trân trọng thông báo: Tài khoản làm việc của Anh/Chị trên hệ thống quản trị nhân sự tập trung <strong>ACT PULSE</strong> đã được khởi tạo thành công.</p>
+            <p style="color: #334155;">Bộ phận Nhân sự trân trọng thông báo: Tài khoản làm việc của Anh/Chị trên hệ thống quản trị nhân sự tập trung <strong>Ascend Tech</strong> đã được khởi tạo thành công.</p>
             
             <!-- Credentials Card -->
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -295,7 +296,7 @@ public class EmailServiceImpl implements EmailService {
                 "Kích hoạt tài khoản nhân viên & Đổi mật khẩu lần đầu",
                 body,
                 "ĐĂNG NHẬP & KÍCH HOẠT TÀI KHOẢN NGAY →",
-                "http://localhost:3000/login"
+                systemConfigService.buildAbsoluteUrl("/login")
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);
@@ -306,12 +307,12 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public boolean sendPasswordResetEmail(String toEmail, String fullName, String resetToken) {
-        String subject = "[ACT PULSE] Mã Xác Thực OTP Đặt Lại Mật Khẩu";
+        String subject = "[Ascend Tech] Mã Xác Thực OTP Đặt Lại Mật Khẩu";
         String preheader = "Mã OTP xác thực đặt lại mật khẩu của bạn là " + resetToken + " (hiệu lực 15 phút).";
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
-            <p style="color: #334155;">Hệ thống ACT PULSE vừa tiếp nhận yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <strong>%s</strong>.</p>
+            <p style="color: #334155;">Hệ thống Ascend Tech vừa tiếp nhận yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email <strong>%s</strong>.</p>
             
             <!-- OTP Block -->
             <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 14px; padding: 24px 20px; text-align: center; margin: 24px 0;">
@@ -342,7 +343,7 @@ public class EmailServiceImpl implements EmailService {
                 "Mã bảo mật OTP gửi qua Gmail Doanh Nghiệp",
                 body,
                 "TRUY CẬP TRANG ĐẶT LẠI MẬT KHẨU →",
-                "http://localhost:3000/forgot-password"
+                systemConfigService.buildAbsoluteUrl("/forgot-password")
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);
@@ -353,13 +354,13 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public boolean sendPasswordChangedSuccessEmail(String toEmail, String fullName, String changeType) {
-        String subject = "[ACT PULSE] Xác Nhận Thay Đổi Mật Khẩu Tài Khoản Thành Công";
-        String preheader = "Mật khẩu tài khoản ACT PULSE của " + fullName + " vừa được cập nhật thành công.";
+        String subject = "[Ascend Tech] Xác Nhận Thay Đổi Mật Khẩu Tài Khoản Thành Công";
+        String preheader = "Mật khẩu tài khoản Ascend Tech của " + fullName + " vừa được cập nhật thành công.";
         String timeStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
-            <p style="color: #334155;">Hệ thống ACT PULSE xin thông báo: Mật khẩu truy cập hệ thống của Anh/Chị đã được <strong>cập nhật thành công</strong>.</p>
+            <p style="color: #334155;">Hệ thống Ascend Tech xin thông báo: Mật khẩu truy cập hệ thống của Anh/Chị đã được <strong>cập nhật thành công</strong>.</p>
 
             <!-- Success Box -->
             <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
@@ -382,7 +383,7 @@ public class EmailServiceImpl implements EmailService {
             <!-- Session Revocation Notice -->
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 12px; color: #64748b; line-height: 1.6;">
                 <strong>🔒 Cơ chế bảo vệ phiên đăng nhập:</strong><br>
-                Theo chính sách bảo mật của ACT PULSE, khi mật khẩu thay đổi, <strong>toàn bộ các phiên làm việc cũ</strong> trên các thiết bị và trình duyệt khác đều tự động bị vô hiệu hóa và thu hồi. Vui lòng sử dụng mật khẩu mới để đăng nhập lại.
+                Theo chính sách bảo mật của Ascend Tech, khi mật khẩu thay đổi, <strong>toàn bộ các phiên làm việc cũ</strong> trên các thiết bị và trình duyệt khác đều tự động bị vô hiệu hóa và thu hồi. Vui lòng sử dụng mật khẩu mới để đăng nhập lại.
             </div>
 
             <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; margin-top: 14px; font-size: 12px; color: #991b1b; line-height: 1.5;">
@@ -398,7 +399,7 @@ public class EmailServiceImpl implements EmailService {
                 "Xác nhận thay đổi bảo mật tài khoản thành công",
                 body,
                 "ĐĂNG NHẬP BẰNG MẬT KHẨU MỚI →",
-                "http://localhost:3000/login"
+                systemConfigService.buildAbsoluteUrl("/login")
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);
@@ -418,12 +419,12 @@ public class EmailServiceImpl implements EmailService {
                 ? "linear-gradient(135deg, #064e3b 0%%, #047857 100%%)"
                 : "linear-gradient(135deg, #7f1d1d 0%%, #b91c1c 100%%)";
 
-        String subject = String.format("[ACT PULSE] Kết Quả Xét Duyệt Đơn: %s — %s", requestId, statusText);
+        String subject = String.format("[Ascend Tech] Kết Quả Xét Duyệt Đơn: %s — %s", requestId, statusText);
         String preheader = "Đơn yêu cầu " + requestId + " (" + requestType + ") của bạn đã " + (isApproved ? "được phê duyệt thành công." : "bị từ chối bởi cấp quản lý.");
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi <strong>%s</strong>,</p>
-            <p style="color: #334155;">Cấp quản lý đã tiến hành xem xét và đưa ra kết quả xử lý đối với đơn yêu cầu của Anh/Chị trên hệ thống ACT PULSE:</p>
+            <p style="color: #334155;">Cấp quản lý đã tiến hành xem xét và đưa ra kết quả xử lý đối với đơn yêu cầu của Anh/Chị trên hệ thống Ascend Tech:</p>
 
             <!-- Status Pill Banner -->
             <div style="background-color: %s; border: 1px solid %s; border-radius: 10px; padding: 14px 18px; margin: 20px 0; text-align: center;">
@@ -480,7 +481,7 @@ public class EmailServiceImpl implements EmailService {
                 "Đơn yêu cầu: " + requestId + " (" + requestType + ")",
                 body,
                 "XEM CHI TIẾT ĐƠN TRÊN HỆ THỐNG →",
-                "http://localhost:3000/attendance/requests"
+                systemConfigService.buildAbsoluteUrl("/attendance/requests")
         );
 
         sendHtmlEmail(toEmail, subject, htmlContent);
@@ -492,12 +493,12 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public boolean sendEventEmail(String toEmail, String fullName, String title, String content, String actionUrl) {
         if (toEmail == null || toEmail.isBlank()) return false;
-        String subject = "[ACT PULSE] " + (title == null ? "Thông báo" : title);
-        String link = actionUrl == null || actionUrl.isBlank() ? "" : actionUrl;
+        String subject = "[Ascend Tech] " + (title == null ? "Thông báo" : title);
+        String link = actionUrl == null || actionUrl.isBlank() ? "" : systemConfigService.buildAbsoluteUrl(actionUrl);
         String htmlContent = """
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
               <div style="background: linear-gradient(135deg, #064e3b 0%%, #047857 100%%); padding: 20px 24px; color: #ffffff;">
-                <div style="font-size: 13px; opacity: 0.85;">ACT PULSE · Thông báo</div>
+                <div style="font-size: 13px; opacity: 0.85;">Ascend Tech · Thông báo</div>
                 <div style="font-size: 18px; font-weight: 800; margin-top: 4px;">%s</div>
               </div>
               <div style="padding: 20px 24px; color: #334155; font-size: 14px; line-height: 1.6;">
@@ -523,7 +524,7 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public boolean sendDailyDigestEmail(String toEmail, String fullName, List<Map<String, Object>> tasks, Map<String, Object> leaveSummary) {
-        String subject = "[ACT PULSE] Bản Tin Công Việc Buổi Sáng · 08:00 AM";
+        String subject = "[Ascend Tech] Bản Tin Công Việc Buổi Sáng · 08:00 AM";
         String preheader = "Bản tin 08:00: Bạn có " + (tasks != null ? tasks.size() : 0) + " việc cần xử lý và số dư phép năm hiện tại.";
 
         StringBuilder tasksHtml = new StringBuilder();
@@ -592,7 +593,7 @@ public class EmailServiceImpl implements EmailService {
                 "Nhiệm vụ trong ngày & Số dư phép năm",
                 body,
                 "MỞ TRANG CẦN LÀM (TODO INBOX) →",
-                "http://localhost:3000/todo"
+                systemConfigService.buildAbsoluteUrl("/todo")
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);
@@ -603,12 +604,12 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public void sendSlaEscalationEmail(String toEmail, String managerName, String requestId, String employeeName, String requestType, long elapsedHours) {
-        String subject = String.format("[ACT PULSE - KHẨN] Cảnh Báo Quá Hạn Phê Duyệt Đơn %s (> %dh)", requestId, elapsedHours);
+        String subject = String.format("[Ascend Tech - KHẨN] Cảnh Báo Quá Hạn Phê Duyệt Đơn %s (> %dh)", requestId, elapsedHours);
         String preheader = "Cảnh báo khẩn: Đơn " + requestId + " của " + employeeName + " đã quá hạn SLA " + elapsedHours + " giờ.";
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Kính gửi Quản lý <strong>%s</strong>,</p>
-            <p style="color: #334155;">Hệ thống ACT PULSE phát hiện đơn yêu cầu dưới đây đã chờ phê duyệt quá thời hạn cam kết dịch vụ (SLA &gt; 48 giờ) và cần được xử lý khẩn cấp:</p>
+            <p style="color: #334155;">Hệ thống Ascend Tech phát hiện đơn yêu cầu dưới đây đã chờ phê duyệt quá thời hạn cam kết dịch vụ (SLA &gt; 48 giờ) và cần được xử lý khẩn cấp:</p>
 
             <!-- Alert Card -->
             <div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; padding: 16px; margin: 20px 0;">
@@ -646,7 +647,7 @@ public class EmailServiceImpl implements EmailService {
                 "Yêu cầu cấp bách: Đơn chờ xử lý quá hạn SLA 48h",
                 body,
                 "PHÊ DUYỆT ĐƠN NÀY NGAY TRÊN TODO INBOX →",
-                "http://localhost:3000/todo"
+                systemConfigService.buildAbsoluteUrl("/todo")
         );
 
         sendHtmlEmail(toEmail, subject, htmlContent);
@@ -657,12 +658,12 @@ public class EmailServiceImpl implements EmailService {
     // =========================================================================
     @Override
     public boolean sendTestEmail(String toEmail, String message) {
-        String subject = "[ACT PULSE] Kiểm Tra Kết Nối Gmail Doanh Nghiệp Thành Công";
-        String preheader = "Xác nhận kết nối máy chủ gửi thư Gmail SMTP của ACT PULSE hoạt động hoàn hảo.";
+        String subject = "[Ascend Tech] Kiểm Tra Kết Nối Gmail Doanh Nghiệp Thành Công";
+        String preheader = "Xác nhận kết nối máy chủ gửi thư Gmail SMTP của Ascend Tech hoạt động hoàn hảo.";
 
         String body = String.format("""
             <p style="font-size: 15px; margin-top: 0;">Xin chào Quản trị viên,</p>
-            <p style="color: #334155;">Thư này được gửi trực tiếp từ máy chủ <strong>ACT PULSE (Spring Boot 3)</strong> nhằm kiểm tra tính tương thích và độ tin cậy của cấu hình gửi thư qua giao thức Gmail SMTP Doanh nghiệp.</p>
+            <p style="color: #334155;">Thư này được gửi trực tiếp từ máy chủ <strong>Ascend Tech (Spring Boot 3)</strong> nhằm kiểm tra tính tương thích và độ tin cậy của cấu hình gửi thư qua giao thức Gmail SMTP Doanh nghiệp.</p>
 
             <!-- Diagnostics Card -->
             <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -705,10 +706,10 @@ public class EmailServiceImpl implements EmailService {
                 "linear-gradient(135deg, #065f46 0%%, #047857 100%%)",
                 "KIỂM THỬ KẾT NỐI",
                 "Kết Nối Gmail SMTP Thành Công",
-                "Hệ thống gửi thư tự động ACT PULSE đã sẵn sàng",
+                "Hệ thống gửi thư tự động Ascend Tech đã sẵn sàng",
                 body,
-                "TRUY CẬP TRANG QUẢN TRỊ ACT PULSE →",
-                "http://localhost:3000/admin/users"
+                "TRUY CẬP TRANG QUẢN TRỊ ASCEND TECH →",
+                systemConfigService.buildAbsoluteUrl("/admin/users")
         );
 
         return sendHtmlEmail(toEmail, subject, htmlContent);
@@ -738,7 +739,7 @@ public class EmailServiceImpl implements EmailService {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>ACT PULSE Enterprise</title>
+                <title>Ascend Tech Enterprise</title>
             </head>
             <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6;">
                 <!-- Preheader snippet -->
@@ -758,7 +759,7 @@ public class EmailServiceImpl implements EmailService {
                                             <tr>
                                                 <td>
                                                     <div style="display: inline-block; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #ffffff;">
-                                                        ACT <span style="color: #6ee7b7;">PULSE</span>
+                                                        ASCEND <span style="color: #6ee7b7;">TECH</span>
                                                     </div>
                                                     <span style="display: inline-block; margin-left: 10px; background: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: middle;">
                                                         %s
@@ -792,17 +793,17 @@ public class EmailServiceImpl implements EmailService {
                                         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%%">
                                             <tr>
                                                 <td>
-                                                    <strong style="color: #334155; font-size: 13px;">Hệ Thống Quản Trị Nhân Sự &amp; Hiệu Suất ACT PULSE</strong>
-                                                    <div style="margin-top: 4px; color: #475569;">CÔNG TY CỔ PHẦN CÔNG NGHỆ VÀ TRUYỀN THÔNG ACT</div>
-                                                    <div style="margin-top: 2px;">Tầng 12, Tòa nhà ACT Tower, Phố Duy Tân, Cầu Giấy, Hà Nội</div>
+                                                    <strong style="color: #334155; font-size: 13px;">Hệ Thống Quản Trị Nhân Sự &amp; Hiệu Suất Ascend Tech</strong>
+                                                    <div style="margin-top: 4px; color: #475569;">CÔNG TY CỔ PHẦN CÔNG NGHỆ ASCEND (ASCEND TECH)</div>
+                                                    <div style="margin-top: 2px;">Tòa nhà Ascend Tower, Phố Duy Tân, Cầu Giấy, Hà Nội</div>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td style="padding-top: 14px; border-top: 1px dashed #cbd5e1; margin-top: 14px;">
                                                     <div style="font-size: 11px; color: #94a3b8; line-height: 1.5;">
-                                                        • Thư điện tử tự động từ máy chủ ACT PULSE. Vui lòng không trả lời thư này (No-reply).<br>
-                                                        • Cần hỗ trợ? Bộ phận Nhân sự: <a href="mailto:hr@act.vn" style="color: #047857; font-weight: 600; text-decoration: none;">hr@act.vn</a> · Hotline kỹ thuật: <strong style="color: #0f172a;">1900 6868</strong>.<br>
-                                                        • Cam kết bảo mật: ACT PULSE không bao giờ yêu cầu bạn cung cấp mật khẩu qua điện thoại hoặc tin nhắn.
+                                                        • Thư điện tử tự động từ máy chủ Ascend Tech. Vui lòng không trả lời thư này (No-reply).<br>
+                                                        • Cần hỗ trợ? Bộ phận Nhân sự: <a href="mailto:hr@ascendtech.vn" style="color: #047857; font-weight: 600; text-decoration: none;">hr@ascendtech.vn</a> · Hotline kỹ thuật: <strong style="color: #0f172a;">1900 6868</strong>.<br>
+                                                        • Cam kết bảo mật: Ascend Tech không bao giờ yêu cầu bạn cung cấp mật khẩu qua điện thoại hoặc tin nhắn.
                                                     </div>
                                                 </td>
                                             </tr>
@@ -816,7 +817,7 @@ public class EmailServiceImpl implements EmailService {
             </body>
             </html>
             """,
-                preheader != null ? preheader : "Thông báo từ ACT PULSE",
+                preheader != null ? preheader : "Thông báo từ Ascend Tech",
                 headerGradient,
                 categoryPill,
                 heroTitle,
@@ -848,7 +849,7 @@ public class EmailServiceImpl implements EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             String from = (senderEmail != null && !senderEmail.isBlank()) ? senderEmail : "act.pulse.hr@gmail.com";
-            helper.setFrom(from, "ACT PULSE Notification System");
+            helper.setFrom(from, "Ascend Tech Notification System");
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(htmlContent, true);

@@ -25,7 +25,7 @@ public class RuleService {
         return ruleRepository.findByRuleKey(ruleKey)
                 .map(rule -> {
                     try {
-                        return objectMapper.readValue(rule.getCurrentValue(), new TypeReference<>() {
+                        return objectMapper.readValue(rule.getCurrentValue(), new TypeReference<Map<String, Object>>() {
                         });
                     } catch (Exception ex) {
                         return Map.<String, Object>of();
