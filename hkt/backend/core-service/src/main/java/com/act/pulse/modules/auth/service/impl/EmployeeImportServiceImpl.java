@@ -33,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -89,13 +90,14 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
             String[] headers = {
                     "Mã nhân viên (tùy chọn)",
                     "Họ và tên (*)",
-                    "Email đăng nhập (*)",
                     "Số điện thoại",
-                    "Phòng ban / Nhóm (*)",
+                    "Email đăng nhập (*)",
+                    "Phòng ban (*)",
+                    "Nhóm",
                     "Chức danh / Vị trí (*)",
-                    "Vai trò (*)",
-                    "Mã QL trực tiếp",
+                    "Quản lý trực tiếp (Mã NV hoặc Email)",
                     "Ngày vào làm (dd/MM/yyyy)",
+                    "Vai trò (*)",
                     "Mật khẩu khởi tạo"
             };
 
@@ -107,11 +109,11 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Dữ liệu mẫu (3 dòng chuẩn)
+            // Dữ liệu mẫu (3 dòng chuẩn phản ánh đúng cấu trúc Hồ sơ cá nhân)
             String[][] sampleData = {
-                    {"ASC001", "Nguyễn Văn An", "an.nv@ascendtech.vn", "0912345678", "Kỹ thuật Công nghệ", "Kỹ sư Phần mềm", "EMPLOYEE", "05ACT", "15/01/2026", ""},
-                    {"ASC002", "Trần Thị Bích", "bich.tt@ascendtech.vn", "0987654321", "Nhân sự", "Chuyên viên Tuyển dụng", "HR_ADMIN", "05ACT", "01/02/2026", ""},
-                    {"ASC003", "Lê Hoàng Long", "long.lh@ascendtech.vn", "0909123456", "Sirius", "Trưởng nhóm Kỹ thuật", "MANAGER", "05ACT", "10/02/2026", "Act@Pass2026"}
+                    {"ASC001", "Nguyễn Văn An", "0912345678", "an.nv@ascendtech.vn", "Khối Kỹ Thuật", "Sirius Core", "Kỹ sư Phần mềm", "05ACT", "15/01/2026", "EMPLOYEE", ""},
+                    {"ASC002", "Trần Thị Bích", "0987654321", "bich.tt@ascendtech.vn", "Khối Nhân Sự", "Tuyển Dụng & Đào Tạo", "Chuyên viên Tuyển dụng", "01HR", "01/02/2026", "HR_ADMIN", ""},
+                    {"ASC003", "Lê Hoàng Long", "0909123456", "long.lh@ascendtech.vn", "Khối Kỹ Thuật", "Sirius Backend", "Trưởng nhóm Kỹ thuật", "tung.nguyen@act-corp.internal", "10/02/2026", "MANAGER", "Act@Pass2026"}
             };
 
             for (int r = 0; r < sampleData.length; r++) {
@@ -120,7 +122,7 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
                 for (int c = 0; c < sampleData[r].length; c++) {
                     Cell cell = row.createCell(c);
                     cell.setCellValue(sampleData[r][c]);
-                    if (c == 0 || c == 6 || c == 7 || c == 8) {
+                    if (c == 0 || c == 2 || c == 7 || c == 8 || c == 9) {
                         cell.setCellStyle(centerDataStyle);
                     } else {
                         cell.setCellStyle(dataStyle);
@@ -190,28 +192,39 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
 
             rowIdx++; // Dòng trống
 
-            // 2. Danh mục Phòng ban / Nhóm hiện có
+            // 2. Danh mục Phòng ban & Nhóm hiện có
             Row titleTeamRow = sheet2.createRow(rowIdx++);
             Cell titleTeamCell = titleTeamRow.createCell(0);
-            titleTeamCell.setCellValue("2. PHÒNG BAN / NHÓM HIỆN CÓ TRÊN HỆ THỐNG");
+            titleTeamCell.setCellValue("2. PHÒNG BAN & NHÓM HIỆN CÓ TRÊN HỆ THỐNG");
             titleTeamCell.setCellStyle(sectionStyle);
 
             Row teamHRow = sheet2.createRow(rowIdx++);
-            teamHRow.createCell(0).setCellValue("Tên Phòng ban / Nhóm");
+            teamHRow.createCell(0).setCellValue("Phòng ban / Khối");
             teamHRow.getCell(0).setCellStyle(subHeaderStyle);
-            teamHRow.createCell(1).setCellValue("Ghi chú");
+            teamHRow.createCell(1).setCellValue("Nhóm trực thuộc");
             teamHRow.getCell(1).setCellStyle(subHeaderStyle);
+            teamHRow.createCell(2).setCellValue("Ghi chú");
+            teamHRow.getCell(2).setCellStyle(subHeaderStyle);
 
-            List<Team> teams = teamRepository.findAll();
-            if (teams.isEmpty()) {
+            List<Team> allTeams = teamRepository.findAll();
+            Map<UUID, Team> teamIdMap = allTeams.stream().collect(Collectors.toMap(Team::getId, t -> t, (a, b) -> a));
+            if (allTeams.isEmpty()) {
                 Row r = sheet2.createRow(rowIdx++);
-                r.createCell(0).setCellValue("Sirius");
-                r.createCell(1).setCellValue("Nhóm mặc định");
+                r.createCell(0).setCellValue("Khối Kỹ Thuật");
+                r.createCell(1).setCellValue("Sirius");
+                r.createCell(2).setCellValue("Mặc định");
             } else {
-                for (Team t : teams) {
+                for (Team t : allTeams) {
                     Row r = sheet2.createRow(rowIdx++);
-                    r.createCell(0).setCellValue(t.getName());
-                    r.createCell(1).setCellValue("Hệ thống tự nhận diện hoặc tự động tạo mới nếu nhập tên phòng ban mới");
+                    if (t.getParentId() != null && teamIdMap.containsKey(t.getParentId())) {
+                        r.createCell(0).setCellValue(teamIdMap.get(t.getParentId()).getName());
+                        r.createCell(1).setCellValue(t.getName());
+                        r.createCell(2).setCellValue("Nhóm trực thuộc phòng ban");
+                    } else {
+                        r.createCell(0).setCellValue(t.getName());
+                        r.createCell(1).setCellValue("— (Trực thuộc phòng)");
+                        r.createCell(2).setCellValue("Phòng ban / Khối cấp cao");
+                    }
                 }
             }
 
@@ -220,7 +233,7 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
             // 3. Danh mục Quản lý hiện có
             Row titleMgrRow = sheet2.createRow(rowIdx++);
             Cell titleMgrCell = titleMgrRow.createCell(0);
-            titleMgrCell.setCellValue("3. DANH SÁCH QUẢN LÝ (THAM KHẢO CHO CỘT 'MÃ QL TRỰC TIẾP')");
+            titleMgrCell.setCellValue("3. DANH SÁCH QUẢN LÝ (ĐIỀN MÃ NV HOẶC EMAIL VÀO CỘT 'QUẢN LÝ TRỰC TIẾP')");
             titleMgrCell.setCellStyle(sectionStyle);
 
             Row mgrHRow = sheet2.createRow(rowIdx++);
@@ -287,8 +300,10 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
 
         // Chuẩn bị danh sách Team để tra cứu nhanh
         Map<String, Team> teamByName = new HashMap<>();
+        Map<UUID, Team> teamById = new HashMap<>();
         teamRepository.findAll().forEach(t -> {
             if (t.getName() != null) teamByName.put(t.getName().toLowerCase().trim(), t);
+            teamById.put(t.getId(), t);
         });
 
         UUID fallbackManagerId = userByCode.containsKey("05ACT") ? userByCode.get("05ACT").getId() : null;
@@ -305,21 +320,32 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
 
             // Nhận diện linh hoạt thứ tự các cột từ header (dòng 0)
             Row headerRow = sheet.getRow(0);
-            int colCode = 0, colName = 1, colEmail = 2, colPhone = 3, colTeam = 4, colPos = 5, colRole = 6, colMgr = 7, colDate = 8, colPass = 9;
+            int colCode = -1, colName = -1, colPhone = -1, colEmail = -1, colDept = -1, colTeam = -1, colPos = -1, colMgr = -1, colDate = -1, colRole = -1, colPass = -1;
             if (headerRow != null) {
                 for (int c = headerRow.getFirstCellNum(); c < headerRow.getLastCellNum(); c++) {
                     String h = getCellString(headerRow.getCell(c)).toLowerCase().trim();
                     if (h.contains("mã nv") || h.contains("mã nhân viên") || h.equals("code") || h.equals("employee_code")) colCode = c;
                     else if (h.contains("họ và tên") || h.contains("họ tên") || h.equals("name") || h.equals("fullname")) colName = c;
-                    else if (h.contains("email")) colEmail = c;
                     else if (h.contains("điện thoại") || h.contains("phone") || h.contains("sđt") || h.contains("sdt")) colPhone = c;
-                    else if (h.contains("phòng ban") || h.contains("nhóm") || h.contains("team") || h.contains("department")) colTeam = c;
-                    else if (h.contains("chức danh") || h.contains("vị trí") || h.contains("position") || h.contains("title")) colPos = c;
-                    else if (h.contains("vai trò") || h.contains("role")) colRole = c;
-                    else if (h.contains("quản lý") || h.contains("ql") || h.contains("manager")) colMgr = c;
-                    else if (h.contains("ngày vào") || h.contains("ngày gia nhập") || h.contains("join") || h.contains("hire")) colDate = c;
+                    else if (h.contains("email") || h.contains("thư điện tử")) colEmail = c;
+                    else if (h.contains("phòng ban") && h.contains("nhóm")) {
+                        // File cũ có 1 cột gộp "Phòng ban / Nhóm"
+                        if (colDept < 0) colDept = c;
+                        if (colTeam < 0) colTeam = c;
+                    }
+                    else if (h.contains("phòng ban") || h.contains("department") || h.contains("khối") || h.contains("bộ phận")) colDept = c;
+                    else if (h.contains("nhóm") || h.contains("team") || h.contains("squad") || h.contains("tổ")) colTeam = c;
+                    else if (h.contains("chức danh") || h.contains("vị trí") || h.contains("position") || h.contains("title") || h.contains("chức vụ")) colPos = c;
+                    else if (h.contains("quản lý") || h.contains("ql") || h.contains("manager") || h.contains("leader")) colMgr = c;
+                    else if (h.contains("ngày vào") || h.contains("ngày gia nhập") || h.contains("join") || h.contains("hire") || h.contains("bắt đầu")) colDate = c;
+                    else if (h.contains("vai trò") || h.contains("role") || h.contains("quyền")) colRole = c;
                     else if (h.contains("mật khẩu") || h.contains("password") || h.contains("pass")) colPass = c;
                 }
+            }
+
+            // Fallback nếu không có dòng header chuẩn
+            if (colName < 0 && colEmail < 0) {
+                colCode = 0; colName = 1; colPhone = 2; colEmail = 3; colDept = 4; colTeam = 5; colPos = 6; colMgr = 7; colDate = 8; colRole = 9; colPass = 10;
             }
 
             for (int r = 1; r <= lastRowNum; r++) {
@@ -333,13 +359,14 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
 
                 String rawCode = colCode >= 0 ? getCellString(row.getCell(colCode)) : "";
                 String fullName = colName >= 0 ? getCellString(row.getCell(colName)) : "";
-                String email = colEmail >= 0 ? getCellString(row.getCell(colEmail)) : "";
                 String phone = colPhone >= 0 ? getCellString(row.getCell(colPhone)) : "";
-                String teamName = colTeam >= 0 ? getCellString(row.getCell(colTeam)) : "";
+                String email = colEmail >= 0 ? getCellString(row.getCell(colEmail)) : "";
+                String rawDept = colDept >= 0 ? getCellString(row.getCell(colDept)).trim() : "";
+                String rawTeam = colTeam >= 0 ? getCellString(row.getCell(colTeam)).trim() : "";
                 String positionName = colPos >= 0 ? getCellString(row.getCell(colPos)) : "";
-                String roleStr = colRole >= 0 ? getCellString(row.getCell(colRole)) : "";
-                String managerCode = colMgr >= 0 ? getCellString(row.getCell(colMgr)) : "";
+                String managerRaw = colMgr >= 0 ? getCellString(row.getCell(colMgr)) : "";
                 LocalDate joinedDate = colDate >= 0 ? parseDate(row.getCell(colDate)) : LocalDate.now();
+                String roleStr = colRole >= 0 ? getCellString(row.getCell(colRole)) : "";
                 String rawPassword = colPass >= 0 ? getCellString(row.getCell(colPass)) : "";
 
                 // 1. Kiểm tra Họ và Tên
@@ -389,33 +416,85 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
                     finalCode = generateUniqueCode(processedCodesInBatch, userByCode);
                 }
 
-                // 4. Xác định Phòng ban / Nhóm
-                UUID teamId = null;
-                String finalTeamName = teamName.isBlank() ? "Sirius" : teamName.trim();
-                String teamKey = finalTeamName.toLowerCase();
-                if (teamByName.containsKey(teamKey)) {
-                    Team existingTeam = teamByName.get(teamKey);
-                    teamId = existingTeam.getId();
-                    finalTeamName = existingTeam.getName();
-                } else {
-                    // Tự động tạo mới Team nếu chưa có
-                    try {
-                        Team newTeam = Team.builder()
-                                .name(finalTeamName)
-                                .isSpecialApproval(false)
-                                .build();
-                        newTeam = teamRepository.save(newTeam);
-                        teamId = newTeam.getId();
-                        teamByName.put(teamKey, newTeam);
-                    } catch (Exception ex) {
-                        log.warn("Không tạo được team mới: {}", finalTeamName, ex);
-                        if (!teamByName.isEmpty()) {
-                            Team first = teamByName.values().iterator().next();
-                            teamId = first.getId();
-                            finalTeamName = first.getName();
+                // 4. Xác định Phòng ban & Nhóm (tương tự Hồ sơ cá nhân: teamName & departmentName)
+                Team resolvedTeam = null;
+                String finalDeptName = "";
+                String finalTeamName = "";
+
+                if (!rawDept.isBlank() && !rawTeam.isBlank() && !rawDept.equalsIgnoreCase(rawTeam)) {
+                    // Cả 2 đều có: rawDept là Department cha, rawTeam là Team con
+                    String deptKey = rawDept.toLowerCase();
+                    Team parentDept = teamByName.get(deptKey);
+                    if (parentDept == null) {
+                        try {
+                            parentDept = Team.builder()
+                                    .name(rawDept)
+                                    .parentId(null)
+                                    .isSpecialApproval(false)
+                                    .build();
+                            parentDept = teamRepository.save(parentDept);
+                            teamByName.put(deptKey, parentDept);
+                            teamById.put(parentDept.getId(), parentDept);
+                        } catch (Exception ex) {
+                            log.warn("Không tạo được phòng ban {}: {}", rawDept, ex.getMessage());
                         }
                     }
+                    finalDeptName = parentDept != null ? parentDept.getName() : rawDept;
+
+                    String teamKey = rawTeam.toLowerCase();
+                    Team childTeam = teamByName.get(teamKey);
+                    if (childTeam == null) {
+                        try {
+                            childTeam = Team.builder()
+                                    .name(rawTeam)
+                                    .parentId(parentDept != null ? parentDept.getId() : null)
+                                    .isSpecialApproval(false)
+                                    .build();
+                            childTeam = teamRepository.save(childTeam);
+                            teamByName.put(teamKey, childTeam);
+                            teamById.put(childTeam.getId(), childTeam);
+                        } catch (Exception ex) {
+                            log.warn("Không tạo được nhóm {}: {}", rawTeam, ex.getMessage());
+                        }
+                    } else if (childTeam.getParentId() == null && parentDept != null && !childTeam.getId().equals(parentDept.getId())) {
+                        try {
+                            childTeam.setParentId(parentDept.getId());
+                            childTeam = teamRepository.save(childTeam);
+                            teamByName.put(teamKey, childTeam);
+                            teamById.put(childTeam.getId(), childTeam);
+                        } catch (Exception ignored) {}
+                    }
+                    resolvedTeam = childTeam != null ? childTeam : parentDept;
+                    finalTeamName = resolvedTeam != null ? resolvedTeam.getName() : rawTeam;
+
+                } else {
+                    String singleName = !rawDept.isBlank() ? rawDept : (!rawTeam.isBlank() ? rawTeam : "Sirius");
+                    String singleKey = singleName.toLowerCase();
+                    Team t = teamByName.get(singleKey);
+                    if (t == null) {
+                        try {
+                            t = Team.builder()
+                                    .name(singleName)
+                                    .parentId(null)
+                                    .isSpecialApproval(false)
+                                    .build();
+                            t = teamRepository.save(t);
+                            teamByName.put(singleKey, t);
+                            teamById.put(t.getId(), t);
+                        } catch (Exception ex) {
+                            log.warn("Không tạo được team/dept {}: {}", singleName, ex.getMessage());
+                        }
+                    }
+                    resolvedTeam = t;
+                    finalTeamName = t != null ? t.getName() : singleName;
+                    if (t != null && t.getParentId() != null && teamById.containsKey(t.getParentId())) {
+                        finalDeptName = teamById.get(t.getParentId()).getName();
+                    } else {
+                        finalDeptName = finalTeamName;
+                    }
                 }
+
+                UUID teamId = resolvedTeam != null ? resolvedTeam.getId() : null;
 
                 // 5. Xác định Vai trò (Role)
                 String finalRole = normalizeRole(roleStr);
@@ -423,14 +502,35 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
                 // 6. Xác định Chức danh (Position)
                 String finalPosition = positionName.isBlank() ? "Chuyên viên" : positionName.trim();
 
-                // 7. Xác định Quản lý trực tiếp
+                // 7. Xác định Quản lý trực tiếp (hỗ trợ Mã NV, Email, hoặc Họ Tên)
                 UUID managerId = fallbackManagerId;
                 String managerDisplayName = "Nguyễn Thanh Tùng (05ACT)";
-                if (!managerCode.isBlank() && !managerCode.equalsIgnoreCase(finalCode)) {
-                    String normMgrCode = managerCode.toUpperCase().trim();
-                    User specifiedMgr = userByCode.get(normMgrCode);
-                    if (specifiedMgr != null && !"INACTIVE".equalsIgnoreCase(specifiedMgr.getStatus()) && !specifiedMgr.getEmployeeCode().equalsIgnoreCase(finalCode)) {
+                String managerCodeRecorded = "05ACT";
+
+                if (!managerRaw.isBlank()) {
+                    String normMgr = managerRaw.trim();
+                    User specifiedMgr = null;
+
+                    // 1. Tìm theo Mã nhân viên
+                    specifiedMgr = userByCode.get(normMgr.toUpperCase());
+
+                    // 2. Tìm theo Email
+                    if (specifiedMgr == null) {
+                        specifiedMgr = userByEmail.get(normMgr.toLowerCase());
+                    }
+
+                    // 3. Tìm theo Họ và tên
+                    if (specifiedMgr == null) {
+                        specifiedMgr = userByCode.values().stream()
+                                .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(normMgr))
+                                .findFirst()
+                                .orElse(null);
+                    }
+
+                    if (specifiedMgr != null && !"INACTIVE".equalsIgnoreCase(specifiedMgr.getStatus())
+                            && !specifiedMgr.getEmployeeCode().equalsIgnoreCase(finalCode)) {
                         managerId = specifiedMgr.getId();
+                        managerCodeRecorded = specifiedMgr.getEmployeeCode();
                         managerDisplayName = specifiedMgr.getFullName() + " (" + specifiedMgr.getEmployeeCode() + ")";
                     }
                 }
@@ -517,10 +617,11 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
                         .fullName(savedUser.getFullName())
                         .email(savedUser.getEmail())
                         .phone(savedUser.getPhone())
+                        .departmentName(finalDeptName)
                         .teamName(finalTeamName)
                         .positionName(finalPosition)
                         .role(finalRole)
-                        .managerCode(managerCode.isBlank() ? "05ACT" : managerCode.toUpperCase().trim())
+                        .managerCode(managerCodeRecorded)
                         .managerName(managerDisplayName)
                         .joinedDate(joinedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
                         .defaultPassword(finalPassword)

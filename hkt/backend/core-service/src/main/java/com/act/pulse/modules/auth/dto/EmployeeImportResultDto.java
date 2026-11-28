@@ -33,6 +33,7 @@ public class EmployeeImportResultDto {
         private String fullName;
         private String email;
         private String phone;
+        private String departmentName;
         private String teamName;
         private String positionName;
         private String role;
