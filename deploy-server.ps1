@@ -83,6 +83,9 @@ param(
 $ErrorActionPreference = 'Continue'
 $script:WslExe = $null
 $script:NeedReboot = $false
+# Chỉ truyền --port khi người dùng chỉ định rõ; nếu không .env là nguồn sự thật
+# (tránh mỗi lần chạy lại tự đổi cổng đã chọn trước đó về 80).
+$script:PortExplicit = $PSBoundParameters.ContainsKey('Port')
 $script:RootfsUrl = 'https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz'
 $script:TaskName = 'ACT-HKT WSL Port Proxy'
 $script:RefreshDir = Join-Path $env:ProgramData 'ACT-HKT'
@@ -552,15 +555,14 @@ function Invoke-FullDeploy([bool]$IsUpdate) {
   if ($Email)  { $common += @('--email', $Email) }
   if ($Tunnel) { $common += '--tunnel' }
   elseif ($NoTunnel) { $common += '--no-tunnel' }
+  if (-not $Domain -and $script:PortExplicit) { $common += @('--port', [string]$Port) }
 
   if ($IsUpdate) {
     Write-Step "Cap nhat & build lai"
     Invoke-Deploy (@('update') + $common)
   } else {
-    $deployParams = $common
-    if (-not $Domain) { $deployParams += @('--port', [string]$Port) }
     Write-Step "Cai dat & khoi chay (lan dau co the mat vai phut)..."
-    Invoke-Deploy $deployParams
+    Invoke-Deploy $common
   }
 
   # Sau khi deploy xong, .env la nguon su that cho domain/cong.

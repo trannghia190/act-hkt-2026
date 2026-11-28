@@ -54,6 +54,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/trannghia190/act-hkt-2026.git}"
 BRANCH="${BRANCH:-main}"
 HTTP_PORT="${HTTP_PORT:-}"
+HTTP_PORT_EXPLICIT="${HTTP_PORT:+1}"
 DOMAIN="${DOMAIN:-}"
 ACME_EMAIL="${ACME_EMAIL:-}"
 APP_DIR="${APP_DIR:-}"
@@ -103,7 +104,7 @@ while [ $# -gt 0 ]; do
     --no-tunnel)               ENABLE_TUNNEL=0; TUNNEL_FROM_CLI=1 ;;
     --domain)                  DOMAIN="${2:?Thiếu giá trị cho --domain}"; shift ;;
     --email)                   ACME_EMAIL="${2:?Thiếu giá trị cho --email}"; shift ;;
-    --port)                    HTTP_PORT="${2:?Thiếu giá trị cho --port}"; shift ;;
+    --port)                    HTTP_PORT="${2:?Thiếu giá trị cho --port}"; HTTP_PORT_EXPLICIT=1; shift ;;
     --dir)                     APP_DIR="${2:?Thiếu giá trị cho --dir}"; shift ;;
     --branch)                  BRANCH="${2:?Thiếu giá trị cho --branch}"; shift ;;
     --repo)                    REPO_URL="${2:?Thiếu giá trị cho --repo}"; shift ;;
@@ -328,6 +329,34 @@ apply_defaults() {
         die "Cổng HTTP ${HTTP_PORT} trùng với cổng dịch vụ nội bộ. Dùng --port <cổng khác>, vd 80." ;;
     esac
   fi
+}
+
+sync_http_port_env() {
+  # Đổi --port trên .env đã tồn tại phải cập nhật cả biến dẫn xuất, nếu không
+  # compose vẫn map FRONTEND_PUBLISH cũ và WebAuthn vẫn nhận origin cũ.
+  [ "${HTTP_PORT_EXPLICIT:-0}" = "1" ] || return 0
+  [ -z "$DOMAIN" ] || return 0
+  local hostport origin old
+  hostport="${PUBLIC_IP:-}"
+  if [ -z "$hostport" ]; then
+    old="$(env_get WEBAUTHN_ALLOWED_ORIGINS)"
+    old="${old#*://}"
+    case "$old" in
+      \[*\]:*) hostport="${old%%]:*}]" ;;
+      *:*)     hostport="${old%%:*}" ;;
+      *)       hostport="$old" ;;
+    esac
+  fi
+  hostport="${hostport:-localhost}"
+  if [ "$HTTP_PORT" = "80" ]; then
+    origin="http://${hostport}"
+  else
+    origin="http://${hostport}:${HTTP_PORT}"
+  fi
+  env_set HTTP_PORT "$HTTP_PORT"
+  env_set FRONTEND_PUBLISH "0.0.0.0:${HTTP_PORT}:80"
+  env_set WEBAUTHN_ALLOWED_ORIGINS "$origin"
+  ok "Đã cập nhật .env theo cổng ${HTTP_PORT}"
 }
 
 gen_secret_hex() {
@@ -670,6 +699,8 @@ cmd_up() {
     generate_env
   fi
 
+  sync_http_port_env
+
   # Nếu người dùng tắt tunnel (--no-tunnel), dừng container cũ trước khi up.
   [ "$ENABLE_TUNNEL" = "1" ] || stop_tunnel_container
 
@@ -712,6 +743,7 @@ cmd_update() {
     env_set ENABLE_TUNNEL "$ENABLE_TUNNEL"
   fi
   [ -f "$ENV_FILE" ] || generate_env
+  sync_http_port_env
   [ "$ENABLE_TUNNEL" = "1" ] || stop_tunnel_container
   gen_caddyfile
   build_compose_args
