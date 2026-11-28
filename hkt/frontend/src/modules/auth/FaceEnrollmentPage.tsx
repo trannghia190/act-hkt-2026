@@ -121,6 +121,19 @@ export const FaceEnrollmentPage: React.FC = () => {
     setIsCameraActive(false);
   };
 
+  /** Stream còn thật sự chạy không — sau lỗi camera, track có thể đã chết. */
+  const hasLiveStream = () =>
+    !!stream && stream.getVideoTracks().some((t) => t.readyState === 'live');
+
+  /** "Chụp lại": bỏ ảnh đã chụp và bảo đảm camera đang chạy (không để khung đen). */
+  const handleRetake = (target: 'enroll' | 'verify') => {
+    if (target === 'enroll') setCapturedImage(null);
+    else setVerifyImage(null);
+    if (!isCameraActive || !hasLiveStream()) {
+      startCamera();
+    }
+  };
+
   // Auto initialize camera when on enroll or verify tab
   useEffect(() => {
     if (activeTab === 'enroll' || activeTab === 'verify') {
@@ -133,13 +146,14 @@ export const FaceEnrollmentPage: React.FC = () => {
     };
   }, [activeTab]);
 
-  // Ensure video element plays when stream updates
+  // Gắn stream vào thẻ <video> mỗi khi thẻ được mount lại — bấm "Chụp lại" gỡ ảnh
+  // làm <video> mount lại, nếu chỉ phụ thuộc [stream, activeTab] thì khung bị đen.
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
       videoRef.current.play().catch(() => undefined);
     }
-  }, [stream, activeTab]);
+  }, [stream, activeTab, capturedImage, verifyImage]);
 
   // Load enrolled employee profiles from AI Face Service
   const fetchEnrolledEmployees = async () => {
@@ -168,8 +182,18 @@ export const FaceEnrollmentPage: React.FC = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 480;
-    canvas.height = video.videoHeight || 480;
+    if (!video.videoWidth || !video.videoHeight) {
+      const msg = 'Camera chưa sẵn sàng — đợi khung hình trực tiếp hiện ra rồi hãy chụp.';
+      if (activeTab === 'enroll') {
+        setEnrollStatus('error');
+        setEnrollMessage(msg);
+      } else {
+        alert(msg);
+      }
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.save();
@@ -538,7 +562,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCapturedImage(null)}
+                    onClick={() => handleRetake('enroll')}
                     className="text-xs flex items-center gap-1.5"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -769,7 +793,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setVerifyImage(null)}
+                      onClick={() => handleRetake('verify')}
                       className="text-xs flex items-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
