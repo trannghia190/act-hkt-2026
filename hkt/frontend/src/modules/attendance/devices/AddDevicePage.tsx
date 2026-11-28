@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Fingerprint, Send, Smartphone } from 'luci
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { getDeviceFingerprint } from '../../../utils/deviceFingerprint';
+import { detectClientDeviceType } from '../../../utils/deviceType';
 
 /** Hạn mức thiết bị mặc định — khớp attendance_security.max_devices bên backend. */
 const MAX_DEVICES = 2;
@@ -76,6 +77,8 @@ export const AddDevicePage: React.FC = () => {
           deviceName,
           reason: reason.trim() || 'Đăng ký thiết bị trong hạn mức',
           wifiBssid: 'ACT_OFFICE_5G',
+          // Giúp server phân biệt iPad (UA giống macOS); server chỉ dùng để hiển thị.
+          deviceTypeHint: detectClientDeviceType(),
         }),
       });
 

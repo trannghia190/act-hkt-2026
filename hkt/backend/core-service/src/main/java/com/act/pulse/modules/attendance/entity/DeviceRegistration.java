@@ -32,6 +32,18 @@ public class DeviceRegistration extends BaseEntity {
     @Column(name = "os_version", length = 50)
     private String osVersion;
 
+    /** DESKTOP | MOBILE | TABLET | UNKNOWN — suy ra từ User-Agent lúc đăng ký; NULL với dữ liệu cũ. */
+    @Column(name = "device_type", length = 16)
+    private String deviceType;
+
+    /** User-Agent gốc của trình duyệt lúc gửi yêu cầu (đã cắt còn 255 ký tự). */
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
+
+    /** Lý do nhân viên nhập khi đăng ký (đặc biệt khi vượt hạn mức). Khác lý do HR từ chối trong audit_logs. */
+    @Column(name = "request_reason", length = 500)
+    private String requestReason;
+
     /** Thiết bị đã được HR duyệt — chưa duyệt thì KHÔNG chấm công được. */
     @Column(name = "is_approved")
     @Builder.Default

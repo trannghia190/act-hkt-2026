@@ -23,6 +23,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(com.act.pulse.modules.attendance.service.DeviceConflictException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDeviceConflict(
+            com.act.pulse.modules.attendance.service.DeviceConflictException ex) {
+        log.warn("Device conflict: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(com.act.pulse.modules.okr.service.OKRRuleException.class)
     public ResponseEntity<ApiResponse<Object>> handleOkrRule(com.act.pulse.modules.okr.service.OKRRuleException ex) {
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage()));

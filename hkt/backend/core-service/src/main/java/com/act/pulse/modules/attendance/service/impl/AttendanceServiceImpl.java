@@ -9,6 +9,7 @@ import com.act.pulse.modules.attendance.repository.AttendanceLogRepository;
 import com.act.pulse.modules.attendance.repository.DeviceRegistrationRepository;
 import com.act.pulse.modules.attendance.repository.RequestRepository;
 import com.act.pulse.modules.attendance.service.AttendanceService;
+import com.act.pulse.modules.attendance.service.DeviceOwnerLabels;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.auth.entity.User;
@@ -135,7 +136,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                         deviceDetail = "Thiết bị mới đã được gửi yêu cầu — cần HR duyệt trước khi chấm công";
                     }
                 } else {
-                    deviceDetail = "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi";
+                    String owner = userRepository.findById(existing.getUserId())
+                            .map(DeviceOwnerLabels::of)
+                            .orElse("một tài khoản khác");
+                    deviceDetail = "Thiết bị này đã được đăng ký bởi " + owner
+                            + " — không thể dùng để chấm công cho tài khoản của bạn";
                 }
             } else {
                 // Máy chưa đăng ký → CHẶN chấm công, KHÔNG tự thêm thiết bị.

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Ban, Clock, Fingerprint, Laptop, Plus, ScanFace, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
+import { Ban, Clock, Fingerprint, Laptop, Plus, ScanFace, ShieldCheck, Smartphone, Tablet, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { Badge } from '../../../components/common/Badge';
 import { Panel } from '../../../components/common/Panel';
@@ -13,6 +13,7 @@ interface Device {
   status: 'ACTIVE' | 'PENDING' | 'REVOKED';
   lastActive: string;
   osVersion?: string;
+  deviceType?: string;
   createdAt?: string;
 }
 
@@ -39,8 +40,11 @@ const DeviceRow: React.FC<{
   deleting: boolean;
   onRemove: (d: Device) => void;
 }> = ({ device: d, isCurrent, deleting, onRemove }) => {
-  const isLaptop = /pc|windows|mac|linux|browser/i.test(`${d.name} ${d.osVersion || ''}`);
-  const Icon = isLaptop ? Laptop : Smartphone;
+  const Icon =
+    d.deviceType === 'MOBILE' ? Smartphone
+      : d.deviceType === 'TABLET' ? Tablet
+        : d.deviceType === 'DESKTOP' ? Laptop
+          : /pc|windows|mac|linux|browser/i.test(`${d.name} ${d.osVersion || ''}`) ? Laptop : Smartphone;
   const revoked = d.status === 'REVOKED';
   return (
     <section
@@ -121,6 +125,7 @@ export const MyDevicesPage: React.FC = () => {
               status: d.isApproved ? 'ACTIVE' : d.revokedAt ? 'REVOKED' : 'PENDING',
               lastActive: d.lastActiveAt ? new Date(d.lastActiveAt).toLocaleString('vi-VN') : 'Chưa có hoạt động',
               osVersion: d.osVersion || 'Trình duyệt Web',
+              deviceType: d.deviceType,
               createdAt: d.createdAt ? new Date(d.createdAt).toLocaleDateString('vi-VN') : '',
             }))
           );

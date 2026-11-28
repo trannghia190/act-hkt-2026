@@ -32,6 +32,9 @@ import com.act.pulse.modules.attendance.entity.TimesheetCell;
 import com.act.pulse.modules.attendance.entity.TimesheetCellAudit;
 import com.act.pulse.modules.attendance.repository.TimesheetCellRepository;
 import com.act.pulse.modules.attendance.repository.TimesheetCellAuditRepository;
+import com.act.pulse.modules.attendance.service.DeviceConflictException;
+import com.act.pulse.modules.attendance.service.DeviceOwnerLabels;
+import com.act.pulse.modules.attendance.service.DeviceUserAgentParser;
 import com.act.pulse.modules.attendance.service.RuleService;
 import com.act.pulse.modules.attendance.service.ShiftResolver;
 import com.act.pulse.modules.attendance.service.TimesheetSymbols;
@@ -739,9 +742,13 @@ public class BusinessGapController {
 
         DeviceRegistration existing = deviceRegistrationRepository.findByDeviceFingerprint(fp).orElse(null);
         if (existing != null && !existing.getUserId().equals(userId)) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.CONFLICT,
-                    "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi");
+            // Nói rõ trùng với ai — không hề tạo yêu cầu nào nên đừng gợi ý "chờ HR duyệt".
+            String owner = userRepository.findById(existing.getUserId())
+                    .map(DeviceOwnerLabels::of)
+                    .orElse("một tài khoản khác");
+            throw new DeviceConflictException(
+                    "Thiết bị này đã được đăng ký bởi " + owner
+                            + ". Không thể thêm vào tài khoản của bạn — cần người đó xoá thiết bị trong \"Thiết bị của tôi\" trước.");
         }
 
         // Còn hạn mức (mặc định 2 máy) thì thêm thẳng, không cần lý do/HR duyệt.
@@ -779,9 +786,23 @@ public class BusinessGapController {
                 .deviceFingerprint(fp)
                 .build();
 
+        // Thông tin hiển thị cho HR: loại thiết bị + OS thực tế lấy từ User-Agent.
+        // deviceTypeHint (nếu có) chỉ dùng để nhận diện iPadOS 13+ có UA giống macOS.
+        String userAgent = truncate(httpRequest.getHeader("User-Agent"), 255);
+        DeviceUserAgentParser.DeviceInfo info = DeviceUserAgentParser.parse(userAgent);
+        String providedName = request.getDeviceName() == null ? "" : request.getDeviceName().trim();
+        boolean genericName = providedName.isEmpty()
+                || providedName.equalsIgnoreCase("Web Device")
+                || providedName.equalsIgnoreCase("Thiết bị Web");
+        String typeHint = normalizeDeviceType(request.getDeviceTypeHint());
+        String reqReason = request.getReason() == null ? null : request.getReason().trim();
+
         device.setUserId(userId);
-        device.setDeviceModel(request.getDeviceName() != null ? request.getDeviceName() : "Web Device");
-        device.setOsVersion("Web");
+        device.setDeviceModel(truncate(genericName ? info.model() : providedName, 100));
+        device.setOsVersion(truncate(info.osVersion(), 50));
+        device.setDeviceType(typeHint != null ? typeHint : info.type());
+        device.setUserAgent(userAgent);
+        if (reqReason != null && !reqReason.isEmpty()) device.setRequestReason(truncate(reqReason, 500));
         if (!Boolean.TRUE.equals(device.getIsApproved())) device.setIsApproved(withinQuota);
         device.setExpiresAt(LocalDateTime.now().plusDays(30));
         device.setUpdatedAt(LocalDateTime.now());
@@ -804,6 +825,20 @@ public class BusinessGapController {
         return ApiResponse.ok(saved, Boolean.TRUE.equals(saved.getIsApproved())
                 ? "Thiết bị đã được kích hoạt — dùng để chấm công ngay"
                 : "Đã gửi yêu cầu — chờ HR duyệt");
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null || s.length() <= max) return s;
+        return s.substring(0, max);
+    }
+
+    private static String normalizeDeviceType(String hint) {
+        if (hint == null || hint.isBlank()) return null;
+        String v = hint.trim().toUpperCase(java.util.Locale.ROOT);
+        return switch (v) {
+            case "DESKTOP", "MOBILE", "TABLET", "UNKNOWN" -> v;
+            default -> null;
+        };
     }
 
     private boolean isLocalOrOfficeIp(String ip) {
@@ -1576,5 +1611,7 @@ public class BusinessGapController {
         private String deviceName;
         private String reason;
         private String wifiBssid;
+        /** Gợi ý từ client (navigator.maxTouchPoints) để nhận diện iPad chạy UA giống macOS. Chỉ để hiển thị. */
+        private String deviceTypeHint;
     }
 }
