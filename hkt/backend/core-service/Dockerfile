@@ -2,9 +2,12 @@
 FROM maven:3.9.8-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# dependency:go-offline giải version range của Yubico theo SNAPSHOT mới nhất và
+# bỏ qua exclusion/dependencyManagement -> chọn nhầm jackson-*-SNAPSHOT.
+# dependency:resolve tải đủ dependency cho bước build mà không gặp lỗi đó.
+RUN mvn -B dependency:resolve
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B clean package -DskipTests
 
 # Run stage
 FROM eclipse-temurin:21-jre-alpine
