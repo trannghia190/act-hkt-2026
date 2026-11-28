@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>S48 · Cấu hình Domain Host — mockup</title>
+  <link rel="stylesheet" href="_kit.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    .app { display: flex; min-height: 900px; background: rgb(var(--canvas)); color: rgb(var(--ink)); }
+    .side { width: 252px; flex: 0 0 auto; display: flex; flex-direction: column;
+      background: rgb(var(--rail-bg)); color: rgb(var(--rail-ink)); border-right: 1px solid rgb(var(--rail-line)); }
+    .side-brand { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgb(var(--rail-line)); font-weight: 800; font-size: 13px; }
+    .side-brand small { display: block; font-size: 9px; letter-spacing: .12em; color: rgb(var(--rail-muted)); font-weight: 600; }
+    .side-scroll { flex: 1; padding: 12px 10px; }
+    .sgroup { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: rgb(var(--rail-muted)); padding: 12px 10px 6px; }
+    .sitem { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 9px;
+      color: rgb(var(--rail-ink-2)); font-size: 13px; border-left: 3px solid transparent; }
+    .sitem.on { background: rgb(var(--rail-active-bg)); color: rgb(var(--rail-active)); font-weight: 650; border-left-color: rgb(var(--rail-active)); }
+    .sitem svg { width: 16px; height: 16px; stroke-width: 1.9; opacity: .8; }
+    .side-user { border-top: 1px solid rgb(var(--rail-line)); padding: 12px; display: flex; gap: 10px; align-items: center; font-size: 12px; }
+    .side-user .av { width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center;
+      background: rgb(var(--accent-soft)); color: rgb(var(--accent-dark)); font-weight: 800; font-size: 11px; }
+    .main { flex: 1; min-width: 0; }
+    .top { height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 24px;
+      border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
+    .top .crumb { font-size: 12px; color: rgb(var(--ink-muted)); flex: 1; }
+    .top .search { width: 260px; height: 32px; border-radius: 9px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); color: rgb(var(--ink-muted)); font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+    .pill { height: 30px; padding: 0 10px; border-radius: 9px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--surface)); font-size: 12px; color: rgb(var(--ink-2)); display: inline-flex; align-items: center; gap: 6px; }
+    .page { padding: 20px 24px 40px; display: flex; flex-direction: column; gap: 16px; max-width: 1100px; }
+    .phead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--accent-dark)); }
+    .eyebrow svg { width: 14px; height: 14px; }
+    h1 { margin: 6px 0 0; font-size: 23px; font-weight: 800; letter-spacing: -.02em; font-family: 'Plus Jakarta Sans', Inter, sans-serif; display: inline; }
+    .phead p { margin: 4px 0 0; font-size: 12px; color: rgb(var(--ink-muted)); }
+    .cover { border-radius: 16px; background: rgb(var(--ink)); color: rgb(var(--canvas)); padding: 16px 20px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .cover .lbl { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--canvas) / .6); }
+    .cover h2 { margin: 4px 0 0; font-size: 18px; font-weight: 800; font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
+    .cover p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; color: rgb(var(--canvas) / .75); max-width: 430px; }
+    .cover dl { display: flex; gap: 24px; margin: 0; text-align: left; }
+    .cover dd { margin: 0; font-weight: 800; font-size: 18px; font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
+    .cover dd.mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cover dt { font-size: 11px; color: rgb(var(--canvas) / .6); margin-top: 2px; }
+    .grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+    .stack { display: flex; flex-direction: column; gap: 16px; }
+    .panel { border: 1px solid rgb(var(--line)); border-radius: 13px; background: rgb(var(--surface)); overflow: hidden; }
+    .ph { padding: 12px 16px; border-bottom: 1px solid rgb(var(--line)); display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .ph b { font-size: 13.5px; }
+    .ph small { display: block; font-size: 11px; color: rgb(var(--ink-muted)); margin-top: 2px; }
+    .pb { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    label.f { font-size: 11px; font-weight: 700; display: block; margin-bottom: 6px; }
+    .input { width: 100%; height: 38px; border-radius: 9px; border: 1px solid rgb(var(--line));
+      background: rgb(var(--canvas)); color: rgb(var(--ink)); font: 600 12px 'JetBrains Mono', monospace; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
+    .hint { font-size: 11px; color: rgb(var(--ink-muted)); }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .preset { font: 600 11px 'JetBrains Mono', monospace; padding: 5px 9px; border-radius: 8px; border: 1px solid rgb(var(--line)); color: rgb(var(--ink-muted)); background: rgb(var(--canvas)); }
+    .preset.on { border-color: rgb(var(--accent)); color: rgb(var(--accent)); background: rgb(var(--accent-soft)); }
+    .form-foot { border-top: 1px solid rgb(var(--line)); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .linkrow { border: 1px solid rgb(var(--line)); background: rgb(var(--canvas)); border-radius: 10px; padding: 11px 12px; }
+    .linkrow .t { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; }
+    .linkrow .t span.copy { color: rgb(var(--accent)); font-size: 11px; }
+    .linkrow p { margin: 3px 0 7px; font-size: 11px; color: rgb(var(--ink-muted)); }
+    .linkrow code { display: block; font: 700 11px 'JetBrains Mono', monospace; color: rgb(var(--accent));
+      background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 7px; padding: 6px 8px; overflow-wrap: anywhere; }
+    .kv { font-size: 12px; }
+    .kv span.k { display: block; font-size: 11px; color: rgb(var(--ink-muted)); }
+    .kv span.v { display: block; margin-top: 2px; }
+    .kv .host { font: 800 13px 'JetBrains Mono', monospace; color: rgb(var(--accent)); overflow-wrap: anywhere; }
+    .kv .key { font: 700 11px 'JetBrains Mono', monospace; color: rgb(var(--ink)); }
+    .divider { border-top: 1px solid rgb(var(--line)); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .meta { display: flex; gap: 7px; font-size: 11px; color: rgb(var(--ink-muted)); align-items: center; }
+    .meta svg { width: 13px; height: 13px; color: rgb(var(--accent)); flex: 0 0 13px; }
+    .meta b { color: rgb(var(--ink)); font-family: 'JetBrains Mono', monospace; }
+    ul.policy { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 11px; color: rgb(var(--ink-muted)); line-height: 1.6; }
+    ul.policy li { display: flex; gap: 7px; }
+    ul.policy li::before { content: '•'; color: rgb(var(--accent)); font-weight: 800; }
+    ul.policy strong { color: rgb(var(--ink-2)); }
+    .gmail { border: 1px solid rgb(var(--ok-line)); background: rgb(var(--ok-soft)); border-radius: 13px; padding: 16px; font-size: 11px; color: rgb(var(--ok)); }
+    .gmail b { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+    .gmail p { margin: 6px 0 8px; line-height: 1.6; color: rgb(var(--ok) / .85); }
+    .gmail a { font-weight: 800; color: rgb(var(--ok)); }
+    .frame-mobile .app-m { width: 390px; min-height: 844px; background: rgb(var(--canvas)); color: rgb(var(--ink)); display: flex; flex-direction: column; }
+    .m-top { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--surface)); }
+    .m-top .logo { flex: 1; font-size: 12px; font-weight: 800; }
+    .m-icon { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: rgb(var(--ink-2)); background: rgb(var(--canvas)); border: 1px solid rgb(var(--line)); position: relative; }
+    .m-icon .dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 99px; background: rgb(var(--danger)); }
+    .m-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .m-body .cover { flex-direction: column; gap: 12px; }
+    .m-body .cover dl { width: 100%; justify-content: space-between; }
+    .m-grid { display: flex; flex-direction: column; gap: 12px; }
+    .m-nav { height: 62px; border-top: 1px solid rgb(var(--line)); background: rgb(var(--surface));
+      display: flex; align-items: center; justify-content: space-around; font-size: 10px; color: rgb(var(--ink-muted)); }
+    .m-nav .it { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .m-nav .it.on { color: rgb(var(--accent)); font-weight: 700; }
+    .m-nav .fab { width: 44px; height: 44px; border-radius: 999px; background: rgb(var(--accent)); color: rgb(var(--on-accent)); display: grid; place-items: center; margin-top: -22px; box-shadow: 0 6px 16px rgb(var(--accent) / .35); }
+  </style>
+</head>
+<body data-title="S48 · Cấu hình Domain Host">
+<div id="stage" data-theme="midnight-rail" data-vp="desktop">
+
+  <!-- ── DESKTOP ─────────────────────────────────────────── -->
+  <div class="frame frame-desktop">
+    <div class="app">
+      <aside class="side">
+        <div class="side-brand">
+          <img src="../assets/ascend_lockup_white.png" alt="Ascend" style="height:22px" />
+          <div><b>ACT HR</b><small>ASCEND TECHNOLOGY</small></div>
+        </div>
+        <div class="side-scroll">
+          <div class="sgroup">Hôm nay</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Cần làm</div>
+          <div class="sgroup">Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l18-5v12L3 14v-3z"/></svg>Chấm công</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Đơn từ</div>
+          <div class="sgroup">Quản trị</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>Quản lý nhân sự</div>
+          <div class="sitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l8 4v6c0 5-3.5 7.5-8 8-4.5-.5-8-3-8-8V7z"/></svg>Nhật ký hệ thống</div>
+          <div class="sitem on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>Cấu hình Domain Host</div>
+        </div>
+        <div class="side-user">
+          <div class="av">TH</div>
+          <div><b style="font-size:12px">Trần Thu Hà</b><div style="font-size:10px;color:rgb(var(--rail-muted))">HR Admin · 01HR</div></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="top">
+          <div class="crumb">Quản trị hệ thống / Cấu hình Domain Host</div>
+          <div class="search">Tìm kiếm nhân sự, đơn từ…</div>
+          <span class="pill">Nạp lại</span>
+          <span class="pill">Thiết lập Gmail</span>
+        </div>
+
+        <div class="page">
+          <div class="phead">
+            <div>
+              <div class="eyebrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
+                Quản trị hệ thống
+              </div>
+              <div style="margin-top:6px"><h1>Cấu hình Domain Host</h1> <span class="chip chip-muted" style="vertical-align:3px">S48</span></div>
+              <p>Tên miền gốc để tự sinh liên kết kích hoạt tài khoản, OTP đặt lại mật khẩu và nút duyệt đơn trong email.</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span class="pill">↻ Nạp lại</span>
+              <span class="pill" style="border-color:rgb(var(--accent-line));color:rgb(var(--accent-dark));background:rgb(var(--accent-soft))">✉ Thiết lập Gmail</span>
+            </div>
+          </div>
+
+          <div class="cover">
+            <div>
+              <div class="lbl">Hạ tầng &amp; tích hợp</div>
+              <h2>Một tên miền chuẩn — mọi liên kết hệ thống</h2>
+              <p>Đổi tên miền tại đây là email chào mừng, OTP quên mật khẩu, nhắc hạn duyệt đơn và bản tin Todo 08:00 dùng ngay tên miền mới — không cần sửa code.</p>
+            </div>
+            <dl>
+              <div><dd class="mono">hrm.ascendtech.vn</dd><dt>host đang dùng</dt></div>
+              <div><dd>Production</dd><dt>môi trường</dt></div>
+              <div><dd>27/11</dd><dt>cập nhật gần nhất</dt></div>
+            </dl>
+          </div>
+
+          <div class="grid">
+            <div class="stack">
+              <div class="panel">
+                <div class="ph">
+                  <div><b>Thiết lập tên miền gốc</b><small>Áp dụng ngay cho email &amp; thông báo phát sinh sau khi lưu</small></div>
+                  <span class="chip chip-ok">Lưu Database</span>
+                </div>
+                <div class="pb">
+                  <div>
+                    <label class="f">URL Domain Host hệ thống *</label>
+                    <div class="input"><span>https://hrm.ascendtech.vn</span><span style="color:rgb(var(--ink-muted))">↗</span></div>
+                    <p class="hint" style="margin:6px 0 0">Bắt buộc có <code>http://</code> hoặc <code>https://</code>, không cần dấu gạch chéo cuối.</p>
+                  </div>
+                  <div>
+                    <span class="hint" style="font-weight:600">Gợi ý cấu hình nhanh:</span>
+                    <div class="presets" style="margin-top:6px">
+                      <span class="preset">Localhost (Dev 3000)</span>
+                      <span class="preset on">Ascend Tech Production</span>
+                      <span class="preset">Ascend Tech Staging</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="f">Lý do cập nhật / Ghi chú (vào Nhật ký Audit Log) *</label>
+                    <div class="input" style="font-family:Inter,sans-serif;font-weight:400;color:rgb(var(--ink-2))">Cập nhật tên miền hệ thống chuẩn doanh nghiệp</div>
+                  </div>
+                  <div class="form-foot">
+                    <span class="hint">⛨ Thay đổi có hiệu lực ngay cho email và thông báo tiếp theo</span>
+                    <span class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px">Lưu cấu hình Domain</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="ph">
+                  <div><b>Xem trước liên kết tự động</b><small>Cập nhật theo Domain Host đang nhập</small></div>
+                  <span style="color:rgb(var(--ok))">ⓘ</span>
+                </div>
+                <div class="pb">
+                  <div class="linkrow">
+                    <div class="t"><span>Liên kết kích hoạt tài khoản nhân viên mới</span><span class="copy">⧉ Chép link</span></div>
+                    <p>Được gửi tự động qua Gmail trong thư chào mừng onboarding</p>
+                    <code>https://hrm.ascendtech.vn/login</code>
+                  </div>
+                  <div class="linkrow">
+                    <div class="t"><span>Liên kết xác thực đặt lại mật khẩu OTP</span><span class="copy">⧉ Chép link</span></div>
+                    <p>Được gửi kèm mã OTP 6 số khi người dùng quên mật khẩu</p>
+                    <code>https://hrm.ascendtech.vn/forgot-password</code>
+                  </div>
+                  <div class="linkrow">
+                    <div class="t"><span>Liên kết phê duyệt đơn (Quản lý &amp; HR)</span><span class="copy">⧉ Chép link</span></div>
+                    <p>Nút thao tác nhanh trong email thông báo kết quả hoặc nhắc hạn duyệt đơn</p>
+                    <code>https://hrm.ascendtech.vn/attendance/requests</code>
+                  </div>
+                  <div class="linkrow">
+                    <div class="t"><span>Liên kết bản tin công việc 08:00 AM (Todo)</span><span class="copy">⧉ Chép link</span></div>
+                    <p>Nút điều hướng trung tâm trong bản tin nhiệm vụ buổi sáng</p>
+                    <code>https://hrm.ascendtech.vn/todo</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="stack">
+              <div class="panel">
+                <div class="ph">
+                  <div><b>Trạng thái cấu hình</b><small>Đang đọc từ bảng system_configs</small></div>
+                  <span style="width:8px;height:8px;border-radius:99px;background:rgb(var(--ok));margin-top:5px"></span>
+                </div>
+                <div class="pb">
+                  <div class="kv"><span class="k">Domain Host đang kích hoạt</span><span class="v host">https://hrm.ascendtech.vn</span></div>
+                  <div class="kv"><span class="k">Khóa cấu hình (DB Key)</span><span class="v key">SYSTEM_DOMAIN_HOST</span></div>
+                  <div class="divider">
+                    <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Cập nhật gần nhất bởi <b>01HR</b></div>
+                    <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>27/11/2026 14:05</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="ph"><div><b>Chính sách &amp; an toàn tên miền</b></div></div>
+                <div class="pb">
+                  <ul class="policy">
+                    <li><span><strong>Phân quyền:</strong> chỉ <strong>Admin</strong> hoặc <strong>HR_ADMIN</strong> được đổi tên miền.</span></li>
+                    <li><span><strong>Lưu trữ tập trung:</strong> lưu bảng <code>system_configs</code> trong PostgreSQL, không mất khi restart.</span></li>
+                    <li><span><strong>Tự động áp dụng:</strong> email chào mừng, OTP, liên kết duyệt đơn dùng tên miền mới ngay, không cần sửa code.</span></li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="gmail">
+                <b>✉ Gmail SMTP doanh nghiệp</b>
+                <p>Để liên kết trên gửi trực tiếp vào hòm thư Gmail nhân viên, đảm bảo hệ thống đã kết nối Google App Password.</p>
+                <a>Mở bảng cấu hình Gmail →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ── MOBILE ──────────────────────────────────────────── -->
+  <div class="frame frame-mobile">
+    <div class="app-m">
+      <div class="m-top">
+        <span class="m-icon">☰</span>
+        <span class="logo">ACT-HKT</span>
+        <span class="m-icon">⌕</span>
+        <span class="m-icon">🌙</span>
+        <span class="m-icon">🔔<i class="dot"></i></span>
+        <span class="m-icon" style="border-color:rgb(var(--accent-line));color:rgb(var(--accent));background:rgb(var(--accent-soft));font-weight:800">TH</span>
+      </div>
+      <div class="m-body">
+        <div>
+          <div class="eyebrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
+            Quản trị hệ thống
+          </div>
+          <div style="margin-top:6px"><h1 style="font-size:20px">Cấu hình Domain Host</h1> <span class="chip chip-muted">S48</span></div>
+          <p class="hint" style="margin-top:4px">Tên miền gốc để sinh liên kết trong email OTP, kích hoạt tài khoản và duyệt đơn.</p>
+        </div>
+
+        <div class="cover">
+          <div>
+            <div class="lbl">Hạ tầng &amp; tích hợp</div>
+            <h2 style="font-size:16px">Một tên miền chuẩn — mọi liên kết hệ thống</h2>
+            <p>Email chào mừng, OTP, nhắc duyệt đơn dùng ngay tên miền mới.</p>
+          </div>
+          <dl>
+            <div><dd class="mono" style="font-size:11px;max-width:120px">hrm.ascendtech.vn</dd><dt>host</dt></div>
+            <div><dd style="font-size:16px">Production</dd><dt>môi trường</dt></div>
+            <div><dd style="font-size:16px">27/11</dd><dt>cập nhật</dt></div>
+          </dl>
+        </div>
+
+        <div class="m-grid">
+          <div class="panel">
+            <div class="ph">
+              <div><b>Thiết lập tên miền gốc</b><small>Áp dụng ngay sau khi lưu</small></div>
+              <span class="chip chip-ok">DB</span>
+            </div>
+            <div class="pb">
+              <div>
+                <label class="f">URL Domain Host *</label>
+                <div class="input" style="font-size:11px"><span>https://hrm.ascendtech.vn</span><span>↗</span></div>
+              </div>
+              <div>
+                <div class="presets">
+                  <span class="preset">Localhost</span>
+                  <span class="preset on">Production</span>
+                  <span class="preset">Staging</span>
+                </div>
+              </div>
+              <div>
+                <label class="f">Lý do cập nhật *</label>
+                <div class="input" style="font-family:Inter,sans-serif;font-weight:400;height:auto;padding:8px 10px;font-size:11px">Cập nhật tên miền hệ thống chuẩn doanh nghiệp</div>
+              </div>
+              <div class="btn btn-primary" style="height:34px;font-size:12px;justify-content:center">Lưu cấu hình Domain</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><div><b>Xem trước liên kết</b><small>Theo Domain Host đang nhập</small></div></div>
+            <div class="pb">
+              <div class="linkrow"><div class="t"><span>Kích hoạt tài khoản</span><span class="copy">⧉</span></div><code>https://hrm.ascendtech.vn/login</code></div>
+              <div class="linkrow"><div class="t"><span>OTP đặt lại mật khẩu</span><span class="copy">⧉</span></div><code>https://hrm.ascendtech.vn/forgot-password</code></div>
+              <div class="linkrow"><div class="t"><span>Duyệt đơn</span><span class="copy">⧉</span></div><code>https://hrm.ascendtech.vn/attendance/requests</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="m-nav">
+        <span class="it">✓<br/>Cần làm</span>
+        <span class="it on">👆<br/>Chấm công</span>
+        <span class="fab">＋</span>
+        <span class="it">📄<br/>Đơn từ</span>
+        <span class="it">☰<br/>Menu</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="_kit.js"></script>
+</body>
+</html>

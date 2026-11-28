@@ -90,6 +90,7 @@ export const NotificationDropdown: React.FC = () => {
         onClick={() => setIsOpen((prev) => !prev)}
         className="relative p-1.5 sm:p-2 rounded-lg border border-line bg-canvas hover:bg-surface text-ink-secondary transition-colors cursor-pointer"
         title="Trung tâm thông báo"
+        aria-label={`Trung tâm thông báo${unreadCount > 0 ? ` (${unreadCount} chưa đọc)` : ''}`}
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (

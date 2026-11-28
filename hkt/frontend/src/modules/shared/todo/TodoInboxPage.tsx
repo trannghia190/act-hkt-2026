@@ -525,12 +525,12 @@ export const TodoInboxPage: React.FC = () => {
   const tabChipClass = (active: boolean) =>
     `inline-flex items-center gap-1.5 h-[31px] px-3 rounded-full border text-[12.5px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
       active
-        ? 'bg-ink border-ink text-canvas'
+        ? 'bg-accent-soft border-accent-line text-accent-dark'
         : 'bg-surface border-line text-ink-secondary hover:border-line-hover'
     }`;
   const tabCountClass = (active: boolean) =>
     `text-[10.5px] font-mono font-semibold leading-none ${
-      active ? 'text-canvas opacity-65' : 'bg-canvas border border-line text-ink-muted px-1.5 py-0.5 rounded-md'
+      active ? 'bg-accent border border-accent text-on-accent px-1.5 py-0.5 rounded-md' : 'bg-canvas border border-line text-ink-muted px-1.5 py-0.5 rounded-md'
     }`;
 
   const formatDays = (n: number) =>
@@ -728,7 +728,7 @@ export const TodoInboxPage: React.FC = () => {
   return (
     <div className="space-y-4 max-w-[1180px] mx-auto px-3 sm:px-0 pb-24 lg:pb-10">
       {/* Page Header — tiêu đề + ngày giờ + lối tắt tạo đơn */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-[22px] font-extrabold tracking-tight text-ink">Cần làm</h1>
           <div className="text-[12.5px] text-ink-muted mt-1">{todayLabel}</div>
@@ -740,15 +740,6 @@ export const TodoInboxPage: React.FC = () => {
               Duyệt nhanh {greenCount} mục xanh
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-[12px]"
-            onClick={() => document.getElementById('todo-search')?.focus()}
-          >
-            <Search className="w-3.5 h-3.5 mr-1.5" />
-            Tìm việc
-          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -768,7 +759,7 @@ export const TodoInboxPage: React.FC = () => {
       )}
 
       {/* Tabs dạng chip + ô tìm kiếm */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
         <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-0.5">
           <button
             type="button"

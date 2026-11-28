@@ -35,23 +35,24 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | A1 | Đăng nhập | `/login` | `LoginPage` | ✅ | ✅ | ✅ |
-| A2 | Đăng ký khuôn mặt | `/auth/enroll-face` | `FaceEnrollmentPage` | ⬜ | ⬜ | ⬜ |
+| A2 | Đăng ký khuôn mặt | `/auth/enroll-face` | `FaceEnrollmentPage` | ✅ | ✅ | ✅ |
 
 ## 1 · Chung & Quản trị
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
-| S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | 🟡 | ⬜ | ⬜ |
+| S1 | Cần làm (Todo) | `/todo` | `TodoInboxPage` | ✅ | ✅ | ✅ |
 | S2 | Thông báo (mobile) | `/notifications` | `MobileNotificationsPage` | ✅ | ✅ | ✅ |
 | S3 | Tuỳ chỉnh thông báo | `/account/notifications` | `NotificationPrefsPage` | ✅ | ✅ | ✅ |
 | S4 | Quản lý nhân viên | `/admin/employees` · `/admin/users` | `EmployeeManagementPage` | ✅ | ✅ | ✅ |
 | S5 | Cây quản lý / Sơ đồ tổ chức | `/admin/org-tree` · `/admin/teams` | `OrgTreePage` | ✅ | ✅ | ✅ |
 | S6 | Ca làm & Ngày lễ | `/admin/shifts` | `ShiftHolidayPage` | ✅ | ✅ | ✅ |
 | S7 | Nhật ký kiểm toán | `/admin/audit-logs` | `AuditLogPage` | ✅ | ✅ | ✅ |
-| S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ⬜ | ⬜ | ⬜ |
-| S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ⬜ | ⬜ | ⬜ |
-| S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ⬜ | ⬜ | ⬜ |
-| S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ⬜ | ⬜ | ⬜ |
+| S8 | Văn bản chính sách | `/admin/policy-doc` · `/attendance/policy-doc` | `PolicyDocPage` | ✅ | ✅ | ✅ |
+| S9 | Bộ quy tắc | `/admin/rules` · `/attendance/rules` | `RuleEnginePage` | ✅ | ✅ | ✅ |
+| S10 | Loại nghỉ phép | `/admin/leave-types` | `LeaveTypesPage` | ✅ | ✅ | ✅ |
+| S11 | Quản lý thiết bị | `/admin/devices` | `AdminDevicesPage` | ✅ | ✅ | ✅ |
+| S48 | Cấu hình Domain Host | `/admin/system-config` | `SystemDomainConfigPage` | ✅ | ✅ | ✅ |
 
 ## 2 · Chấm công
 
@@ -59,26 +60,26 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 |---|---|---|---|---|---|---|
 | T1 | Chấm công | `/attendance/checkin` | `CheckInPage` | ✅ | ✅ | ✅ |
 | T2 | Lịch chấm công | `/attendance/calendar` | `CalendarPage` | ✅ | ✅ | ✅ |
-| T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ⬜ | ⬜ | ⬜ |
+| T3 | Lịch nhóm | `/attendance/team-schedule` | `TeamSchedulePage` | ✅ | ✅ | ✅ |
 | T4 | Đơn từ | `/attendance/requests` | `RequestsPage` | ✅ | ✅ | ✅ |
 | T5 | Chi tiết đơn | `/attendance/requests/:id` | `RequestDetailPage` | ✅ | ✅ | ✅ |
 | T6 | Duyệt đơn | `/attendance/approvals` | `ApprovalsPage` | ✅ | ✅ | ✅ |
 | T7 | Nghỉ phép của tôi | `/attendance/leaves` | `LeavesPage` | ✅ | ✅ | ✅ |
-| T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ⬜ | ⬜ | ⬜ |
-| T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ⬜ | ⬜ | ⬜ |
+| T8 | Sổ phép (HR) | `/attendance/leave-ledger` | `AdminLeaveLedgerPage` | ✅ | ✅ | ✅ |
+| T9 | Bảng công tổng (HR) | `/attendance/leave-table` | `LeaveTablePage` | ✅ | ✅ | ✅ |
 | T10 | Bảng công (HR) | `/attendance/timesheet` | `TimesheetPage` | ✅ | ✅ | ✅ |
 | T11 | Bảng công của tôi | `/attendance/my-timesheet` | `MyTimesheetPage` | ✅ | ✅ | ✅ |
-| T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ⬜ | ⬜ | ⬜ |
-| T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ⬜ | ⬜ | ⬜ |
-| T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ⬜ | ⬜ | ⬜ |
-| T15 | Thêm thiết bị | `/attendance/devices/add` | `AddDevicePage` | ⬜ | ⬜ | ⬜ |
+| T12 | Khiếu nại công | `/attendance/disputes` | `DisputesPage` | ✅ | ✅ | ✅ |
+| T13 | Chi tiết khiếu nại | `/attendance/disputes/:id` | `DisputeDetailPage` | ✅ | ✅ | ✅ |
+| T14 | Thiết bị của tôi | `/attendance/devices` | `MyDevicesPage` | ✅ | ✅ | ✅ |
+| T15 | Thêm thiết bị | `/attendance/devices/add` | `AddDevicePage` | ✅ | ✅ | ✅ |
 
 ## 3 · Tài khoản
 
 | # | Màn hình | Route | Component | Design | Impl | Verify |
 |---|---|---|---|---|---|---|
 | AC1 | Hồ sơ cá nhân (+ chọn theme) | `/account/profile` | `ProfilePage` | ✅ | ✅ | ✅ |
-| AC2 | Passkey & bảo mật | `/account/passkey` | `PasskeySettingsPage` | ⬜ | ⬜ | ⬜ |
+| AC2 | Passkey & bảo mật | `/account/passkey` | `PasskeySettingsPage` | ✅ | ✅ | ✅ |
 
 ## 4 · OKR
 
@@ -98,15 +99,15 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 | # | Thành phần | File | Design | Impl | Verify |
 |---|---|---|---|---|---|
-| SH1 | Sidebar (desktop + mobile drawer) | `layout/Sidebar.tsx` | ⬜ | ⬜ | ⬜ |
-| SH2 | Header | `layout/Header.tsx` | ⬜ | ⬜ | ⬜ |
-| SH3 | Bottom nav (mobile) | `layout/MobileBottomNav.tsx` | ⬜ | ⬜ | ⬜ |
-| SH4 | Command palette (⌘K) | `layout/CommandPalette.tsx` | ⬜ | ⬜ | ⬜ |
-| SH5 | Theme switcher | `layout/ThemeSwitcher.tsx` | ⬜ | ⬜ | ⬜ |
-| M1 | Đổi mật khẩu | `account/ChangePasswordModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M2 | Đổi mật khẩu lần đầu | `auth/FirstLoginChangePasswordModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M3 | Kết nối Gmail | `common/EnterpriseGmailModal.tsx` | ⬜ | ⬜ | ⬜ |
-| M4 | Nhắc bật thông báo đẩy | `layout/PushOnboardingPrompt.tsx` | ⬜ | ⬜ | ⬜ |
+| SH1 | Sidebar (desktop + mobile drawer) | `layout/Sidebar.tsx` | ✅ | ✅ | ✅ |
+| SH2 | Header | `layout/Header.tsx` | ✅ | ✅ | ✅ |
+| SH3 | Bottom nav (mobile) | `layout/MobileBottomNav.tsx` | ✅ | ✅ | ✅ |
+| SH4 | Command palette (⌘K) | `layout/CommandPalette.tsx` | ✅ | ✅ | ✅ |
+| SH5 | Theme switcher | `layout/ThemeSwitcher.tsx` | ✅ | ✅ | ✅ |
+| M1 | Đổi mật khẩu | `account/ChangePasswordModal.tsx` | ✅ | ✅ | ✅ |
+| M2 | Đổi mật khẩu lần đầu | `auth/FirstLoginChangePasswordModal.tsx` | ✅ | ✅ | ✅ |
+| M3 | Kết nối Gmail | `common/EnterpriseGmailModal.tsx` | ✅ | ✅ | ✅ |
+| M4 | Nhắc bật thông báo đẩy | `layout/PushOnboardingPrompt.tsx` | ✅ | ✅ | ✅ |
 
 ---
 
@@ -114,7 +115,7 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
 
 1. **Lõi demo** — A1 · S1 · T1 · T11 · T10 · T7 · T4/T5 · T6 · AC1 · S2/S3
 2. **OKR** — O1…O9
-3. **Quản trị HR** — S4…S11 · T8/T9 · T12/T13 · T14/T15 · AC2 · A2
+3. **Quản trị HR** — S4…S11 · T8/T9 ✅ · T12/T13 · T14/T15 · AC2 · A2
 4. **Shell & modal** — SH1…SH5 · M1…M4
 
 > Tổng: **39 màn** + **9 thành phần shell/modal**.
@@ -148,6 +149,13 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   Không đổi nghiệp vụ (khiếu nại, in, đổi kỳ). Verify: 3 theme × 320/390/1440 không
   tràn, cột Ngày dính đúng, modal khiếu nại mở/đóng được, `tsc` + `build` +
   `check-consistency` + `test_theme_responsive` sạch.
+- **S1 · Cần làm** ✅ (2026-11-27) — mockup `screens/todo.html` bù 3 theme × desktop
+  1440 + mobile 390. Áp vào `TodoInboxPage`: tab đang chọn dùng nền `accent-soft` +
+  chữ `accent-dark` + badge đếm đỏ như mockup (thay chip đen); ô tìm kiếm việc nằm
+  cạnh chip trên desktop và **trên** chip ở mobile (giữ nguyên tính năng lọc); bỏ nút
+  "Tìm việc" trùng lặp ở đầu trang, giữ "+ Tạo đơn" cùng hàng tiêu đề ở cả 2 khổ.
+  Verify: 3 theme × 390/1440 không tràn, `test_todo_responsive` + `test_theme_responsive`
+  PASS, `tsc` + `build` + `check-consistency` sạch.
 - **T10 · Bảng công & chốt lương (HR)** ✅ (2026-11-26) — mockup `screens/timesheet.html`
   (3 theme × desktop 1440 + mobile 390). Áp vào `TimesheetPage`: đầu trang eyebrow +
   `h1` + badge trạng thái + 3 nút (Xuất Excel / Chốt bảng công / Khoá kỳ công, icon
@@ -533,3 +541,227 @@ Quy trình 3 bước cho **từng màn hình**, cho **3 theme**
   log bảng công; diff cũ→mới hiển thị; click đối tượng lọc được theo nhân viên;
   nút "Thử xoá" trả 405 đúng chuẩn A5; `tsc` + `build` + `check-consistency` +
   `test_theme_responsive` + `test_mockup_responsive` sạch.
+
+- **S8 · Tra cứu nội quy (Policy doc)** ✅ (2026-11-27) — mockup
+  `screens/policy-doc.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `PolicyDocPage`: đầu trang eyebrow `BookOpen` + `h1` + badge S19 + sub; **bìa tóm
+  tắt** đảo màu (`bg-ink text-canvas`, tự đúng ở cả theme sáng lẫn tối) hiển thị
+  **19 quy định · 6 nhóm · số mục đã tuỳ chỉnh** lấy từ dữ liệu; ô tìm kiếm
+  (`aria-label="Tìm quy định"`) + dòng đếm khớp kết quả lọc; **7 chip nhóm pill
+  31px** có số đếm `font-mono` khớp số thẻ thực hiện; **mục lục 2 tầng thu gọn mặc
+  định** (`<details>` — hết chiếm nửa màn hình như bản cũ), bấm nhóm là lọc, bấm
+  tên quy định là mở đúng thẻ và cuộn tới; danh sách **accordion chỉ mở 1 mục**
+  (`aria-expanded`), thẻ mở hiện mô tả + **ví dụ minh hoạ** (riêng `payroll_period`
+  sinh từ chính giá trị đang cấu hình) + **nhãn nghiệp vụ tiếng Việt** từ
+  `RuleValueSummary` (không phải key kỹ thuật) + JSON gốc thu gọn cho kỹ thuật;
+  hàng quy định **2 dòng trên mobile** (tên trên, mã + phiên bản dưới) — không còn
+  tên bị bóp thành 3 dòng; verify 3 theme × 7 bề rộng không tràn ngang (390:
+  `scrollWidth=390`), 0 lỗi JS, 0 HTTP ≥ 400; `tsc --noEmit` + `npm run build` sạch.
+
+- **S9 · Bộ quy tắc vận hành (Rule engine)** ✅ (2026-11-27) — mockup
+  `screens/rule-engine.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `RuleEnginePage`: tiêu đề "Cấu hình 19 quy định" → **đầu trang eyebrow
+  `SlidersHorizontal` "Quản trị HR" + `h1` + badge S16 + sub**; **bìa tóm tắt**
+  (`bg-ink text-canvas`, tự đúng cả theme sáng/tối) hiển thị **19 quy định · 6
+  nhóm · số mục đã tuỳ chỉnh** từ dữ liệu; ô tìm kiếm ra **Panel** (icon Search,
+  focus ring accent) + dòng đếm `Đang hiện N quy định · cập nhật gần nhất <ngày>`;
+  thêm **7 chip lọc nhóm pill 31px** (`aria-pressed`, đếm `font-mono` khớp dữ
+  liệu) — lọc client theo `category`; **bảng 5 cột → danh sách card 13px**: tên +
+  badge nhóm + tag phiên bản, ruleKey mono, **3–4 chip giá trị nghiệp vụ** (đọc
+  `fieldMeta`/`formatFieldValue`, không phải JSON thô), mô tả ngắn, **details "Xem
+  đủ giá trị đang áp dụng"** mở bảng đầy đủ + JSON gốc cho kỹ thuật; nút **Lịch
+  sử/Sửa** xếp dọc desktop, xếp ngang nửa-đầu mobile; 2 modal tự viết → **`Modal`
+  dùng chung** (Escape/X đóng, cuộn thân, footer Huỷ/Lưu) — giữ nguyên toàn bộ
+  nghiệp vụ (lý do bắt buộc, xác nhận, rollback tạo phiên bản mới, map vị trí văn
+  phòng). Verify: 19 mục, LEAVE lọc ra 6, tìm "phép" ra 4, mở rộng/modal sửa/modal
+  lịch sử đều PASS; 3 theme × 7 bề rộng không tràn ngang; 0 lỗi JS, 0 HTTP ≥ 400,
+  0 emoji; `tsc` + `build` sạch.
+
+- **S10 · Danh mục loại nghỉ phép** ✅ (2026-11-27) — mockup
+  `screens/leave-types.html` (3 theme × desktop 1440 + mobile 390). Áp vào
+  `LeaveTypesPage` (bảng đơn giản 1 heading → hệ thống card): đầu trang eyebrow
+  `CalendarDays` "Quản trị HR" + `h1` "Danh mục loại nghỉ phép" + badge S10 +
+  nút **"+ Thêm loại nghỉ"** accent; **bìa tóm tắt** `bg-ink text-canvas` (tổng /
+  đang dùng / cần giấy tờ); **4 chip lọc** (Tất cả / Hệ thống / HR tự thêm / Đang
+  tắt — đếm khớp dữ liệu, `aria-pressed`, cuộn ngang mobile); **mỗi loại nghỉ =
+  card 13px**: mã mono chip accent-soft + tên + tag "hệ thống" (icon Lock) +
+  badge đang dùng/đã tắt, **5–6 chip giá trị** (số ngày/năm hoặc Theo BHXH, đơn
+  vị, hưởng lương, giấy tờ, hạn gửi, trừ phép năm); nút **Sửa** luôn hiện, **Xoá**
+  chỉ loại HR tự thêm; footer giải thích vì sao hệ thống không xoá được. Modal tự
+  viết → **`Modal` dùng chung** (thêm `role="dialog"`, `aria-modal`, click nền
+  đóng), field Mã (khoá khi sửa) + Tên + số ngày/năm + 4 toggle + đơn vị + hạn
+  gửi. Verify: đúng 16 loại, tạo mới rơi vào "HR tự thêm" (1), xoá về 0, modal
+  sửa mở với Mã disabled, không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS,
+  0 HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **S11 · Thiết bị chấm công** ✅ (2026-11-27) — mockup
+  `screens/device-management.html` (3 theme × desktop 1440 + mobile 390). Đầu
+  trang eyebrow `ShieldCheck` "Quản trị HR" + badge S11; **bìa tóm tắt** đếm
+  chờ duyệt / đang hoạt động / đã thu hồi; **3 Panel** (Chờ duyệt / Đang hoạt
+  động / Đã thu hồi) — mỗi thiết bị là dòng card: icon laptop/điện thoại theo
+  model, model + tag OS + badge trạng thái, **tên + mã nhân viên** (nạp kèm từ
+  `/admin/users`, lỗi thì lùi về mã ID ngắn) + fingerprint mono, meta "Yêu cầu
+  lúc / Hoạt động / Hết hạn" hoặc "Thu hồi lúc · Không thể chấm công". Nút Duyệt
+  accent, Từ chối/Thu hồi viền danger; hàng mobile rơi xuống dưới, mỗi nút chia
+  đôi chiều rộng. `window.prompt` → **Modal thu hồi**: chip lý do nhanh + textarea
+  bắt buộc (nút submit disabled tới khi có lý do). Verify: đúng 0/1/3, thu hồi
+  chuyển nhóm ngay, disabled→enabled, khôi phục dữ liệu; tên nhân viên hiện đúng
+  thay ID; không emoji; 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
+  `tsc` + `build` sạch.
+
+- **T8 · Sổ cái biến động phép (HR)** ✅ (2026-11-27) — mockup
+  `screens/leave-ledger.html` (3 theme × desktop 1440 + mobile 390). Bảng phẳng
+  → sổ cái nhóm theo tháng: đầu trang eyebrow `BookOpen` "Chấm công" + h1 + badge
+  T8 + 2 nút (Điều chỉnh số dư accent / Xuất CSV viền); **bìa `bg-ink text-canvas`**
+  chọn nhân viên + 3 số dư (được hưởng / đã dùng / còn lại); Panel lọc (tìm lý do
+  + mã bút toán, chọn tháng, 5 chip loại biến động đếm khớp dữ liệu, cuộn ngang
+  mobile); **mỗi tháng = section** với tổng ngày trong tháng, mỗi bút toán là dòng
+  card: ngày mono, tag loại (Cấp phép ok / Sử dụng danger / HR điều chỉnh info /
+  Hết hạn tồn gray) + loại phép, lý do đầy đủ, meta người thực hiện + mã bút toán,
+  số ngày ±kèm số dư còn lại. Modal điều chỉnh số dư dùng `Modal` chung (chip lý do
+  nhanh, bắt buộc lý do, validate khác 0). Verify: cộng đúng theo tháng, lọc/tìm
+  khớp số đếm, điều chỉnh thêm bút toán mới, 3 theme × 7 bề rộng không tràn;
+  0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **T9 · Bảng phép toàn công ty (HR)** ✅ (2026-11-27) — mockup
+  `screens/leave-table.html` (3 theme × desktop 1440 + mobile 390). Bảng phẳng
+  8 cột → **bìa `bg-ink text-canvas`** "Năm nay · toàn công ty" + 4 số tổng
+  (nhân viên / ngày còn lại / sắp hết vàng / đã hết đỏ) khớp bộ lọc hiện tại;
+  Panel lọc (tìm tên-mã, chọn nhóm, đếm nhân viên, 3 chip Tất cả / Sắp hết (< 2) /
+  Đã hết cuộn ngang mobile); bảng desktop cột đầu **dính trái**, tiêu đề số có
+  tooltip giải thích nghiệp vụ, hàng tổng `tfoot` cộng theo bộ lọc; mobile là
+  card: avatar chữ cái + badge "Còn X ngày / Hết phép" + lưới 3 số (phép năm còn /
+  tồn còn / đã dùng). Mọi dòng/card **link thẳng sổ phép** `?user=<mã>`. Panel
+  "Đọc số" giải thích quy tắc ngày 01/04 và 01/07. Verify: 43 dòng → chip 1 / 32 /
+  43 khớp, tìm "136" còn 1 dòng, deep-link `?user=01HR` mở đúng sổ, 3 theme ×
+  7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400; `tsc` + `build` sạch.
+
+- **T12 · Khiếu nại bảng công** ✅ (2026-11-27) — mockup
+  `screens/disputes.html` (3 theme × desktop 1440 + mobile 390). Thay
+  `window.prompt` bằng **Modal xử lý**: chọn "Duyệt & sửa ô (hiệu lực ngay)" hoặc
+  "Bổ sung công (tạo đơn chờ duyệt)", nhập đủ giờ vào/ra khi duyệt sửa giờ, bắt
+  buộc lý do. Bìa `bg-ink text-canvas` "Hàng chờ xử lý" + 4 số (cần xử lý vàng /
+  đã xử lý / bị từ chối / quá hạn); Panel lọc tìm tên-mã-lý do + 5 chip cuộn ngang
+  mobile; thanh **chọn tất cả / duyệt & sửa ô hàng loạt / từ chối hàng loạt** có
+  modal lý do chung, đơn không hợp lệ (thiếu giờ đề xuất) bị bỏ qua và **liệt kê
+  rõ**; mỗi dòng hiện tag loại (Sửa giờ / WFH / Nghỉ phép), badge trạng thái,
+  "NV xin" đúng nội dung, hạn xử lý (quá hạn tô vàng) + số giấy tờ; mobile là
+  card với lưới 3 nút. Verify: 3 đơn chờ → modal duyệt sửa giờ 08:30→17:30 lưu
+  `RESOLVED/FIX` đúng, modal WFH/nghỉ hiện cảnh báo hiệu lực ngay, bulk từ chối
+  bắt buộc lý do, 3 theme × 7 bề rộng không tràn; 0 lỗi JS/HTTP ≥ 400;
+  `tsc` + `build` sạch.
+- **T13 · Chi tiết khiếu nại** ✅ (2026-11-27) — mockup
+  `screens/dispute-detail.html` (3 theme × desktop 1440 + mobile 390). Màn thật vốn
+  đã đủ nghiệp vụ 3 nguồn đối chiếu → chỉ làm mockup + verify, không sửa logic. Bố
+  cục: đầu trang `h1` + mã đơn + badge trạng thái + dòng NV/mã/ngày công/hạn; bìa
+  `bg-ink text-canvas` "Đối chiếu 3 nguồn trước khi sửa" + 3 số (ngày còn lại vàng /
+  đơn liên quan / giấy tờ); lưới 3 thẻ **1 · Log gốc** (giờ vào/ra, "không sửa
+  được"), **2 · NV khiếu nại** (điều NV xin, đơn liên quan), **3 · Ô bảng công**
+  (ký hiệu HR đang giữ); dải nhắc quy tắc màu warn; Panel **Xử lý khiếu nại** (chọn
+  chế độ Sửa giờ/WFH/Nghỉ, giờ vào/ra bắt buộc, buổi, lý do bắt buộc, 3 nút Duyệt &
+  cập nhật / Tạo đơn bổ sung công / Từ chối). Đơn đã đóng đổi tiêu đề "Chi tiết
+  khiếu nại" + Panel "Kết quả xử lý" — đúng như app. Verify (HR 01HR): đơn quá hạn
+  DC-01 render đúng 3 thẻ + "Quá hạn"; state PENDING (mock dữ liệu) hiện đủ form
+  prefill 08:47, nút hành động có tooltip, mobile 390 không tràn ngang
+  (`scrollWidth` = `clientWidth` = 384), 0 lỗi JS; 3 theme × 2 khổ mở được.
+  Không sửa code nên `tsc`/`build` giữ nguyên trạng thái sạch của T12.
+
+- **T14 · Thiết bị của tôi** ✅ (2026-11-27) — mockup `screens/my-devices.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `MyDevicesPage`: đầu trang gọn +
+  badge T14; bìa `bg-ink` "Chỉ máy đã đăng ký mới chấm công được" + 3 số (x/2 đang
+  hoạt động, chờ duyệt, đã thu hồi); Panel danh sách với nút `+ Đăng ký` (đổi thành
+  "Máy này đã đăng ký" khi fingerprint hiện tại nằm trong danh sách); mỗi dòng có
+  icon laptop/phone, tên + nền tảng + badge trạng thái + badge "thiết bị hiện tại",
+  fingerprint mono, giờ hoạt động / gửi yêu cầu, nút Hủy yêu cầu / Xóa thiết bị;
+  Panel hồ sơ khuôn mặt + link Passkey. Verify (NV 01HR): 2 thiết bị thu hồi render
+  đúng nhãn xám, mobile 390 không tràn ngang, 0 lỗi JS; `tsc` + `build` sạch.
+- **T15 · Đăng ký thiết bị** ✅ (2026-11-27) — mockup `screens/add-device.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `AddDevicePage`: bìa `bg-ink` theo
+  hạn mức (còn hạn → "Kích hoạt thiết bị đang mở"/"Ngay"; đủ 2/2 → cảnh báo + "30
+  ngày hiệu lực"), form 1 panel: fingerprint readonly, tên thiết bị, khối lý do bắt
+  buộc + cảnh báo Wi-Fi nội bộ 403 + quy định khi vượt hạn mức; khối xanh khi còn
+  hạn mức; nút Hủy / Thêm thiết bị (Gửi yêu cầu chờ HR duyệt); trạng thái gửi xong
+  dùng `ok-soft`. Giữ nguyên API `/devices/request` + header `X-Office-Network` +
+  `wifiBssid`. Verify: tài khoản còn hạn mức render khối xanh và nút "Thêm thiết
+  bị", mobile 390 không tràn, 0 lỗi JS; `tsc` + `build` sạch.
+
+- **AC2 · Passkey & bảo mật** ✅ (2026-11-27) — mockup `screens/passkey.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `PasskeySettingsPage`: đầu trang
+  gọn + badge AC2; bìa `bg-ink` "Private key không bao giờ rời thiết bị" + số
+  passkey / 100% an toàn phần cứng; Panel "Passkey của tài khoản" (nút `+ Thêm
+  passkey`, mỗi dòng có icon fingerprint, tên + badge "Đang dùng", giờ đăng ký &
+  dùng gần nhất, nút Gỡ) + empty/đang tải; Panel "Cách hoạt động" 3 bước đánh số
+  + ghi chú link "Thiết bị của tôi". Giữ nguyên API webauthn, xác nhận confirm
+  khi gỡ. Verify (NV 136ACT): 1 passkey thật render đúng, mobile 390 không tràn
+  (`scrollWidth`=`clientWidth`=384), Bento mobile tương phản tốt, 0 lỗi JS
+  (`tsc` + `build` sạch).
+- **A2 · Đăng ký khuôn mặt** ✅ (2026-11-27) — mockup `screens/face-enrollment.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `FaceEnrollmentPage`: nâng cấp
+  đầu trang + hero tối (4 hồ sơ đã nạp · 1 góc chụp · vector 128D); tab ngang
+  gọn (Đăng ký 1 góc · Thử nghiệm 1:N · Quản lý hồ sơ) có badge; camera khung
+  cố định 290px desktop / 220px mobile (sửa `aspect-4/3` không tồn tại → oval
+  gợi ý co theo khổ); panel phải gọn: mã NV + phòng ban dạng ô, họ tên/phòng ban
+  sửa được, chế độ 1 góc ⇄ 3 góc, checkbox đồng ý lưu vector (bắt buộc trước khi
+  gửi), ghi chú "ảnh gốc không lưu". Giữ nguyên API enroll + tab verify/profile.
+  Verify: Midnight desktop+mobile 390 không tràn; Bento desktop tương phản tốt;
+  tab verify render đúng; `tsc` + `build` sạch.
+- **S48 · Cấu hình Domain Host** ✅ (2026-11-27) — mockup `screens/system-config.html`
+  (3 theme × desktop 1440 + mobile 390). Áp vào `SystemDomainConfigPage`: đầu
+  trang chuẩn + badge S48; bìa `bg-ink` "Một tên miền chuẩn — mọi liên kết hệ
+  thống" + 3 số host/môi trường/cập nhật gần nhất; cột trái Panel "Thiết lập tên
+  miền gốc" (input + preset + lý do + nút lưu) và Panel "Xem trước liên kết tự
+  động"; cột phải Panel trạng thái (host, DB key, người/thời gian sửa), Panel
+  chính sách, thẻ Gmail SMTP. Giữ nguyên API `GET/PUT system-config`, nút Nạp
+  lại & modal Gmail. Verify (HR 01HR): 3 theme desktop + mobile 390 đều không
+  tràn ngang, `tsc` + `build` sạch, `test_theme_responsive` ĐẠT.
+- **T3 · Lịch nhóm** ✅ (2026-11-27) — mockup `screens/team-schedule.html` đã đủ
+  3 theme × desktop 1440 + mobile 390; app `TeamSchedulePage` vốn khớp khung
+  (bìa tóm tắt, banner xung đột, lưới tháng/tuần, legend, panel chi tiết ngày).
+  Bổ sung theo mockup: panel chi tiết trên mobile thu gọn người có mặt — hiện 5
+  người đầu, phần còn lại gộp sau nút "+N người khác đang có mặt đủ ngày" (bấm
+  để mở đủ, desktop vẫn hiện toàn bộ). Verify manager 05ACT: 3 theme × 4 bề rộng
+  320/390/768/1440 không tràn ngang, nút gộp/mở đúng, `tsc` + `build` sạch.
+- **SH1–SH5 · Shell** ✅ (2026-11-27) — Sidebar/Header/BottomNav dùng chung đã token
+  3 theme (`rail-*` cho rail tối, rail trắng ở Ascend Clean), không còn hex cứng;
+  Command palette (⌘K) + Theme switcher trong Header render đúng theme. Verify:
+  desktop 1440 (palette 3 theme) + mobile 390 (drawer mở/đóng ở 3 theme), không
+  tràn, `test_theme_responsive` ĐẠT.
+- **SH2 · Header (tinh chỉnh)** ✅ (2026-11-28) — desktop bỏ badge ACT-HKT trùng
+  thương hiệu, thay bằng **crumb + tên màn** lấy từ nav (khớp path hoặc màn cha gần
+  nhất: `/okr/cycles/new` → "Chu kỳ OKR"); **bỏ hẳn brand ACT-HKT** (logo đã có ở
+  sidebar, mobile không lặp lại). **Ô tìm kiếm thành điểm vào lệnh chính**: từ `lg`
+  (≥1024) đặt giữa topbar, rộng theo không gian còn lại và tối đa **480px** (1024
+  ~180–243px, 1280 ~264–367px, ≥1440 luôn 420–480px); dưới `lg` giữ nút gọn
+  220–280px, mobile chỉ icon. Giảm mật độ mobile: ẩn theme switcher (đổi ở Hồ sơ),
+  giữ tìm kiếm/chuông/camera/avatar/đăng xuất; mọi nút icon 36×36 + `aria-label`.
+  Verify 320/360/375/390/414/640/768/1024/1100/1280/1440/1680/1920 + 6 route dài
+  tên: header không tràn ngang, đổi theme 3 template ổn, tìm kiếm/palette/hồ sơ/
+  logout hoạt động, `tsc` sạch.
+- **M1–M4 · Modal** ✅ (2026-11-27) — Đổi mật khẩu (desktop 3 theme), Đổi mật khẩu
+  lần đầu (mobile 390 3 theme, nút Bỏ qua/Cập nhật rõ), Kết nối Gmail (System
+  Domain Config, 3 theme), Nhắc bật Web Push (toast desktop + mobile). Tất cả dùng
+  token (`surface/line/ink/status-*`), không có màu cứng; nội dung không tràn ở
+  390px.
+- **SH1 · Tổ chức lại menu (2026-11-28)** — Nhóm HR 13 mục tách thành
+  **Chấm công & phép** (bảng công/chốt, khiếu nại, bảng phép, sổ phép) ·
+  **Quản trị nhân sự** (nhân viên, cây quản lý, ca & lễ, loại nghỉ, thiết bị) ·
+  **Cấu hình & hệ thống** (bộ quy tắc, audit, domain); mục OKR của HR gộp vào
+  nhóm OKR chung thay vì lặp header. Thêm **Sổ phép nhân viên**
+  (`/attendance/leave-ledger`, màn T8) vốn có route nhưng thiếu menu. Menu
+  nhân viên đổi “Quy định tra cứu” → **Nội quy & quy chế** trỏ
+  `/attendance/policy-doc` (không còn dùng route `/admin`). HR/Manager vẫn là
+  2 nhánh song song, Admin = cả hai. Verify HR 01HR: 3 theme + mobile drawer,
+  click 3 link mới mở đúng màn; `tsc` + `build` + `check-consistency` sạch.
+- **Rà soát ô nhập liệu · Bento Studio** ✅ (2026-11-28) — quét toàn bộ
+  `input`/`select`/`textarea` hiển thị dưới theme Bento Studio, tính nền hiệu dụng bằng cách
+  leo cây DOM tới nền đục đầu tiên rồi đo tương phản WCAG: 43 route desktop +
+  42 route mobile 390 + login/quên mật khẩu + command palette + modal (tổng 450
+  control) → **0 control chữ-trên-nền-trắng không đọc được**. Phát hiện 1 lỗi
+  thật: trong modal **Đơn WFH**, 2 `select` "Đơn vị" (Cả ngày/Nửa ngày…) và
+  "Buổi" (Sáng/Chiều) nằm trong panel `bg-status-info-soft text-status-info`
+  nhưng bản thân select không có nền/chữ riêng → Bento render nền trắng mặc định
+  của trình duyệt + chữ xanh nhạt kế thừa (tương phản ~2.2:1). Sửa bằng
+  `bg-surface text-ink` (đo lại: chữ `rgb(242,243,245)` trên nền `rgb(20,21,25)`
+  → đạt AA). Bổ sung `color-scheme: light/dark` theo từng theme trong `index.css`
+  để popup `<select>`, date picker và autofill native cũng theo nền theme thay vì
+  mặc định sáng của OS. Verify: `tsc` + `build` sạch.

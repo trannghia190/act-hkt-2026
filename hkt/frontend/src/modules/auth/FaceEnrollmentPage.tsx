@@ -6,7 +6,6 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import {
   Camera,
-  Upload,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -63,12 +62,12 @@ export const FaceEnrollmentPage: React.FC = () => {
   // Camera & Media stream state
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
   // Single Frontal Image capture state
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
   const [enrollStatus, setEnrollStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [enrollMessage, setEnrollMessage] = useState<string | null>(null);
 
@@ -203,32 +202,16 @@ export const FaceEnrollmentPage: React.FC = () => {
     }
   };
 
-  // Upload photo from file
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        if (activeTab === 'enroll') {
-          setCapturedImage(reader.result);
-          setEnrollStatus('idle');
-          setEnrollMessage(null);
-        } else if (activeTab === 'verify') {
-          setVerifyImage(reader.result);
-          setVerifyResult(null);
-        }
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
   // Submit enrollment — CHỈ đăng ký cho chính tài khoản đang đăng nhập.
   // Business: docs/01 "Hồ sơ khuôn mặt" + docs/08 B0 — không cho đăng ký hộ người khác.
   const handleEnrollSubmit = async () => {
     if (!capturedImage) {
-      setEnrollMessage('Vui lòng chụp ảnh khuôn mặt chính diện hoặc tải ảnh lên trước khi đăng ký.');
+      setEnrollMessage('Vui lòng chụp ảnh khuôn mặt chính diện từ camera trước khi đăng ký.');
+      setEnrollStatus('error');
+      return;
+    }
+    if (!consent) {
+      setEnrollMessage('Cần đồng ý lưu vector khuôn mặt cho mục đích chấm công nội bộ trước khi đăng ký.');
       setEnrollStatus('error');
       return;
     }
@@ -312,7 +295,7 @@ export const FaceEnrollmentPage: React.FC = () => {
   const handleVerifySubmit = async () => {
     const targetImage = verifyImage || capturedImage;
     if (!targetImage) {
-      alert('Vui lòng chụp hoặc tải lên ảnh khuôn mặt để kiểm tra xác thực.');
+      alert('Vui lòng chụp ảnh khuôn mặt từ camera để kiểm tra xác thực.');
       return;
     }
 
@@ -414,91 +397,88 @@ export const FaceEnrollmentPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Hidden elements for capturing and uploading */}
+      {/* Hidden canvas for capturing — chỉ chụp từ camera, không cho tải ảnh từ file */}
       <canvas ref={canvasRef} className="hidden" />
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
 
-      {/* Header Wizard Banner */}
-      <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-dark rounded-full text-xs font-semibold border border-accent-line mb-2">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Sinh Trắc Học AI • OpenCV YuNet + SFace (128D ONNX)</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink">
-              Đăng Ký & Quản Lý Mẫu Khuôn Mặt
+      {/* Đầu trang — mockup `.phead` */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Sinh trắc học
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Đăng ký khuôn mặt
             </h1>
-            <p className="text-xs text-ink-muted mt-1">
-              Đăng ký 1 góc chính diện tinh gọn • Xác thực nhận diện 1:N tức thì • Quản trị hồ sơ sinh trắc học
+            <Badge variant="accent">A2</Badge>
+            {enrolledList.length > 0 && <Badge variant="ok">hồ sơ đã nạp</Badge>}
+          </div>
+          <p className="mt-1 max-w-2xl text-xs text-ink-muted">
+            Chụp 1 góc chính diện, trích vector 128D bằng SFace — ảnh gốc không lưu, không tải lên máy chủ. Dùng cho chấm công và xác thực 1:N.
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => navigate('/attendance/checkin')}
+          className="shrink-0 text-xs"
+        >
+          <Camera className="w-3.5 h-3.5" />
+          Đến màn chấm công
+        </Button>
+      </div>
+
+      {/* Bìa tóm tắt */}
+      <div className="overflow-hidden rounded-[16px] border border-line bg-ink px-5 py-4 text-canvas">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-canvas/60">
+              Dữ liệu sinh trắc học
+            </div>
+            <div className="mt-1 font-display text-lg font-extrabold">Camera không lưu ảnh — chỉ giữ vector 128 chiều</div>
+            <p className="mt-1 max-w-xl text-xs leading-relaxed text-canvas/75">
+              Ảnh được xử lý ngay trên trình duyệt, vector so sánh 1:N trên máy chủ. Đăng ký lại sẽ ghi đè mẫu cũ; xoá hồ sơ là mất hiệu lực tức thì.
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="ok" className="text-xs px-2.5 py-1">
-              {enrolledList.length} Hồ Sơ Đã Nạp Vector
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/attendance/checkin')}
-              className="text-xs"
-            >
-              Đến Màn Hình Chấm Công
-            </Button>
-          </div>
+          <dl className="flex gap-6">
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums">{enrolledList.length}</dd>
+              <dt className="text-[11px] text-canvas/60">hồ sơ đã nạp</dt>
+            </div>
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums">1</dd>
+              <dt className="text-[11px] text-canvas/60">góc chụp</dt>
+            </div>
+            <div>
+              <dd className="font-display text-2xl font-extrabold tabular-nums">128D</dd>
+              <dt className="text-[11px] text-canvas/60">vector so khớp</dt>
+            </div>
+          </dl>
         </div>
+      </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-line mt-6 -mb-2 gap-2 text-xs font-semibold">
+      {/* Navigation Tabs */}
+      <div className="-mb-2 flex gap-1 overflow-x-auto border-b border-line text-xs font-semibold">
+        {([
+          { id: 'enroll', icon: Camera, label: 'Đăng ký 1 góc (chính diện)' },
+          { id: 'verify', icon: UserCheck, label: 'Thử nghiệm xác thực (1:N)' },
+          { id: 'crud', icon: Users, label: `Quản lý hồ sơ (${enrolledList.length})` },
+        ] as const).map(t => (
           <button
+            key={t.id}
             type="button"
-            onClick={() => setActiveTab('enroll')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'enroll'
-                ? 'border-accent text-accent font-bold'
+            onClick={() => { setActiveTab(t.id); if (t.id === 'crud') fetchEnrolledEmployees(); }}
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 transition-colors ${
+              activeTab === t.id
+                ? 'border-accent font-bold text-accent'
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <Camera className="w-4 h-4" />
-            <span>Đăng Ký 1 Góc (Chính diện)</span>
+            <t.icon className="h-4 w-4" />
+            <span>{t.label}</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('verify')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'verify'
-                ? 'border-accent text-accent font-bold'
-                : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Thử Nghiệm Xác Thực (Verify 1:N)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('crud');
-              fetchEnrolledEmployees();
-            }}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'crud'
-                ? 'border-accent text-accent font-bold'
-                : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Quản Lý Hồ Sơ ({enrolledList.length})</span>
-          </button>
-        </div>
+        ))}
       </div>
 
       {/* ========================================================================= */}
@@ -508,17 +488,21 @@ export const FaceEnrollmentPage: React.FC = () => {
         <div className="grid md:grid-cols-12 gap-6">
           {/* Left: Camera / Preview Viewport */}
           <div className="md:col-span-7 space-y-4">
-            <Card className="p-4 overflow-hidden border border-line bg-canvas">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
-                  <Camera className="w-4 h-4 text-accent" />
-                  Góc Chụp: Chính Diện (0°)
+            <Card className="p-3.5 overflow-hidden border border-line bg-canvas">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-ink">
+                  <Camera className="h-3.5 w-3.5 text-accent" />
+                  Góc chụp: chính diện (0°)
                 </span>
-                <span className="text-[11px] text-ink-muted">Chỉ cần 1 ảnh khuôn mặt rõ nét</span>
+                <span className={`rounded-md border px-1.5 py-[2px] text-[10.5px] font-semibold ${
+                  capturedImage ? 'border-status-ok-line bg-status-ok-soft text-status-ok' : 'border-line bg-surface-secondary text-ink-muted'
+                }`}>
+                  {capturedImage ? 'đã chụp' : isCameraActive ? 'camera sẵn sàng' : 'camera chưa bật'}
+                </span>
               </div>
 
               {/* Viewport Frame */}
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-black border border-line flex items-center justify-center">
+              <div className="relative h-[220px] sm:h-[290px] rounded-xl overflow-hidden bg-black border border-line flex items-center justify-center">
                 {capturedImage ? (
                   <img
                     src={capturedImage}
@@ -536,7 +520,7 @@ export const FaceEnrollmentPage: React.FC = () => {
 
                 {/* Face Biometric Guide Overlay */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-52 h-64 border-2 border-dashed border-accent/80 rounded-[48%] flex items-center justify-center">
+                  <div className="flex h-[162px] w-[132px] items-center justify-center rounded-[48%] border-2 border-dashed border-accent/80 sm:h-64 sm:w-52">
                     <div className="w-full h-0.5 bg-accent/30" />
                   </div>
                 </div>
@@ -544,128 +528,113 @@ export const FaceEnrollmentPage: React.FC = () => {
                 {/* Status Pills */}
                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-status-ok animate-pulse" />
-                  {capturedImage ? 'Ảnh Đã Chụp (Sẵn Sàng)' : isCameraActive ? 'Webcam Live' : 'Camera Khởi Tạo...'}
+                  {capturedImage ? 'ảnh đã chụp' : isCameraActive ? 'camera trực tiếp' : 'camera đang tắt'}
                 </div>
               </div>
 
               {/* Camera Actions */}
-              <div className="mt-4 flex flex-wrap gap-2 justify-between items-center">
-                <div className="flex gap-2">
-                  {capturedImage ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCapturedImage(null)}
-                      className="text-xs flex items-center gap-1.5"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Chụp Lại
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleCapturePhoto}
-                      className="text-xs font-semibold flex items-center gap-1.5"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      Chụp Ảnh Chính Diện
-                    </Button>
-                  )}
-
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {capturedImage ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setCapturedImage(null)}
                     className="text-xs flex items-center gap-1.5"
                   >
-                    <Upload className="w-3.5 h-3.5" />
-                    Tải Ảnh Từ File
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Chụp lại
                   </Button>
-                </div>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleCapturePhoto}
+                    className="text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    Chụp ảnh
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (isCameraActive ? stopCamera() : startCamera())}
+                  className="text-xs flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Bật/tắt camera
+                </Button>
+                <span className="ml-auto text-[11px] text-ink-muted">Độ phân giải tối ưu 640×640</span>
+              </div>
 
-                <div className="text-[11px] text-ink-muted">
-                  Độ phân giải tối ưu: 640x640px
-                </div>
+              {/* Instruction hints */}
+              <div className="mt-2.5 rounded-lg border border-line bg-canvas-subtle px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
+                <b className="text-ink-secondary">Lưu ý khi chụp:</b> nhìn thẳng tâm camera, ánh sáng đủ rõ, tháo khẩu trang và kính che khuôn mặt.
+                Đăng ký lại ghi đè mẫu cũ — ảnh gốc không lưu.
               </div>
             </Card>
-
-            {/* Instruction hints */}
-            <div className="p-4 bg-canvas-subtle border border-line rounded-xl text-xs space-y-1.5 text-ink-muted">
-              <div className="font-semibold text-ink flex items-center gap-1.5">
-                <span>💡</span> Hướng dẫn căn chỉnh khuôn mặt:
-              </div>
-              <ul className="list-disc list-inside space-y-1 pl-1 text-[11px]">
-                <li>Nhìn thẳng vào tâm camera, biểu cảm khuôn mặt thư giãn tự nhiên.</li>
-                <li>Đảm bảo ánh sáng đủ rõ, không bị ngược sáng hoặc bóng đổ quá tối.</li>
-                <li>Tháo khẩu trang, kính đen hoặc mũ che khuất đường viền khuôn mặt.</li>
-              </ul>
-            </div>
           </div>
 
           {/* Right: Employee Profile Form & Enrollment Confirmation */}
           <div className="md:col-span-5 space-y-4">
             <Card className="p-5 border border-line bg-canvas space-y-4">
-              <h2 className="text-sm font-bold text-ink border-b border-line pb-2.5 flex items-center justify-between">
-                <span>Thông Tin Nhân Viên Liên Kết</span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setEnrollMode(enrollMode === 'single' ? 'three' : 'single')}
-                    className="text-[10px] text-accent hover:underline cursor-pointer"
-                  >
-                    {enrollMode === 'single' ? 'Đổi sang 3 góc (B0)' : 'Đổi sang 1 góc (Nhanh)'}
-                  </button>
-                  <Badge variant="info" className="text-[10px]">
-                    {enrollMode === 'single' ? '1 Góc Đăng Ký' : '3 Góc (B0 Chuẩn)'}
-                  </Badge>
-                </div>
+              <h2 className="flex items-center justify-between text-[13px] font-bold text-ink">
+                <span>Thông tin nhân viên</span>
+                <Badge variant="gray">{enrollMode === 'single' ? '1 góc' : '3 góc'}</Badge>
               </h2>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-ink-muted mb-1">
-                    Mã nhân viên (Employee Code) <span className="text-status-danger">*</span>
-                    <span className="text-[10px] text-ink-muted ml-1.5">(cố định theo tài khoản đang đăng nhập)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={user?.employeeCode || ''}
-                    readOnly
-                    disabled
-                    className="w-full text-xs font-mono font-bold px-3 py-2 bg-canvas-subtle border border-line rounded-lg text-ink opacity-80 cursor-not-allowed"
-                  />
-                  <p className="text-[10px] text-ink-muted mt-1">
-                    Đăng ký khuôn mặt chỉ áp dụng cho chính tài khoản này — không thể đăng ký hộ người khác.
-                  </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-canvas px-2.5 py-1.5">
+                  <div className="font-mono text-[13px] font-bold text-ink">{user?.employeeCode || '—'}</div>
+                  <div className="text-[9px] text-ink-muted">mã nhân viên</div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-ink-muted mb-1">
-                    Họ và tên nhân viên
-                  </label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nhập họ và tên"
-                    className="w-full text-xs px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:border-accent outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-ink-muted mb-1">
-                    Phòng ban / Đơn vị
-                  </label>
-                  <input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="VD: Khối Kỹ Thuật"
-                    className="w-full text-xs px-3 py-2 bg-canvas border border-line rounded-lg text-ink focus:border-accent outline-hidden"
-                  />
+                <div className="rounded-lg bg-canvas px-2.5 py-1.5">
+                  <div className="truncate text-[13px] font-bold text-ink">{department || '—'}</div>
+                  <div className="text-[9px] text-ink-muted">phòng ban</div>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-ink mb-1">Họ và tên nhân viên</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nhập họ và tên"
+                  className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-ink mb-1">Phòng ban / Đơn vị</label>
+                <input
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="VD: Khối Kỹ Thuật"
+                  className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent outline-hidden"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2">
+                <div className="text-[11.5px] text-ink-secondary">
+                  <b className="text-ink">Chế độ đăng ký</b>
+                  <div className="mt-px text-[10.5px] text-ink-muted">
+                    {enrollMode === 'single' ? '1 góc chính diện — nạp nhanh' : '3 góc chuẩn B0 — chính xác hơn'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEnrollMode(enrollMode === 'single' ? 'three' : 'single')}
+                  className="shrink-0 text-[10.5px] font-semibold text-accent hover:underline"
+                >
+                  {enrollMode === 'single' ? 'Đổi 3 góc' : 'Về 1 góc'}
+                </button>
+              </div>
+
+              <p className="text-[10.5px] leading-relaxed text-ink-muted">
+                Đăng ký chỉ áp cho chính tài khoản đang đăng nhập — không đăng ký hộ người khác.
+              </p>
 
               {/* Seed Profiles Quick Selector (Admin/HR Only) */}
               {isAdmin && (
@@ -718,19 +687,33 @@ export const FaceEnrollmentPage: React.FC = () => {
                 </div>
               )}
 
+              <label className="flex cursor-pointer items-start gap-2 text-[10.5px] leading-relaxed text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-[2px] accent-[rgb(var(--accent))]"
+                />
+                <span>
+                  Tôi đồng ý lưu <b className="text-ink-secondary">vector khuôn mặt</b> cho mục đích chấm công nội bộ.
+                  Có thể xoá hồ sơ bất kỳ lúc nào ở tab Quản lý hồ sơ.
+                </span>
+              </label>
+
               {/* Submit Enrollment Action */}
-              <div className="pt-2">
-                <Button
-                  variant="primary"
-                  onClick={handleEnrollSubmit}
-                  disabled={!capturedImage || enrollStatus === 'processing'}
-                  className="w-full py-2.5 text-xs font-bold"
-                >
-                  {enrollStatus === 'processing'
-                    ? 'Đang Trích Xuất Vector & Lưu Trữ...'
-                    : '✓ Xác Nhận & Đăng Ký Khuôn Mặt (1 Góc)'}
-                </Button>
-              </div>
+              <Button
+                variant="primary"
+                onClick={handleEnrollSubmit}
+                disabled={!capturedImage || !consent || enrollStatus === 'processing'}
+                className="w-full py-2.5 text-xs font-bold"
+              >
+                {enrollStatus === 'processing'
+                  ? 'Đang trích xuất vector & lưu trữ...'
+                  : 'Xác nhận & đăng ký khuôn mặt'}
+              </Button>
+              <p className="text-center text-[10px] text-ink-muted">
+                Dữ liệu sinh trắc học được mã hoá — ảnh gốc không lưu trên máy chủ.
+              </p>
             </Card>
           </div>
         </div>
@@ -749,10 +732,10 @@ export const FaceEnrollmentPage: React.FC = () => {
                   <UserCheck className="w-4 h-4 text-accent" />
                   Camera Nhận Diện Thử Nghiệm
                 </span>
-                <span className="text-[11px] text-ink-muted">Chụp hoặc tải ảnh để test matching</span>
+                <span className="text-[11px] text-ink-muted">Chụp ảnh từ camera để test matching</span>
               </div>
 
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-black border border-line flex items-center justify-center">
+              <div className="relative h-[220px] sm:h-[290px] rounded-xl overflow-hidden bg-black border border-line flex items-center justify-center">
                 {verifyImage ? (
                   <img
                     src={verifyImage}
@@ -803,16 +786,6 @@ export const FaceEnrollmentPage: React.FC = () => {
                       Chụp Ảnh Thử Nghiệm
                     </Button>
                   )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs flex items-center gap-1.5"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Tải Ảnh Test
-                  </Button>
                 </div>
 
                 <Button
@@ -911,7 +884,7 @@ export const FaceEnrollmentPage: React.FC = () => {
                 <div className="p-8 border border-dashed border-line rounded-xl text-center text-xs text-ink-muted space-y-2">
                   <UserCheck className="w-8 h-8 text-ink-muted mx-auto opacity-50" />
                   <div>Chưa có kết quả kiểm tra</div>
-                  <div className="text-[11px]">Chụp ảnh hoặc upload ảnh và bấm "Xác Thực Khuôn Mặt Ngay"</div>
+                  <div className="text-[11px]">Chụp ảnh từ camera và bấm "Xác Thực Khuôn Mặt Ngay"</div>
                 </div>
               )}
             </Card>

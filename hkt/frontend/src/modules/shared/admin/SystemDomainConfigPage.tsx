@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { Button } from '../../../components/common/Button';
+import { Badge } from '../../../components/common/Badge';
+import { Panel } from '../../../components/common/Panel';
 import { EnterpriseGmailModal } from '../../../components/common/EnterpriseGmailModal';
 
 interface DomainConfigData {
@@ -161,14 +163,14 @@ export const SystemDomainConfigPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-4 pb-24">
       {/* Toast notification */}
       {toastMessage && (
         <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-xl shadow-lg border flex items-center gap-3 text-xs font-semibold transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${
+          className={`fixed right-4 top-4 z-50 flex items-center gap-3 rounded-xl border p-4 text-xs font-semibold shadow-lg transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${
             toastMessage.type === 'ok'
-              ? 'bg-status-ok/10 border-status-ok/30 text-status-ok-line'
-              : 'bg-status-danger/10 border-status-danger/30 text-status-danger-line'
+              ? 'border-status-ok-line bg-status-ok-soft text-status-ok'
+              : 'border-status-danger-line bg-status-danger-soft text-status-danger'
           }`}
         >
           {toastMessage.type === 'ok' ? (
@@ -180,64 +182,107 @@ export const SystemDomainConfigPage: React.FC = () => {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="bg-surface border border-line rounded-2xl p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-2 bg-accent/10 text-accent rounded-xl">
-                <Globe className="w-5 h-5" />
-              </span>
-              <h1 className="text-xl font-extrabold tracking-tight text-ink">
-                Cấu Hình Domain Host &amp; Base URL Hệ Thống
-              </h1>
+      {/* Đầu trang — cùng khuôn với các màn quản trị khác */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-accent-dark">
+            <Globe className="h-3.5 w-3.5" />
+            Quản trị hệ thống
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-ink sm:text-[23px]">
+              Cấu hình Domain Host
+            </h1>
+            <Badge variant="accent">S48</Badge>
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            Tên miền gốc để tự sinh liên kết kích hoạt tài khoản, OTP đặt lại mật khẩu và nút duyệt đơn trong email.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchConfig}
+            disabled={loading}
+            className="gap-1.5 text-xs"
+            title="Tải lại cấu hình từ Database"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Nạp lại</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsGmailModalOpen(true)}
+            className="gap-1.5 border-accent-line text-xs text-accent-dark hover:bg-accent-soft"
+            title="Cấu hình gửi email Gmail Doanh Nghiệp"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            <span>Thiết lập Gmail</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Bìa tóm tắt — nền ink, 3 số như các màn redesign */}
+      <div className="overflow-hidden rounded-[16px] border border-line bg-ink px-5 py-4 text-canvas">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-canvas/60">
+              Hạ tầng &amp; tích hợp
             </div>
-            <p className="text-xs text-ink-muted leading-relaxed">
-              Thiết lập tên miền gốc được hệ thống <strong>Ascend Tech</strong> sử dụng để tự động sinh toàn bộ liên kết điều hướng (Redirect URL) trong email thông báo, kích hoạt tài khoản, mã xác thực OTP và phê duyệt đơn.
+            <div className="mt-1 font-display text-lg font-extrabold">
+              Một tên miền chuẩn — mọi liên kết hệ thống
+            </div>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-canvas/75">
+              Đổi tên miền tại đây là email chào mừng, OTP quên mật khẩu, nhắc hạn duyệt đơn và bản tin
+              Todo 08:00 dùng ngay tên miền mới — không cần sửa code.
             </p>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchConfig}
-              disabled={loading}
-              className="gap-1.5 text-xs"
-              title="Tải lại cấu hình từ Database"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Nạp lại</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsGmailModalOpen(true)}
-              className="gap-1.5 text-xs border-accent-line text-accent-dark hover:bg-accent-soft"
-              title="Cấu hình gửi email Gmail Doanh Nghiệp"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Thiết lập Gmail</span>
-            </Button>
-          </div>
+          <dl className="ml-auto flex flex-wrap gap-6">
+            <div className="min-w-0">
+              <dd className="max-w-[220px] truncate font-mono text-[13px] font-bold text-canvas" title={config.domainHost || 'http://localhost:3000'}>
+                {(config.domainHost || 'http://localhost:3000').replace(/^https?:\/\//, '')}
+              </dd>
+              <dt className="text-[11px] text-canvas/60">host đang dùng</dt>
+            </div>
+            <div>
+              <dd className="font-display text-xl font-extrabold">
+                {(config.domainHost || '').includes('localhost')
+                  ? 'Local'
+                  : (config.domainHost || '').includes('staging')
+                    ? 'Staging'
+                    : 'Production'}
+              </dd>
+              <dt className="text-[11px] text-canvas/60">môi trường</dt>
+            </div>
+            <div>
+              <dd className="font-display text-xl font-extrabold">
+                {config.updatedAt
+                  ? new Date(config.updatedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+                  : '—'}
+              </dd>
+              <dt className="text-[11px] text-canvas/60">cập nhật gần nhất</dt>
+            </div>
+          </dl>
         </div>
       </div>
 
       {/* Main Settings Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Left 2 Cols: Form & Presets */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-surface border border-line rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="border-b border-line pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-sm text-ink">
-                <Layers className="w-4 h-4 text-accent" />
-                <span>Thiết Lập Tên Miền Gốc (Base Domain Host)</span>
-              </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-status-ok/10 text-status-ok font-bold border border-status-ok/20">
-                Lưu Database Bền Vững
+        <div className="min-w-0 space-y-4 lg:col-span-2">
+          <Panel
+            title="Thiết lập tên miền gốc"
+            subtitle="Áp dụng ngay cho email & thông báo phát sinh sau khi lưu"
+            action={
+              <span className="inline-flex items-center gap-1 rounded-md border border-status-ok-line bg-status-ok-soft px-2 py-0.5 text-[10.5px] font-semibold text-status-ok">
+                <Layers className="h-3 w-3" />
+                Lưu Database
               </span>
-            </div>
-
+            }
+            bodyClassName="space-y-4"
+          >
             <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-ink mb-1.5">
@@ -310,34 +355,30 @@ export const SystemDomainConfigPage: React.FC = () => {
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-line">
-                <div className="text-[11px] text-ink-muted flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5 text-accent" />
-                  <span>Thay đổi có hiệu lực ngay lập tức cho các email và thông báo tiếp theo</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                  <ShieldAlert className="h-3.5 w-3.5 text-accent" />
+                  <span>Thay đổi có hiệu lực ngay cho email và thông báo tiếp theo</span>
                 </div>
                 <Button
                   type="submit"
                   size="sm"
                   disabled={saving || !isHrOrAdmin}
-                  className="gap-1.5 text-xs bg-accent hover:bg-accent-dark text-on-accent font-bold"
+                  className="gap-1.5 bg-accent text-xs font-bold text-on-accent hover:bg-accent-dark"
                 >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{saving ? 'Đang lưu...' : 'Lưu Cấu Hình Domain'}</span>
+                  <Save className="h-3.5 w-3.5" />
+                  <span>{saving ? 'Đang lưu...' : 'Lưu cấu hình Domain'}</span>
                 </Button>
               </div>
             </form>
-          </div>
+          </Panel>
 
           {/* Live Preview Card */}
-          <div className="bg-surface border border-line rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="border-b border-line pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-sm text-ink">
-                <Info className="w-4 h-4 text-status-ok" />
-                <span>Xem Trước Các Liên Kết Tự Động Được Sinh Ra (Live Preview)</span>
-              </div>
-              <span className="text-[11px] text-ink-muted">Cập nhật theo Domain Host đang nhập</span>
-            </div>
-
+          <Panel
+            title="Xem trước liên kết tự động"
+            subtitle="Cập nhật theo Domain Host đang nhập"
+            action={<Info className="h-4 w-4 text-status-ok" />}
+          >
             <div className="space-y-3">
               {sampleLinks.map((item) => (
                 <div
@@ -373,18 +414,17 @@ export const SystemDomainConfigPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </Panel>
         </div>
 
         {/* Right 1 Col: Status & Audit Info */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-4">
           {/* Active Configuration Box */}
-          <div className="bg-surface border border-line rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="font-bold text-xs text-ink uppercase tracking-wider border-b border-line pb-2 flex items-center justify-between">
-              <span>Trạng Thái Cấu Hình Hiện Tại</span>
-              <span className="w-2 h-2 rounded-full bg-status-ok animate-pulse" />
-            </div>
-
+          <Panel
+            title="Trạng thái cấu hình"
+            subtitle="Đang đọc từ bảng system_configs"
+            action={<span className="mt-1 block h-2 w-2 rounded-full bg-status-ok" aria-hidden="true" />}
+          >
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-ink-muted block text-[11px]">Domain Host đang kích hoạt:</span>
@@ -418,14 +458,11 @@ export const SystemDomainConfigPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Panel>
 
           {/* Business & Governance Rules */}
-          <div className="bg-surface border border-line rounded-2xl p-5 shadow-xs space-y-3 text-xs">
-            <div className="font-bold text-xs text-ink uppercase tracking-wider border-b border-line pb-2">
-              Chính Sách &amp; An Toàn Tên Miền
-            </div>
-            <ul className="space-y-2.5 text-[11px] text-ink-muted leading-relaxed">
+          <Panel title="Chính sách &amp; an toàn tên miền">
+            <ul className="space-y-2.5 text-[11px] leading-relaxed text-ink-muted">
               <li className="flex items-start gap-2">
                 <span className="text-accent font-bold">•</span>
                 <span>
@@ -445,15 +482,15 @@ export const SystemDomainConfigPage: React.FC = () => {
                 </span>
               </li>
             </ul>
-          </div>
+          </Panel>
 
           {/* Quick Hub to Gmail Settings */}
-          <div className="bg-status-ok/10 border border-status-ok/30 rounded-2xl p-5 space-y-2.5 text-xs text-status-ok-line">
-            <div className="flex items-center gap-2 font-bold text-sm">
-              <Mail className="w-4 h-4 text-status-ok" />
-              <span>Cấu Hình Gmail SMTP Doanh Nghiệp</span>
+          <div className="space-y-2.5 rounded-[13px] border border-status-ok-line bg-status-ok-soft p-4 text-xs">
+            <div className="flex items-center gap-2 text-sm font-bold text-status-ok">
+              <Mail className="h-4 w-4" />
+              <span>Gmail SMTP doanh nghiệp</span>
             </div>
-            <p className="text-[11px] text-status-ok-line/80 leading-relaxed">
+            <p className="text-[11px] leading-relaxed text-status-ok/80">
               Để các liên kết trên được gửi trực tiếp vào hòm thư Gmail của cán bộ nhân viên, hãy đảm bảo hệ thống đã kết nối tài khoản Google App Password.
             </p>
             <button

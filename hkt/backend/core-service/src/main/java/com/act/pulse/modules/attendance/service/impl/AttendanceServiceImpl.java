@@ -115,9 +115,8 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         // ── Lớp 1 · THIẾT BỊ: phải là thiết bị đã được HR duyệt ─────────────
-        // Trong hạn mức (mặc định 2 máy) thiết bị mới tự kích hoạt; vượt hạn mức mới chờ HR duyệt.
+        // Máy chưa đăng ký bị chặn — không tự thêm thiết bị khi chấm công.
         String deviceFingerprint = request.getDeviceFingerprint();
-        int maxDevices = ruleService.getInt("attendance_security", "max_devices", 2);
         boolean deviceApproved = false;
         String deviceDetail = "Thiết bị này chưa được HR duyệt — không chấm công được";
 
@@ -139,27 +138,12 @@ public class AttendanceServiceImpl implements AttendanceService {
                     deviceDetail = "Thiết bị này đã được đăng ký cho nhân viên khác — cần HR duyệt chuyển đổi";
                 }
             } else {
-                long approvedCount = deviceRegistrationRepository.countByUserIdAndIsApprovedTrue(userId);
-                if (approvedCount < maxDevices) {
-                    // Còn hạn mức → máy mới tự kích hoạt, chấm công được ngay
-                    DeviceRegistration fresh = DeviceRegistration.builder()
-                            .userId(userId)
-                            .deviceFingerprint(deviceFingerprint)
-                            .deviceModel("Web Browser")
-                            .osVersion("Web")
-                            .isApproved(true)
-                            .lastActiveAt(LocalDateTime.now())
-                            .build();
-                    fresh.setCreatedAt(LocalDateTime.now());
-                    fresh.setUpdatedAt(LocalDateTime.now());
-                    deviceRegistrationRepository.save(fresh);
-                    deviceApproved = true;
-                    deviceDetail = null;
-                } else {
-                    deviceDetail = String.format("Bạn đã dùng đủ %d thiết bị — máy thứ %d phải được HR duyệt",
-                            maxDevices, maxDevices + 1);
-                }
+                // Máy chưa đăng ký → CHẶN chấm công, KHÔNG tự thêm thiết bị.
+                // Nhân viên phải đăng ký máy ở "Thiết bị của tôi" trước (trong hạn mức thì được kích hoạt ngay).
+                deviceDetail = "Thiết bị này chưa được đăng ký — vui lòng vào \"Thiết bị của tôi\" để đăng ký máy trước khi chấm công";
             }
+        } else {
+            deviceDetail = "Không xác định được thiết bị — vui lòng tải lại trang và thử lại";
         }
         layers.add(layer("DEVICE", "Thiết bị đã đăng ký", deviceApproved, deviceDetail));
 

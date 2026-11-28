@@ -178,7 +178,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </p>
           <div className="mt-6 flex items-center gap-4 border-t border-[#212127] pt-5 text-xs text-[#7C7C88]">
             <span className="flex items-center gap-1.5 text-white/80 font-medium">
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 text-accent" />
               Mã hóa bảo mật bcrypt
             </span>
             <span>•</span>
@@ -221,7 +221,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
           {/* Alert Message */}
           {message && (
-            <div className="mb-5 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs leading-relaxed flex items-start gap-2.5">
+            <div className="mb-5 p-3.5 rounded-xl border border-status-ok-line bg-status-ok-soft text-status-ok text-xs leading-relaxed flex items-start gap-2.5">
               <Mail className="h-4 w-4 shrink-0 mt-0.5" />
               <div>{message}</div>
             </div>
@@ -237,8 +237,8 @@ export const ForgotPasswordPage: React.FC = () => {
 
           {/* Success Notification */}
           {success ? (
-            <div className="p-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
+            <div className="p-6 rounded-2xl border border-status-ok-line bg-status-ok-soft text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-status-ok-line/30 text-status-ok mx-auto flex items-center justify-center">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <h3 className="text-base font-bold text-ink">Đặt lại mật khẩu thành công!</h3>
@@ -317,8 +317,8 @@ export const ForgotPasswordPage: React.FC = () => {
 
               {/* One-Click verification badge */}
               {isAutoFilledFromLink && (
-                <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2.5 font-medium leading-relaxed">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="p-3 rounded-xl border border-status-ok-line bg-status-ok-soft text-status-ok text-xs flex items-center gap-2.5 font-medium leading-relaxed">
+                  <CheckCircle2 className="h-4 w-4 text-status-ok shrink-0" />
                   <span>
                     <strong>Xác thực 1-Click:</strong> Đã tự động nhận diện mã OTP hợp lệ từ liên kết Email. Bạn chỉ cần thiết lập mật khẩu mới bên dưới.
                   </span>
@@ -330,7 +330,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-ink">Mã xác thực OTP (6 chữ số) *</label>
                   {isAutoFilledFromLink ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-status-ok bg-status-ok-soft px-2 py-0.5 rounded-full">
                       <Check className="h-3 w-3" /> Tự động điền từ liên kết
                     </span>
                   ) : (
@@ -383,23 +383,23 @@ export const ForgotPasswordPage: React.FC = () => {
                   Tiêu chuẩn mật khẩu an toàn:
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-semibold' : 'text-ink-muted'}`}>
+                  <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-status-ok font-semibold' : 'text-ink-muted'}`}>
                     {hasMinLength ? <Check className="h-3 w-3" /> : <span className="w-1.5 h-1.5 rounded-full bg-line ml-1 mr-0.5" />}
                     Tối thiểu 8 ký tự
                   </div>
-                  <div className={`flex items-center gap-1.5 ${hasUpper ? 'text-emerald-600 font-semibold' : 'text-ink-muted'}`}>
+                  <div className={`flex items-center gap-1.5 ${hasUpper ? 'text-status-ok font-semibold' : 'text-ink-muted'}`}>
                     {hasUpper ? <Check className="h-3 w-3" /> : <span className="w-1.5 h-1.5 rounded-full bg-line ml-1 mr-0.5" />}
                     Chữ in hoa (A-Z)
                   </div>
-                  <div className={`flex items-center gap-1.5 ${hasLower ? 'text-emerald-600 font-semibold' : 'text-ink-muted'}`}>
+                  <div className={`flex items-center gap-1.5 ${hasLower ? 'text-status-ok font-semibold' : 'text-ink-muted'}`}>
                     {hasLower ? <Check className="h-3 w-3" /> : <span className="w-1.5 h-1.5 rounded-full bg-line ml-1 mr-0.5" />}
                     Chữ in thường (a-z)
                   </div>
-                  <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-600 font-semibold' : 'text-ink-muted'}`}>
+                  <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-status-ok font-semibold' : 'text-ink-muted'}`}>
                     {hasNumber ? <Check className="h-3 w-3" /> : <span className="w-1.5 h-1.5 rounded-full bg-line ml-1 mr-0.5" />}
                     Chữ số (0-9)
                   </div>
-                  <div className={`flex items-center gap-1.5 col-span-2 ${hasSpecial ? 'text-emerald-600 font-semibold' : 'text-ink-muted'}`}>
+                  <div className={`flex items-center gap-1.5 col-span-2 ${hasSpecial ? 'text-status-ok font-semibold' : 'text-ink-muted'}`}>
                     {hasSpecial ? <Check className="h-3 w-3" /> : <span className="w-1.5 h-1.5 rounded-full bg-line ml-1 mr-0.5" />}
                     Ký tự đặc biệt (!@#$%^&*...)
                   </div>
@@ -422,7 +422,7 @@ export const ForgotPasswordPage: React.FC = () => {
                       confirmPassword && !isMatch
                         ? 'border-status-danger focus:border-status-danger'
                         : confirmPassword && isMatch
-                        ? 'border-emerald-500 focus:border-emerald-500'
+                        ? 'border-status-ok focus:border-status-ok'
                         : 'border-line focus:border-accent'
                     }`}
                   />
