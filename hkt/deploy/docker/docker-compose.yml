@@ -154,6 +154,19 @@ services:
     depends_on:
       - frontend
 
+  # Cloudflare Quick Tunnel: URL public https://<random>.trycloudflare.com,
+  # không cần domain/tài khoản. Bật bằng ./deploy-server.sh --tunnel.
+  # URL đổi mỗi lần container khởi động lại; chỉ frontend được phơi ra.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pulse-cloudflared
+    restart: unless-stopped
+    logging: *default-logging
+    command: tunnel --no-autoupdate --protocol http2 --url http://frontend:80
+    profiles: ["tunnel"]
+    depends_on:
+      - frontend
+
 volumes:
   postgres_data:
   redis_data:

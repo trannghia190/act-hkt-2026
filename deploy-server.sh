@@ -9,6 +9,7 @@
 #   4. Sinh .env với mật khẩu DB & JWT secret ngẫu nhiên
 #   5. Build và khởi chạy 5 container: postgres, redis, core, ai-face, frontend
 #      (+ caddy với TLS Let's Encrypt nếu truyền --domain)
+#      (+ cloudflared quick tunnel nếu truyền --tunnel)
 #   6. Chờ healthy rồi in thông tin truy cập + tài khoản demo
 #
 # CÁCH DÙNG
@@ -28,6 +29,8 @@
 #   status            Trạng thái container
 #   down              Dừng & xoá container/network (giữ volume dữ liệu)
 #   destroy           Xoá TẤT CẢ kể cả dữ liệu DB (có xác nhận)
+#   tunnel-url        In URL public hiện tại của Cloudflare tunnel
+#   tunnel-off        Tắt Cloudflare tunnel (các container khác vẫn chạy)
 #
 # TÙY CHỌN
 #   --domain <host>   Bật HTTPS tự động qua Caddy (DNS phải trỏ về server)
@@ -36,6 +39,10 @@
 #   --dir <path>      Thư mục đặt mã nguồn (mặc định ~/act-hkt, hoặc /opt/act-hkt nếu root)
 #   --branch <name>   Nhánh git (mặc định main)
 #   --repo <url>      Repo git để clone
+#   --tunnel          Bật Cloudflare Quick Tunnel: URL public dạng
+#                     https://<random>.trycloudflare.com (miễn phí, không cần tài khoản).
+#                     URL đổi mỗi lần container cloudflared restart.
+#   --no-tunnel       Tắt Cloudflare tunnel đã bật trước đó
 #   --yes             Không hỏi xác nhận (dùng cho destroy)
 #   -h, --help
 #
@@ -51,6 +58,9 @@ DOMAIN="${DOMAIN:-}"
 ACME_EMAIL="${ACME_EMAIL:-}"
 APP_DIR="${APP_DIR:-}"
 INTERNAL_FRONTEND_PORT="${INTERNAL_FRONTEND_PORT:-}"
+ENABLE_TUNNEL="${ENABLE_TUNNEL:-}"
+TUNNEL_FROM_CLI=0
+TUNNEL_URL=""
 ASSUME_YES=0
 COMMAND="up"
 
@@ -86,6 +96,10 @@ while [ $# -gt 0 ]; do
     status)                    COMMAND="status" ;;
     down)                      COMMAND="down" ;;
     destroy)                   COMMAND="destroy" ;;
+    tunnel-url)                COMMAND="tunnel-url" ;;
+    tunnel-off)                COMMAND="tunnel-off" ;;
+    --tunnel)                  ENABLE_TUNNEL=1; TUNNEL_FROM_CLI=1 ;;
+    --no-tunnel)               ENABLE_TUNNEL=0; TUNNEL_FROM_CLI=1 ;;
     --domain)                  DOMAIN="${2:?Thiếu giá trị cho --domain}"; shift ;;
     --email)                   ACME_EMAIL="${2:?Thiếu giá trị cho --email}"; shift ;;
     --port)                    HTTP_PORT="${2:?Thiếu giá trị cho --port}"; shift ;;
@@ -274,18 +288,39 @@ env_get() {
   awk -F= -v k="$1" '$1==k { sub(/^[^=]*=/, ""); print; exit }' "$ENV_FILE"
 }
 
+env_set() {
+  # env_set <key> <value> — cập nhật hoặc thêm dòng KEY=VALUE trong .env.
+  local k="$1" v="$2" tmp
+  [ -f "$ENV_FILE" ] || return 0
+  tmp="$(mktemp)"
+  awk -v k="$k" -v v="$v" '
+    $0 ~ "^"k"=" { print k"="v; found=1; next }
+    { print }
+    END { if (!found) print k"="v }
+  ' "$ENV_FILE" > "$tmp"
+  cat "$tmp" > "$ENV_FILE"
+  rm -f "$tmp"
+}
+
 load_env_defaults() {
   [ -f "$ENV_FILE" ] || return 0
   [ -z "$DOMAIN" ]     && DOMAIN="$(env_get SITE_DOMAIN)"
   [ -z "$HTTP_PORT" ]  && HTTP_PORT="$(env_get HTTP_PORT)"
   [ -z "$ACME_EMAIL" ] && ACME_EMAIL="$(env_get ACME_EMAIL)"
   [ -z "$INTERNAL_FRONTEND_PORT" ] && INTERNAL_FRONTEND_PORT="$(env_get INTERNAL_FRONTEND_PORT)"
+  if [ "$TUNNEL_FROM_CLI" != "1" ]; then
+    local t
+    t="$(env_get ENABLE_TUNNEL)"
+    [ -n "$t" ] && ENABLE_TUNNEL="$t"
+  fi
+  ENABLE_TUNNEL="${ENABLE_TUNNEL:-0}"
   return 0
 }
 
 apply_defaults() {
   HTTP_PORT="${HTTP_PORT:-80}"
   INTERNAL_FRONTEND_PORT="${INTERNAL_FRONTEND_PORT:-13000}"
+  ENABLE_TUNNEL="${ENABLE_TUNNEL:-0}"
   if [ -z "$DOMAIN" ]; then
     case "$HTTP_PORT" in
       5432|16379|8080|8000)
@@ -346,6 +381,7 @@ generate_env() {
     echo "# CHỨA BÍ MẬT — KHÔNG commit, hãy sao lưu an toàn."
     echo "# ============================================================================"
     echo "COMPOSE_PROJECT_NAME=act-hkt"
+    echo "ENABLE_TUNNEL=${ENABLE_TUNNEL:-0}"
     echo
     echo "# --- Cổng & phơi bày (chỉ frontend mở ra internet) ---"
     echo "PUBLISH_HOST=127.0.0.1"
@@ -414,6 +450,21 @@ gen_caddyfile() {
 build_compose_args() {
   COMPOSE_ARGS=(compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
   if [ -n "$DOMAIN" ]; then COMPOSE_ARGS+=(--profile tls); fi
+  if [ "${ENABLE_TUNNEL:-0}" = "1" ]; then COMPOSE_ARGS+=(--profile tunnel); fi
+}
+
+stop_tunnel_container() {
+  # Dừng/xoá cloudflared kể cả khi profile tunnel đang tắt (compose bỏ qua
+  # service của profile không bật, nên phải nêu rõ --profile tunnel).
+  [ -f "$ENV_FILE" ] || return 0
+  local args=(compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile tunnel)
+  if [ "$USE_SUDO_DOCKER" = "1" ]; then
+    $SUDO docker "${args[@]}" stop cloudflared >/dev/null 2>&1 || true
+    $SUDO docker "${args[@]}" rm -f cloudflared >/dev/null 2>&1 || true
+  else
+    docker "${args[@]}" stop cloudflared >/dev/null 2>&1 || true
+    docker "${args[@]}" rm -f cloudflared >/dev/null 2>&1 || true
+  fi
 }
 
 open_firewall_ports() {
@@ -465,6 +516,29 @@ wait_ready() {
   fi
 }
 
+tunnel_url() {
+  dc logs cloudflared 2>/dev/null \
+    | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' \
+    | tail -n 1
+}
+
+wait_tunnel_url() {
+  local i url
+  info "Chờ Cloudflare tunnel..."
+  for ((i = 1; i <= 60; i++)); do
+    url="$(tunnel_url || true)"
+    if [ -n "$url" ]; then
+      TUNNEL_URL="$url"
+      ok "Public: ${TUNNEL_URL}"
+      return 0
+    fi
+    [ $((i % 10)) -eq 0 ] && echo "  … đang chờ tunnel (${i}s)"
+    sleep 1
+  done
+  warn "Chưa lấy được URL tunnel. Xem log: ./deploy-server.sh logs"
+  return 1
+}
+
 print_summary() {
   local url ip
   if [ -n "$DOMAIN" ]; then
@@ -480,6 +554,11 @@ print_summary() {
   echo "${C_GREEN}${C_BOLD}🎉 ACT-HKT 2026 ĐÃ CHẠY TRÊN SERVER${C_NC}"
   echo "========================================================================================"
   echo "  🌐 ${C_BOLD}Giao diện Web/Mobile PWA:${C_NC}  ${C_CYAN}${url}${C_NC}"
+  if [ -n "${TUNNEL_URL:-}" ]; then
+    echo "  ☁️  ${C_BOLD}Public (Cloudflare):${C_NC}      ${C_CYAN}${TUNNEL_URL}${C_NC}"
+    echo "     ${C_YELLOW}URL đổi mỗi lần cloudflared restart. Tắt: ./deploy-server.sh tunnel-off${C_NC}"
+    echo "     ${C_YELLOW}Ai có link đều vào được trang đăng nhập — tắt tunnel sau khi demo.${C_NC}"
+  fi
   echo "  📁 ${C_BOLD}Mã nguồn:${C_NC}                  ${APP_DIR}"
   echo "  🔐 ${C_BOLD}Cấu hình & bí mật:${C_NC}          ${ENV_FILE}"
   echo "     Core API / Swagger / AI / DB đều chỉ bind 127.0.0.1 (không lộ ra internet)."
@@ -502,9 +581,12 @@ print_summary() {
   echo "========================================================================================"
   if [ -n "$DOMAIN" ]; then
     echo "  HTTPS dùng Let's Encrypt tự động (Caddy). Lần đầu cấp chứng chỉ cần 1-2 phút."
+  elif [ -n "${TUNNEL_URL:-}" ]; then
+    echo "  Public URL là HTTPS của Cloudflare — passkey/VAPID hoạt động trên URL này."
   else
     echo "  Passkey/VAPID nhận diện trình duyệt yêu cầu HTTPS — chạy lại với:"
     echo "     --domain hr.example.com --email you@example.com"
+    echo "     hoặc --tunnel để lấy URL HTTPS public qua Cloudflare (không cần domain)."
   fi
   [ "$USE_SUDO_DOCKER" = "1" ] && echo "  Lưu ý: đăng xuất/đăng nhập lại để dùng 'docker' không cần sudo."
   echo
@@ -525,6 +607,11 @@ cmd_up() {
 
   PUBLIC_IP="${PUBLIC_IP:-$(detect_public_ip)}"
 
+  # Lưu lựa chọn tunnel vào .env để các lệnh update/restart/stop giữ nguyên.
+  if [ "$TUNNEL_FROM_CLI" = "1" ] && [ -f "$ENV_FILE" ]; then
+    env_set ENABLE_TUNNEL "$ENABLE_TUNNEL"
+  fi
+
   if [ -f "$ENV_FILE" ]; then
     ok "Dùng .env hiện có: $ENV_FILE"
     local existing_domain
@@ -538,6 +625,9 @@ cmd_up() {
     generate_env
   fi
 
+  # Nếu người dùng tắt tunnel (--no-tunnel), dừng container cũ trước khi up.
+  [ "$ENABLE_TUNNEL" = "1" ] || stop_tunnel_container
+
   gen_caddyfile
   build_compose_args
   open_firewall_ports
@@ -547,6 +637,7 @@ cmd_up() {
   ok "Containers đã khởi chạy."
 
   wait_ready
+  if [ "$ENABLE_TUNNEL" = "1" ]; then wait_tunnel_url || true; fi
   print_summary
 }
 
@@ -572,13 +663,18 @@ cmd_update() {
   load_env_defaults
   apply_defaults
   PUBLIC_IP="${PUBLIC_IP:-$(detect_public_ip)}"
+  if [ "$TUNNEL_FROM_CLI" = "1" ] && [ -f "$ENV_FILE" ]; then
+    env_set ENABLE_TUNNEL "$ENABLE_TUNNEL"
+  fi
   [ -f "$ENV_FILE" ] || generate_env
+  [ "$ENABLE_TUNNEL" = "1" ] || stop_tunnel_container
   gen_caddyfile
   build_compose_args
 
   info "Build lại & khởi chạy..."
   dc up -d --build --remove-orphans
   wait_ready
+  if [ "$ENABLE_TUNNEL" = "1" ]; then wait_tunnel_url || true; fi
   print_summary
 }
 
@@ -594,11 +690,24 @@ cmd_manage() {
   build_compose_args
 
   case "$COMMAND" in
-    restart) dc restart ;;
-    stop)    dc stop ;;
-    down)    dc down --remove-orphans ;;
-    logs)    dc logs -f --tail=200 ;;
-    status)  dc ps ;;
+    # Nêu rõ --profile tunnel để quản lý cả container cloudflared (nếu có).
+    restart) COMPOSE_ARGS+=(--profile tunnel); dc restart ;;
+    stop)    COMPOSE_ARGS+=(--profile tunnel); dc stop ;;
+    down)    COMPOSE_ARGS+=(--profile tunnel); dc down --remove-orphans ;;
+    logs)    COMPOSE_ARGS+=(--profile tunnel); dc logs -f --tail=200 ;;
+    status)  COMPOSE_ARGS+=(--profile tunnel); dc ps ;;
+    tunnel-url)
+      [ "$ENABLE_TUNNEL" = "1" ] || die "Cloudflare tunnel chưa bật. Chạy: ./deploy-server.sh --tunnel"
+      local u
+      u="$(tunnel_url || true)"
+      [ -n "$u" ] || die "Chưa có URL tunnel (cloudflared chưa kết nối?). Xem: ./deploy-server.sh logs"
+      echo "$u"
+      ;;
+    tunnel-off)
+      stop_tunnel_container
+      env_set ENABLE_TUNNEL 0
+      ok "Đã tắt Cloudflare tunnel. Các container khác vẫn chạy."
+      ;;
     destroy)
       if [ "$ASSUME_YES" != "1" ]; then
         printf "%s" "${C_YELLOW}Xoá TOÀN BỘ container và DỮ LIỆU database (volume)? [y/N] ${C_NC}"

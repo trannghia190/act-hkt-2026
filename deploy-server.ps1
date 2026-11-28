@@ -16,7 +16,7 @@
        (IP cua WSL2 thay doi moi lan khoi dong)
 
 .PARAMETER Action
-  up (mac dinh) | update | restart | stop | logs | status | down | destroy
+  up (mac dinh) | update | restart | stop | logs | status | down | destroy | tunnel-url | tunnel-off
 
 .PARAMETER Domain
   Bat HTTPS tu dong (Caddy + Let's Encrypt). DNS phai tro ve server truoc.
@@ -26,6 +26,13 @@
 
 .PARAMETER Port
   Cong HTTP khi KHONG dung domain (mac dinh 80).
+
+.PARAMETER Tunnel
+  Bat Cloudflare Quick Tunnel: URL public https://<random>.trycloudflare.com,
+  khong can domain/tai khoan. URL doi moi lan cloudflared restart.
+
+.PARAMETER NoTunnel
+  Tat Cloudflare tunnel da bat truoc do.
 
 .PARAMETER WslDistro
   Ten distro WSL danh rieng cho ung dung (mac dinh ACT-HKT-Ubuntu).
@@ -48,7 +55,7 @@
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('up','install','update','restart','stop','logs','status','down','destroy')]
+  [ValidateSet('up','install','update','restart','stop','logs','status','down','destroy','tunnel-url','tunnel-off')]
   [string]$Action = 'up',
 
   [string]$Domain = '',
@@ -61,6 +68,9 @@ param(
   [string]$RepoUrl = 'https://github.com/trannghia190/act-hkt-2026.git',
   [string]$Branch = 'main',
   [string]$WslMsiUrl = '',
+
+  [switch]$Tunnel,
+  [switch]$NoTunnel,
 
   [switch]$SkipPortProxy,
   [switch]$SkipFirewall,
@@ -291,7 +301,8 @@ function Read-DeployEnv {
   $domain = Invoke-WslCapture "grep '^SITE_DOMAIN=' '$envFile' 2>/dev/null | cut -d= -f2-"
   $http = Invoke-WslCapture "grep '^HTTP_PORT=' '$envFile' 2>/dev/null | cut -d= -f2-"
   $tls = Invoke-WslCapture "grep '^TLS_ENABLED=' '$envFile' 2>/dev/null | cut -d= -f2-"
-  return [pscustomobject]@{ Domain = "$domain"; HttpPort = "$http"; Tls = "$tls" }
+  $tunnel = Invoke-WslCapture "grep '^ENABLE_TUNNEL=' '$envFile' 2>/dev/null | cut -d= -f2-"
+  return [pscustomobject]@{ Domain = "$domain"; HttpPort = "$http"; Tls = "$tls"; Tunnel = "$tunnel" }
 }
 
 # ------------------------------ Buoc 4: mang Windows --------------------------
@@ -440,12 +451,22 @@ function Show-Summary {
     }
     Write-Host "  May khac trong LAN dung dia chi tren; may nay dung http://localhost." -ForegroundColor DarkGray
   }
+  if ($envInfo.Tunnel -eq '1') {
+    $tun = Invoke-WslCapture "cd '$AppDir' && ./deploy-server.sh tunnel-url 2>/dev/null || true"
+    if ($tun) {
+      Write-Host "  Public (Cloudflare): $tun" -ForegroundColor Cyan
+      Write-Host "     URL doi moi lan cloudflared restart. Tat: .\deploy-server.ps1 tunnel-off" -ForegroundColor Yellow
+    } else {
+      Write-Host "  Public (Cloudflare): dang bat nhung chua co URL - xem .\deploy-server.ps1 logs" -ForegroundColor Yellow
+    }
+  }
   Write-Host "  Ma nguon:       $AppDir (trong WSL: $WslDistro)"
   Write-Host "  Cau hinh:       $AppDir/hkt/deploy/docker/.env  (SAO LUU file nay!)"
   Write-Host "---------------------------------------------------------------------------------------"
   Write-Host "  TAI KHOAN DEMO: Admin/Admin - 01HR/123456 - 05ACT/123456 - 136ACT/123456 - 2026NEW/123456" -ForegroundColor Yellow
   Write-Host "---------------------------------------------------------------------------------------"
   Write-Host "  Quan tri:  .\deploy-server.ps1 status | logs | update | restart | stop | destroy"
+  Write-Host "             .\deploy-server.ps1 tunnel-url | tunnel-off"
   Write-Host "========================================================================================"
   $envInfo = Read-DeployEnv
   if ($envInfo.Domain) {
@@ -466,13 +487,17 @@ function Invoke-FullDeploy([bool]$IsUpdate) {
   Initialize-Distro
   Ensure-App
 
+  $common = @()
+  if ($Domain) { $common += @('--domain', $Domain) }
+  if ($Email)  { $common += @('--email', $Email) }
+  if ($Tunnel) { $common += '--tunnel' }
+  elseif ($NoTunnel) { $common += '--no-tunnel' }
+
   if ($IsUpdate) {
     Write-Step "Cap nhat & build lai"
-    Invoke-Deploy @('update')
+    Invoke-Deploy (@('update') + $common)
   } else {
-    $deployParams = @()
-    if ($Domain) { $deployParams += @('--domain', $Domain) }
-    if ($Email)  { $deployParams += @('--email', $Email) }
+    $deployParams = $common
     if (-not $Domain) { $deployParams += @('--port', [string]$Port) }
     Write-Step "Cai dat & khoi chay (lan dau co the mat vai phut)..."
     Invoke-Deploy $deployParams
@@ -509,6 +534,12 @@ function Assert-Installed {
 
 function Invoke-Manage([string]$Cmd) {
   Assert-Installed
+
+  if ($Cmd -eq 'tunnel-url' -or $Cmd -eq 'tunnel-off') {
+    Invoke-Deploy @($Cmd)
+    return
+  }
+
   $deployArgs = @($Cmd)
 
   if ($Cmd -eq 'destroy') {
