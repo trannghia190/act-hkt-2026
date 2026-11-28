@@ -221,7 +221,9 @@ dc() {
 
 ensure_swap() {
   # Chỉ Linux + RAM thấp: build Maven dễ OOM trên VPS 1GB. Tạo 2GB swap nếu chưa có.
+  # SKIP_SWAP=1: bỏ qua — WSL2 quản lý swap riêng, không cho swapon bên trong.
   [ "$OS" = "Linux" ] || return 0
+  [ "${SKIP_SWAP:-0}" = "1" ] && return 0
   command -v mkswap >/dev/null 2>&1 || return 0
   local mem_mb swap_mb
   mem_mb="$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 99999)"
@@ -521,7 +523,7 @@ cmd_up() {
   load_env_defaults
   apply_defaults
 
-  PUBLIC_IP="$(detect_public_ip)"
+  PUBLIC_IP="${PUBLIC_IP:-$(detect_public_ip)}"
 
   if [ -f "$ENV_FILE" ]; then
     ok "Dùng .env hiện có: $ENV_FILE"
@@ -569,7 +571,7 @@ cmd_update() {
 
   load_env_defaults
   apply_defaults
-  PUBLIC_IP="$(detect_public_ip)"
+  PUBLIC_IP="${PUBLIC_IP:-$(detect_public_ip)}"
   [ -f "$ENV_FILE" ] || generate_env
   gen_caddyfile
   build_compose_args
