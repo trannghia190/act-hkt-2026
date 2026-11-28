@@ -1,11 +1,11 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Triển khai ACT-HKT 2026 lên Windows Server (WSL2 + Docker Engine).
+  Triển khai ACT-HKT 2026 trên Windows 10/11 hoặc Windows Server (WSL2 + Docker).
 
 .DESCRIPTION
   Hệ thống dùng 100% Linux container (PostgreSQL+pgvector, Redis, Spring Boot,
-  Python AI Face, Nginx). Trên Windows, script này tự:
+  Python AI Face, Nginx). Trên Windows (máy cá nhân hay server đều được), script tự:
     1. Bật WSL2 + VirtualMachinePlatform (nhắc reboot nếu cần)
     2. Cài WSL (MSI từ GitHub) nếu máy chưa có
     3. Cài/Import Ubuntu 22.04 và bật systemd để Docker chạy như service
@@ -28,7 +28,8 @@
   Cổng HTTP khi KHÔNG dùng domain (mặc định 80).
 
 .PARAMETER WslDistro
-  Tên distro WSL (mặc định Ubuntu-22.04).
+  Tên distro WSL dành riêng cho ứng dụng (mặc định ACT-HKT-Ubuntu).
+  Đặt tên riêng để không đụng vào Ubuntu sẵn có trên máy cá nhân.
 
 .PARAMETER AppDir
   Thư mục mã nguồn bên trong WSL (mặc định /opt/act-hkt).
@@ -54,7 +55,7 @@ param(
   [string]$Email = '',
   [int]$Port = 80,
 
-  [string]$WslDistro = 'Ubuntu-22.04',
+  [string]$WslDistro = 'ACT-HKT-Ubuntu',
   [string]$WslRoot = "$env:SystemDrive\WSL",
   [string]$AppDir = '/opt/act-hkt',
   [string]$RepoUrl = 'https://github.com/trannghia190/act-hkt-2026.git',
@@ -394,32 +395,51 @@ function Remove-ProxyArtifacts {
 }
 
 # ------------------------------ Điều phối -------------------------------------
+function Get-LanIp {
+  return (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and
+      $_.InterfaceAlias -notlike '*WSL*' -and $_.InterfaceAlias -notlike '*vEthernet*' -and
+      $_.InterfaceAlias -notlike '*Loopback*'
+    } | Select-Object -First 1 -ExpandProperty IPAddress)
+}
+
+function Get-PublicIp {
+  try { return (Invoke-RestMethod -Uri 'https://api.ipify.org' -TimeoutSec 5).ToString().Trim() } catch { return $null }
+}
+
+function Format-AppUrl([string]$Ip, [string]$P) {
+  if ("$P" -eq '80') { return "http://$Ip" }
+  return "http://$Ip`:$P"
+}
+
 function Get-PublishedUrl {
   $envInfo = Read-DeployEnv
   if ($envInfo.Domain) { return "https://$($envInfo.Domain)" }
   $p = $envInfo.HttpPort
   if (-not $p) { $p = "$Port" }
-  $ip = $null
-  try { $ip = (Invoke-RestMethod -Uri 'https://api.ipify.org' -TimeoutSec 5).ToString().Trim() } catch { }
-  if (-not $ip) {
-    $ip = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-      Where-Object {
-        $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and
-        $_.InterfaceAlias -notlike '*WSL*' -and $_.InterfaceAlias -notlike '*vEthernet*'
-      } | Select-Object -First 1 -ExpandProperty IPAddress)
-  }
+  $ip = Get-LanIp
+  if (-not $ip) { $ip = Get-PublicIp }
   if (-not $ip) { $ip = '<server-ip>' }
-  if ("$p" -eq '80') { return "http://$ip" }
-  return "http://$ip`:$p"
+  return (Format-AppUrl $ip $p)
 }
 
 function Show-Summary {
   $url = Get-PublishedUrl
   Write-Host ""
   Write-Host "========================================================================================" -ForegroundColor Green
-  Write-Host "  ACT-HKT 2026 da chay tren Windows Server (WSL2)" -ForegroundColor Green
+  Write-Host "  ACT-HKT 2026 da chay tren Windows (WSL2)" -ForegroundColor Green
   Write-Host "========================================================================================"
   Write-Host "  Giao dien:      " -NoNewline; Write-Host $url -ForegroundColor Cyan
+  $envInfo = Read-DeployEnv
+  if (-not $envInfo.Domain) {
+    $lan = Get-LanIp; $pub = Get-PublicIp
+    $p = $envInfo.HttpPort; if (-not $p) { $p = "$Port" }
+    if ($pub -and $lan -and $pub -ne $lan) {
+      Write-Host ("  Tu Internet:    " + (Format-AppUrl $pub $p) + "  (can mo port $p tren router/cloud firewall)") -ForegroundColor Yellow
+    }
+    Write-Host "  May khac trong LAN dung dia chi tren; may nay dung http://localhost." -ForegroundColor DarkGray
+  }
   Write-Host "  Ma nguon:       $AppDir (trong WSL: $WslDistro)"
   Write-Host "  Cau hinh:       $AppDir/hkt/deploy/docker/.env  (SAO LUU file nay!)"
   Write-Host "---------------------------------------------------------------------------------------"
@@ -530,11 +550,17 @@ Initialize-Tls
 
 $osInfo = Get-CimInstance Win32_OperatingSystem
 $build = [int]$osInfo.BuildNumber
+$isServer = $osInfo.Caption -match 'Server'
 Write-Step "Môi trường: $($osInfo.Caption) (build $build)"
-if ($build -lt 17763) {
-  Fail "Windows quá cũ cho WSL2 (cần Windows Server 2019 trở lên)."
-} elseif ($build -lt 19041) {
-  Write-Warn2 "Build < 19041: WSL2 có thể không được hỗ trợ đầy đủ. Khuyến nghị Windows Server 2022+."
+if ($isServer) {
+  if ($build -lt 17763) { Fail "Windows Server quá cũ cho WSL2 (cần Server 2019 trở lên)." }
+  elseif ($build -lt 20348) { Write-Warn2 "Khuyến nghị Windows Server 2022+; bản này cần bật ảo hoá lồng nhau nếu là VM." }
+} else {
+  # Windows 10/11 Home/Pro đều chạy được WSL2 + Docker Linux.
+  if ($build -lt 19041) {
+    Fail "Windows 10 quá cũ cho WSL2 (cần bản 2004/build 19041 trở lên, hoặc Windows 11)."
+  }
+  Write-Ok "Windows client: dùng WSL2 + Docker Engine (không cần Docker Desktop)."
 }
 
 $script:PortList = @($Port)
