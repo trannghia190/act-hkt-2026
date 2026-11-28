@@ -61,6 +61,7 @@ INTERNAL_FRONTEND_PORT="${INTERNAL_FRONTEND_PORT:-}"
 ENABLE_TUNNEL="${ENABLE_TUNNEL:-}"
 TUNNEL_FROM_CLI=0
 TUNNEL_URL=""
+READY_FAILED=0
 ASSUME_YES=0
 COMMAND="up"
 
@@ -482,23 +483,59 @@ open_firewall_ports() {
 }
 
 # ------------------------------ Chờ & tổng kết --------------------------------
+container_state() {
+  # In "<state> <status>" của service, vd "running Up 2 minutes (healthy)".
+  local svc="$1" line
+  line="$(dc ps -a --format '{{.Service}}|{{.State}}|{{.Status}}' 2>/dev/null \
+    | awk -F'|' -v s="$svc" '$1 == s { print $2" "$3; exit }')"
+  printf '%s' "${line:-không thấy container}"
+}
+
+container_phase() {
+  dc ps -a --format '{{.Service}}|{{.State}}' 2>/dev/null \
+    | awk -F'|' -v s="$1" '$1 == s { print $2; exit }'
+}
+
 wait_http() {
-  local name="$1" url="$2" tries="${3:-180}" i
+  local name="$1" url="$2" tries="${3:-180}" svc="${4:-}" i st
+  local logged_failure=0
   info "Chờ ${name}..."
   for ((i = 1; i <= tries; i++)); do
     if curl -s -o /dev/null --max-time 2 "$url"; then
       ok "${name} sẵn sàng"
       return 0
     fi
-    [ $((i % 15)) -eq 0 ] && echo "  … đang chờ ${name} (${i}/${tries}s)"
+    if [ $((i % 15)) -eq 0 ]; then
+      if [ -n "$svc" ]; then
+        echo "  … đang chờ ${name} (${i}/${tries}s) — ${svc}: $(container_state "$svc")"
+        # Container đã chết/restart liên tục thì in log ngay, không bắt chờ hết giờ.
+        if [ "$logged_failure" = "0" ]; then
+          st="$(container_phase "$svc")"
+          case "$st" in
+            exited|dead|restarting)
+              warn "${svc} đang ở trạng thái '${st}' — 20 dòng log cuối:"
+              dc logs --tail=20 "$svc" 2>&1 | sed 's/^/     /' || true
+              logged_failure=1
+              ;;
+          esac
+        fi
+      else
+        echo "  … đang chờ ${name} (${i}/${tries}s)"
+      fi
+    fi
     sleep 1
   done
-  warn "${name} chưa phản hồi sau ${tries}s — xem: ./deploy-server.sh logs"
+  warn "${name} chưa phản hồi sau ${tries}s."
+  if [ -n "$svc" ]; then
+    warn "40 dòng log cuối của ${svc}:"
+    dc logs --tail=40 "$svc" 2>&1 | sed 's/^/     /' || true
+  fi
+  warn "Xem toàn bộ: ./deploy-server.sh logs"
   return 1
 }
 
 wait_ready() {
-  local core_port ai_port frontend_probe
+  local core_port ai_port frontend_probe failed=0
   core_port="$(env_get CORE_PORT)"; core_port="${core_port:-8080}"
   ai_port="$(env_get AI_PORT)";     ai_port="${ai_port:-8000}"
   if [ -n "$DOMAIN" ]; then
@@ -507,12 +544,17 @@ wait_ready() {
     frontend_probe="http://127.0.0.1:${HTTP_PORT}/"
   fi
   # AI tải model lần đầu có thể lâu; core đợi AI healthy rồi mới chạy migration.
-  wait_http "AI Face Service" "http://127.0.0.1:${ai_port}/health" 180 || true
-  wait_http "Core Service"    "http://127.0.0.1:${core_port}/api/v1/actuator/health" 300 || true
-  wait_http "Frontend"        "$frontend_probe" 120 || true
+  wait_http "AI Face Service" "http://127.0.0.1:${ai_port}/health" 180 ai-face-service || failed=1
+  wait_http "Core Service"    "http://127.0.0.1:${core_port}/api/v1/actuator/health" 300 core-service || failed=1
+  wait_http "Frontend"        "$frontend_probe" 120 frontend || failed=1
   if [ -n "$DOMAIN" ]; then
-    wait_http "Caddy (HTTPS)" "https://${DOMAIN}/" 90 || \
+    wait_http "Caddy (HTTPS)" "https://${DOMAIN}/" 90 caddy || \
       warn "HTTPS chưa sẵn sàng — kiểm tra DNS A record của ${DOMAIN} đã trỏ về server chưa."
+  fi
+  READY_FAILED="$failed"
+  if [ "$failed" = "1" ]; then
+    warn "Một số dịch vụ chưa sẵn sàng. Trạng thái hiện tại:"
+    dc ps -a 2>/dev/null | sed 's/^/     /' || true
   fi
 }
 
@@ -551,6 +593,9 @@ print_summary() {
 
   echo
   echo "========================================================================================"
+  if [ "${READY_FAILED:-0}" = "1" ]; then
+    echo "${C_YELLOW}${C_BOLD}⚠ Một số dịch vụ CHƯA healthy — xem log trước khi demo${C_NC}"
+  fi
   echo "${C_GREEN}${C_BOLD}🎉 ACT-HKT 2026 ĐÃ CHẠY TRÊN SERVER${C_NC}"
   echo "========================================================================================"
   echo "  🌐 ${C_BOLD}Giao diện Web/Mobile PWA:${C_NC}  ${C_CYAN}${url}${C_NC}"
