@@ -165,6 +165,7 @@ export const EmployeeManagementPage: React.FC = () => {
     fullName: string;
     email: string;
     phone?: string;
+    departmentName?: string;
     teamName: string;
     positionName: string;
     role: string;
@@ -271,8 +272,9 @@ export const EmployeeManagementPage: React.FC = () => {
     let text = `=== DANH SÁCH TÀI KHOẢN ASCEND TECH KHỞI TẠO TỪ EXCEL (${importResult.successList.length} nhân viên) ===\n\n`;
     importResult.successList.forEach((emp, i) => {
       text += `[${i + 1}] ${emp.fullName} - Mã NV: ${emp.employeeCode}\n`;
-      text += `  • Email: ${emp.email}\n`;
-      text += `  • Phòng ban: ${emp.teamName} | Chức danh: ${emp.positionName} | Vai trò: ${emp.role}\n`;
+      text += `  • Email: ${emp.email}${emp.phone ? ` | SĐT: ${emp.phone}` : ''}\n`;
+      text += `  • Phòng ban: ${emp.departmentName || emp.teamName || '—'} | Nhóm: ${emp.teamName || '—'}\n`;
+      text += `  • Chức danh: ${emp.positionName} | Quản lý: ${emp.managerName || emp.managerCode || '—'} | Vai trò: ${emp.role}\n`;
       text += `  • Mật khẩu khởi tạo: ${emp.defaultPassword}\n`;
       text += `  • Gửi mail thông báo: ${emp.emailSent ? 'Đã gửi qua Gmail' : (emp.emailStatusMessage || 'Chưa gửi')}\n\n`;
     });
@@ -288,17 +290,18 @@ export const EmployeeManagementPage: React.FC = () => {
   const handleExportImportResultCsv = () => {
     if (!importResult || importResult.successList.length === 0) return;
     const rows = [
-      ['Mã NV', 'Họ và tên', 'Email', 'Số điện thoại', 'Phòng ban', 'Chức danh', 'Vai trò', 'Mã QL', 'Ngày vào làm', 'Mật khẩu khởi tạo', 'Trạng thái gửi mail'],
+      ['Mã NV', 'Họ và tên', 'Số điện thoại', 'Email', 'Phòng ban', 'Nhóm', 'Chức danh', 'Quản lý trực tiếp', 'Ngày vào làm', 'Vai trò', 'Mật khẩu khởi tạo', 'Trạng thái gửi mail'],
       ...importResult.successList.map(e => [
         e.employeeCode,
         `"${(e.fullName || '').replace(/"/g, '""')}"`,
-        e.email,
         e.phone || '',
+        e.email,
+        `"${(e.departmentName || e.teamName || '').replace(/"/g, '""')}"`,
         `"${(e.teamName || '').replace(/"/g, '""')}"`,
         `"${(e.positionName || '').replace(/"/g, '""')}"`,
-        e.role,
-        e.managerCode || '',
+        `"${(e.managerName || e.managerCode || '').replace(/"/g, '""')}"`,
         e.joinedDate,
+        e.role,
         e.defaultPassword,
         e.emailSent ? 'Đã gửi Gmail' : (e.emailStatusMessage || 'Chưa gửi')
       ])
@@ -2140,7 +2143,7 @@ export const EmployeeManagementPage: React.FC = () => {
                       Bước 1: Tải File Mẫu Chuẩn Ascend Tech (.xlsx)
                     </h4>
                     <p className="text-xs text-ink-muted mt-1">
-                      File mẫu có sẵn tiêu đề chuẩn, dữ liệu mẫu, và sheet Danh mục tham chiếu Phòng ban, Quản lý để bạn điền chính xác.
+                      File mẫu có sẵn tiêu đề chuẩn theo đúng cấu trúc Hồ sơ cá nhân (Mã NV, Họ tên, SĐT, Email, Phòng ban, Nhóm, Chức danh, Quản lý trực tiếp, Ngày vào làm), kèm dữ liệu mẫu và sheet Danh mục tham chiếu.
                     </p>
                   </div>
                   <Button
@@ -2398,9 +2401,11 @@ export const EmployeeManagementPage: React.FC = () => {
                         <tr>
                           <th className="p-2.5 font-bold">Mã NV</th>
                           <th className="p-2.5 font-bold">Họ và tên</th>
-                          <th className="p-2.5 font-bold">Email</th>
+                          <th className="p-2.5 font-bold">Email / SĐT</th>
                           <th className="p-2.5 font-bold">Phòng ban</th>
+                          <th className="p-2.5 font-bold">Nhóm</th>
                           <th className="p-2.5 font-bold">Chức danh / Vai trò</th>
+                          <th className="p-2.5 font-bold">Quản lý trực tiếp</th>
                           <th className="p-2.5 font-bold">Mật khẩu khởi tạo</th>
                           <th className="p-2.5 font-bold text-center">Gửi mail</th>
                         </tr>
@@ -2410,15 +2415,26 @@ export const EmployeeManagementPage: React.FC = () => {
                           <tr key={emp.employeeCode} className="hover:bg-canvas/50">
                             <td className="p-2.5 font-mono font-bold text-accent">{emp.employeeCode}</td>
                             <td className="p-2.5 font-bold text-ink">{emp.fullName}</td>
-                            <td className="p-2.5 font-mono text-ink-muted">{emp.email}</td>
+                            <td className="p-2.5">
+                              <span className="font-mono text-ink-muted block">{emp.email}</span>
+                              {emp.phone && <span className="text-[11px] text-ink-muted block font-mono">{emp.phone}</span>}
+                            </td>
                             <td className="p-2.5">
                               <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-accent-soft text-accent-dark">
-                                {emp.teamName}
+                                {emp.departmentName || emp.teamName}
                               </span>
                             </td>
                             <td className="p-2.5">
-                              <span className="text-ink font-medium">{emp.positionName}</span>
-                              <span className="text-[10px] text-ink-muted block uppercase font-mono">{emp.role}</span>
+                              <span className="text-[11px] font-medium text-ink">
+                                {emp.teamName || '—'}
+                              </span>
+                            </td>
+                            <td className="p-2.5">
+                              <span className="text-ink font-medium block">{emp.positionName}</span>
+                              <span className="text-[10px] text-ink-muted uppercase font-mono">{emp.role}</span>
+                            </td>
+                            <td className="p-2.5">
+                              <span className="text-[11px] font-medium text-ink block">{emp.managerName || emp.managerCode || '—'}</span>
                             </td>
                             <td className="p-2.5">
                               <code className="px-2 py-1 rounded bg-canvas border border-line font-mono font-bold text-ink text-[11px]">
