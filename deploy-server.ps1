@@ -78,7 +78,9 @@ param(
   [switch]$Yes
 )
 
-$ErrorActionPreference = 'Stop'
+# PS 5.1 coi stderr cua lenh native la loi terminating. Script kiem tra
+# $LASTEXITCODE tuong minh, nen de Continue va tu Fail khi that su loi.
+$ErrorActionPreference = 'Continue'
 $script:WslExe = $null
 $script:NeedReboot = $false
 $script:RootfsUrl = 'https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz'
@@ -117,10 +119,14 @@ function Refresh-Path {
 function Download-File([string]$Url, [string]$OutFile) {
   $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
   if ($curl) {
-    & curl.exe -fL --retry 3 --connect-timeout 20 -o $OutFile $Url
+    & curl.exe -sS -fL --retry 3 --connect-timeout 20 -o $OutFile $Url
     if ($LASTEXITCODE -ne 0) { Fail "Tai that bai: $Url" }
   } else {
-    Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
+    try {
+      Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -ErrorAction Stop
+    } catch {
+      Fail "Tai that bai: $Url ($($_.Exception.Message))"
+    }
   }
 }
 
@@ -170,8 +176,12 @@ function Install-WslPackage {
   $url = $WslMsiUrl
   if (-not $url) {
     Write-Step "Tim ban WSL moi nhat tu GitHub..."
-    $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/microsoft/WSL/releases/latest' `
-      -Headers @{ 'User-Agent' = 'act-hkt-deploy' }
+    try {
+      $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/microsoft/WSL/releases/latest' `
+        -Headers @{ 'User-Agent' = 'act-hkt-deploy' } -ErrorAction Stop
+    } catch {
+      Fail "Khong goi duoc GitHub API de tim WSL MSI: $($_.Exception.Message). Truyen -WslMsiUrl thu cong."
+    }
     $asset = $rel.assets | Where-Object { $_.name -like 'wsl.*.x64.msi' } | Select-Object -First 1
     if (-not $asset) { Fail "Khong tim thay WSL MSI x64. Truyen -WslMsiUrl thu cong." }
     $url = $asset.browser_download_url
@@ -179,10 +189,38 @@ function Install-WslPackage {
   $msi = Join-Path $env:TEMP 'act-hkt-wsl.msi'
   Write-Step "Tai WSL: $url"
   Download-File $url $msi
-  $p = Start-Process -FilePath msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru
+  try {
+    $p = Start-Process -FilePath msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru -ErrorAction Stop
+  } catch {
+    Fail "Khong chay duoc msiexec: $($_.Exception.Message)"
+  }
   if ($p.ExitCode -eq 3010) { $script:NeedReboot = $true }
   elseif ($p.ExitCode -ne 0) { Fail "Cai WSL MSI loi (msiexec=$($p.ExitCode))." }
   Refresh-Path
+}
+
+function Invoke-WslRaw([string[]]$WslArgs) {
+  # Chay wsl.exe va gom ca stderr, khong de NativeCommandError lam dung script.
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $lines = & $script:WslExe @WslArgs 2>&1 | ForEach-Object { "$_" }
+    return [pscustomobject]@{ Code = $LASTEXITCODE; Output = (($lines | Out-String).Trim()) }
+  } finally {
+    $ErrorActionPreference = $prev
+  }
+}
+
+function Wait-WslReady([int]$TimeoutSec = 90) {
+  # Sau khi cai/nang WSL, no co the in "WSL is finishing an upgrade..." va
+  # chua nhan lenh. Cho den khi --status chay duoc va het thong bao do.
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  while ((Get-Date) -lt $deadline) {
+    $r = Invoke-WslRaw @('--status')
+    if ($r.Code -eq 0 -and $r.Output -notmatch 'finishing an upgrade') { return $true }
+    Start-Sleep -Seconds 2
+  }
+  return $false
 }
 
 function Ensure-Wsl {
@@ -196,18 +234,27 @@ function Ensure-Wsl {
   Write-Ok "wsl.exe: $exe"
 
   Write-Step "Cap nhat WSL kernel"
-  & $script:WslExe --update 2>&1 | Out-Null
-  & $script:WslExe --set-default-version 2 2>&1 | Out-Null
-  if ($LASTEXITCODE -ne 0) {
+  $r = Invoke-WslRaw @('--update')
+  if ($r.Code -ne 0) {
+    Write-Warn2 "wsl --update tra ve ma $($r.Code). Tiep tuc voi ban WSL hien co."
+  }
+
+  if (-not (Wait-WslReady 90)) {
+    Write-Warn2 "WSL chua san sang sau 90s (co the dang hoan tat nang cap hoac can reboot)."
+  }
+
+  $r = Invoke-WslRaw @('--set-default-version', '2')
+  if ($r.Code -ne 0) {
     Write-Warn2 "Khong dat WSL2 lam mac dinh. Kiem tra ao hoa (VT-x/AMD-V) da bat trong BIOS/VM chua."
+    if ($r.Output) { Write-Warn2 $r.Output }
   } else {
     Write-Ok "WSL2 la phien ban mac dinh"
   }
 }
 
 function Get-WslDistros {
-  $out = & $script:WslExe -l -q 2>$null
-  $text = ($out | Out-String) -replace "`0", ''
+  $r = Invoke-WslRaw @('-l', '-q')
+  $text = $r.Output -replace "`0", ''
   return @($text -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 }
 
@@ -247,9 +294,13 @@ function Ensure-Distro {
     Write-Step "Tai Ubuntu 22.04 rootfs (~300MB)..."
     Download-File $script:RootfsUrl $tar
   }
-  & $script:WslExe --import $WslDistro $root $tar --version 2 | Out-Host
-  if ($LASTEXITCODE -ne 0) {
-    Fail "Import distro that bai. Kiem tra ao hoa VT-x/AMD-V da bat (va nested virtualization neu la VM) roi chay lai."
+  $r = Invoke-WslRaw @('--import', $WslDistro, $root, $tar, '--version', '2')
+  if ($r.Code -ne 0 -and $r.Output -match 'finishing an upgrade') {
+    Wait-WslReady 90 | Out-Null
+    $r = Invoke-WslRaw @('--import', $WslDistro, $root, $tar, '--version', '2')
+  }
+  if ($r.Code -ne 0) {
+    Fail "Import distro that bai (exit $($r.Code)).`n$($r.Output)`nKiem tra ao hoa VT-x/AMD-V da bat (va nested virtualization neu la VM) roi chay lai."
   }
   Write-Ok "Da import $WslDistro"
 }
@@ -264,7 +315,7 @@ function Initialize-Distro {
   }
   Write-Step "Bat systemd trong $WslDistro (de Docker chay nhu service)"
   Invoke-Wsl "printf '[boot]\nsystemd=true\n[user]\ndefault=root\n' > /etc/wsl.conf"
-  & $script:WslExe --terminate $WslDistro 2>&1 | Out-Null
+  $null = Invoke-WslRaw @('--terminate', $WslDistro)
   Start-Sleep -Seconds 2
   # Cho systemd boot xong (running/degraded) truoc khi cai Docker; timeout 90s.
   Invoke-Wsl "timeout 90 systemctl is-system-running --wait >/dev/null 2>&1 || true; true"
@@ -378,8 +429,12 @@ foreach ($p in $ports) {
 '@
   $content = $template.Replace('__DISTRO__', $WslDistro).Replace('__PORTS__', $portsLiteral)
 
-  if (-not (Test-Path $script:RefreshDir)) { New-Item -ItemType Directory -Force -Path $script:RefreshDir | Out-Null }
-  Set-Content -Path $script:RefreshScript -Value $content -Encoding UTF8
+  if (-not (Test-Path $script:RefreshDir)) { New-Item -ItemType Directory -Force -Path $script:RefreshDir -ErrorAction Stop | Out-Null }
+  try {
+    Set-Content -Path $script:RefreshScript -Value $content -Encoding UTF8 -ErrorAction Stop
+  } catch {
+    Write-Warn2 "Khong ghi duoc refresh script: $($_.Exception.Message)"
+  }
 
   $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script:RefreshScript`""
@@ -390,9 +445,14 @@ foreach ($p in $ports) {
   $triggerLogon = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
   $principal = New-ScheduledTaskPrincipal -UserId $currentUser -LogonType S4U -RunLevel Highest
   $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-  Register-ScheduledTask -TaskName $script:TaskName -Action $action -Trigger @($triggerBoot, $triggerLogon) `
-    -Principal $principal -Settings $settings -Force | Out-Null
-  Write-Ok "Scheduled Task '$($script:TaskName)' se tu lam moi portproxy sau reboot (user $currentUser)."
+  try {
+    Register-ScheduledTask -TaskName $script:TaskName -Action $action -Trigger @($triggerBoot, $triggerLogon) `
+      -Principal $principal -Settings $settings -Force -ErrorAction Stop | Out-Null
+    Write-Ok "Scheduled Task '$($script:TaskName)' se tu lam moi portproxy sau reboot (user $currentUser)."
+  } catch {
+    Write-Warn2 "Khong tao duoc Scheduled Task: $($_.Exception.Message)"
+    Write-Warn2 "Sau reboot hay chay lai: .\deploy-server.ps1 restart"
+  }
 }
 
 function Remove-ProxyArtifacts {
