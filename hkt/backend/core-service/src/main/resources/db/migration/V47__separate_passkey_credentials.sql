@@ -34,7 +34,8 @@ SELECT
     id, user_id, credential_id, public_key_cose, user_handle_b64, COALESCE(signature_count, 0),
     transports, backup_eligible, backup_state, authenticator_attachment,
     COALESCE(device_model, 'Passkey (WebAuthn)'),
-    last_active_at, created_at, updated_at
+    -- devices chỉ có created_at/last_active_at (không có updated_at).
+    last_active_at, created_at, NULL
 FROM devices
 WHERE credential_id IS NOT NULL AND public_key_cose IS NOT NULL
 ON CONFLICT (credential_id) DO NOTHING;
