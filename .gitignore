@@ -42,6 +42,9 @@ tests/robot/reports/
 .run-local/
 hkt/backend/ai-face-service/data/
 
+# Deploy artifacts (deploy-server.sh) — .env đã bị bỏ qua ở trên
+hkt/deploy/docker/Caddyfile
+
 # Robot Framework output
 log.html
 output.xml

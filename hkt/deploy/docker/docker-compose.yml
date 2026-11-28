@@ -1,101 +1,161 @@
-version: '3.8'
+# ==============================================================================
+# ACT-HKT 2026 — Docker Compose stack (dùng cho cả dev lẫn production)
+#
+# Dev nhanh:      ./start-dev.sh   (hoặc  ./run.sh docker)
+# Production:     ./deploy-server.sh   (tự cài Docker, sinh .env, build & up)
+#
+# Mọi giá trị đều đọc từ biến môi trường với default an toàn cho dev.
+# Production: xem .env.example và .env do deploy-server.sh sinh tự động.
+# ==============================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
-  # Database PostgreSQL với extension pgvector hỗ trợ tìm kiếm vector khuôn mặt
+  # Database PostgreSQL + pgvector (tìm kiếm vector khuôn mặt)
   postgres:
     image: pgvector/pgvector:pg16
     container_name: pulse-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
-      POSTGRES_DB: pulse_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: ${POSTGRES_DB:-pulse_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
     ports:
-      - "5432:5432"
+      # Production: PUBLISH_HOST=127.0.0.1 để DB không lộ ra internet.
+      - "${PUBLISH_HOST:-0.0.0.0}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d pulse_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # Redis Cache & Rate-limiter (chống brute-force login)
+  # Redis — cache & rate-limiter (chống brute-force login)
   redis:
     image: redis:7-alpine
     container_name: pulse-redis
     restart: unless-stopped
+    logging: *default-logging
     ports:
-      - "16379:6379"
+      - "${PUBLISH_HOST:-0.0.0.0}:${REDIS_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
 
-  # Backend 1: Core Service (Java Spring Boot 3 - ACT PULSE)
+  # Backend 1: Core Service (Spring Boot 3 — ACT PULSE)
   core-service:
     build:
       context: ../../backend/core-service
       dockerfile: Dockerfile
     container_name: pulse-core-service
     restart: unless-stopped
+    logging: *default-logging
     ports:
-      - "8080:8080"
+      - "${PUBLISH_HOST:-0.0.0.0}:${CORE_PORT:-8080}:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pulse_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres123
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pulse_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      MAIL_DEV_LOG: ${MAIL_DEV_LOG:-false}
+      # PHẢI đặt secret riêng trong production (deploy-server.sh tự sinh).
+      # Default trùng application.yml để dev không phải cấu hình gì.
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       AI_FACE_SERVICE_URL: http://ai-face-service:8000
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-Ascend Tech}
+      WEBAUTHN_ALLOWED_ORIGINS: ${WEBAUTHN_ALLOWED_ORIGINS:-http://localhost:3000}
+      # Để trống để tắt pattern tunnel (khuyến nghị production).
+      WEBAUTHN_ALLOWED_ORIGIN_PATTERNS: ${WEBAUTHN_ALLOWED_ORIGIN_PATTERNS:-https://*.trycloudflare.com,https://*.ngrok-free.app}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      NOTIFICATION_RETENTION_DAYS: ${NOTIFICATION_RETENTION_DAYS:-90}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # service_started (không phải healthy) để core vẫn lên được nếu AI đang
+      # tải model chậm hoặc tạm thời không với tới GitHub — tính năng chấm công
+      # thường vẫn dùng được, chỉ nhận diện khuôn mặt chờ AI sẵn sàng.
       ai-face-service:
-        condition: service_healthy
+        condition: service_started
 
-  # Backend 2: AI Face Recognition & OCR Service (Python FastAPI)
+  # Backend 2: AI Face Recognition (Python FastAPI, OpenCV YuNet + SFace)
   ai-face-service:
     build:
       context: ../../backend/ai-face-service
       dockerfile: Dockerfile
     container_name: pulse-ai-face-service
     restart: unless-stopped
+    logging: *default-logging
     ports:
-      - "8000:8000"
+      - "${PUBLISH_HOST:-0.0.0.0}:${AI_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/pulse_db
+      # Mật khẩu production nên là chuỗi URL-safe (script sinh hex) vì nằm trong URL.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-pulse_db}
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 5s
+      retries: 12
+      # Lần đầu khởi động phải tải ONNX (~39MB) từ GitHub nên cho grace dài.
+      start_period: 60s
 
-  # Frontend: React + TypeScript + TailwindCSS (Nginx container)
+  # Frontend: React + TypeScript + Tailwind (phục vụ qua Nginx, proxy /api và /ai-face)
   frontend:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
     container_name: pulse-frontend
     restart: unless-stopped
+    logging: *default-logging
     ports:
-      - "3000:80"
+      - "${FRONTEND_PUBLISH:-0.0.0.0:3000:80}"
     depends_on:
       - core-service
+
+  # Reverse proxy + TLS tự động (Let's Encrypt). Chỉ bật khi triển khai có domain:
+  #   docker compose --profile tls up -d
+  # deploy-server.sh --domain example.com sẽ tự sinh Caddyfile và bật profile này.
+  caddy:
+    image: caddy:2-alpine
+    container_name: pulse-caddy
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["tls"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
 
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
